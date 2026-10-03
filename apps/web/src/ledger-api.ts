@@ -90,7 +90,7 @@ export type TransferResponse = FinancialMetadata & {
 };
 export type ExchangeResponse = FinancialMetadata & {
   kind: "exchange"; source_account_id: UUID; source_asset_id: string; source_amount: Quantity;
-  destination_account_id: UUID; destination_asset_id: string; destination_amount: Quantity; fees: FeeResponse[];
+  destination_account_id: UUID; destination_asset_id: string; destination_amount: Quantity; fees?: FeeResponse[];
 };
 export type FinancialResponse = OperationResponse | TransferResponse | ExchangeResponse;
 export type Replacement =
@@ -122,6 +122,8 @@ export type PageOptions = { limit?: number; offset?: number };
 export type ArchivedPageOptions = PageOptions & { include_archived?: boolean };
 export type AssetPageOptions = PageOptions & { include_disabled?: boolean };
 export type BalancePageOptions = PageOptions & { account_id?: UUID };
+export type OperationPageOptions = PageOptions & { status?: "all" | "active" | "cancelled" };
+export type { PostingInput } from "./pending-command";
 
 function pageQuery(options: PageOptions & Record<string, unknown>): string {
   const { limit = 100, offset = 0, ...filters } = options;
@@ -155,3 +157,12 @@ export const listCategories = (ledgerId: UUID, options?: ArchivedPageOptions | A
 export const createCategory = (csrf: string, ledgerId: UUID, body: CategoryCreate): Promise<Category> => writeJson(`${ledgerPath(ledgerId)}/categories`, csrf, body);
 export const updateCategory = (csrf: string, ledgerId: UUID, id: UUID, body: CategoryUpdate): Promise<Category> => writeJson(`${ledgerPath(ledgerId)}/categories/${encodeURIComponent(id)}`, csrf, body, "PATCH");
 export const listBalances = (ledgerId: UUID, options?: BalancePageOptions | AbortSignal, signal?: AbortSignal): Promise<Balance[]> => list(`${ledgerPath(ledgerId)}/balances`, options, signal);
+export const createAsset = (csrf: string, body: AssetCreate): Promise<Asset> => writeJson("/api/v1/assets", csrf, body);
+export const updateAsset = (csrf: string, assetId: string, body: AssetUpdate): Promise<Asset> => writeJson(`/api/v1/assets/${encodeURIComponent(assetId)}`, csrf, body, "PATCH");
+export const postOpening = (csrf: string, ledgerId: UUID, body: OpeningCreate, key: string): Promise<OperationResponse> => writeJson(`${ledgerPath(ledgerId)}/opening-balances`, csrf, body, "POST", key);
+export const postIncome = (csrf: string, ledgerId: UUID, body: IncomeCreate, key: string): Promise<OperationResponse> => writeJson(`${ledgerPath(ledgerId)}/income`, csrf, body, "POST", key);
+export const postExpense = (csrf: string, ledgerId: UUID, body: ExpenseCreate, key: string): Promise<OperationResponse> => writeJson(`${ledgerPath(ledgerId)}/expenses`, csrf, body, "POST", key);
+export const postTransfer = (csrf: string, ledgerId: UUID, body: TransferCreate, key: string): Promise<TransferResponse> => writeJson(`${ledgerPath(ledgerId)}/transfers`, csrf, body, "POST", key);
+export const postExchange = (csrf: string, ledgerId: UUID, body: ExchangeCreate, key: string): Promise<ExchangeResponse> => writeJson(`${ledgerPath(ledgerId)}/exchanges`, csrf, body, "POST", key);
+export const listOperations = (ledgerId: UUID, options?: OperationPageOptions | AbortSignal, signal?: AbortSignal): Promise<OperationState[]> => list(`${ledgerPath(ledgerId)}/operations`, options, signal);
+export const getOperation = (ledgerId: UUID, operationId: UUID, signal?: AbortSignal): Promise<OperationState> => readJson(`${ledgerPath(ledgerId)}/operations/${encodeURIComponent(operationId)}`, signal);
