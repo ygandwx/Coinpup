@@ -2,7 +2,7 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01、T02 和 T04 已合入，正在实现 T05 私有票据处理。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。当前增量增加私有上传 API 和数据库与原件的一致恢复；上传页面、OCR 和 App 继续按路线图推进。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01、T02、T04 和 T05 私有文件后端已合入，当前增量接入票据网页。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。票据目录支持原件上传下载、证据关联与安全重试；本地 OCR 和 App 尚未实现。实际验收、保存与暂停状态见[当前项目状态](docs/engineering/status.md)。
 
 Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries, corrections, cancellation and version history. Private attachments and consistent file restoration are the current increment. No open-source license has been selected for this private repository.
 
@@ -25,6 +25,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bil
 - [财务网页与待确认提交](docs/architecture/decisions/0010-financial-web-and-retry.md)
 - [网页修订与版本历史](docs/architecture/decisions/0011-financial-revision-web.md)
 - [私有文件与一致恢复](docs/architecture/decisions/0012-private-files-and-consistent-bundles.md)
+- [票据网页与上传恢复](docs/architecture/decisions/0013-document-web-and-upload-recovery.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -103,7 +104,11 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 `GET /api/v1/files/configuration` 返回上传限额，默认 50 MiB/120 秒。格式为 PDF/JPEG/PNG/WebP；格式签名检查不代表完成 OCR 或恶意文件扫描。同账本同内容提示重复，其他账本独立。`GET /files`、`GET /files/{id}`、`PATCH /files/{id}` 管理标题与归档，`GET /files/{id}/content` 鉴权下载；流水下的 `/operations/{id}/files` 提供证据关联，关联不会增加费用。
 
-本地存储默认 `data/files`，可配置 `COINPUP_FILES_DIRECTORY`；不要把该目录映射为静态网址。数据库备份不含原件，完整原件使用新增 bundle 工具，见[运维说明](docs/engineering/operations.md)。本增量先交付 API 与恢复，上传网页和本地识别随后实现。
+本地存储默认 `data/files`，可配置 `COINPUP_FILES_DIRECTORY`；不要把该目录映射为静态网址。数据库备份不含原件，完整原件使用新增 bundle 工具，见[运维说明](docs/engineering/operations.md)。
+
+网页“票据与证件”按账本保存原件；公司资料页有证件入口，流水卡片“票据”可关联已有文件或上传原件。标题冲突保留草稿，明确重新载入后才替换。文件与关联归档分别操作；取消流水仍保留证据，上传或关联不会增加费用。
+
+未知上传结果时保留本页，使用“核对上传”或“重试原上传”；停止传输不代表服务器取消保存。原件和上传标识仅保存在内存，同一用户重新登录可手动继续；刷新或关闭页面后应先查看目录再重新选择。已知内容冲突不能被查询误认为成功。当前只管理原件，本地 OCR 与人工确认入账仍未实现。
 
 ## 网页开发
 

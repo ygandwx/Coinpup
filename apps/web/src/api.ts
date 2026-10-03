@@ -58,13 +58,14 @@ function responseError(status: number, data: unknown): ApiError {
   return new ApiError(kind, status, code, fields);
 }
 
-async function requestJSON<T>(path: string, init: RequestInit = {}, signal?: AbortSignal, empty = false): Promise<T> {
+async function requestJSON<T>(path: string, init: RequestInit = {}, signal?: AbortSignal, empty = false, timeoutMs = 12_000, binary = false): Promise<T> {
   apiPath(path);
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3_610_000) throw new ApiError("server", null, "invalid_timeout");
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) controller.abort();
-  const timeout = globalThis.setTimeout(abort, 12_000);
+  const timeout = globalThis.setTimeout(abort, timeoutMs);
 
   try {
     const response = await fetch(path, {
@@ -76,6 +77,7 @@ async function requestJSON<T>(path: string, init: RequestInit = {}, signal?: Abo
       headers: { Accept: "application/json", ...init.headers },
     });
     if (response.ok && empty) return undefined as T;
+    if (response.ok && binary) return await response.blob() as T;
     let data: unknown;
     try {
       data = await response.json();
@@ -99,7 +101,7 @@ export function readJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return requestJSON<T>(path, {}, signal);
 }
 
-export async function writeJson<T>(path: string, csrfToken: string, body: unknown, method: "POST" | "PATCH" = "POST", idempotencyKey?: string): Promise<T> {
+export async function writeJson<T>(path: string, csrfToken: string, body: unknown, method: "POST" | "PATCH" | "PUT" = "POST", idempotencyKey?: string, signal?: AbortSignal): Promise<T> {
   return requestJSON<T>(path, {
     method,
     headers: {
@@ -108,7 +110,18 @@ export async function writeJson<T>(path: string, csrfToken: string, body: unknow
       ...(idempotencyKey === undefined ? {} : { "Idempotency-Key": idempotencyKey }),
     },
     body: JSON.stringify(body),
-  });
+  }, signal);
+}
+
+export function writeBytes<T>(path: string, csrfToken: string, body: Blob, options: { timeoutMs: number; signal?: AbortSignal }): Promise<T> {
+  return requestJSON<T>(path, {
+    method: "PUT", body,
+    headers: { "Content-Type": "application/octet-stream", "X-CSRF-Token": csrfToken },
+  }, options.signal, false, options.timeoutMs);
+}
+
+export function readBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  return requestJSON<Blob>(path, { headers: { Accept: "application/octet-stream" } }, signal, false, 120_000, true);
 }
 
 function parseSession(data: unknown): Session {
