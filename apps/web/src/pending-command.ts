@@ -1,7 +1,7 @@
 import { ApiError } from "./api";
 import type { Session } from "./api";
-import { getOperation, postExchange, postExpense, postIncome, postOpening, postTransfer } from "./ledger-api";
-import type { ExchangeCreate, ExpenseCreate, FinancialResponse, IncomeCreate, OpeningCreate, OperationState, TransferCreate } from "./ledger-api";
+import { cancelOperation, correctOperation, getOperation, postExchange, postExpense, postIncome, postOpening, postTransfer } from "./ledger-api";
+import type { CancellationCreate, CorrectionCreate, ExchangeCreate, ExpenseCreate, FinancialResponse, IncomeCreate, OpeningCreate, OperationState, TransferCreate } from "./ledger-api";
 
 export type PostingInput =
   | { kind: "opening"; body: Omit<OpeningCreate, "id"> }
@@ -13,13 +13,13 @@ export type PendingStatus = "idle" | "submitting" | "unknown" | "auth-required" 
 export type PendingCommand = Readonly<{
   ownerId: string; ledgerId: string; operationId: string; key: string;
   kind: PostingInput["kind"]; bodyJson: string;
-}>;
+} & ({ action: "create"; expectedVersion?: never } | { action: "correct" | "cancel"; expectedVersion: number })>;
 export type PendingSnapshot = Readonly<{
   status: PendingStatus; command: PendingCommand | null; receipt: FinancialResponse | null;
-  current: OperationState | null; error: ApiError | null; checking: boolean;
+  revisionReceipt: OperationState | null; current: OperationState | null; error: ApiError | null; checking: boolean;
 }>;
 export type PostingTransport = {
-  post(session: Session, command: PendingCommand): Promise<FinancialResponse>;
+  post(session: Session, command: PendingCommand): Promise<FinancialResponse | OperationState>;
   read(session: Session, command: PendingCommand): Promise<OperationState>;
 };
 
@@ -27,6 +27,8 @@ const transport: PostingTransport = {
   post(session, command) {
     // Decode an immutable snapshot, never the current editable form or selected ledger.
     const body = JSON.parse(command.bodyJson);
+    if (command.action === "correct") return correctOperation(session.csrf_token, command.ledgerId, command.operationId, body, command.key);
+    if (command.action === "cancel") return cancelOperation(session.csrf_token, command.ledgerId, command.operationId, body, command.key);
     const args = [session.csrf_token, command.ledgerId, body, command.key] as const;
     switch (command.kind) {
       case "opening": return postOpening(...args);
@@ -39,7 +41,7 @@ const transport: PostingTransport = {
   read(_session, command) { return getOperation(command.ledgerId, command.operationId); },
 };
 
-const idle = (): PendingSnapshot => Object.freeze({ status: "idle", command: null, receipt: null, current: null, error: null, checking: false });
+const idle = (): PendingSnapshot => Object.freeze({ status: "idle", command: null, receipt: null, revisionReceipt: null, current: null, error: null, checking: false });
 function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 const quantity = (value: unknown) => typeof value === "string" && value.length <= 40 && /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/u.test(value);
 function validReceipt(value: unknown, command: PendingCommand): value is FinancialResponse {
@@ -64,6 +66,10 @@ function validState(value: unknown, command: PendingCommand): value is Operation
     typeof value.cancellation.reason === "string" && typeof value.cancellation.recorded_at === "string";
 }
 function apiError(error: unknown): ApiError { return error instanceof ApiError ? error : new ApiError("network"); }
+function validRevisionReceipt(value: unknown, command: PendingCommand): value is OperationState {
+  if (command.action === "create" || !validState(value, command) || value.version !== command.expectedVersion + 1) return false;
+  return command.action === "correct" ? value.status === "active" : value.status === "cancelled";
+}
 
 /** One unresolved command per App instance. No browser storage, global singleton or CSRF retention. */
 export class PendingCommandController {
@@ -73,6 +79,7 @@ export class PendingCommandController {
   private listeners = new Set<() => void>();
   private generation = 0;
   private uncertain = false;
+  private versionConflict: ApiError | null = null;
   private flight: Promise<void> | null = null;
   private io: PostingTransport;
 
@@ -83,7 +90,7 @@ export class PendingCommandController {
   private publish(next: PendingSnapshot = this.state): void {
     this.state = Object.freeze(next);
     this.visible = this.owner === null && next.command !== null
-      ? Object.freeze({ status: "auth-required", command: null, receipt: null, current: null, error: null, checking: false })
+      ? Object.freeze({ status: "auth-required", command: null, receipt: null, revisionReceipt: null, current: null, error: null, checking: false })
       : this.state;
     for (const listener of [...this.listeners]) listener();
   }
@@ -91,6 +98,7 @@ export class PendingCommandController {
     this.generation += 1;
     this.flight = null;
     this.uncertain = false;
+    this.versionConflict = null;
     this.state = idle();
   }
   setOwner(ownerId: string | null, explicitLogout = false): void {
@@ -126,9 +134,28 @@ export class PendingCommandController {
       if (this.flight !== null) return this.flight;
       if (this.state.command !== null) throw new ApiError("server", null, "pending_command_unresolved");
       const operationId = crypto.randomUUID();
-      const command: PendingCommand = Object.freeze({ ownerId: String(session.user.id), ledgerId, operationId,
+      const command: PendingCommand = Object.freeze({ action: "create", ownerId: String(session.user.id), ledgerId, operationId,
         key: crypto.randomUUID(), kind: input.kind, bodyJson: JSON.stringify({ ...input.body, id: operationId }) });
-      this.publish({ status: "submitting", command, receipt: null, current: null, error: null, checking: false });
+      this.publish({ ...idle(), status: "submitting", command });
+      return this.send(session);
+    } catch (error) { return Promise.reject(error); }
+  }
+
+  correct(session: Session, ledgerId: string, operationId: string, body: CorrectionCreate): Promise<void> {
+    return this.revise(session, ledgerId, operationId, body.replacement.kind, "correct", body);
+  }
+  cancel(session: Session, ledgerId: string, operationId: string, kind: FinancialResponse["kind"], body: CancellationCreate): Promise<void> {
+    return this.revise(session, ledgerId, operationId, kind, "cancel", body);
+  }
+  private revise(session: Session, ledgerId: string, operationId: string, kind: FinancialResponse["kind"], action: "correct" | "cancel", body: CorrectionCreate | CancellationCreate): Promise<void> {
+    try {
+      this.authorized(session);
+      if (this.flight !== null) return this.flight;
+      if (this.state.command !== null) throw new ApiError("server", null, "pending_command_unresolved");
+      if (!operationId || !Number.isSafeInteger(body.expected_version) || body.expected_version < 1) throw new ApiError("server", null, "invalid_revision");
+      const command: PendingCommand = Object.freeze({ action, ownerId: String(session.user.id), ledgerId, operationId,
+        expectedVersion: body.expected_version, key: crypto.randomUUID(), kind, bodyJson: JSON.stringify(body) });
+      this.publish({ ...idle(), status: "submitting", command });
       return this.send(session);
     } catch (error) { return Promise.reject(error); }
   }
@@ -145,6 +172,7 @@ export class PendingCommandController {
   private send(session: Session): Promise<void> {
     const command = this.state.command!;
     const generation = this.generation;
+    this.versionConflict = null;
     this.publish({ ...this.state, status: "submitting", error: null });
     // Start in a microtask so flight exists before transport callbacks or repeated clicks run.
     const flight = Promise.resolve().then(async () => {
@@ -152,12 +180,26 @@ export class PendingCommandController {
       try {
         const receipt = await this.io.post(session, command);
         if (generation !== this.generation) return;
-        if (!validReceipt(receipt, command)) throw new ApiError("server", 201, "invalid_response");
+        if (command.action === "create") {
+          if (!validReceipt(receipt, command)) throw new ApiError("server", 201, "invalid_response");
+          this.publish({ ...this.state, status: "confirmed", receipt, error: null });
+        } else {
+          if (!validRevisionReceipt(receipt, command)) throw new ApiError("server", 200, "invalid_response");
+          this.publish({ ...this.state, status: "confirmed", revisionReceipt: receipt, error: null });
+        }
         this.uncertain = false;
-        this.publish({ ...this.state, status: "confirmed", receipt, error: null });
       } catch (problem) {
         if (generation !== this.generation) return;
         const error = apiError(problem);
+        if (command.action !== "create" && error.status === 409 && error.code === "version_conflict") {
+          // The backend checks the immutable key receipt before its version guard. Only
+          // this exact rejection PLUS a later version proves the old command cannot win.
+          this.versionConflict = error;
+          this.uncertain = true;
+          this.publish({ ...this.state, status: "unknown", error, checking: true });
+          await this.observe(session, command, generation);
+          return;
+        }
         let status: PendingStatus;
         if (error.kind === "unauthorized") status = "auth-required";
         else if (error.code === "idempotency_conflict") status = "idempotency-conflict";
@@ -172,6 +214,33 @@ export class PendingCommandController {
     return flight;
   }
 
+  private async observe(session: Session, command: PendingCommand, generation: number): Promise<void> {
+    try {
+      const current = await this.io.read(session, command);
+      if (generation !== this.generation) return;
+      if (!validState(current, command)) throw new ApiError("server", 200, "invalid_response");
+      if (command.action === "create") {
+        this.uncertain = false;
+        this.publish({ ...this.state, status: "confirmed", current, error: null, checking: false });
+      } else if (this.versionConflict !== null && current.version > command.expectedVersion) {
+        this.uncertain = false;
+        this.publish({ ...this.state, status: "rejected", current, error: this.versionConflict, checking: false });
+      } else {
+        // Existing identity (even with a higher version) does not identify this revision.
+        const status = ["confirmed", "rejected", "idempotency-conflict"].includes(this.state.status) ? this.state.status : "unknown";
+        this.publish({ ...this.state, status, current, error: this.versionConflict, checking: false });
+      }
+    } catch (problem) {
+      if (generation !== this.generation) return;
+      const error = apiError(problem);
+      // A 404 can race an in-flight commit. Only a receipt confirms a revision outcome.
+      const status = this.state.status === "confirmed" ? "confirmed" : error.kind === "unauthorized" ? "auth-required" :
+        this.state.status === "idempotency-conflict" ? "idempotency-conflict" : "unknown";
+      if (status === "unknown") this.uncertain = true;
+      this.publish({ ...this.state, status, error, checking: false });
+    }
+  }
+
   reconcile(session: Session): Promise<void> {
     try {
       this.authorized(session);
@@ -182,21 +251,7 @@ export class PendingCommandController {
       this.publish({ ...this.state, checking: true });
       const flight = Promise.resolve().then(async () => {
         if (generation !== this.generation) return;
-        try {
-          const current = await this.io.read(session, command);
-          if (generation !== this.generation) return;
-          if (!validState(current, command)) throw new ApiError("server", 200, "invalid_response");
-          this.uncertain = false;
-          this.publish({ ...this.state, status: "confirmed", current, error: null, checking: false });
-        } catch (problem) {
-          if (generation !== this.generation) return;
-          const error = apiError(problem);
-          // A 404 can race an in-flight commit. Only an actual receipt/state confirms outcome.
-          const status = this.state.status === "confirmed" ? "confirmed" : error.kind === "unauthorized" ? "auth-required" :
-            this.state.status === "idempotency-conflict" ? "idempotency-conflict" : "unknown";
-          if (status === "unknown") this.uncertain = true;
-          this.publish({ ...this.state, status, error, checking: false });
-        } finally {
+        try { await this.observe(session, command, generation); } finally {
           if (generation === this.generation) this.flight = null;
         }
       });
