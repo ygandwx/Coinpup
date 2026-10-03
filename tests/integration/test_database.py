@@ -3,7 +3,9 @@
 import os
 
 import pytest
+from alembic.config import Config
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from coinpup_api.config import Settings
 from coinpup_api.database import Database
 from coinpup_api.main import create_app
@@ -24,5 +26,5 @@ def test_migrated_postgresql_and_readiness():
     with TestClient(create_app(settings, database)) as client:
         with database.engine.connect() as connection:
             heads = MigrationContext.configure(connection).get_current_heads()
-            assert heads == ("20261003_0001",)
+            assert set(heads) == set(ScriptDirectory.from_config(Config("alembic.ini")).get_heads())
         assert client.get("/api/v1/health/ready").status_code == 200

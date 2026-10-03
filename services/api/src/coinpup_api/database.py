@@ -18,6 +18,7 @@ class Database:
         self.engine = create_engine(
             settings.database_url.get_secret_value(),
             pool_pre_ping=True,
+            hide_parameters=True,
             connect_args={
                 "connect_timeout": settings.database_connect_timeout,
                 "options": "-c statement_timeout=3000",

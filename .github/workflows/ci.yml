@@ -47,6 +47,26 @@ jobs:
       - name: Check OpenAPI snapshot
         run: python scripts/export_openapi.py --check
 
+  web:
+    name: Web type check and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
   database:
     name: PostgreSQL migrations and integration tests
     runs-on: ubuntu-latest
@@ -86,7 +106,7 @@ jobs:
         run: python -m pip install -r requirements-dev.lock
       - name: Apply migrations
         run: python -m alembic upgrade head
-      - name: Check baseline migration round trip on disposable database
+      - name: Check migration round trip on disposable database
         run: |
           python -m alembic downgrade base
           python -m alembic upgrade head
@@ -96,13 +116,28 @@ jobs:
         run: python -m pytest tests/integration -m integration
 
   container:
-    name: Build and verify development container
+    name: Container, real browser login and backup restoration
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    env:
+      # Fictional credentials for the disposable CI database, never deployment defaults.
+      E2E_USERNAME: admin-e2e
+      E2E_PASSWORD: Test-only-password-2026!
+      BASE_URL: http://127.0.0.1:8000
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install browser tests
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
       - name: Create disposable development configuration
         run: python3 scripts/init_env.py
       - name: Start services
@@ -111,6 +146,28 @@ jobs:
         run: docker compose exec -T api python -m alembic upgrade head
       - name: Verify API connection
         run: curl --fail http://127.0.0.1:8000/api/v1/health/ready
+      - name: Create disposable test administrator
+        run: >-
+          docker compose exec -T
+          -e COINPUP_ENVIRONMENT=test -e COINPUP_CREATE_TEST_ADMIN=1
+          -e E2E_USERNAME -e E2E_PASSWORD
+          api python scripts/create_test_admin.py
+      - name: Verify real browser authentication
+        run: npm --prefix apps/web run test:e2e
+      - name: Verify database backup and restore into a new empty database
+        run: >-
+          docker compose exec -T
+          -e COINPUP_ENVIRONMENT=test -e COINPUP_RUN_BACKUP_TESTS=1
+          api python scripts/check_compose_backup.py
+      - name: Save browser evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: |
+            apps/web/test-results
+            apps/web/playwright-report
+          if-no-files-found: ignore
       - name: Remove disposable services and database
         if: always()
         run: docker compose down --volumes

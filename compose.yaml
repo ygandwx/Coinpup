@@ -19,6 +19,7 @@ services:
     build: .
     environment:
       COINPUP_ENVIRONMENT: development
+      COINPUP_ALLOWED_ORIGINS: '["http://127.0.0.1:8000", "http://localhost:8000", "http://127.0.0.1:5173", "http://localhost:5173"]'
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:${POSTGRES_PASSWORD:?Run python scripts/init_env.py first}@postgres:5432/coinpup
     ports:
       - "127.0.0.1:8000:8000"

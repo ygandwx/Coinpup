@@ -49,7 +49,9 @@ def test_database_outage_is_reported_without_exposing_connection_details(caplog)
 
 
 def test_production_disables_api_explorer():
-    config = Settings(_env_file=None, environment="production")
+    config = Settings(
+        _env_file=None, environment="production", allowed_origins=["https://coinpup.example"]
+    )
     with TestClient(create_app(config, Probe())) as client:
         assert client.get("/docs").status_code == 404
         assert client.get("/openapi.json").status_code == 404

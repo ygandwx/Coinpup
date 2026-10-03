@@ -12,6 +12,8 @@ __pycache__/
 htmlcov/
 build/
 dist/
+playwright-report/
+test-results/
 node_modules/
 data/
 backups/

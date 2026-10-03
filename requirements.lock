@@ -12,6 +12,12 @@ annotated-types==0.8.0
     # via pydantic
 anyio==4.15.1
     # via starlette
+argon2-cffi==25.1.0
+    # via coinpup-api (pyproject.toml)
+argon2-cffi-bindings==26.1.0
+    # via argon2-cffi
+cffi==2.1.1
+    # via argon2-cffi-bindings
 click==8.5.0
     # via uvicorn
 fastapi==0.142.2
@@ -30,6 +36,8 @@ psycopg==3.3.6
     # via coinpup-api (pyproject.toml)
 psycopg-binary==3.3.6
     # via psycopg
+pycparser==3.0
+    # via cffi
 pydantic==2.13.5
     # via
     #   fastapi
