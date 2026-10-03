@@ -1,6 +1,14 @@
-# 数据库与私有文件备份恢复
+# 应用运行与数据库/私有文件恢复
 
-备份工具从 T01 建立，T02 扩展到完整财务与版本历史。T05-1 新增数据库与私有原件共享快照的 bundle；具体执行证据见[当前状态](status.md)，新增演练不代表已经通过真实恢复。**`backup_database.py` 始终只备份数据库；有原件时使用 `backup_bundle.py`。** 两者都不包含配置、密钥、PostgreSQL 角色或整个服务器；自动定时、异地副本、保留策略与生产演练属于 T10。
+## 会话与部署配置
+
+管理员由服务器 CLI 初始化或重置；容器密码重置命令为 `docker compose exec api python -m coinpup_api.admin reset-password`，交互输入新密码并撤销全部旧会话。初始化密码长度为 12–128 字符，不提供默认凭据。设计依据见 [ADR 0002](../architecture/decisions/0002-administrator-session.md)。
+
+`COINPUP_ALLOWED_ORIGINS` 是 JSON 格式的精确 scheme/host/port 列表，开发来源示例见 [.env.example](../../.env.example)。生产模式须显式设置 HTTPS 来源，并核对反向代理、TLS 与 Cookie 的 Secure 行为。默认登录限制为 15 分钟内 5 次失败后限制 15 分钟，会话默认 12 小时；可配置项以 [Settings](../../services/api/src/coinpup_api/config.py) 为准。来源、CSRF 和会话不是可互相替代的检查，见 [API 约定](../architecture/api-conventions.md)。
+
+## 备份范围
+
+**`backup_database.py` 始终只备份数据库；有原件时使用 `backup_bundle.py`。** 两者都不包含配置、密钥、PostgreSQL 角色或整个服务器；自动定时、异地副本、保留策略与生产演练属于 T10。
 
 ## 包含票据与证件的 bundle
 
@@ -37,7 +45,7 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -v "$PWD/recover
 
 恢复先校验 manifest、dump 和全部常规原件（拒绝 symlink、缺失、损坏和未列入清单的文件），再检查目标空库、复制字节、单事务导入，最后精确比较全部 `stored_files` 行。缺失或损坏不以空白文件替代。失败不自动删除目录或数据库；不得直接重用失败目标。成功后仍需在隔离应用核对全部账务和关联，手动切换数据库与文件根；脚本不会修改运行中的应用配置。
 
-CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。此范围已在 [CI 37136897576](https://github.com/ygandwx/Coinpup/actions/runs/37136897576) 的 PostgreSQL 17/Linux 容器中通过；生产恢复与后续 OCR/经营单据仍按任务继续验收。
+CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。
 
 ## 运行环境与凭据
 
@@ -142,6 +150,6 @@ checker 拒绝已存在的目标库和已有管理员的源库；只执行创建
 
 审计校验要求版本连续，冲销与被冲销凭证的日期、描述和全部本金/费用行精确反向对应。对已封存的正常及反向凭证尝试追加完整平衡行或单独费用组成部分，必须命中封存约束；探测无论成功拒绝或异常放行都回滚，不能为了验证而留下写入。所有重放和拒绝探测后再次比较全部表，要求源库和恢复库均未改变。旧无费用回执不能凭空新增 `fees` 字段。
 
-本地单测通过仅验证控制流程。换汇/手续费夹具已在 T02-5 的 [CI 37128573136](https://github.com/ygandwx/Coinpup/actions/runs/37128573136) 真实 PostgreSQL 演练通过；更正/取消及全部版本历史恢复在 [CI 37129766608](https://github.com/ygandwx/Coinpup/actions/runs/37129766608) 通过。这些检查不代表附件、后续结算、异地灾备或生产服务器已完成恢复验收。
+本地单测仅验证控制流程；恢复 checker 不能替代后续业务、异地灾备或生产服务器的恢复核对。实际命令、结果和 CI 证据保存在对应 PR 中。
 
 PostgreSQL 工具语义依据：[pg_dump 17](https://www.postgresql.org/docs/17/app-pgdump.html)、[pg_restore 17](https://www.postgresql.org/docs/17/app-pgrestore.html)。
