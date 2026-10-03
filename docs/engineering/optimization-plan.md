@@ -74,7 +74,7 @@
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 已完成 | #30 |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 已完成 | #31 |
 | OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 已完成 | #32 |
-| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 进行中（8a/8b/8d 已完成；8c 待开始） | #33 |
+| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 已完成 | #33、#34 |
 | OPT-09 | Python 类型检查（可选） | A | OPT-08 | 待开始 | |
 | OPT-10 | 读余额不加行锁 | B 低风险改进 | OPT-08 | 待开始 | |
 | OPT-11 | 余额与日期查询索引 | B | OPT-08 | 待开始 | |
@@ -120,7 +120,7 @@ Coinpup/
 │       │   ├── service.py  router.py  schemas.py             # 结构管理（不变）
 │       │   ├── posting.py                                   # 只保留 PostingService 门面
 │       │   ├── commands/  classified.py  transfer.py  exchange.py  fees.py
-│       │   ├── idempotency.py  readers.py  balances.py  revisions.py
+│       │   ├── idempotency.py  readers.py  balances.py  revisions.py  common.py
 │       │   └── posting_router.py  posting_schemas.py  posting_storage.py  persistence.py
 │       └── files/                    # 原 documents/（私有文件），表名与 URL 不变
 ├── contracts/openapi.json
@@ -367,6 +367,7 @@ Coinpup/
   - `ledger/readers.py`：`_read_operation`、`_read_transfer`、`_read_exchange`、`_read_fees`、`operation_state`。
   - `ledger/commands/`：`classified.py`（期初、收入、支出）、`transfer.py`、`exchange.py`、`fees.py`。
   - `ledger/balances.py`：余额查询。
+  - `ledger/common.py`：共享的归属校验、锁与持久化辅助代码；供门面和修订服务共同组合，避免循环导入。
   - `PostingService` 保留为门面，公共方法签名不变，路由和大部分测试都不需要改。
   - 顺带消除 `posting.py` 方法内部 `from coinpup_api.ledger.revisions import ...` 造成的循环导入。
 - **8d 测试目录按源码模块分组**：例如 `tests/unit/{app,auth,ledger,files,ops}/`、`tests/integration/{auth,ledger,files}/`。为避免同名测试文件冲突，二选一：在 `pyproject.toml` 的 pytest 配置中加入 `--import-mode=importlib`，或者给每个测试子目录加 `__init__.py`。确保 `tests/integration/conftest.py` 仍然生效。
