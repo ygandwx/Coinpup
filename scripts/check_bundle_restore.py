@@ -52,7 +52,7 @@ async def stage_bytes(store, content):
 
 
 def upload_fixture(service, store, owner, ledger, content, filename, operation=None, request=None):
-    from coinpup_api.documents.schemas import UploadCreate
+    from coinpup_api.files.schemas import UploadCreate
 
     request = request or UploadCreate(
         id=uuid4(), original_filename=filename, declared_size=len(content), operation_id=operation
@@ -78,9 +78,9 @@ def check_bundle_restore(source_url):
     if os.environ.get("COINPUP_RUN_BACKUP_TESTS") != "1":
         raise ArchiveError("Set COINPUP_RUN_BACKUP_TESTS=1 only for disposable CI databases.")
     require_posix()
-    from coinpup_api.documents.schemas import FileUpdate, LinkUpdate, UploadCreate
-    from coinpup_api.documents.service import DocumentService
-    from coinpup_api.documents.storage import FileStore
+    from coinpup_api.files.schemas import FileUpdate, LinkUpdate, UploadCreate
+    from coinpup_api.files.service import DocumentService
+    from coinpup_api.files.storage import FileStore
     from coinpup_api.ledger.posting import PostingService
     from coinpup_api.ledger.posting_schemas import CancellationCreate, ExpenseCreate
     from coinpup_api.ledger.schemas import AccountCreate, EntityCreate, EntityUpdate

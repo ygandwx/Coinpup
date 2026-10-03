@@ -12,7 +12,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 
 from _database_archive import ArchiveError  # noqa: E402
 from check_backup_restore import (  # noqa: E402

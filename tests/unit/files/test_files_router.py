@@ -8,10 +8,10 @@ from uuid import UUID
 import pytest
 from coinpup_api.auth import AuthError, AuthService, Identity
 from coinpup_api.config import Settings
-from coinpup_api.documents.router import create_document_router
-from coinpup_api.documents.schemas import FileResponse, UploadCompletion, UploadResponse
-from coinpup_api.documents.service import DocumentService
-from coinpup_api.documents.storage import FileStoreError, StagedFile
+from coinpup_api.files.router import create_document_router
+from coinpup_api.files.schemas import FileResponse, UploadCompletion, UploadResponse
+from coinpup_api.files.service import DocumentService
+from coinpup_api.files.storage import FileStoreError, StagedFile
 from coinpup_api.ledger.service import LedgerError
 from coinpup_api.security import csrf_token_for
 from fastapi import FastAPI

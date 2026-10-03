@@ -16,7 +16,7 @@
 | [0010](0010-financial-web-and-retry.md) | 网页财务录入与待确认提交 | 采用 | 财务表单以精确字符串提交，内存控制器冻结原请求应对未知结果。 |
 | [0011](0011-financial-revision-web.md) | 网页更正、取消与版本历史 | 采用 | 修订冻结版本和完整替代内容，以原键回执确认并展示不可变历史。 |
 | [0012](0012-private-files-and-consistent-bundles.md) | 私有文件、可重试上传与一致恢复 | 采用 | 私有文件使用两步上传与账本内查重，数据库和原件由共享快照 bundle 恢复。 |
-| [0013](0013-document-web-and-upload-recovery.md) | 票据网页与上传恢复 | 采用 | 网页保留原 File 和上传 UUID，核对完整回执，下载前校验字节身份。 |
+| [0013](0013-document-web-and-upload-recovery.md) | 票据网页与上传恢复 | 采用 | 网页保留原 File 和上传 UUID，核对完整回执，下载前校验字节身份；代码中已改名为 files。 |
 
 ## 新 ADR 模板
 

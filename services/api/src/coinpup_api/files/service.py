@@ -7,8 +7,8 @@ from uuid import uuid4
 
 from sqlalchemy import func, select
 
-from coinpup_api.documents.models import FileUpload, OperationFileLink, StoredFile
-from coinpup_api.documents.schemas import (
+from coinpup_api.files.models import FileUpload, OperationFileLink, StoredFile
+from coinpup_api.files.schemas import (
     MEDIA_TYPES,
     FileResponse,
     FileUpdate,

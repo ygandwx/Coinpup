@@ -13,7 +13,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 
 import _bundle_archive as bundle  # noqa: E402
 import backup_bundle as backup  # noqa: E402
@@ -190,7 +190,7 @@ def test_restore_cli_never_calls_existing_database_only_restore(monkeypatch, tmp
 def test_fictional_container_samples_use_actual_storage_signature_checks(tmp_path):
     import asyncio
 
-    from coinpup_api.documents.storage import FileStore
+    from coinpup_api.files.storage import FileStore
 
     store = FileStore(tmp_path / "files", 1024 * 1024, 10)
     for contents, media_type in [(fictional_pdf(), "application/pdf"), (PNG, "image/png")]:

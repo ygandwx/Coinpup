@@ -8,7 +8,7 @@ import { AccountForm } from "./AccountForm";
 import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
-import { DocumentsPanel } from "./DocumentsPanel";
+import { FilesPanel } from "./FilesPanel";
 import type { PendingUploadController } from "./pending-upload";
 import type { PendingCommandController } from "./pending-command";
 import { COMPANY_CONTACT_FIELDS, REGIONS } from "./regions";
@@ -43,7 +43,7 @@ import type {
 import "./workspace.css";
 
 type View =
-    | "documents"
+    | "files"
     | "transactions"
     | "assets"
     | "overview"
@@ -54,7 +54,7 @@ type View =
 const views: View[] = [
     "overview",
     "transactions",
-    "documents",
+    "files",
     "accounts",
     "categories",
     "details",
@@ -70,7 +70,10 @@ const text = (locale: Locale, zh: string, en: string) => (locale === "zh" ? zh :
 
 function initialView(): View {
     const requested = new URLSearchParams(window.location.search).get("view");
-    return views.includes(requested as View) ? (requested as View) : "overview";
+    if (requested === "documents") return "files";
+    return requested !== "files" && views.includes(requested as View)
+        ? (requested as View)
+        : "overview";
 }
 
 async function everyPage<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
@@ -290,8 +293,8 @@ export function BusinessWorkspace({
     const t = (zh: string, en: string) => text(locale, zh, en);
     const pending = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
     const upload = useSyncExternalStore(uploads.subscribe, uploads.getSnapshot);
-    const [documentEditing, setDocumentEditing] = useState(false);
-    const [documentOperation, setDocumentOperation] = useState<string | null>(() => {
+    const [fileEditing, setFileEditing] = useState(false);
+    const [fileOperation, setFileOperation] = useState<string | null>(() => {
         const value = new URLSearchParams(window.location.search).get("operation");
         return value &&
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
@@ -301,7 +304,7 @@ export function BusinessWorkspace({
     const uploadLocked = !["idle", "rejected", "confirmed"].includes(upload.status);
     const [financialEditing, setFinancialEditing] = useState(false);
     const financialLocked = !["idle", "rejected", "confirmed"].includes(pending.status);
-    const navigationLocked = financialEditing || financialLocked || documentEditing || uploadLocked;
+    const navigationLocked = financialEditing || financialLocked || fileEditing || uploadLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -330,7 +333,7 @@ export function BusinessWorkspace({
     );
     const errorText = actionError ? businessError(actionError, locale) : null;
     const labels: Record<View, string> = {
-        documents: t("票据与证件", "Documents"),
+        files: t("票据与证件", "Documents"),
         transactions: t("流水", "Transactions"),
         assets: t("资产", "Assets"),
         overview: t("总览", "Overview"),
@@ -362,8 +365,8 @@ export function BusinessWorkspace({
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
         if (owner) {
             setSelectedId(owner.id);
-            setDocumentOperation(upload.command.operationId);
-            setView("documents");
+            setFileOperation(upload.command.operationId);
+            setView("files");
         }
     }, [upload.command?.uploadId, entities]);
 
@@ -450,12 +453,13 @@ export function BusinessWorkspace({
 
     useEffect(() => {
         const params = new URLSearchParams();
-        params.set("view", view);
-        if (view === "documents" && documentOperation) params.set("operation", documentOperation);
+        // Keep the established public URL while using the files name internally.
+        params.set("view", view === "files" ? "documents" : view);
+        if (view === "files" && fileOperation) params.set("operation", fileOperation);
         if (selectedId) params.set("entity", selectedId);
         window.history.replaceState(null, "", `/?${params.toString()}`);
         document.title = `${labels[view]} · Coinpup`;
-    }, [view, selectedId, locale, documentOperation]);
+    }, [view, selectedId, locale, fileOperation]);
 
     function openEditor(next: Editor) {
         editorTrigger.current =
@@ -624,7 +628,7 @@ export function BusinessWorkspace({
                         disabled={loading || busy || !!editor || navigationLocked}
                         onChange={(event) => {
                             setSelectedId(event.target.value);
-                            setDocumentOperation(null);
+                            setFileOperation(null);
                             setActionError(null);
                             setNotice(false);
                         }}
@@ -659,7 +663,7 @@ export function BusinessWorkspace({
                             aria-current={view === item ? "page" : undefined}
                             onClick={() => {
                                 setView(item);
-                                setDocumentOperation(null);
+                                setFileOperation(null);
                                 setActionError(null);
                                 setNotice(false);
                             }}
@@ -667,7 +671,7 @@ export function BusinessWorkspace({
                             <span aria-hidden="true">
                                 {
                                     {
-                                        documents: "▧",
+                                        files: "▧",
                                         transactions: "⇄",
                                         assets: "◈",
                                         overview: "◫",
@@ -825,7 +829,7 @@ export function BusinessWorkspace({
                                 )}
                             </p>
                         )}
-                        {view !== "transactions" && view !== "documents" && (
+                        {view !== "transactions" && view !== "files" && (
                             <label className="archive-toggle">
                                 <input
                                     type="checkbox"
@@ -851,8 +855,8 @@ export function BusinessWorkspace({
                                 categories={current?.categories ?? []}
                                 controller={commands}
                                 onFiles={(operationId) => {
-                                    setDocumentOperation(operationId);
-                                    setView("documents");
+                                    setFileOperation(operationId);
+                                    setView("files");
                                 }}
                                 dataLoading={loading || ledgerLoading || !current}
                                 onChanged={reload}
@@ -860,21 +864,21 @@ export function BusinessWorkspace({
                                 onEditingChange={setFinancialEditing}
                             />
                         )}
-                        {view === "documents" && (
-                            <DocumentsPanel
-                                key={`${entity.ledger.id}:${documentOperation ?? "all"}`}
+                        {view === "files" && (
+                            <FilesPanel
+                                key={`${entity.ledger.id}:${fileOperation ?? "all"}`}
                                 session={session}
                                 locale={locale}
                                 entity={entity}
-                                operationId={documentOperation}
+                                operationId={fileOperation}
                                 controller={uploads}
                                 onUnauthorized={onUnauthorized}
-                                onEditingChange={setDocumentEditing}
+                                onEditingChange={setFileEditing}
                                 onClose={
-                                    documentOperation
+                                    fileOperation
                                         ? () => {
-                                              const target = `files-button-${documentOperation}`;
-                                              setDocumentOperation(null);
+                                              const target = `files-button-${fileOperation}`;
+                                              setFileOperation(null);
                                               setView("transactions");
                                               requestAnimationFrame(() =>
                                                   (
@@ -1295,8 +1299,8 @@ export function BusinessWorkspace({
                                         className="secondary-button"
                                         disabled={busy || loading}
                                         onClick={() => {
-                                            setDocumentOperation(null);
-                                            setView("documents");
+                                            setFileOperation(null);
+                                            setView("files");
                                         }}
                                     >
                                         {entity.kind === "company"

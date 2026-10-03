@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from coinpup_api.documents.models import FileUpload, OperationFileLink, StoredFile
+from coinpup_api.files.models import FileUpload, OperationFileLink, StoredFile
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import OpeningCreate
 from coinpup_api.ledger.schemas import AccountCreate, EntityCreate
@@ -395,7 +395,7 @@ def test_downgrade_refuses_document_history(documents_structure, table):
         connection.execute(insert(table).values(_file(s) if table is StoredFile else _upload(s)))
     migration = runpy.run_path(
         str(
-            Path(__file__).resolve().parents[2]
+            Path(__file__).resolve().parents[3]
             / "services/api/migrations/versions/20261003_0008_documents.py"
         )
     )
@@ -410,7 +410,7 @@ def test_empty_documents_migration_round_trip(documents_structure):
     s = documents_structure
     migration = runpy.run_path(
         str(
-            Path(__file__).resolve().parents[2]
+            Path(__file__).resolve().parents[3]
             / "services/api/migrations/versions/20261003_0008_documents.py"
         )
     )

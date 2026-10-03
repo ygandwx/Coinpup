@@ -440,7 +440,7 @@ def test_downgrade_refuses_any_revision_history(revision_structure, cancel):
     with fixture["engine"].begin() as connection:
         _revise(connection, fixture, operation, cancel=cancel)
     path = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[3]
         / "services/api/migrations/versions/20261003_0007_operation_revisions.py"
     )
     downgrade = runpy.run_path(str(path))["downgrade"]

@@ -353,7 +353,7 @@ def test_downgrade_refuses_exchange_or_fee_history(exchange_structure, history):
         )
         connection.execute(insert(JournalLine), rows)
     migration_path = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[3]
         / "services/api/migrations/versions"
         / "20261003_0006_exchange_fees.py"
     )
