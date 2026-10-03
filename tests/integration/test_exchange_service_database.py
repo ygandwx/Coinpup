@@ -145,7 +145,8 @@ def test_a05_exchange_principal_and_fee_are_separate_actual_quantities(exchange_
     current = balances(s)
     assert current[s["account"].id, "USD"] == "898.00"
     assert current[s["other"].id, "EUR"] == "90.00"
-    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    state = s["posting"].get_operation(s["owner"], s["ledger"], receipt.id)
+    assert state.latest_posting == receipt and state.status == "active" and state.version == 1
     assert s["posting"].post_exchange(s["owner"], s["ledger"], request, "a05") == receipt
     with Session(s["engine"]) as session:
         assert session.scalar(
@@ -175,7 +176,7 @@ def test_a07_btc_payment_and_network_fee_preserve_principal_and_precision(exchan
     assert receipt.amount == "0.10000000" and receipt.splits[0].amount == "0.10000000"
     assert receipt.fees[0].amount == "0.00001000"
     assert balances(s)[s["account"].id, "BTC"] == "0.89999000"
-    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id).latest_posting == receipt
     assert s["posting"].post_expense(s["owner"], s["ledger"], request, "a07") == receipt
 
 
@@ -205,7 +206,7 @@ def test_exchange_can_move_two_assets_within_one_multiasset_account(exchange_set
     assert receipt.source_account_id == receipt.destination_account_id
     assert balances(s)[s["account"].id, "USD"] == "898.00"
     assert balances(s)[s["account"].id, "EUR"] == "90.00"
-    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id).latest_posting == receipt
 
 
 def test_fee_can_debit_a_separate_account_and_third_asset(exchange_setup):
@@ -392,7 +393,7 @@ def test_fees_do_not_change_legacy_principal_amount_or_classification(kind, exch
     )
     assert receipt.amount == "10.00" and receipt.fees[0].amount == "2.00"
     assert balances(s)[s["account"].id, "USD"] == ("108.00" if kind == "income" else "88.00")
-    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id).latest_posting == receipt
     assert (
         getattr(s["posting"], "post_" + kind)(s["owner"], s["ledger"], request, "legacy-with-fees")
         == receipt
@@ -439,8 +440,8 @@ def test_exchange_and_fee_receipt_replay_survive_disable_archive_and_restart(exc
     )
     fresh, before = PostingService(s["engine"]), counts(s)
     assert fresh.post_exchange(s["owner"], s["ledger"], request, "persistent-exchange") == receipt
-    assert fresh.get_operation(s["owner"], s["ledger"], receipt.id) == receipt
-    assert fresh.list_operations(s["owner"], s["ledger"])[0] == receipt
+    assert fresh.get_operation(s["owner"], s["ledger"], receipt.id).latest_posting == receipt
+    assert fresh.list_operations(s["owner"], s["ledger"])[0].latest_posting == receipt
     assert balances(s)[s["account"].id, "USD"] == "898.00" and counts(s) == before
     with pytest.raises(LedgerError) as error:
         fresh.post_exchange(

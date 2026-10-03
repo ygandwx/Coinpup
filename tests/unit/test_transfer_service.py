@@ -104,6 +104,8 @@ def transfer_rows():
     )
     journal = SimpleNamespace(
         id=uuid4(),
+        operation_version=1,
+        created_at=operation.created_at,
         transaction_date=date(2026, 3, 1),
         recognition_date=date(2026, 3, 1),
         description="Test",

@@ -2,13 +2,13 @@
 
 import re
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, StrictStr, field_validator, model_serializer, model_validator
 
 from coinpup_api.ledger.money import MAX_AMOUNT_STRING_LENGTH
-from coinpup_api.ledger.schemas import AssetId, Command
+from coinpup_api.ledger.schemas import AssetId, Command, Version
 
 QuantityText = Annotated[
     StrictStr,
@@ -203,3 +203,137 @@ class BalanceResponse(BaseModel):
     account_archived: bool
     asset_enabled: bool
     link_enabled: bool
+
+
+class OpeningReplacement(OpeningCreate):
+    id: ClassVar[None] = None
+    kind: Literal["opening"]
+
+
+class IncomeReplacement(IncomeCreate):
+    id: ClassVar[None] = None
+    kind: Literal["income"]
+
+
+class ExpenseReplacement(ExpenseCreate):
+    id: ClassVar[None] = None
+    kind: Literal["expense"]
+
+
+class TransferReplacement(TransferCreate):
+    id: ClassVar[None] = None
+    kind: Literal["transfer"]
+
+
+class ExchangeReplacement(ExchangeCreate):
+    id: ClassVar[None] = None
+    kind: Literal["exchange"]
+
+
+Replacement = Annotated[
+    OpeningReplacement
+    | IncomeReplacement
+    | ExpenseReplacement
+    | TransferReplacement
+    | ExchangeReplacement,
+    Field(discriminator="kind"),
+]
+
+
+class RevisionCommand(Command):
+    expected_version: Version
+    reason: Annotated[StrictStr, Field(min_length=1, max_length=1000)]
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def meaningful_reason(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            if "\x00" in value:
+                raise ValueError("Reason contains an invalid null character")
+        return value
+
+
+class CorrectionCreate(RevisionCommand):
+    replacement: Replacement
+
+
+class CancellationCreate(RevisionCommand):
+    pass
+
+
+class CancellationInfo(BaseModel):
+    version: int
+    reversal_journal_id: UUID
+    reason: str
+    recorded_at: datetime
+
+
+class OperationState(BaseModel):
+    id: UUID
+    ledger_id: UUID
+    kind: Literal["opening", "income", "expense", "transfer", "exchange"]
+    version: int
+    status: Literal["active", "cancelled"]
+    latest_posting: FinancialResponse
+    updated_at: datetime
+    cancellation: CancellationInfo | None = None
+
+    @model_validator(mode="after")
+    def consistent_state(self):
+        posting = self.latest_posting
+        if (
+            posting.id != self.id
+            or posting.ledger_id != self.ledger_id
+            or posting.kind != self.kind
+        ):
+            raise ValueError("Latest posting identity must match its operation")
+        if self.status == "active":
+            if self.cancellation is not None or posting.version != self.version:
+                raise ValueError("An active operation must point to its current posting revision")
+        elif (
+            self.cancellation is None
+            or self.cancellation.version != self.version
+            or posting.version != self.version - 1
+        ):
+            raise ValueError("A cancelled operation must retain its preceding posting revision")
+        return self
+
+    @model_serializer(mode="wrap")
+    def omit_absent_cancellation(self, handler):
+        data = handler(self)
+        if self.cancellation is None:
+            data.pop("cancellation", None)
+        return data
+
+
+class LineAudit(BaseModel):
+    id: UUID
+    line_no: int
+    component_no: int
+    role: str
+    asset_id: str
+    amount: str
+    account_id: UUID | None
+    category_id: UUID | None
+
+
+class JournalAudit(BaseModel):
+    id: UUID
+    kind: Literal["posting", "reversal"]
+    reverses_journal_id: UUID | None
+    transaction_date: date
+    recognition_date: date
+    description: str
+    reason: str | None
+    recorded_at: datetime
+    lines: list[LineAudit]
+
+
+class HistoryEntry(BaseModel):
+    version: int
+    action: Literal["create", "correct", "cancel"]
+    actor_id: UUID
+    reason: str | None
+    recorded_at: datetime
+    journals: list[JournalAudit]

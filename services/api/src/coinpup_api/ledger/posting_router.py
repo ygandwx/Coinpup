@@ -1,6 +1,6 @@
 """Authenticated atomic financial commands and original-asset balance reads."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -13,13 +13,16 @@ from coinpup_api.config import Settings
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
+    CancellationCreate,
+    CorrectionCreate,
     ExchangeCreate,
     ExchangeResponse,
     ExpenseCreate,
-    FinancialResponse,
+    HistoryEntry,
     IncomeCreate,
     OpeningCreate,
     OperationResponse,
+    OperationState,
     TransferCreate,
     TransferResponse,
 )
@@ -92,15 +95,65 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
         """Record actual exchanged quantities and explicit fees atomically."""
         return execute(service.post_exchange, identity.id, ledger_id, body, idempotency_key)
 
-    @router.get("/operations", response_model=list[FinancialResponse])
-    def list_operations(
-        ledger_id: UUID, identity: reader, limit: page_size = 100, offset: page_offset = 0
+    @router.post("/operations/{operation_id}/corrections", response_model=OperationState)
+    def correct_operation(
+        ledger_id: UUID,
+        operation_id: UUID,
+        body: CorrectionCreate,
+        identity: writer,
+        idempotency_key: command_key,
     ):
-        return execute(service.list_operations, identity.id, ledger_id, limit=limit, offset=offset)
+        """Reverse the prior posting and replace it atomically at the expected version."""
+        return execute(
+            service.correct_operation, identity.id, ledger_id, operation_id, body, idempotency_key
+        )
 
-    @router.get("/operations/{operation_id}", response_model=FinancialResponse)
+    @router.post("/operations/{operation_id}/cancellations", response_model=OperationState)
+    def cancel_operation(
+        ledger_id: UUID,
+        operation_id: UUID,
+        body: CancellationCreate,
+        identity: writer,
+        idempotency_key: command_key,
+    ):
+        """Reverse the latest posting and retain a terminal cancellation record."""
+        return execute(
+            service.cancel_operation, identity.id, ledger_id, operation_id, body, idempotency_key
+        )
+
+    @router.get("/operations", response_model=list[OperationState])
+    def list_operations(
+        ledger_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+        status: Literal["all", "active", "cancelled"] = "all",
+    ):
+        return execute(
+            service.list_operations,
+            identity.id,
+            ledger_id,
+            limit=limit,
+            offset=offset,
+            status=status,
+        )
+
+    @router.get("/operations/{operation_id}", response_model=OperationState)
     def get_operation(ledger_id: UUID, operation_id: UUID, identity: reader):
         return execute(service.get_operation, identity.id, ledger_id, operation_id)
+
+    @router.get("/operations/{operation_id}/history", response_model=list[HistoryEntry])
+    def operation_history(
+        ledger_id: UUID,
+        operation_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+    ):
+        """Read immutable revisions in version order with exact signed audit lines."""
+        return execute(
+            service.history, identity.id, ledger_id, operation_id, limit=limit, offset=offset
+        )
 
     @router.get("/balances", response_model=list[BalanceResponse])
     def balances(

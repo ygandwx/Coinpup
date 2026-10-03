@@ -7,7 +7,7 @@ does not pass through this application boundary.
 """
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from uuid import UUID, uuid4
 
 from coinpup_api.ledger.assets import AssetDefinition
@@ -117,3 +117,41 @@ def prepare_journal_lines(
                 "journal_component", "A fee component must debit an account and record an expense."
             )
     return result
+
+
+def prepare_reversal_lines(source_lines, reversal_journal_id, catalog):
+    """Reverse complete original posting rows exactly, including fee signs and components.
+
+    This is not a bypass for arbitrary negative fee input: each output row is generated
+    from a validated original row with identical references and an exact integer negation.
+    """
+    originals = [
+        PostingLine(
+            id=line.id,
+            journal_id=line.journal_id,
+            ledger_id=line.ledger_id,
+            line_no=line.line_no,
+            component_no=line.component_no,
+            role=line.role,
+            asset_id=line.asset_id,
+            amount=Amount.from_decimal(line.amount, catalog[line.asset_id]),
+            account_id=line.account_id,
+            category_id=line.category_id,
+        )
+        for line in source_lines
+    ]
+    validated = prepare_journal_lines(originals, catalog)
+    reversed_lines = [
+        replace(line, id=uuid4(), journal_id=reversal_journal_id, amount=-line.amount)
+        for line in originals
+    ]
+    parameters = [
+        {
+            **source,
+            "id": reversal.id,
+            "journal_id": reversal.journal_id,
+            "amount": reversal.amount.to_decimal(),
+        }
+        for source, reversal in zip(validated, reversed_lines, strict=True)
+    ]
+    return reversed_lines, parameters
