@@ -87,7 +87,7 @@ def _link(fixture, file_id, ledger=0, **changes):
     return values | changes
 
 
-def _completion(file_id, **changes):
+def _completion(file_id, /, **changes):
     return {
         "state": "ready",
         "file_id": file_id,
