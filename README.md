@@ -128,18 +128,14 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 ## 检查
 
 ```sh
-python -m ruff check .
-python -m ruff format --check .
-python -m pytest
-python scripts/check_docs.py
-python scripts/export_openapi.py --check
-python -m alembic upgrade head --sql
-npm --prefix apps/web run typecheck
-npm --prefix apps/web run test:unit
-npm --prefix apps/web run build
+python scripts/check.py          # 默认 fast：Python、文档、接口与离线迁移 SQL
+python scripts/check.py web      # 前端类型、单元与生产构建
+python scripts/check.py --fix    # 先自动修复格式/lint，再执行默认检查
 ```
 
-默认跳过 PostgreSQL 集成测试。仅针对一次性测试数据库设置 `COINPUP_DATABASE_URL` 和 `COINPUP_RUN_DB_TESTS=1`，先执行 `python -m alembic upgrade head`，再运行 `python -m pytest tests/integration -m integration`。CI 会提供独立 PostgreSQL 17 数据库；不要将这些检查指向生产数据库。
+`fast` 不运行 PostgreSQL 集成测试；存在 `apps/web/node_modules` 时也检查前端类型和单元测试。`web` 需先安装网页依赖。每一步显示耗时，任一步失败返回非零。
+
+只针对一次性测试数据库显式设置 `COINPUP_DATABASE_URL` 和 `COINPUP_RUN_DB_TESTS=1`，再运行 `python scripts/check.py db`。该命令执行升级、降级到 base、重新升级、模型一致性和集成测试；不要指向已有业务数据或生产数据库。CI 提供独立 PostgreSQL 17 测试库。
 
 更新实现后使用 `python scripts/export_openapi.py` 生成实际接口契约。未来业务接口仅在实现后进入此契约。
 

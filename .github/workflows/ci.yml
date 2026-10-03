@@ -37,16 +37,8 @@ jobs:
             requirements-dev.lock
       - name: Install locked dependencies
         run: python -m pip install -r requirements-dev.lock
-      - name: Check lint
-        run: python -m ruff check .
-      - name: Check formatting
-        run: python -m ruff format --check .
-      - name: Run tests without external database
-        run: python -m pytest
-      - name: Check documentation
-        run: python scripts/check_docs.py
-      - name: Check OpenAPI snapshot
-        run: python scripts/export_openapi.py --check
+      - name: Run fast checks
+        run: python scripts/check.py fast
 
   web:
     name: Web type check and build
@@ -106,16 +98,8 @@ jobs:
             requirements-dev.lock
       - name: Install locked dependencies
         run: python -m pip install -r requirements-dev.lock
-      - name: Apply migrations
-        run: python -m alembic upgrade head
-      - name: Check migration round trip on disposable database
-        run: |
-          python -m alembic downgrade base
-          python -m alembic upgrade head
-      - name: Check migration consistency
-        run: python -m alembic check
-      - name: Run PostgreSQL integration tests
-        run: python -m pytest tests/integration -m integration
+      - name: Run disposable database checks
+        run: python scripts/check.py db
 
   container:
     name: Container, real browser login and backup restoration
