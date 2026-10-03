@@ -3,7 +3,12 @@ import type { FormEvent } from "react";
 import type { Locale } from "./i18n";
 import type { Account, AccountCreateBody, AccountUpdateBody, Asset } from "./ledger-api";
 import { DetailEditor } from "./EntityForm";
-import { ACCOUNT_DETAIL_FIELDS, compileDetails, detailRows } from "./regions";
+import {
+    ACCOUNT_DETAIL_FIELDS,
+    compileDetails,
+    containsControlCharacters,
+    detailRows,
+} from "./regions";
 
 const ACCOUNT_KINDS = [
     "bank",
@@ -135,7 +140,7 @@ export function AccountForm({
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (busy) return;
-        if (!name.trim() || /[\u0000-\u001f]/.test(name)) {
+        if (!name.trim() || containsControlCharacters(name)) {
             setLocalError("name");
             return;
         }

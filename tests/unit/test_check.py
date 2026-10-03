@@ -56,7 +56,13 @@ def test_web_includes_build_and_uses_npm_discovery(monkeypatch, tmp_path):
     )
     steps, skipped = checks.build_steps("web", False, tmp_path)
     assert skipped == []
-    assert [step.command[-1] for step in steps] == ["typecheck", "test:unit", "build"]
+    assert [step.command[-1] for step in steps] == [
+        "format:check",
+        "lint",
+        "typecheck",
+        "test:unit",
+        "build",
+    ]
     assert all(step.command[0] == "fictional-npm.cmd" for step in steps)
 
 
@@ -147,3 +153,44 @@ def test_fix_runs_before_checks_without_removing_checks(monkeypatch, tmp_path):
     assert any(step.command[1:] == ["-m", "ruff", "format", "--check", "."] for step in steps)
     assert any("--sql" in step.command for step in steps)
     assert skipped
+
+
+@pytest.mark.parametrize("mode", ["fast", "web"])
+def test_fix_formats_web_before_checks_when_web_checks_run(monkeypatch, tmp_path, mode):
+    (tmp_path / "apps/web/node_modules").mkdir(parents=True)
+    monkeypatch.setattr(checks.shutil, "which", lambda name: "fictional-npm.cmd")
+    steps, skipped = checks.build_steps(mode, True, tmp_path)
+    assert skipped == []
+    assert [step.command for step in steps[:3]] == [
+        [sys.executable, "-m", "ruff", "check", "--fix", "."],
+        [sys.executable, "-m", "ruff", "format", "."],
+        ["fictional-npm.cmd", "--prefix", "apps/web", "run", "format"],
+    ]
+    if mode == "fast":
+        assert steps[3].command == [sys.executable, "-m", "ruff", "check", "."]
+        assert [step.command[-1] for step in steps[-2:]] == ["typecheck", "test:unit"]
+    else:
+        assert [step.command[-1] for step in steps[3:]] == [
+            "format:check",
+            "lint",
+            "typecheck",
+            "test:unit",
+            "build",
+        ]
+
+
+def test_database_fix_preserves_database_checks_without_discovering_npm(monkeypatch, tmp_path):
+    (tmp_path / "apps/web/node_modules").mkdir(parents=True)
+    monkeypatch.setattr(checks.shutil, "which", lambda name: pytest.fail("db must not need npm"))
+    steps, skipped = checks.build_steps("db", True, tmp_path)
+    assert skipped == []
+    assert all(step.command[0] == sys.executable for step in steps)
+    assert [step.command[1:] for step in steps] == [
+        ["-m", "ruff", "check", "--fix", "."],
+        ["-m", "ruff", "format", "."],
+        ["-m", "alembic", "upgrade", "head"],
+        ["-m", "alembic", "downgrade", "base"],
+        ["-m", "alembic", "upgrade", "head"],
+        ["-m", "alembic", "check"],
+        ["-m", "pytest", "tests/integration", "-m", "integration"],
+    ]

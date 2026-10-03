@@ -194,6 +194,11 @@ export const ACCOUNT_DETAIL_FIELDS: readonly DetailField[] = [
 
 export type DetailRow = { id: string; key: string; value: string; custom?: boolean };
 
+// Names and detail keys reject C0 only; DEL and other Unicode characters remain allowed.
+export function containsControlCharacters(value: string): boolean {
+    return [...value].some((character) => character.charCodeAt(0) < 0x20);
+}
+
 export function detailRows(
     details: Record<string, string>,
     builtInKeys: ReadonlySet<string>,
@@ -228,7 +233,7 @@ export function compileDetails(
         if (
             !row.key.trim() ||
             row.key.length > 64 ||
-            /[\u0000-\u001f]/.test(row.key) ||
+            containsControlCharacters(row.key) ||
             row.value.length > 2000 ||
             row.value.includes("\0")
         )

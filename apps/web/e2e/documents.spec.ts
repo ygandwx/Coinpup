@@ -101,13 +101,11 @@ async function showDocuments(page: Page, data: Fixture): Promise<void> {
 }
 
 async function chooseFile(page: Page, bytes: Buffer, name: string): Promise<void> {
-    await page
-        .getByLabel("File to upload", { exact: true })
-        .setInputFiles({
-            name,
-            mimeType: name.endsWith(".png") ? "image/png" : "application/pdf",
-            buffer: bytes,
-        });
+    await page.getByLabel("File to upload", { exact: true }).setInputFiles({
+        name,
+        mimeType: name.endsWith(".png") ? "image/png" : "application/pdf",
+        buffer: bytes,
+    });
 }
 
 function contentRequest(url: string, data: Fixture): boolean {

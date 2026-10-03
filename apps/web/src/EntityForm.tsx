@@ -7,6 +7,7 @@ import {
     REGIONS,
     REGION_SOURCES,
     compileDetails,
+    containsControlCharacters,
     detailRows,
     replaceDetail,
 } from "./regions";
@@ -269,10 +270,10 @@ export function EntityForm({
         if (busy) return;
         if (
             !name.trim() ||
-            /[\u0000-\u001f]/.test(name) ||
+            containsControlCharacters(name) ||
             (kind === "company" &&
                 legalName &&
-                (!legalName.trim() || /[\u0000-\u001f]/.test(legalName)))
+                (!legalName.trim() || containsControlCharacters(legalName)))
         ) {
             setLocalError("name");
             return;
