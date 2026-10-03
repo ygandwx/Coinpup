@@ -27,10 +27,18 @@ CLASSIFIED = BASE | {
     "recognition_date": "2026-09-30",
     "splits": [{"category_id": RECORD, "amount": "10.00"}],
 }
+TRANSFER = {
+    "source_account_id": RECORD,
+    "destination_account_id": "00000000-0000-0000-0000-000000000003",
+    "asset_id": "USD",
+    "amount": "10.00",
+    "transaction_date": "2026-10-03",
+}
 WRITES = [
     ("/opening-balances", BASE, "post_opening"),
     ("/income", CLASSIFIED, "post_income"),
     ("/expenses", CLASSIFIED, "post_expense"),
+    ("/transfers", TRANSFER, "post_transfer"),
 ]
 
 
@@ -113,7 +121,7 @@ def test_financial_command_forwards_exact_body_owner_and_key(
     assert (owner_id, ledger_id, key) == (OWNER, UUID(RECORD), "test-command")
     assert payload["amount"] == "10.00"
     assert payload["transaction_date"] == "2026-10-03"
-    if suffix != "/opening-balances":
+    if suffix in {"/income", "/expenses"}:
         assert payload["recognition_date"] == "2026-09-30"
         assert payload["splits"] == body["splits"]
 

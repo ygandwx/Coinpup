@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StrictStr, field_validator
+from pydantic import BaseModel, Field, StrictStr, field_validator, model_validator
 
 from coinpup_api.ledger.money import MAX_AMOUNT_STRING_LENGTH
 from coinpup_api.ledger.schemas import AssetId, Command
@@ -18,9 +18,8 @@ QuantityText = Annotated[
 ]
 
 
-class PostingCommand(Command):
+class PostingFields(Command):
     id: UUID | None = None
-    account_id: UUID
     asset_id: AssetId
     amount: QuantityText
     transaction_date: date
@@ -41,6 +40,10 @@ class PostingCommand(Command):
         if "\x00" in value:
             raise ValueError("Description contains an invalid null character")
         return value
+
+
+class PostingCommand(PostingFields):
+    account_id: UUID
 
 
 class OpeningCreate(PostingCommand):
@@ -72,6 +75,17 @@ class ExpenseCreate(ClassifiedCreate):
     pass
 
 
+class TransferCreate(PostingFields):
+    source_account_id: UUID
+    destination_account_id: UUID
+
+    @model_validator(mode="after")
+    def distinct_accounts(self):
+        if self.source_account_id == self.destination_account_id:
+            raise ValueError("Transfer accounts must be different")
+        return self
+
+
 class SplitResponse(BaseModel):
     category_id: UUID
     amount: str
@@ -91,6 +105,25 @@ class OperationResponse(BaseModel):
     description: str
     splits: list[SplitResponse]
     created_at: datetime
+
+
+class TransferResponse(BaseModel):
+    id: UUID
+    ledger_id: UUID
+    journal_id: UUID
+    kind: Literal["transfer"]
+    version: int
+    source_account_id: UUID
+    destination_account_id: UUID
+    asset_id: str
+    amount: str
+    transaction_date: date
+    recognition_date: date
+    description: str
+    created_at: datetime
+
+
+FinancialResponse = Annotated[OperationResponse | TransferResponse, Field(discriminator="kind")]
 
 
 class BalanceResponse(BaseModel):

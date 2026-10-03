@@ -101,6 +101,16 @@ def create_structure_fixture(engine, owner_id):
             asset_ids=["USD", "ETH", yen.asset_id, token.asset_id],
         ),
     )
+    cash_account = service.create_account(
+        owner_id,
+        company.ledger.id,
+        AccountCreate(name="Fictional company USD cash", kind="cash", asset_ids=["USD"]),
+    )
+    card_account = service.create_account(
+        owner_id,
+        company.ledger.id,
+        AccountCreate(name="Fictional company credit card", kind="credit_card", asset_ids=["USD"]),
+    )
     old_account = service.create_account(
         owner_id,
         company.ledger.id,
@@ -142,6 +152,8 @@ def create_structure_fixture(engine, owner_id):
         "company": company,
         "personal_account": personal_account,
         "company_account": company_account,
+        "cash_account": cash_account,
+        "card_account": card_account,
         "archived_account": archived,
         "token_asset_id": token.asset_id,
     }
@@ -191,7 +203,7 @@ def structure_state(engine, owner_id):
         }
     if len(entities) != 2 or len(assets) != 10 or len(ledgers) != 2:
         raise ArchiveError("Original or restored structure fixture has unexpected record counts.")
-    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 3:
+    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 5:
         raise ArchiveError("Original or restored multi-asset account fixture is incomplete.")
     return {
         "assets": records(assets, "asset_id"),
@@ -215,6 +227,7 @@ def create_financial_fixture(engine, owner_id, structure):
     for ledger_id, account_id, asset_id, quantity in (
         (personal.ledger.id, personal_account.id, "USD", "100.00"),
         (personal.ledger.id, personal_account.id, "EUR", "80.00"),
+        (company.ledger.id, company_account.id, "USD", "1000.00"),
         (company.ledger.id, company_account.id, "ETH", "1.000000000000000001"),
         (company.ledger.id, company_account.id, structure["token_asset_id"], "12.345678"),
         (company.ledger.id, company_account.id, "JPY", "123"),
@@ -262,6 +275,7 @@ def create_financial_fixture(engine, owner_id, structure):
         ),
         str(uuid4()),
     )
+    transfer = create_transfer_fixture(engine, owner_id, structure)
     # History and accepted-command replay remain usable after the account is archived.
     LedgerService(engine).update_account(
         owner_id,
@@ -272,6 +286,9 @@ def create_financial_fixture(engine, owner_id, structure):
     expected_amounts = {
         (str(personal_account.id), "USD"): "75.00",
         (str(personal_account.id), "EUR"): "90.00",
+        (str(company_account.id), "USD"): "700.00",
+        (str(structure["cash_account"].id), "USD"): "200.00",
+        (str(structure["card_account"].id), "USD"): "0.00",
         (str(company_account.id), "ETH"): "1.000000000000000001",
         (str(company_account.id), structure["token_asset_id"]): "12.345678",
         (str(company_account.id), "JPY"): "123",
@@ -296,7 +313,108 @@ def create_financial_fixture(engine, owner_id, structure):
         "key": key,
         "receipt": receipt,
         "balances": state,
+        "transfer": transfer,
     }
+
+
+def company_classification(engine, ledger_id):
+    """Income/expense roles exclude opening equity and transferred principal."""
+    from coinpup_api.ledger import Amount, get_asset
+    from coinpup_api.ledger.models import JournalLine
+    from sqlalchemy import func, select
+
+    with engine.connect() as connection:
+        totals = dict(
+            connection.execute(
+                select(JournalLine.role, func.sum(JournalLine.amount))
+                .where(
+                    JournalLine.ledger_id == ledger_id,
+                    JournalLine.asset_id == "USD",
+                    JournalLine.role.in_(["income", "expense"]),
+                )
+                .group_by(JournalLine.role)
+            ).all()
+        )
+    return {
+        role: Amount.from_decimal(totals[role], get_asset("USD")).to_string()
+        if role in totals
+        else "0.00"
+        for role in ("income", "expense")
+    }
+
+
+def create_transfer_fixture(engine, owner_id, structure):
+    from coinpup_api.ledger.posting import PostingService
+    from coinpup_api.ledger.posting_schemas import ExpenseCreate, TransferCreate
+    from coinpup_api.ledger.schemas import AccountUpdate
+    from coinpup_api.ledger.service import LedgerService
+
+    service = PostingService(engine)
+    ledger_id = structure["company"].ledger.id
+    bank, cash, card = (
+        structure["company_account"],
+        structure["cash_account"],
+        structure["card_account"],
+    )
+    request = TransferCreate(
+        source_account_id=bank.id,
+        destination_account_id=cash.id,
+        asset_id="USD",
+        amount="200.00",
+        transaction_date=date(2026, 2, 1),
+        description="Fictional bank to cash transfer",
+    )
+    key = str(uuid4())
+    receipt = service.post_transfer(owner_id, ledger_id, request, key)
+    expense_category = next(
+        category
+        for category in LedgerService(engine).list_categories(owner_id, ledger_id)
+        if category.kind == "expense"
+    )
+    service.post_expense(
+        owner_id,
+        ledger_id,
+        ExpenseCreate(
+            account_id=card.id,
+            asset_id="USD",
+            amount="100.00",
+            transaction_date=date(2026, 2, 3),
+            recognition_date=date(2026, 2, 3),
+            description="Fictional credit card purchase",
+            splits=[{"category_id": expense_category.id, "amount": "100.00"}],
+        ),
+        str(uuid4()),
+    )
+    card_balances = service.balances(owner_id, ledger_id, account_id=card.id)
+    if len(card_balances) != 1 or card_balances[0].amount != "-100.00":
+        raise ArchiveError("Fictional card purchase did not create its signed liability position.")
+    service.post_transfer(
+        owner_id,
+        ledger_id,
+        TransferCreate(
+            source_account_id=bank.id,
+            destination_account_id=card.id,
+            asset_id="USD",
+            amount="100.00",
+            transaction_date=date(2026, 2, 4),
+            description="Fictional credit card repayment",
+        ),
+        str(uuid4()),
+    )
+    if company_classification(engine, ledger_id) != {"income": "0.00", "expense": "100.00"}:
+        raise ArchiveError("Transfer or card repayment changed the expected income/expense total.")
+    if service.get_operation(owner_id, ledger_id, receipt.id) != receipt:
+        raise ArchiveError(
+            "Transfer could not be read with its original source/destination receipt."
+        )
+    # The saved receipt must still replay after its destination becomes archived.
+    LedgerService(engine).update_account(
+        owner_id,
+        ledger_id,
+        cash.id,
+        AccountUpdate(expected_version=cash.version, archived=True),
+    )
+    return {"ledger_id": ledger_id, "request": request, "key": key, "receipt": receipt}
 
 
 def financial_state(engine, owner_id, structure):
@@ -450,6 +568,13 @@ def check_backup_restore():
                 )
             if financial_state(engine, administrator_id, structure) != financial["balances"]:
                 raise ArchiveError("Restored or original exact account balances differ.")
+            if company_classification(engine, structure["company"].ledger.id) != {
+                "income": "0.00",
+                "expense": "100.00",
+            }:
+                raise ArchiveError(
+                    "Restored or original company expense includes transfer principal."
+                )
         from coinpup_api.ledger.posting import PostingService
 
         replayed = PostingService(target_engine).post_expense(
@@ -461,6 +586,22 @@ def check_backup_restore():
         if replayed != financial["receipt"]:
             raise ArchiveError("Restored idempotency replay did not return its original receipt.")
         verify_sealed_journal(target_engine, financial["receipt"].journal_id)
+        transfer = financial["transfer"]
+        service = PostingService(target_engine)
+        transfer_replay = service.post_transfer(
+            administrator_id, transfer["ledger_id"], transfer["request"], transfer["key"]
+        )
+        if (
+            transfer_replay != transfer["receipt"]
+            or service.get_operation(
+                administrator_id, transfer["ledger_id"], transfer["receipt"].id
+            )
+            != transfer["receipt"]
+        ):
+            raise ArchiveError(
+                "Restored transfer replay/read changed its original two-account receipt."
+            )
+        verify_sealed_journal(target_engine, transfer["receipt"].journal_id)
         if before != snapshot(target) or before != snapshot(source):
             raise ArchiveError("Replay or rejected journal append changed restored/source data.")
         print("Backup/restore verified: all application tables and migration rows match exactly.")
@@ -468,6 +609,7 @@ def check_backup_restore():
         print(
             "Exact balances, original idempotency receipt and sealed journal protection verified."
         )
+        print("Bank/cash transfer and card repayment preserve balances without duplicate expense.")
         print("Test databases retained; no DROP ran.")
     finally:
         source_engine.dispose()

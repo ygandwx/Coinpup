@@ -1074,10 +1074,10 @@
           }
         },
         "required": [
-          "account_id",
           "asset_id",
           "amount",
           "transaction_date",
+          "account_id",
           "recognition_date",
           "splits"
         ],
@@ -1178,10 +1178,10 @@
           }
         },
         "required": [
-          "account_id",
           "asset_id",
           "amount",
           "transaction_date",
+          "account_id",
           "recognition_date",
           "splits"
         ],
@@ -1300,10 +1300,10 @@
           }
         },
         "required": [
-          "account_id",
           "asset_id",
           "amount",
-          "transaction_date"
+          "transaction_date",
+          "account_id"
         ],
         "title": "OpeningCreate",
         "type": "object"
@@ -1520,6 +1520,148 @@
           "categories"
         ],
         "title": "TemplateResponse",
+        "type": "object"
+      },
+      "TransferCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "amount",
+          "transaction_date",
+          "source_account_id",
+          "destination_account_id"
+        ],
+        "title": "TransferCreate",
+        "type": "object"
+      },
+      "TransferResponse": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "transfer",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "journal_id",
+          "kind",
+          "version",
+          "source_account_id",
+          "destination_account_id",
+          "asset_id",
+          "amount",
+          "transaction_date",
+          "recognition_date",
+          "description",
+          "created_at"
+        ],
+        "title": "TransferResponse",
         "type": "object"
       },
       "UserResponse": {
@@ -3062,7 +3204,23 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/OperationResponse"
+                    "discriminator": {
+                      "mapping": {
+                        "expense": "#/components/schemas/OperationResponse",
+                        "income": "#/components/schemas/OperationResponse",
+                        "opening": "#/components/schemas/OperationResponse",
+                        "transfer": "#/components/schemas/TransferResponse"
+                      },
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/OperationResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TransferResponse"
+                      }
+                    ]
                   },
                   "title": "Response List Operations Api V1 Ledgers  Ledger Id  Operations Get",
                   "type": "array"
@@ -3118,7 +3276,24 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OperationResponse"
+                  "discriminator": {
+                    "mapping": {
+                      "expense": "#/components/schemas/OperationResponse",
+                      "income": "#/components/schemas/OperationResponse",
+                      "opening": "#/components/schemas/OperationResponse",
+                      "transfer": "#/components/schemas/TransferResponse"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OperationResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TransferResponse"
+                    }
+                  ],
+                  "title": "Response Get Operation Api V1 Ledgers  Ledger Id  Operations  Operation Id  Get"
                 }
               }
             },
@@ -3136,6 +3311,90 @@
           }
         },
         "summary": "Get Operation",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/transfers": {
+      "post": {
+        "description": "Move one asset between two accounts, including credit-card repayments.",
+        "operationId": "transfer_api_v1_ledgers__ledger_id__transfers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transfer",
         "tags": [
           "financial operations"
         ]
