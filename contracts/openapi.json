@@ -381,6 +381,45 @@
         "title": "AssetUpdate",
         "type": "object"
       },
+      "BalanceResponse": {
+        "properties": {
+          "account_archived": {
+            "title": "Account Archived",
+            "type": "boolean"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_enabled": {
+            "title": "Asset Enabled",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "link_enabled": {
+            "title": "Link Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "account_archived",
+          "asset_enabled",
+          "link_enabled"
+        ],
+        "title": "BalanceResponse",
+        "type": "object"
+      },
       "CategoryCreate": {
         "additionalProperties": false,
         "properties": {
@@ -975,6 +1014,76 @@
         "title": "EntityUpdate",
         "type": "object"
       },
+      "ExpenseCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "transaction_date",
+          "recognition_date",
+          "splits"
+        ],
+        "title": "ExpenseCreate",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1007,6 +1116,76 @@
           }
         },
         "title": "Health",
+        "type": "object"
+      },
+      "IncomeCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "transaction_date",
+          "recognition_date",
+          "splits"
+        ],
+        "title": "IncomeCreate",
         "type": "object"
       },
       "LedgerResponse": {
@@ -1075,6 +1254,171 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "OpeningCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "transaction_date"
+        ],
+        "title": "OpeningCreate",
+        "type": "object"
+      },
+      "OperationResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "opening",
+              "income",
+              "expense"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/SplitResponse"
+            },
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "journal_id",
+          "kind",
+          "version",
+          "account_id",
+          "asset_id",
+          "amount",
+          "transaction_date",
+          "recognition_date",
+          "description",
+          "splits",
+          "created_at"
+        ],
+        "title": "OperationResponse",
+        "type": "object"
+      },
+      "PostingSplit": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "amount"
+        ],
+        "title": "PostingSplit",
+        "type": "object"
+      },
       "SessionResponse": {
         "properties": {
           "csrf_token": {
@@ -1090,6 +1434,25 @@
           "csrf_token"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SplitResponse": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id",
+          "amount"
+        ],
+        "title": "SplitResponse",
         "type": "object"
       },
       "TemplateCategory": {
@@ -1221,7 +1584,7 @@
     }
   },
   "info": {
-    "description": "Coinpup session, health and independent ledger structure API.",
+    "description": "Coinpup session, ledger structure and exact financial operations API.",
     "title": "Coinpup API",
     "version": "0.1.0"
   },
@@ -2086,6 +2449,95 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/balances": {
+      "get": {
+        "description": "Read signed original quantities, including archived and disabled positions.",
+        "operationId": "balances_api_v1_ledgers__ledger_id__balances_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BalanceResponse"
+                  },
+                  "title": "Response Balances Api V1 Ledgers  Ledger Id  Balances Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Balances",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/categories": {
       "get": {
         "operationId": "list_categories_api_v1_ledgers__ledger_id__categories_get",
@@ -2310,6 +2762,382 @@
         "summary": "Update Category",
         "tags": [
           "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/expenses": {
+      "post": {
+        "description": "Post a payment and its expense-category splits in one transaction.",
+        "operationId": "expense_api_v1_ledgers__ledger_id__expenses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Expense",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/income": {
+      "post": {
+        "description": "Post a receipt and its income-category splits in one transaction.",
+        "operationId": "income_api_v1_ledgers__ledger_id__income_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncomeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Income",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/opening-balances": {
+      "post": {
+        "description": "Set one initial position per account/asset without treating it as income.",
+        "operationId": "opening_balance_api_v1_ledgers__ledger_id__opening_balances_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpeningCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Opening Balance",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/operations": {
+      "get": {
+        "operationId": "list_operations_api_v1_ledgers__ledger_id__operations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OperationResponse"
+                  },
+                  "title": "Response List Operations Api V1 Ledgers  Ledger Id  Operations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Operations",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}": {
+      "get": {
+        "operationId": "get_operation_api_v1_ledgers__ledger_id__operations__operation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Operation",
+        "tags": [
+          "financial operations"
         ]
       }
     }

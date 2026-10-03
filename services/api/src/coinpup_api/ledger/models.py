@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -12,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    Numeric,
     String,
     UniqueConstraint,
     Uuid,
@@ -115,6 +117,7 @@ class Ledger(Versioned, Base):
             ondelete="RESTRICT",
         ),
         UniqueConstraint("entity_id", name="uq_ledgers_entity"),
+        UniqueConstraint("id", "owner_id", name="uq_ledgers_id_owner"),
         CheckConstraint("version > 0", name="ck_ledgers_version"),
     )
 
@@ -162,6 +165,9 @@ class Account(Versioned, Base):
 class AccountAsset(Base):
     __tablename__ = "account_assets"
     __table_args__ = (
+        UniqueConstraint(
+            "account_id", "asset_id", "ledger_id", name="uq_account_assets_account_asset_ledger"
+        ),
         ForeignKeyConstraint(
             ["account_id", "ledger_id"],
             ["accounts.id", "accounts.ledger_id"],
@@ -212,4 +218,194 @@ class Category(Versioned, Base):
     template_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     archived: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
+
+class FinancialOperation(Versioned, Base):
+    __tablename__ = "financial_operations"
+    __table_args__ = (
+        UniqueConstraint("id", "ledger_id", name="uq_financial_operations_id_ledger"),
+        ForeignKeyConstraint(
+            ["ledger_id", "created_by"],
+            ["ledgers.id", "ledgers.owner_id"],
+            name="fk_financial_operations_ledger_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["current_journal_id", "id", "ledger_id"],
+            ["journals.id", "journals.operation_id", "journals.ledger_id"],
+            name="fk_financial_operations_current_journal",
+            deferrable=True,
+            initially="DEFERRED",
+            use_alter=True,
+        ),
+        CheckConstraint(
+            "kind IN ('opening', 'income', 'expense')", name="ck_financial_operations_kind"
+        ),
+        CheckConstraint("version > 0", name="ck_financial_operations_version"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    current_journal_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+
+
+class Journal(Base):
+    __tablename__ = "journals"
+    __table_args__ = (
+        UniqueConstraint("id", "operation_id", "ledger_id", name="uq_journals_id_operation_ledger"),
+        UniqueConstraint("id", "ledger_id", name="uq_journals_id_ledger"),
+        UniqueConstraint(
+            "operation_id",
+            "operation_version",
+            "journal_kind",
+            name="uq_journals_operation_revision",
+        ),
+        UniqueConstraint("reverses_journal_id", name="uq_journals_reversal"),
+        ForeignKeyConstraint(
+            ["operation_id", "ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_journals_operation_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["reverses_journal_id", "operation_id", "ledger_id"],
+            ["journals.id", "journals.operation_id", "journals.ledger_id"],
+            name="fk_journals_reverses_operation_ledger",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("operation_version > 0", name="ck_journals_operation_version"),
+        CheckConstraint(
+            "(journal_kind = 'posting' AND reverses_journal_id IS NULL) OR "
+            "(journal_kind = 'reversal' AND reverses_journal_id IS NOT NULL)",
+            name="ck_journals_kind",
+        ),
+        CheckConstraint(
+            "reverses_journal_id IS NULL OR reverses_journal_id <> id",
+            name="ck_journals_self_reversal",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    operation_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    journal_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="posting", server_default="posting"
+    )
+    reverses_journal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    recognition_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(
+        String(2000), nullable=False, default="", server_default=""
+    )
+    sealed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class JournalLine(Base):
+    __tablename__ = "journal_lines"
+    __table_args__ = (
+        UniqueConstraint("journal_id", "line_no", name="uq_journal_lines_number"),
+        ForeignKeyConstraint(
+            ["journal_id", "ledger_id"],
+            ["journals.id", "journals.ledger_id"],
+            name="fk_journal_lines_journal_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["account_id", "asset_id", "ledger_id"],
+            ["account_assets.account_id", "account_assets.asset_id", "account_assets.ledger_id"],
+            name="fk_journal_lines_account_asset_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["category_id", "ledger_id", "role"],
+            ["categories.id", "categories.ledger_id", "categories.kind"],
+            name="fk_journal_lines_category_ledger_kind",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("line_no > 0", name="ck_journal_lines_number"),
+        CheckConstraint(
+            "(role = 'account' AND account_id IS NOT NULL AND category_id IS NULL) OR "
+            "(role IN ('income', 'expense') AND account_id IS NULL AND category_id IS NOT NULL) OR "
+            "(role = 'equity' AND account_id IS NULL AND category_id IS NULL)",
+            name="ck_journal_lines_role",
+        ),
+        CheckConstraint(
+            "amount <> 0 AND amount > -100000000000000000000 AND amount < 100000000000000000000",
+            name="ck_journal_lines_amount",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    journal_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    line_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    asset_id: Mapped[str] = mapped_column(
+        String(200),
+        ForeignKey("assets.asset_id", name="fk_journal_lines_asset", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(38, 18), nullable=False)
+    account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+
+class OpeningPosition(Base):
+    __tablename__ = "opening_positions"
+    __table_args__ = (
+        UniqueConstraint("operation_id", name="uq_opening_positions_operation"),
+        ForeignKeyConstraint(
+            ["account_id", "asset_id", "ledger_id"],
+            ["account_assets.account_id", "account_assets.asset_id", "account_assets.ledger_id"],
+            name="fk_opening_positions_account_asset_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["operation_id", "ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_opening_positions_operation_ledger",
+            ondelete="RESTRICT",
+        ),
+    )
+
+    account_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    asset_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+
+
+class CommandReceipt(Base):
+    __tablename__ = "command_receipts"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["operation_id", "ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_command_receipts_operation_ledger",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("key <> ''", name="ck_command_receipts_key"),
+        CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="ck_command_receipts_hash"),
+        CheckConstraint("response_status BETWEEN 200 AND 299", name="ck_command_receipts_status"),
+        CheckConstraint("jsonb_typeof(response) = 'object'", name="ck_command_receipts_response"),
+    )
+
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    response_status: Mapped[int] = mapped_column(Integer, nullable=False)
+    operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
