@@ -1,8 +1,8 @@
 # Coinpup
 
-个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。界面计划支持中文和英文。
+个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**当前是工程基础，尚不能用于真实记账。** 本分支实现管理员初始化、登录/退出、双语网页入口、数据库会话、健康 API、迁移、基础数据库备份恢复及自动检查。账务接口、记账页面、OCR 和 App 尚未实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01 工程基础已合入，T02 账务核心正在开发，尚不能用于真实记账。** 已有管理员初始化、登录/退出、双语网页入口、数据库会话、健康 API、迁移、基础数据库备份恢复及自动检查。T02 从精确金额与资产身份开始；账务接口、记账页面、OCR 和 App 尚未实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
 Coinpup is a self-hosted personal and multi-company bookkeeping project. The current foundation includes administrator sessions and a bilingual web entry, but is not yet a usable finance application. No open-source license has been selected for this private repository.
 
@@ -15,6 +15,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. The cur
 - [架构设计](docs/architecture/overview.md)与[初始架构决定](docs/architecture/decisions/0001-modular-api-foundation.md)
 - [贡献流程](CONTRIBUTING.md)与[跨环境交接](docs/engineering/handoff.md)
 - [管理员与会话设计](docs/architecture/decisions/0002-administrator-session.md)与[备份恢复操作](docs/engineering/operations.md)
+- [精确金额与资产身份](docs/architecture/decisions/0003-exact-asset-amounts.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
