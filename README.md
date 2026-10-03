@@ -2,9 +2,9 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01 工程基础已合入，T02/T03 正在推进，尚未完成可用网页闭环。** 已有管理员会话、双语登录入口、独立账本结构、精确期初/收支/拆分/余额、同资产转账与信用卡还款、实际换汇与独立手续费、更正、取消和版本历史 API。业务网页、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01 工程基础和 T02 账务核心已合入，正在实现 T04 业务网页。** 当前代码提供中英账本、四地公司资料、账户、分类和原币余额管理；财务 API 已支持期初/收支/拆分、转账、换汇、手续费、更正和取消。网页财务录入、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
-Coinpup is a self-hosted personal and multi-company bookkeeping project. The current foundation includes administrator sessions and a bilingual web entry, but is not yet a usable finance application. No open-source license has been selected for this private repository.
+Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories and original-asset balances. Financial entry forms are in progress; the financial API already supports posting, corrections and cancellation. No open-source license has been selected for this private repository.
 
 ## 从这里开始
 
@@ -21,6 +21,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. The cur
 - [同资产转账与信用卡还款](docs/architecture/decisions/0006-same-asset-transfers.md)
 - [实际换汇数量与独立手续费](docs/architecture/decisions/0007-exchanges-and-explicit-fees.md)
 - [更正、取消与不可变历史](docs/architecture/decisions/0008-operation-revisions-and-cancellation.md)
+- [业务网页、草稿与精确数量](docs/architecture/decisions/0009-business-web-workspace.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -69,7 +70,7 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 接口沿用登录 Cookie；POST/PATCH 必须同时携带允许的 `Origin` 与会话接口返回的 `X-CSRF-Token`。所有 PATCH 需要当前 `expected_version`，过期版本返回 409。账户可配置多个 `asset_ids`；创建主体时可选择 `personal_default` 或 `business_default` 分类模板。归档保留历史，主体归档会暂停该账本写入。
 
-网页登录后的工作区尚未接入这些管理功能。结构接口的设计和限制见 ADR 0004。
+网页登录后可创建个人和公司账本、切换主体、管理多资产账户和分类、查看原币余额。公司表单包含大陆、香港、美国新墨西哥州/怀俄明州、爱沙尼亚的资料字段；地区编号可稍后补齐，自定义字段保存为字符串。归档可恢复；编辑版本冲突会保留当前草稿，明确重新载入后才替换。结构接口见 ADR 0004，网页边界见 ADR 0009。
 
 ## 当前财务 API
 
@@ -114,6 +115,7 @@ python scripts/check_docs.py
 python scripts/export_openapi.py --check
 python -m alembic upgrade head --sql
 npm --prefix apps/web run typecheck
+npm --prefix apps/web run test:unit
 npm --prefix apps/web run build
 ```
 
@@ -121,7 +123,7 @@ npm --prefix apps/web run build
 
 更新实现后使用 `python scripts/export_openapi.py` 生成实际接口契约。未来业务接口仅在实现后进入此契约。
 
-真实浏览器测试使用 `BASE_URL`、`E2E_USERNAME`、`E2E_PASSWORD` 指向一次性测试服务，先安装 Playwright Chromium，再运行 `npm --prefix apps/web run test:e2e`。CI 自动创建独立测试管理员，验证登录、刷新、退出及中英/手机布局；不要向真实管理员账户执行错误密码场景。
+真实浏览器测试使用 `BASE_URL`、`E2E_USERNAME`、`E2E_PASSWORD` 指向一次性测试服务，先安装 Playwright Chromium，再运行 `npm --prefix apps/web run test:e2e`。CI 自动创建独立测试管理员，验证登录、刷新、退出、地区资料、账户分类、账本隔离、版本冲突及中英/手机布局；不要向真实管理员账户执行错误密码场景。
 
 ## 依赖更新
 

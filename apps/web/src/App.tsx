@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { ApiError, checkHealth, getSession, signIn, signOut } from "./api";
+import { ApiError, getSession, signIn, signOut } from "./api";
 import type { ApiErrorKind, Session } from "./api";
 import { copy, LOCALE_KEY, readLocale } from "./i18n";
 import type { Locale, Text } from "./i18n";
+import { BusinessWorkspace } from "./Workspace";
 
 type IconName = "arrow" | "lock" | "eye" | "eyeOff" | "grid" | "wallet" | "receipt" | "chart" | "logout" | "refresh" | "check" | "server" | "database" | "globe";
 const paths: Record<IconName, string[]> = {
@@ -27,8 +28,9 @@ function Icon({ name, className = "" }: { name: IconName; className?: string }) 
   return <svg className={`icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name].map((path, index) => <path d={path} key={index} />)}</svg>;
 }
 
-function Brand() {
-  return <a className="brand" href="/" aria-label="Coinpup"><img src="/coinpup.svg" alt="" width="42" height="42" /><span>Coinpup<span className="brand-dot">.</span></span></a>;
+function Brand({ linked = true }: { linked?: boolean }) {
+  const content = <><img src="/coinpup.svg" alt="" width="42" height="42" /><span>Coinpup<span className="brand-dot">.</span></span></>;
+  return linked ? <a className="brand" href="/" aria-label="Coinpup">{content}</a> : <span className="brand">{content}</span>;
 }
 
 function LanguageSwitch({ locale, onChange, t }: { locale: Locale; onChange: (locale: Locale) => void; t: Text }) {
@@ -91,48 +93,6 @@ function LoginForm({ t, onSuccess }: { t: Text; onSuccess: (session: Session) =>
 }
 
 type AuthState = { status: "checking" } | { status: "anonymous" } | { status: "unavailable"; reason: ApiErrorKind } | { status: "authenticated"; session: Session };
-type HealthState = { live: boolean | null; ready: boolean | null; checkedAt: Date | null; loading: boolean };
-
-function Workspace({ session, locale, t }: { session: Session; locale: Locale; t: Text }) {
-  const [health, setHealth] = useState<HealthState>({ live: null, ready: null, checkedAt: null, loading: true });
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setHealth((previous) => ({ ...previous, loading: true }));
-    void Promise.allSettled([checkHealth("live", controller.signal), checkHealth("ready", controller.signal)]).then(([live, ready]) => {
-      if (controller.signal.aborted) return;
-      setHealth({ live: live.status === "fulfilled" && live.value, ready: ready.status === "fulfilled" && ready.value, checkedAt: new Date(), loading: false });
-    });
-    return () => controller.abort();
-  }, [refreshKey]);
-
-  const services = [
-    { key: "live", title: t.apiTitle, description: t.apiDescription, icon: "server", value: health.live },
-    { key: "ready", title: t.databaseTitle, description: t.databaseDescription, icon: "database", value: health.ready },
-  ] as const;
-
-  return <div className="workspace-layout">
-    <aside className="sidebar" aria-label={t.workspace}>
-      <div className="profile"><div className="avatar">{session.user.username.charAt(0).toUpperCase()}</div><div><strong>{session.user.username}</strong><span>{t.admin}</span></div><span className="profile-dot" /></div>
-      <p className="nav-caption">{t.workspace}</p>
-      <div className="nav-current"><Icon name="grid" />{t.overview}</div>
-      <div className="nav-planned"><Icon name="wallet" /><span>{t.accounts}</span></div>
-      <div className="nav-planned"><Icon name="chart" /><span>{t.transactions}</span></div>
-      <div className="nav-planned"><Icon name="receipt" /><span>{t.documents}</span></div>
-      <span className="nav-note">{t.planned}</span>
-      <div className="sidebar-bottom"><span className="tiny-dot" />{t.foundation}</div>
-    </aside>
-    <main id="main" className="workspace-main">
-      <div className="page-heading"><div><p className="eyebrow">{t.hello}<span data-testid="current-username">{session.user.username}</span></p><h1>{t.dashboardTitle}</h1><p className="muted">{t.dashboardDescription}</p></div><span className="preview-badge">{t.preview}</span></div>
-      <section className="session-card" aria-labelledby="session-title"><div className="session-icon"><Icon name="check" /></div><div><span className="section-kicker">{t.availableNow}</span><h2 id="session-title">{t.sessionTitle}</h2><p className="muted">{t.sessionDescription}</p></div><span className="status-pill good"><span />{t.signedIn}</span></section>
-      <section className="service-section" aria-labelledby="service-title"><div className="section-heading"><div><h2 id="service-title">{t.serviceTitle}</h2><p className="muted">{t.serviceDescription}</p></div><button className="text-button" type="button" disabled={health.loading} onClick={() => setRefreshKey((key) => key + 1)}><Icon name="refresh" className={health.loading ? "rotating" : ""} />{health.loading ? t.refreshing : t.refresh}</button></div><div className="service-grid">{services.map((service) => <article className="service-card" key={service.key}><div className="service-card-top"><span className="service-icon"><Icon name={service.icon} /></span><span data-testid={`${service.key}-status`} className={`status-pill ${health.loading ? "neutral" : service.value ? "good" : "warning"}`} role="status"><span />{health.loading ? t.checking : service.value ? t.available : t.unavailable}</span></div><h3>{service.title}</h3><p className="muted">{service.description}</p></article>)}</div>{health.checkedAt && <p className="checked-at">{t.checkedAt} · {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(health.checkedAt)}</p>}</section>
-      <section className="roadmap-card" aria-labelledby="next-title"><div className="roadmap-copy"><span className="section-kicker">{t.notYet}</span><h2 id="next-title">{t.nextTitle}</h2><p>{t.nextDescription}</p><div className="roadmap-mark" aria-hidden="true"><Icon name="receipt" /><span>+</span></div></div><ol className="roadmap-list">{[t.roadmapOne, t.roadmapTwo, t.roadmapThree, t.roadmapFour].map((title, index) => <li key={title}><span className="step-number">0{index + 1}</span><span>{title}</span><span className="planned-label">{t.planned}</span></li>)}</ol></section>
-      <footer className="workspace-footer"><span>Coinpup · {t.footer}</span><span>{t.foundation}</span></footer>
-    </main>
-  </div>;
-}
-
 export function App() {
   const [locale, setLocale] = useState<Locale>(readLocale);
   const [auth, setAuth] = useState<AuthState>({ status: "checking" });
@@ -183,9 +143,9 @@ export function App() {
 
   return <div className={`app ${auth.status === "authenticated" ? "app-workspace" : "app-entry"}`}>
     <a className="skip-link" href="#main">{t.skip}</a>
-    <header className="topbar"><Brand /><div className="topbar-actions"><LanguageSwitch locale={locale} onChange={setLocale} t={t} />{auth.status === "authenticated" && <button className="logout-button" type="button" aria-label={loggingOut ? t.signingOut : t.signOut} onClick={() => void logout()} disabled={loggingOut}><Icon name="logout" /><span>{loggingOut ? t.signingOut : t.signOut}</span></button>}</div></header>
+    <header className="topbar"><Brand linked={auth.status !== "authenticated"} /><div className="topbar-actions"><LanguageSwitch locale={locale} onChange={setLocale} t={t} />{auth.status === "authenticated" && <button className="logout-button" type="button" aria-label={loggingOut ? t.signingOut : t.signOut} onClick={() => void logout()} disabled={loggingOut}><Icon name="logout" /><span>{loggingOut ? t.signingOut : t.signOut}</span></button>}</div></header>
     {logoutFailed && <div className="logout-error" role="alert">{t.logoutError}</div>}
-    {auth.status === "authenticated" ? <Workspace session={auth.session} locale={locale} t={t} /> : <>
+    {auth.status === "authenticated" ? <BusinessWorkspace session={auth.session} locale={locale} onUnauthorized={() => setAuth({ status: "anonymous" })} /> : <>
       <main id="main" className="entry-main"><section className="entry-story"><span className="preview-badge"><span className="tiny-dot" />{t.preview}</span><p className="eyebrow">{t.privateSpace}</p><h1>{t.heroTitle}<br /><span>{t.heroAccent}</span></h1><p className="hero-description">{t.heroDescription}</p><Illustration /><div className="hero-features"><div><Icon name="wallet" /><div><strong>{t.separateBooks}</strong><p>{t.separateDescription}</p></div></div><div><Icon name="globe" /><div><strong>{t.allTogether}</strong><p>{t.allDescription}</p></div></div></div><p className="story-planned">{t.planned}</p></section>
       <div className="entry-form-area">{auth.status === "anonymous" ? <LoginForm t={t} onSuccess={(session) => { setLogoutFailed(false); setAuth({ status: "authenticated", session }); }} /> : <section className="login-card connection-card" aria-live="polite"><div className="card-emblem">{auth.status === "checking" ? <span className="spinner" /> : <Icon name="server" />}</div><h2>{auth.status === "checking" ? t.checkingSession : t.connectionTitle}</h2><p className="muted">{auth.status === "checking" ? t.checkingDescription : feedback(auth.reason, t)}</p>{auth.status === "unavailable" && <button className="primary-button" type="button" onClick={() => setRetryKey((key) => key + 1)}>{t.retry}<Icon name="refresh" /></button>}</section>}<p className="entry-scope">{t.currentScope}</p></div></main>
       <footer className="entry-footer"><span>© {new Date().getFullYear()} Coinpup</span><span>{t.footer}</span></footer>

@@ -47,7 +47,8 @@ test("real login, refresh and CSRF-protected logout form a complete session", as
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByTestId("current-username")).toHaveText(username);
-  await expect(page.getByText("Bookkeeping isn't available yet", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.getByTestId("live-status")).toHaveText("Available");
   await expect(page.getByTestId("ready-status")).toHaveText("Available");
   const sessionResponse = await page.request.get("/api/v1/auth/session");
   expect(sessionResponse.status()).toBe(200);
@@ -59,6 +60,7 @@ test("real login, refresh and CSRF-protected logout form a complete session", as
   expect(storage).not.toContain(session.csrf_token);
   await page.reload();
   await expect(page.getByTestId("current-username")).toHaveText(username);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByTestId("ready-status")).toHaveText("Available");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("workspace.png"), fullPage: true });
