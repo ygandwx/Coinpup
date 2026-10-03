@@ -1,74 +1,27 @@
 import { ApiError, readJson, writeJson } from "./api";
+import type { components, operations } from "./generated/openapi";
 
-// Wire quantities and calendar dates intentionally remain strings.
-export type UUID = string;
-export type Quantity = string;
-export type CalendarDate = string;
-export type AccountKind =
-    "bank" | "cash" | "wechat" | "alipay" | "credit_card" | "paypal" | "wise" | "stripe" | "crypto";
-export type CategoryKind = "income" | "expense";
-export type TemplateKey = "personal_default" | "business_default";
-export type CountryCode = "CN" | "HK" | "US" | "EE";
-export type AssetKind = "fiat" | "native" | "token";
-export type RecordVersion = { version: number; created_at: string; updated_at: string };
+export type UUID = components["schemas"]["EntityResponse"]["id"];
+export type Quantity = components["schemas"]["OperationResponse"]["amount"];
+export type CalendarDate = components["schemas"]["OpeningCreate"]["transaction_date"];
+export type AccountKind = components["schemas"]["AccountCreate"]["kind"];
+export type CategoryKind = components["schemas"]["CategoryCreate"]["kind"];
+export type TemplateKey = components["schemas"]["TemplateResponse"]["key"];
+export type CountryCode = NonNullable<components["schemas"]["EntityCreate"]["country_code"]>;
+export type AssetKind = components["schemas"]["AssetCreate"]["kind"];
+export type RecordVersion = Pick<
+    components["schemas"]["EntityResponse"],
+    "version" | "created_at" | "updated_at"
+>;
 
-export type Asset = RecordVersion & {
-    asset_id: string;
-    code: string;
-    kind: AssetKind;
-    scale: number;
-    network: string | null;
-    token_reference: string | null;
-    enabled: boolean;
-};
-export type Ledger = RecordVersion & { id: UUID; entity_id: UUID; base_asset_id: string };
-export type Entity = RecordVersion & {
-    id: UUID;
-    kind: "personal" | "company";
-    name: string;
-    legal_name: string | null;
-    country_code: CountryCode | null;
-    region_code: string | null;
-    company_type: string | null;
-    registration_date: CalendarDate | null;
-    details: Record<string, string>;
-    archived: boolean;
-    ledger: Ledger;
-};
-export type Account = RecordVersion & {
-    id: UUID;
-    ledger_id: UUID;
-    name: string;
-    kind: AccountKind;
-    details: Record<string, string>;
-    archived: boolean;
-    asset_ids: string[];
-};
-export type Category = RecordVersion & {
-    id: UUID;
-    ledger_id: UUID;
-    name: string;
-    name_en: string | null;
-    kind: CategoryKind;
-    parent_id: UUID | null;
-    template_key: string | null;
-    archived: boolean;
-};
-export type TemplateCategory = { key: string; name: string; name_en: string; kind: CategoryKind };
-export type CategoryTemplate = {
-    key: TemplateKey;
-    name: string;
-    name_en: string;
-    categories: TemplateCategory[];
-};
-export type Balance = {
-    account_id: UUID;
-    asset_id: string;
-    amount: Quantity;
-    account_archived: boolean;
-    asset_enabled: boolean;
-    link_enabled: boolean;
-};
+export type Asset = components["schemas"]["AssetResponse"];
+export type Ledger = components["schemas"]["LedgerResponse"];
+export type Entity = components["schemas"]["EntityResponse"];
+export type Account = components["schemas"]["AccountResponse"];
+export type Category = components["schemas"]["CategoryResponse"];
+export type TemplateCategory = components["schemas"]["TemplateCategory"];
+export type CategoryTemplate = components["schemas"]["TemplateResponse"];
+export type Balance = components["schemas"]["BalanceResponse"];
 export type AssetResponse = Asset;
 export type LedgerResponse = Ledger;
 export type EntityResponse = Entity;
@@ -77,67 +30,14 @@ export type CategoryResponse = Category;
 export type TemplateResponse = CategoryTemplate;
 export type BalanceResponse = Balance;
 
-export type EntityCreate = {
-    id?: UUID | null;
-    ledger_id?: UUID | null;
-    kind: "personal" | "company";
-    name: string;
-    legal_name?: string | null;
-    country_code?: CountryCode | null;
-    region_code?: string | null;
-    company_type?: string | null;
-    registration_date?: CalendarDate | null;
-    details?: Record<string, string>;
-    base_asset_id: string;
-    template_key?: TemplateKey | null;
-    locale?: "zh" | "en";
-};
-export type EntityUpdate = Partial<
-    Pick<
-        EntityCreate,
-        | "name"
-        | "legal_name"
-        | "country_code"
-        | "region_code"
-        | "company_type"
-        | "registration_date"
-        | "details"
-    >
-> & {
-    expected_version: number;
-    archived?: boolean;
-};
-export type AccountCreate = {
-    id?: UUID | null;
-    name: string;
-    kind: AccountKind;
-    details?: Record<string, string>;
-    asset_ids: string[];
-};
-export type AccountUpdate = Partial<Omit<AccountCreate, "id">> & {
-    expected_version: number;
-    archived?: boolean;
-};
-export type CategoryCreate = {
-    id?: UUID | null;
-    name: string;
-    name_en?: string | null;
-    kind: CategoryKind;
-    parent_id?: UUID | null;
-};
-export type CategoryUpdate = Partial<Pick<CategoryCreate, "name" | "name_en">> & {
-    expected_version: number;
-    archived?: boolean;
-};
-export type AssetCreate = {
-    code: string;
-    kind: AssetKind;
-    scale: number;
-    network?: string | null;
-    token_reference?: string | null;
-    enabled?: boolean;
-};
-export type AssetUpdate = { expected_version: number; enabled: boolean };
+export type EntityCreate = components["schemas"]["EntityCreate"];
+export type EntityUpdate = components["schemas"]["EntityUpdate"];
+export type AccountCreate = components["schemas"]["AccountCreate"];
+export type AccountUpdate = components["schemas"]["AccountUpdate"];
+export type CategoryCreate = components["schemas"]["CategoryCreate"];
+export type CategoryUpdate = components["schemas"]["CategoryUpdate"];
+export type AssetCreate = components["schemas"]["AssetCreate"];
+export type AssetUpdate = components["schemas"]["AssetUpdate"];
 export type EntityCreateBody = EntityCreate;
 export type EntityUpdateBody = EntityUpdate;
 export type AccountCreateBody = AccountCreate;
@@ -145,140 +45,42 @@ export type AccountUpdateBody = AccountUpdate;
 export type CategoryCreateBody = CategoryCreate;
 export type CategoryUpdateBody = CategoryUpdate;
 
-export type PostingSplit = { category_id: UUID; amount: Quantity };
-export type FeeCreate = { account_id: UUID; asset_id: string; amount: Quantity; category_id: UUID };
-export type FeeResponse = FeeCreate;
-type PostingMetadata = { id?: UUID | null; transaction_date: CalendarDate; description?: string };
-export type OpeningCreate = PostingMetadata & {
-    account_id: UUID;
-    asset_id: string;
-    amount: Quantity;
-};
-export type IncomeCreate = OpeningCreate & {
-    recognition_date: CalendarDate;
-    splits: PostingSplit[];
-    fees?: FeeCreate[];
-};
-export type ExpenseCreate = IncomeCreate;
-export type TransferCreate = PostingMetadata & {
-    source_account_id: UUID;
-    destination_account_id: UUID;
-    asset_id: string;
-    amount: Quantity;
-    fees?: FeeCreate[];
-};
-export type ExchangeCreate = PostingMetadata & {
-    source_account_id: UUID;
-    source_asset_id: string;
-    source_amount: Quantity;
-    destination_account_id: UUID;
-    destination_asset_id: string;
-    destination_amount: Quantity;
-    fees?: FeeCreate[];
-};
-type FinancialMetadata = {
-    id: UUID;
-    ledger_id: UUID;
-    journal_id: UUID;
-    version: number;
-    transaction_date: CalendarDate;
-    recognition_date: CalendarDate;
-    description: string;
-    created_at: string;
-};
-export type OperationResponse = FinancialMetadata & {
-    kind: "opening" | "income" | "expense";
-    account_id: UUID;
-    asset_id: string;
-    amount: Quantity;
-    splits: PostingSplit[];
-    fees?: FeeResponse[];
-};
-export type TransferResponse = FinancialMetadata & {
-    kind: "transfer";
-    source_account_id: UUID;
-    destination_account_id: UUID;
-    asset_id: string;
-    amount: Quantity;
-    fees?: FeeResponse[];
-};
-export type ExchangeResponse = FinancialMetadata & {
-    kind: "exchange";
-    source_account_id: UUID;
-    source_asset_id: string;
-    source_amount: Quantity;
-    destination_account_id: UUID;
-    destination_asset_id: string;
-    destination_amount: Quantity;
-    fees?: FeeResponse[];
-};
-export type FinancialResponse = OperationResponse | TransferResponse | ExchangeResponse;
-export type Replacement =
-    | (Omit<OpeningCreate, "id"> & { kind: "opening" })
-    | (Omit<IncomeCreate, "id"> & { kind: "income" })
-    | (Omit<ExpenseCreate, "id"> & { kind: "expense" })
-    | (Omit<TransferCreate, "id"> & { kind: "transfer" })
-    | (Omit<ExchangeCreate, "id"> & { kind: "exchange" });
-export type CorrectionCreate = {
-    expected_version: number;
-    reason: string;
-    replacement: Replacement;
-};
-export type CancellationCreate = { expected_version: number; reason: string };
-export type CancellationInfo = {
-    version: number;
-    reversal_journal_id: UUID;
-    reason: string;
-    recorded_at: string;
-};
-type StateMetadata = {
-    id: UUID;
-    ledger_id: UUID;
-    kind: FinancialResponse["kind"];
-    version: number;
-    latest_posting: FinancialResponse;
-    updated_at: string;
-};
-export type OperationState = StateMetadata &
-    (
-        | { status: "active"; cancellation?: never }
-        | { status: "cancelled"; cancellation: CancellationInfo }
-    );
-export type LineAudit = {
-    id: UUID;
-    line_no: number;
-    component_no: number;
-    role: string;
-    asset_id: string;
-    amount: Quantity;
-    account_id: UUID | null;
-    category_id: UUID | null;
-};
-export type JournalAudit = {
-    id: UUID;
-    kind: "posting" | "reversal";
-    reverses_journal_id: UUID | null;
-    transaction_date: CalendarDate;
-    recognition_date: CalendarDate;
-    description: string;
-    reason: string | null;
-    recorded_at: string;
-    lines: LineAudit[];
-};
-export type HistoryEntry = {
-    version: number;
-    action: "create" | "correct" | "cancel";
-    actor_id: UUID;
-    reason: string | null;
-    recorded_at: string;
-    journals: JournalAudit[];
-};
+export type PostingSplit = components["schemas"]["PostingSplit"];
+export type FeeCreate = components["schemas"]["FeeCreate"];
+export type FeeResponse = components["schemas"]["FeeResponse"];
+export type OpeningCreate = components["schemas"]["OpeningCreate"];
+export type IncomeCreate = components["schemas"]["IncomeCreate"];
+export type ExpenseCreate = components["schemas"]["ExpenseCreate"];
+export type TransferCreate = components["schemas"]["TransferCreate"];
+export type ExchangeCreate = components["schemas"]["ExchangeCreate"];
+export type OperationResponse = components["schemas"]["OperationResponse"];
+export type TransferResponse = components["schemas"]["TransferResponse"];
+export type ExchangeResponse = components["schemas"]["ExchangeResponse"];
+export type FinancialResponse = components["schemas"]["OperationState"]["latest_posting"];
+export type Replacement = components["schemas"]["CorrectionCreate"]["replacement"];
+export type CorrectionCreate = components["schemas"]["CorrectionCreate"];
+export type CancellationCreate = components["schemas"]["CancellationCreate"];
+export type CancellationInfo = components["schemas"]["CancellationInfo"];
+export type OperationState = components["schemas"]["OperationState"];
+export type LineAudit = components["schemas"]["LineAudit"];
+export type JournalAudit = components["schemas"]["JournalAudit"];
+export type HistoryEntry = components["schemas"]["HistoryEntry"];
 
-export type PageOptions = { limit?: number; offset?: number };
-export type ArchivedPageOptions = PageOptions & { include_archived?: boolean };
-export type AssetPageOptions = PageOptions & { include_disabled?: boolean };
-export type BalancePageOptions = PageOptions & { account_id?: UUID };
-export type OperationPageOptions = PageOptions & { status?: "all" | "active" | "cancelled" };
+export type PageOptions = NonNullable<
+    operations["operation_history_api_v1_ledgers__ledger_id__operations__operation_id__history_get"]["parameters"]["query"]
+>;
+export type ArchivedPageOptions = NonNullable<
+    operations["list_entities_api_v1_entities_get"]["parameters"]["query"]
+>;
+export type AssetPageOptions = NonNullable<
+    operations["list_assets_api_v1_assets_get"]["parameters"]["query"]
+>;
+export type BalancePageOptions = NonNullable<
+    operations["balances_api_v1_ledgers__ledger_id__balances_get"]["parameters"]["query"]
+>;
+export type OperationPageOptions = NonNullable<
+    operations["list_operations_api_v1_ledgers__ledger_id__operations_get"]["parameters"]["query"]
+>;
 export type { PostingInput } from "./pending-command";
 
 function pageQuery(options: PageOptions & Record<string, unknown>): string {

@@ -237,7 +237,9 @@ export function EntityForm({
     const prefix = useId();
     const [ids] = useState(() => ({ id: crypto.randomUUID(), ledger_id: crypto.randomUUID() }));
     const [expectedVersion] = useState(entity?.version);
-    const [kind, setKind] = useState<"personal" | "company">(entity?.kind ?? "personal");
+    const [kind, setKind] = useState<"personal" | "company">(
+        (entity?.kind as "personal" | "company" | undefined) ?? "personal",
+    );
     const [name, setName] = useState(entity?.name ?? "");
     const [country, setCountry] = useState<CountryCode>(
         (entity?.country_code as CountryCode | null) ?? "CN",

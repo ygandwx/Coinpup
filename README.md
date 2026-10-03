@@ -47,7 +47,7 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 
 ```sh
 python scripts/check.py          # 默认 fast：Python、文档、接口、离线迁移 SQL
-python scripts/check.py web      # 前端格式、lint、类型、单元和生产构建
+python scripts/check.py web      # API 类型生成一致性、格式、lint、类型、单元和生产构建
 python scripts/check.py --fix    # 先修复 Python lint/格式及已安装依赖的网页格式
 ```
 
@@ -66,7 +66,7 @@ python -m piptools compile pyproject.toml --output-file requirements.lock --stri
 python -m piptools compile pyproject.toml --extra dev --output-file requirements-dev.lock --strip-extras --no-emit-index-url --no-emit-trusted-host
 ```
 
-网页依赖修改 `apps/web/package.json` 后同步提交 `package-lock.json`。依赖更新执行统一检查与相关真实流程。
+网页依赖修改 `apps/web/package.json` 后同步提交 `package-lock.json`。API 类型从 `contracts/openapi.json` 生成：`npm --prefix apps/web run gen:api`；提交 `src/generated/openapi.ts`，不得手改。依赖更新执行统一检查与相关真实流程。
 
 ## 文档地图
 

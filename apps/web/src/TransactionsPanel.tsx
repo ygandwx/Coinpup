@@ -153,7 +153,7 @@ function OperationCard({
             )}
             {operation.status === "cancelled" && (
                 <p className="help-text">
-                    {t("取消原因", "Cancellation reason")}: {operation.cancellation.reason}
+                    {t("取消原因", "Cancellation reason")}: {operation.cancellation!.reason}
                 </p>
             )}
             <div className="row-actions operation-actions">

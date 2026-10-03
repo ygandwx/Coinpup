@@ -342,7 +342,7 @@ Coinpup/
 
 - **现状**：`contracts/openapi.json` 由 `scripts/export_openapi.py` 从代码生成，并在 CI 中校验。但 `apps/web/src/ledger-api.ts`、`api.ts`，以及 PR #24 新增的 `document-api.ts`（`DocumentFile`、`UploadReservation`、`UploadCompletion` 等）中的请求和响应类型都是手写的。后端字段一变，前端不会报错。
 - **改动**：
-  - 在 devDependencies 中加入 `openapi-typescript`，`package.json` 增加脚本 `"gen:api": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts"`。
+  - 在 devDependencies 中加入 `openapi-typescript`，`package.json` 增加脚本 `"gen:api": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts --default-non-nullable false"`。该选项保留 OpenAPI 未列入 required 的默认字段为可选，不为通过类型检查而补发默认值或改变原请求。
   - 生成的文件提交到仓库。手写类型改为 `type X = components["schemas"]["X"]` 的引用形式，只有界面专用的类型继续手写。
   - `check.py web` 先运行 `gen:api`，再执行 `git diff --exit-code apps/web/src/generated`。CI 中这一步失败，说明契约变了但前端没有同步。
 - **注意**：生成类型中的金额字段是 `string`，保持字符串；不引入任何运行时依赖。
