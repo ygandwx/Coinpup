@@ -1,6 +1,43 @@
-# 基础数据库备份与恢复
+# 数据库与私有文件备份恢复
 
-备份工具从 T01 建立，提供手动 PostgreSQL 备份、隔离恢复和 CI 演练入口；恢复校验随 T02 扩展到主体/账本结构、财务流水和幂等回执，当前增量增加更正、取消及完整版本历史夹具。具体执行证据见[当前状态](status.md)，新增夹具不代表真实恢复已经通过。附件存储尚未实现，**此命令只备份数据库，不包含票据、公司证件、Logo、配置、密钥、PostgreSQL 角色或整个服务器**。完整附件恢复、自动定时、异地副本、保留策略和生产演练属于 T10。
+备份工具从 T01 建立，T02 扩展到完整财务与版本历史。T05-1 新增数据库与私有原件共享快照的 bundle；具体执行证据见[当前状态](status.md)，新增演练不代表已经通过真实恢复。**`backup_database.py` 始终只备份数据库；有原件时使用 `backup_bundle.py`。** 两者都不包含配置、密钥、PostgreSQL 角色或整个服务器；自动定时、异地副本、保留策略与生产演练属于 T10。
+
+## 包含票据与证件的 bundle
+
+`backup_bundle.py` 和 `restore_bundle.py` 使用以下已有 POSIX、凭据、隔离空数据库要求。文件根必须是部署设置的 `COINPUP_FILES_DIRECTORY`；Compose 默认为 `/app/data/files`，存于 `files_data` 命名卷。该目录不得对外静态托管。原件只做格式签名检查，尚未代表 OCR 成功。
+
+在已通过私密环境注入 `COINPUP_BACKUP_DATABASE_URL` 后，主机备份示例：
+
+```sh
+python scripts/backup_bundle.py --storage-root data/files --output backups/bundle-20261004-01
+```
+
+源文件根与输出父目录必须已存在，输出目录必须不存在。零原件允许源根为空，不要求先建 `blobs`。备份在同一 PostgreSQL 17 只读快照中取得完整数据库和原件清单，随后复制全部被引用原件（含归档）并验证 SHA-256/长度；不包含 staging、孤立 blob 或快照后才提交的上传。备份期间正常上传可以继续，暂未启用原件垃圾回收。
+
+Compose 中先按下面通用说明创建 UID 10001 私有 backups 目录，再运行：
+
+```sh
+docker compose run --rm --no-deps -v "$PWD/backups:/backups" -e COINPUP_BACKUP_DATABASE_URL api python scripts/backup_bundle.py --storage-root /app/data/files --output /backups/bundle-20261004-01
+```
+
+成功目录包含 `database.dump`、`blobs/` 和最后发布的 v2 `manifest.json`。manifest 保存精确文件行、摘要和大小，限制 64 MiB；超过时失败，不能算完成。SHA-256 检测损坏，不提供加密、签名或可信来源证明。未完成目录留待检查，重试使用新输出目录。
+
+恢复前创建符合下文规则的新空隔离库，并注入 `COINPUP_RESTORE_DATABASE_URL`。文件目标必须是**不存在的新目录**，即使已有空目录也拒绝；父目录预先创建并限制访问。主机示例：
+
+```sh
+python scripts/restore_bundle.py --backup backups/bundle-20261004-01 --storage-root recovery/files-20261004-01 --confirm-empty-database coinpup_restore_20261004
+```
+
+Compose 恢复需要私有 recovery 父目录，备份只读挂载，文件写入新的独立恢复目录：
+
+```sh
+sudo install -d -m 700 -o 10001 -g 10001 recovery
+docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -v "$PWD/recovery:/recovery" -e COINPUP_RESTORE_DATABASE_URL api python scripts/restore_bundle.py --backup /backups/bundle-20261004-01 --storage-root /recovery/files-20261004-01 --confirm-empty-database coinpup_restore_20261004
+```
+
+恢复先校验 manifest、dump 和全部常规原件（拒绝 symlink、缺失、损坏和未列入清单的文件），再检查目标空库、复制字节、单事务导入，最后精确比较全部 `stored_files` 行。缺失或损坏不以空白文件替代。失败不自动删除目录或数据库；不得直接重用失败目标。成功后仍需在隔离应用核对全部账务和关联，手动切换数据库与文件根；脚本不会修改运行中的应用配置。
+
+CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。实际结果以状态文档为准。
 
 ## 运行环境与凭据
 

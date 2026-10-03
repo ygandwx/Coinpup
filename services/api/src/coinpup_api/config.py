@@ -1,5 +1,6 @@
 """Explicit environment configuration; secrets are never included in health output."""
 
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -33,6 +34,9 @@ class Settings(BaseSettings):
     login_max_failures: int = Field(default=5, ge=1, le=20)
     login_window_seconds: int = Field(default=900, ge=60, le=86400)
     login_lock_seconds: int = Field(default=900, ge=60, le=86400)
+    files_directory: Path = Path("data/files")
+    max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
+    upload_timeout_seconds: int = Field(default=120, ge=1, le=3600)
 
     @field_validator("allowed_origins")
     @classmethod

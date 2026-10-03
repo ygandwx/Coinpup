@@ -2,6 +2,7 @@
 
 from alembic import context
 from coinpup_api.config import Settings
+from coinpup_api.documents import models as document_models  # noqa: F401
 from coinpup_api.ledger import models as ledger_models  # noqa: F401
 from coinpup_api.models import Base
 from sqlalchemy import create_engine, pool

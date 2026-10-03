@@ -2,9 +2,9 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01、T02 和 T04-1/T04-2 已合入，正在验收 T04 更正与历史页面。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。OCR 和 App 继续按路线图推进。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01、T02 和 T04 已合入，正在实现 T05 私有票据处理。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。当前增量增加私有上传 API 和数据库与原件的一致恢复；上传页面、OCR 和 App 继续按路线图推进。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
-Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries and original-asset balances. Correction, cancellation and version-history interfaces are under verification. No open-source license has been selected for this private repository.
+Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries, corrections, cancellation and version history. Private attachments and consistent file restoration are the current increment. No open-source license has been selected for this private repository.
 
 ## 从这里开始
 
@@ -24,6 +24,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bil
 - [业务网页、草稿与精确数量](docs/architecture/decisions/0009-business-web-workspace.md)
 - [财务网页与待确认提交](docs/architecture/decisions/0010-financial-web-and-retry.md)
 - [网页修订与版本历史](docs/architecture/decisions/0011-financial-revision-web.md)
+- [私有文件与一致恢复](docs/architecture/decisions/0012-private-files-and-consistent-bundles.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -62,9 +63,9 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 最后一条命令交互输入密码（12–128 字符），只允许初始化一个管理员。打开 `http://127.0.0.1:8000/` 登录；可在中英文之间切换，刷新后会话由服务端验证，退出会撤销会话。
 
-端口仅绑定本机，数据库保存在命名卷中；`docker compose down` 保留数据，不要对需要保留的数据使用 `down -v`。Compose 内部使用容器数据库地址，本地 Python 使用 `.env` 中的 localhost 地址。
+端口仅绑定本机，数据库与私有原件分别保存在 `postgres_data` 和 `files_data` 命名卷中；`docker compose down` 保留数据，不要对需要保留的数据使用 `down -v`。Compose 内部使用容器数据库地址，本地 Python 使用 `.env` 中的 localhost 地址。
 
-迁移包含空基线、认证、主体/账本结构、`20261003_0004` 的不可变财务分录与幂等回执、`20261003_0005` 的同资产转账、`20261003_0006` 的换汇与手续费，以及 `20261003_0007` 的版本历史与取消状态。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
+迁移包含空基线、认证、主体/账本结构、`20261003_0004` 的不可变财务分录与幂等回执、`20261003_0005` 的同资产转账、`20261003_0006` 的换汇与手续费、`20261003_0007` 的版本历史与取消状态，以及 `20261003_0008` 的私有原件/上传回执/流水关联。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
 
 ## 当前结构 API
 
@@ -96,6 +97,14 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 在 `/operations/{operation_id}` 下，`POST /corrections` 提交 `expected_version`、非空 `reason` 和带 `kind` 的完整 `replacement`（不含 ID）；`POST /cancellations` 提交版本和原因。成功返回 200 状态回执，旧版本或修改已取消记录返回 409。更正完整冲销本金和全部费用后写入替代内容，取消只冲销且不能重新激活；两者保留稳定 ID、旧凭证和全部历史回执。`GET /history` 按版本读取原因、执行人和精确有符号分录。设计见 [ADR 0008](docs/architecture/decisions/0008-operation-revisions-and-cancellation.md)。
 
+## 当前私有文件 API
+
+在同一 `/api/v1/ledgers/{ledger_id}` 前缀下，先 `POST /uploads` 预留稳定 UUID、`original_filename`、`declared_size` 和可选流水 `operation_id`，再 `PUT /uploads/{id}/content` 上传 `application/octet-stream` 原始字节。写请求需要 Cookie、Origin、CSRF。`GET /uploads/{id}` 可核对完成回执，未知结果需保留原 ID 和完整原件重试；目前不支持分块续传。
+
+`GET /api/v1/files/configuration` 返回上传限额，默认 50 MiB/120 秒。格式为 PDF/JPEG/PNG/WebP；格式签名检查不代表完成 OCR 或恶意文件扫描。同账本同内容提示重复，其他账本独立。`GET /files`、`GET /files/{id}`、`PATCH /files/{id}` 管理标题与归档，`GET /files/{id}/content` 鉴权下载；流水下的 `/operations/{id}/files` 提供证据关联，关联不会增加费用。
+
+本地存储默认 `data/files`，可配置 `COINPUP_FILES_DIRECTORY`；不要把该目录映射为静态网址。数据库备份不含原件，完整原件使用新增 bundle 工具，见[运维说明](docs/engineering/operations.md)。本增量先交付 API 与恢复，上传网页和本地识别随后实现。
+
 ## 网页开发
 
 需要 Node.js 24 与 npm。从仓库根目录执行：
@@ -109,7 +118,7 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 
 `COINPUP_ALLOWED_ORIGINS` 是允许浏览器操作的精确来源列表（JSON），开发默认包含本机 8000 和 5173。生产模式必须显式配置 HTTPS 来源；实际反向代理/TLS 配置应在部署时验证。登录失败默认 15 分钟内最多 5 次，触发 15 分钟临时限制；会话默认有效 12 小时。对应 `COINPUP_LOGIN_*` 和 `COINPUP_SESSION_TTL_SECONDS` 配置见源码与 ADR。
 
-网页会话通过 HttpOnly Cookie 维护，CSRF token 只放在内存，不写入浏览器存储。备份和恢复步骤见[运维说明](docs/engineering/operations.md)，当前只覆盖数据库；文件附件尚未实现。
+网页会话通过 HttpOnly Cookie 维护，CSRF token 只放在内存，不写入浏览器存储。备份和恢复步骤见[运维说明](docs/engineering/operations.md)，明确区分数据库单独备份与包含原件的 bundle。
 
 ## 检查
 

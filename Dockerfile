@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends postgresql-clie
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.lock ./
 RUN python -m pip install --no-cache-dir -r requirements.lock \
-    && useradd --create-home --uid 10001 coinpup
+    && useradd --create-home --uid 10001 coinpup \
+    && install -d -m 0700 -o coinpup -g coinpup /app/data/files
 COPY services/api/ services/api/
 COPY alembic.ini ./
 COPY scripts/ scripts/
