@@ -195,13 +195,28 @@ def test_invalid_journal_rolls_back_at_commit(posting_structure, shape):
         assert connection.scalar(select(func.count()).select_from(JournalLine)) == 0
 
 
-@pytest.mark.parametrize("amount", ["0.00", "NaN", "0.001", "100000000000000000000"])
-def test_invalid_stored_quantities_are_rejected(posting_structure, amount):
+@pytest.mark.parametrize(
+    "amount,sqlstate,constraint",
+    [
+        ("0.00", "23514", "ck_journal_lines_amount"),
+        ("NaN", "23514", "ck_journal_lines_amount"),
+        ("0.001", "23514", "ck_journal_line_precision"),
+        ("100000000000000000000", "22003", None),
+    ],
+)
+def test_invalid_stored_quantities_are_rejected(posting_structure, amount, sqlstate, constraint):
     with pytest.raises((IntegrityError, DataError)) as rejected:
         with posting_structure["engine"].begin() as connection:
-            _post(connection, posting_structure, amount=amount)
+            _, journal = _header(connection, posting_structure)
+            rows = _lines(posting_structure, journal)
+            # Feed the raw quantity directly: negating NaN produces -NaN, which PostgreSQL
+            # rejects during parsing and would not exercise the finite-amount constraint.
+            rows[0]["amount"] = Decimal(amount)
+            connection.execute(insert(JournalLine), rows)
     # Numeric overflow is DataError; finite/zero/asset precision failures are IntegrityError.
-    assert getattr(rejected.value.orig, "sqlstate", None) in {"23514", "22003"}
+    assert rejected.value.orig.sqlstate == sqlstate
+    if constraint is not None:
+        assert rejected.value.orig.diag.constraint_name == constraint
 
 
 def test_full_eth_precision_is_stored_exactly(posting_structure):
