@@ -3,9 +3,11 @@
 import hashlib
 import json
 import re
+from contextlib import contextmanager
 from decimal import Decimal
 from uuid import uuid4
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, insert, select, tuple_
 
 from coinpup_api.ledger.assets import AssetDefinition
@@ -27,15 +29,19 @@ from coinpup_api.ledger.money import Amount
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
     ExpenseCreate,
+    FinancialResponse,
     IncomeCreate,
     OpeningCreate,
     OperationResponse,
     SplitResponse,
+    TransferCreate,
+    TransferResponse,
 )
 from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_lines
 from coinpup_api.ledger.service import LedgerError, LedgerService, _not_found, _page
 
 _IDEMPOTENCY_KEY = re.compile(r"[!-~]{1,128}")
+_RECEIPT = TypeAdapter(FinancialResponse)
 
 
 def command_hash(kind, ledger_id, payload) -> str:
@@ -157,7 +163,8 @@ class PostingService(LedgerService):
     def post_expense(self, owner_id, ledger_id, payload: ExpenseCreate, idempotency_key: str):
         return self._post(owner_id, ledger_id, "expense", payload, idempotency_key)
 
-    def _post(self, owner_id, ledger_id, kind, payload, key):
+    @contextmanager
+    def _command(self, owner_id, ledger_id, kind, payload, key):
         if not isinstance(key, str) or _IDEMPOTENCY_KEY.fullmatch(key) is None:
             raise LedgerError(
                 "invalid_idempotency_key",
@@ -175,9 +182,22 @@ class PostingService(LedgerService):
                         409,
                         "This command key was used for a different request.",
                     )
-                return OperationResponse.model_validate(receipt.response)
+                try:
+                    response = _RECEIPT.validate_python(receipt.response)
+                except ValidationError:
+                    raise LedgerError(
+                        "ledger_integrity", 503, "The stored command receipt is inconsistent."
+                    ) from None
+                yield session, digest, response
+                return
             if entity.archived:
                 raise LedgerError("entity_archived", 409, "Restore the entity before posting.")
+            yield session, digest, None
+
+    def _post(self, owner_id, ledger_id, kind, payload, key):
+        with self._command(owner_id, ledger_id, kind, payload, key) as (session, digest, replay):
+            if replay is not None:
+                return replay
             record = self._assets(session, [payload.asset_id])[0]
             definition = asset_definition(record)
             self._account(session, ledger_id, payload.account_id, payload.asset_id)
@@ -246,73 +266,179 @@ class PostingService(LedgerService):
             recognition_date = (
                 payload.transaction_date if kind == "opening" else payload.recognition_date
             )
-            now = session.scalar(select(func.clock_timestamp()))
-            # All quantity and classification checks have completed before the first INSERT.
-            session.execute(
-                insert(FinancialOperation).values(
-                    id=operation_id,
-                    ledger_id=ledger_id,
-                    kind=kind,
-                    version=1,
-                    current_journal_id=journal_id,
-                    created_by=owner_id,
-                    created_at=now,
-                    updated_at=now,
-                )
+            return self._persist(
+                session,
+                owner_id,
+                ledger_id,
+                kind,
+                payload,
+                key,
+                digest,
+                operation_id,
+                journal_id,
+                parameters,
+                recognition_date,
+                OperationResponse,
+                {
+                    "account_id": payload.account_id,
+                    "amount": quantity.to_string(),
+                    "splits": [
+                        SplitResponse(category_id=item.category_id, amount=amount.to_string())
+                        for item, amount in splits
+                    ],
+                },
+                opening_account_id=payload.account_id if kind == "opening" else None,
             )
-            session.execute(
-                insert(Journal).values(
-                    id=journal_id,
-                    operation_id=operation_id,
-                    ledger_id=ledger_id,
-                    operation_version=1,
-                    journal_kind="posting",
-                    transaction_date=payload.transaction_date,
-                    recognition_date=recognition_date,
-                    description=payload.description,
-                    created_at=now,
+
+    def post_transfer(self, owner_id, ledger_id, payload: TransferCreate, idempotency_key: str):
+        with self._command(owner_id, ledger_id, "transfer", payload, idempotency_key) as (
+            session,
+            digest,
+            replay,
+        ):
+            if replay is not None:
+                return replay
+            # The schema rejects self-transfers; retain the invariant at the service boundary.
+            if payload.source_account_id == payload.destination_account_id:
+                raise LedgerError("same_account", 422, "Transfer accounts must be different.")
+            record = self._assets(session, [payload.asset_id])[0]
+            definition = asset_definition(record)
+            for account_id in (payload.source_account_id, payload.destination_account_id):
+                self._account(session, ledger_id, account_id, payload.asset_id)
+            try:
+                quantity = Amount.parse(payload.amount, definition)
+                if quantity.minor_units <= 0:
+                    raise MoneyError("amount_positive", "A transfer amount must be positive.")
+                source = self._current_units(
+                    session, ledger_id, payload.source_account_id, definition
                 )
-            )
-            session.execute(insert(JournalLine), parameters)
-            if kind == "opening":
-                session.execute(
-                    insert(OpeningPosition).values(
-                        account_id=payload.account_id,
-                        asset_id=payload.asset_id,
+                destination = self._current_units(
+                    session, ledger_id, payload.destination_account_id, definition
+                )
+                Amount(definition, source - quantity.minor_units)
+                Amount(definition, destination + quantity.minor_units)
+                operation_id, journal_id = payload.id or uuid4(), uuid4()
+                lines = [
+                    PostingLine(
+                        journal_id=journal_id,
                         ledger_id=ledger_id,
-                        operation_id=operation_id,
+                        line_no=index,
+                        role="account",
+                        asset_id=payload.asset_id,
+                        account_id=account_id,
+                        amount=amount,
                     )
-                )
-            response = OperationResponse(
+                    for index, (account_id, amount) in enumerate(
+                        [
+                            (payload.source_account_id, -quantity),
+                            (payload.destination_account_id, quantity),
+                        ],
+                        1,
+                    )
+                ]
+                parameters = prepare_journal_lines(lines, {payload.asset_id: definition})
+            except MoneyError as error:
+                raise _invalid_money(error) from None
+            return self._persist(
+                session,
+                owner_id,
+                ledger_id,
+                "transfer",
+                payload,
+                idempotency_key,
+                digest,
+                operation_id,
+                journal_id,
+                parameters,
+                payload.transaction_date,
+                TransferResponse,
+                {
+                    "source_account_id": payload.source_account_id,
+                    "destination_account_id": payload.destination_account_id,
+                    "amount": quantity.to_string(),
+                },
+            )
+
+    @staticmethod
+    def _persist(
+        session,
+        owner_id,
+        ledger_id,
+        kind,
+        payload,
+        key,
+        digest,
+        operation_id,
+        journal_id,
+        parameters,
+        recognition_date,
+        response_type,
+        response_fields,
+        *,
+        opening_account_id=None,
+    ):
+        # Every caller completes both balance and row-binding validation before the first INSERT.
+        now = session.scalar(select(func.clock_timestamp()))
+        session.execute(
+            insert(FinancialOperation).values(
                 id=operation_id,
                 ledger_id=ledger_id,
-                journal_id=journal_id,
                 kind=kind,
                 version=1,
-                account_id=payload.account_id,
-                asset_id=payload.asset_id,
-                amount=quantity.to_string(),
+                current_journal_id=journal_id,
+                created_by=owner_id,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.execute(
+            insert(Journal).values(
+                id=journal_id,
+                operation_id=operation_id,
+                ledger_id=ledger_id,
+                operation_version=1,
+                journal_kind="posting",
                 transaction_date=payload.transaction_date,
                 recognition_date=recognition_date,
                 description=payload.description,
-                splits=[
-                    SplitResponse(category_id=item.category_id, amount=amount.to_string())
-                    for item, amount in splits
-                ],
                 created_at=now,
             )
+        )
+        session.execute(insert(JournalLine), parameters)
+        if opening_account_id is not None:
             session.execute(
-                insert(CommandReceipt).values(
+                insert(OpeningPosition).values(
+                    account_id=opening_account_id,
+                    asset_id=payload.asset_id,
                     ledger_id=ledger_id,
-                    key=key,
-                    request_hash=digest,
-                    response=response.model_dump(mode="json"),
-                    response_status=201,
                     operation_id=operation_id,
-                    created_at=now,
                 )
             )
-            return response
+        response = response_type(
+            id=operation_id,
+            ledger_id=ledger_id,
+            journal_id=journal_id,
+            kind=kind,
+            version=1,
+            asset_id=payload.asset_id,
+            transaction_date=payload.transaction_date,
+            recognition_date=recognition_date,
+            description=payload.description,
+            created_at=now,
+            **response_fields,
+        )
+        session.execute(
+            insert(CommandReceipt).values(
+                ledger_id=ledger_id,
+                key=key,
+                request_hash=digest,
+                response=response.model_dump(mode="json"),
+                response_status=201,
+                operation_id=operation_id,
+                created_at=now,
+            )
+        )
+        return response
 
     @staticmethod
     def _read_operation(session, operation):
@@ -326,6 +452,8 @@ class PostingService(LedgerService):
             )
             .order_by(JournalLine.line_no)
         ).all()
+        if operation.kind == "transfer":
+            return PostingService._read_transfer(session, operation, journal, lines)
         account_lines = [item for item in lines if item.role == "account"]
         if len(account_lines) != 1:
             raise LedgerError(
@@ -368,6 +496,49 @@ class PostingService(LedgerService):
             recognition_date=journal.recognition_date,
             description=journal.description,
             splits=splits,
+            created_at=operation.created_at,
+        )
+
+    @staticmethod
+    def _read_transfer(session, operation, journal, lines):
+        def invalid():
+            return LedgerError("ledger_integrity", 503, "The transfer journal is inconsistent.")
+
+        if (
+            len(lines) != 2
+            or any(line.role != "account" or line.account_id is None for line in lines)
+            or lines[0].account_id == lines[1].account_id
+            or lines[0].asset_id != lines[1].asset_id
+            or journal.recognition_date != journal.transaction_date
+        ):
+            raise invalid()
+        asset = session.get(AssetRecord, lines[0].asset_id)
+        if asset is None:
+            raise invalid()
+        definition = asset_definition(asset)
+        try:
+            decoded = [(line, Amount.from_decimal(line.amount, definition)) for line in lines]
+        except MoneyError:
+            raise invalid() from None
+        source = [(line, amount) for line, amount in decoded if amount.minor_units < 0]
+        destination = [(line, amount) for line, amount in decoded if amount.minor_units > 0]
+        if len(source) != 1 or len(destination) != 1:
+            raise invalid()
+        if source[0][1].minor_units + destination[0][1].minor_units != 0:
+            raise invalid()
+        return TransferResponse(
+            id=operation.id,
+            ledger_id=operation.ledger_id,
+            journal_id=journal.id,
+            kind="transfer",
+            version=operation.version,
+            source_account_id=source[0][0].account_id,
+            destination_account_id=destination[0][0].account_id,
+            asset_id=definition.asset_id,
+            amount=destination[0][1].to_string(),
+            transaction_date=journal.transaction_date,
+            recognition_date=journal.recognition_date,
+            description=journal.description,
             created_at=operation.created_at,
         )
 

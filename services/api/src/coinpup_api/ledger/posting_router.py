@@ -14,9 +14,12 @@ from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
     ExpenseCreate,
+    FinancialResponse,
     IncomeCreate,
     OpeningCreate,
     OperationResponse,
+    TransferCreate,
+    TransferResponse,
 )
 from coinpup_api.ledger.service import LedgerError
 
@@ -73,13 +76,20 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
         """Post a payment and its expense-category splits in one transaction."""
         return execute(service.post_expense, identity.id, ledger_id, body, idempotency_key)
 
-    @router.get("/operations", response_model=list[OperationResponse])
+    @router.post("/transfers", response_model=TransferResponse, status_code=201)
+    def transfer(
+        ledger_id: UUID, body: TransferCreate, identity: writer, idempotency_key: command_key
+    ):
+        """Move one asset between two accounts, including credit-card repayments."""
+        return execute(service.post_transfer, identity.id, ledger_id, body, idempotency_key)
+
+    @router.get("/operations", response_model=list[FinancialResponse])
     def list_operations(
         ledger_id: UUID, identity: reader, limit: page_size = 100, offset: page_offset = 0
     ):
         return execute(service.list_operations, identity.id, ledger_id, limit=limit, offset=offset)
 
-    @router.get("/operations/{operation_id}", response_model=OperationResponse)
+    @router.get("/operations/{operation_id}", response_model=FinancialResponse)
     def get_operation(ledger_id: UUID, operation_id: UUID, identity: reader):
         return execute(service.get_operation, identity.id, ledger_id, operation_id)
 
