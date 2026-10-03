@@ -101,6 +101,6 @@ checker 拒绝已存在的目标库和已有管理员的源库；只执行创建
 
 重放原收支、转账、换汇和 BTC 费用命令后，要求回执、GET/列表结果与原记录一致，全部表保持不变。对已封存凭证尝试追加完整平衡行或单独费用组成部分，必须命中封存约束；探测无论成功拒绝或异常放行都回滚，不能为了验证而留下写入。旧无费用回执不能凭空新增 `fees` 字段。
 
-本地单测通过仅验证控制流程。以上换汇/手续费恢复夹具需由本增量 Linux CI 的真实 PostgreSQL 演练确认，只有实际成功才记录通过；这仍不代表附件、后续结算、异地灾备或生产服务器已完成恢复验收。
+本地单测通过仅验证控制流程。以上换汇/手续费恢复夹具已在 [CI 37128573136](https://github.com/ygandwx/Coinpup/actions/runs/37128573136) 的真实 PostgreSQL 演练通过；这仍不代表附件、后续结算、异地灾备或生产服务器已完成恢复验收。
 
 PostgreSQL 工具语义依据：[pg_dump 17](https://www.postgresql.org/docs/17/app-pgdump.html)、[pg_restore 17](https://www.postgresql.org/docs/17/app-pgrestore.html)。
