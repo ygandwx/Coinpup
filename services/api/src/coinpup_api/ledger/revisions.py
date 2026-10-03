@@ -1,13 +1,19 @@
 """Append-only corrections and terminal cancellations of existing financial operations."""
 
-import hashlib
-import json
 from uuid import uuid4
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, insert, select
 
+from coinpup_api.ledger.balances import BalanceQueries
+from coinpup_api.ledger.commands.classified import ClassifiedCommands
+from coinpup_api.ledger.commands.exchange import ExchangeCommands
+from coinpup_api.ledger.commands.fees import FeeCommands
+from coinpup_api.ledger.commands.transfer import TransferCommands
+from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
 from coinpup_api.ledger.errors import MoneyError
+from coinpup_api.ledger.idempotency import _IDEMPOTENCY_KEY, CommandIdempotency
+from coinpup_api.ledger.idempotency import revision_hash as revision_hash
 from coinpup_api.ledger.models import (
     AssetRecord,
     CommandReceipt,
@@ -16,76 +22,17 @@ from coinpup_api.ledger.models import (
     JournalLine,
 )
 from coinpup_api.ledger.money import Amount
-from coinpup_api.ledger.posting import (
-    _IDEMPOTENCY_KEY,
-    PostingService,
-    _invalid_money,
-    asset_definition,
-)
-from coinpup_api.ledger.posting_schemas import (
-    CancellationInfo,
-    HistoryEntry,
-    JournalAudit,
-    LineAudit,
-    OperationState,
-)
+from coinpup_api.ledger.posting_schemas import HistoryEntry, JournalAudit, LineAudit, OperationState
 from coinpup_api.ledger.posting_storage import (
     PostingLine,
     prepare_journal_lines,
     prepare_reversal_lines,
 )
+from coinpup_api.ledger.readers import PostingReaders
+from coinpup_api.ledger.readers import operation_state as operation_state
 from coinpup_api.ledger.service import LedgerError, _not_found, _page, _version
 
 _STATE = TypeAdapter(OperationState)
-
-
-def revision_hash(action, ledger_id, operation_id, payload):
-    value = {
-        "action": action,
-        "ledger_id": str(ledger_id),
-        "operation_id": str(operation_id),
-        "payload": payload.model_dump(mode="json"),
-    }
-    canonical = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def operation_state(session, operation):
-    cancellation = None
-    if operation.status == "cancelled":
-        reversal = session.scalar(
-            select(Journal).where(
-                Journal.operation_id == operation.id,
-                Journal.ledger_id == operation.ledger_id,
-                Journal.operation_version == operation.version,
-                Journal.journal_kind == "reversal",
-            )
-        )
-        if reversal is None:
-            raise LedgerError("ledger_integrity", 503, "The cancellation journal is missing.")
-        cancellation = CancellationInfo(
-            version=operation.version,
-            reversal_journal_id=reversal.id,
-            reason=reversal.revision_reason,
-            recorded_at=reversal.created_at,
-        )
-    try:
-        return OperationState(
-            id=operation.id,
-            ledger_id=operation.ledger_id,
-            kind=operation.kind,
-            version=operation.version,
-            status=operation.status,
-            latest_posting=PostingService._read_operation(session, operation),
-            updated_at=operation.updated_at,
-            cancellation=cancellation,
-        )
-    except ValidationError:
-        raise LedgerError(
-            "ledger_integrity", 503, "The operation revision state is inconsistent."
-        ) from None
 
 
 def prepare_replacement(service, session, ledger_id, journal_id, payload, catalog):
@@ -197,7 +144,16 @@ def prepare_replacement(service, session, ledger_id, journal_id, payload, catalo
     return lines, prepare_journal_lines(lines, catalog), recognition_date
 
 
-class RevisionService(PostingService):
+class RevisionService(
+    ClassifiedCommands,
+    TransferCommands,
+    ExchangeCommands,
+    FeeCommands,
+    CommandIdempotency,
+    PostingReaders,
+    BalanceQueries,
+    PostingCore,
+):
     def correct(self, owner_id, ledger_id, operation_id, payload, key):
         return self._revise(owner_id, ledger_id, operation_id, "correct", payload, key)
 
@@ -456,3 +412,18 @@ class RevisionService(PostingService):
                     )
                 )
             return result
+
+    def correct_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+        return RevisionService(self.engine).correct(
+            owner_id, ledger_id, operation_id, payload, idempotency_key
+        )
+
+    def cancel_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+        return RevisionService(self.engine).cancel(
+            owner_id, ledger_id, operation_id, payload, idempotency_key
+        )
+
+    def history(self, owner_id, ledger_id, operation_id, limit=100, offset=0):
+        return RevisionService(self.engine).read_history(
+            owner_id, ledger_id, operation_id, limit, offset
+        )

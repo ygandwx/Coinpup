@@ -120,7 +120,7 @@ Coinpup/
 │       │   ├── service.py  router.py  schemas.py             # 结构管理（不变）
 │       │   ├── posting.py                                   # 只保留 PostingService 门面
 │       │   ├── commands/  classified.py  transfer.py  exchange.py  fees.py
-│       │   ├── idempotency.py  readers.py  balances.py  revisions.py
+│       │   ├── idempotency.py  readers.py  balances.py  revisions.py  common.py
 │       │   └── posting_router.py  posting_schemas.py  posting_storage.py  persistence.py
 │       └── files/                    # 原 documents/（私有文件），表名与 URL 不变
 ├── contracts/openapi.json
@@ -367,6 +367,7 @@ Coinpup/
   - `ledger/readers.py`：`_read_operation`、`_read_transfer`、`_read_exchange`、`_read_fees`、`operation_state`。
   - `ledger/commands/`：`classified.py`（期初、收入、支出）、`transfer.py`、`exchange.py`、`fees.py`。
   - `ledger/balances.py`：余额查询。
+  - `ledger/common.py`：共享的归属校验、锁与持久化辅助代码；供门面和修订服务共同组合，避免循环导入。
   - `PostingService` 保留为门面，公共方法签名不变，路由和大部分测试都不需要改。
   - 顺带消除 `posting.py` 方法内部 `from coinpup_api.ledger.revisions import ...` 造成的循环导入。
 - **8d 测试目录按源码模块分组**：例如 `tests/unit/{app,auth,ledger,files,ops}/`、`tests/integration/{auth,ledger,files}/`。为避免同名测试文件冲突，二选一：在 `pyproject.toml` 的 pytest 配置中加入 `--import-mode=importlib`，或者给每个测试子目录加 `__init__.py`。确保 `tests/integration/conftest.py` 仍然生效。
