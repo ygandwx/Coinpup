@@ -11,8 +11,8 @@
 
 ## 正在进行
 
-- 任务：OPT-07 生成前端 API 类型，等待 CI/合入。分支：`chore/opt-07-generated-api-types`。[PR #32](https://github.com/ygandwx/Coinpup/pull/32)。
-- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-06 已合入；验证证据见状态表对应 PR。
+- 任务：OPT-08 第一部分 8a/8b/8d（私有文件改名与测试分组），等待 CI/合入；8c 尚未开始。分支：`refactor/opt-08-files-and-tests`。[PR #33](https://github.com/ygandwx/Coinpup/pull/33)。
+- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-07 已合入；验证证据见状态表对应 PR。
 - 仓库保持私有，未选定开源许可证。
 
 ## 任务状态
@@ -44,6 +44,6 @@
 
 ## 下一步
 
-1. OPT-07 验收、CI 和合入后，从最新 main 开始 OPT-08 模块改名与机械拆分。
-2. OPT-08 按计划可拆分为 2–3 个 PR，逐 PR 验收合入，不启动业务新功能。
+1. OPT-08 第一部分验收、CI 和合入后，从最新 main 开始 8c PostingService 机械拆分。
+2. 第二个 PR 验证零行为变化并合入，完成整包 OPT-08；不启动业务新功能。
 3. 完成 OPT-08 后汇报并停止；后续 OPT-10 起的包和 T05-3 等待新授权。
