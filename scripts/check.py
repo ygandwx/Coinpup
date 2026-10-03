@@ -89,6 +89,19 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
             )
         if fix:
             fix_steps.append(Step("Format Web", [npm, "--prefix", "apps/web", "run", "format"]))
+        if mode == "web":
+            git = shutil.which("git")
+            if git is None:
+                raise ValueError("git was not found on PATH; install Git before running web checks")
+            steps.extend(
+                [
+                    Step("Generate API types", [npm, "--prefix", "apps/web", "run", "gen:api"]),
+                    Step(
+                        "Generated API consistency",
+                        [git, "diff", "--exit-code", "apps/web/src/generated"],
+                    ),
+                ]
+            )
         steps.extend(web_steps(npm, build=mode == "web"))
     else:
         skipped.append("Web checks: apps/web/node_modules is absent; run npm --prefix apps/web ci")

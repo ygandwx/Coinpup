@@ -253,7 +253,7 @@ export class PendingUploadController {
                 ownerId: String(session.user.id),
                 ledgerId,
                 uploadId,
-                operationId: manifest.operation_id,
+                operationId: manifest.operation_id as string | null,
                 filename: manifest.original_filename,
                 byteSize: manifest.declared_size,
                 manifestJson: JSON.stringify(manifest),

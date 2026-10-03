@@ -1,67 +1,16 @@
 import { ApiError, readBlob, readJson, writeBytes, writeJson } from "./api";
+import type { components } from "./generated/openapi";
 import type { ArchivedPageOptions, UUID } from "./ledger-api";
 
-export type DocumentMediaType = "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
-export type FileConfiguration = {
-    max_upload_bytes: number;
-    upload_timeout_seconds: number;
-    supported_media_types: DocumentMediaType[];
-};
-export type UploadCreate = {
-    id: UUID;
-    original_filename: string;
-    declared_size: number;
-    operation_id: UUID | null;
-};
-export type UploadCompletion = {
-    upload_id: UUID;
-    file_id: UUID;
-    link_id: UUID | null;
-    duplicate: boolean;
-    sha256: string;
-    byte_size: number;
-    media_type: DocumentMediaType;
-};
-type UploadMetadata = {
-    id: UUID;
-    ledger_id: UUID;
-    original_filename: string;
-    declared_size: number;
-    operation_id: UUID | null;
-    created_at: string;
-};
-export type UploadReservation = UploadMetadata &
-    (
-        | { state: "pending"; completed_at: null; response: null }
-        | { state: "ready"; completed_at: string; response: UploadCompletion }
-    );
-export type DocumentFile = {
-    id: UUID;
-    ledger_id: UUID;
-    created_by: UUID;
-    sha256: string;
-    byte_size: number;
-    detected_media_type: DocumentMediaType;
-    original_filename: string;
-    title: string;
-    archived: boolean;
-    version: number;
-    created_at: string;
-    updated_at: string;
-};
-export type OperationFileLink = {
-    id: UUID;
-    ledger_id: UUID;
-    file_id: UUID;
-    operation_id: UUID;
-    created_by: UUID;
-    archived: boolean;
-    version: number;
-    created_at: string;
-    updated_at: string;
-};
-export type FileUpdate = { expected_version: number; title?: string; archived?: boolean };
-export type LinkUpdate = { expected_version: number; archived: boolean };
+export type DocumentMediaType = components["schemas"]["FileResponse"]["detected_media_type"];
+export type FileConfiguration = components["schemas"]["FileConfiguration"];
+export type UploadCreate = components["schemas"]["UploadCreate"];
+export type UploadCompletion = components["schemas"]["UploadCompletion"];
+export type UploadReservation = components["schemas"]["UploadResponse"];
+export type DocumentFile = components["schemas"]["FileResponse"];
+export type OperationFileLink = components["schemas"]["LinkResponse"];
+export type FileUpdate = components["schemas"]["FileUpdate"];
+export type LinkUpdate = components["schemas"]["LinkUpdate"];
 
 const ledger = (id: UUID) => `/api/v1/ledgers/${encodeURIComponent(id)}`;
 async function list<T>(

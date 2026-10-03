@@ -1,7 +1,7 @@
-export type Session = {
-    user: { id: string | number; username: string };
-    csrf_token: string;
-};
+import type { components } from "./generated/openapi";
+
+export type Session = components["schemas"]["SessionResponse"];
+export type LoginRequest = components["schemas"]["LoginRequest"];
 
 export type ApiErrorKind = "unauthorized" | "forbidden" | "rate-limited" | "network" | "server";
 export type FieldError = { path: (string | number)[]; message: string; type: string };
@@ -213,7 +213,7 @@ export async function signIn(username: string, password: string): Promise<Sessio
         await requestJSON<unknown>("/api/v1/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ username, password } satisfies LoginRequest),
         }),
     );
 }

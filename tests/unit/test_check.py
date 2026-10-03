@@ -52,18 +52,24 @@ def test_fast_runs_web_checks_when_dependencies_exist(monkeypatch, tmp_path):
 
 def test_web_includes_build_and_uses_npm_discovery(monkeypatch, tmp_path):
     monkeypatch.setattr(
-        checks.shutil, "which", lambda name: "fictional-npm.cmd" if name == "npm" else None
+        checks.shutil,
+        "which",
+        lambda name: {"npm": "fictional-npm.cmd", "git": "fictional-git.exe"}.get(name),
     )
     steps, skipped = checks.build_steps("web", False, tmp_path)
     assert skipped == []
-    assert [step.command[-1] for step in steps] == [
+    assert [step.command for step in steps[:2]] == [
+        ["fictional-npm.cmd", "--prefix", "apps/web", "run", "gen:api"],
+        ["fictional-git.exe", "diff", "--exit-code", "apps/web/src/generated"],
+    ]
+    assert [step.command[-1] for step in steps[2:]] == [
         "format:check",
         "lint",
         "typecheck",
         "test:unit",
         "build",
     ]
-    assert all(step.command[0] == "fictional-npm.cmd" for step in steps)
+    assert all(step.command[0] == "fictional-npm.cmd" for step in steps[2:])
 
 
 @pytest.mark.parametrize("mode", ["fast", "web"])
@@ -158,7 +164,11 @@ def test_fix_runs_before_checks_without_removing_checks(monkeypatch, tmp_path):
 @pytest.mark.parametrize("mode", ["fast", "web"])
 def test_fix_formats_web_before_checks_when_web_checks_run(monkeypatch, tmp_path, mode):
     (tmp_path / "apps/web/node_modules").mkdir(parents=True)
-    monkeypatch.setattr(checks.shutil, "which", lambda name: "fictional-npm.cmd")
+    monkeypatch.setattr(
+        checks.shutil,
+        "which",
+        lambda name: {"npm": "fictional-npm.cmd", "git": "fictional-git.exe"}.get(name),
+    )
     steps, skipped = checks.build_steps(mode, True, tmp_path)
     assert skipped == []
     assert [step.command for step in steps[:3]] == [
@@ -170,7 +180,11 @@ def test_fix_formats_web_before_checks_when_web_checks_run(monkeypatch, tmp_path
         assert steps[3].command == [sys.executable, "-m", "ruff", "check", "."]
         assert [step.command[-1] for step in steps[-2:]] == ["typecheck", "test:unit"]
     else:
-        assert [step.command[-1] for step in steps[3:]] == [
+        assert [step.command for step in steps[3:5]] == [
+            ["fictional-npm.cmd", "--prefix", "apps/web", "run", "gen:api"],
+            ["fictional-git.exe", "diff", "--exit-code", "apps/web/src/generated"],
+        ]
+        assert [step.command[-1] for step in steps[5:]] == [
             "format:check",
             "lint",
             "typecheck",
@@ -193,4 +207,37 @@ def test_database_fix_preserves_database_checks_without_discovering_npm(monkeypa
         ["-m", "alembic", "upgrade", "head"],
         ["-m", "alembic", "check"],
         ["-m", "pytest", "tests/integration", "-m", "integration"],
+    ]
+
+
+def test_missing_git_blocks_web_checks_before_any_execution(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(checks, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        checks.shutil, "which", lambda name: "fictional-npm.cmd" if name == "npm" else None
+    )
+    monkeypatch.setattr(
+        checks.subprocess, "run", lambda *args, **kwargs: pytest.fail("must not run")
+    )
+    assert checks.main(["web", "--fix"]) != 0
+    assert "git was not found on PATH" in capsys.readouterr().err
+
+
+def test_changed_generated_types_fail_before_lint_or_build(monkeypatch, tmp_path):
+    monkeypatch.setattr(checks, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        checks.shutil,
+        "which",
+        lambda name: {"npm": "fictional-npm.cmd", "git": "fictional-git.exe"}.get(name),
+    )
+    commands = []
+
+    def run(command, **options):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, int(command[0] == "fictional-git.exe"))
+
+    monkeypatch.setattr(checks.subprocess, "run", run)
+    assert checks.main(["web"]) == 1
+    assert commands == [
+        ["fictional-npm.cmd", "--prefix", "apps/web", "run", "gen:api"],
+        ["fictional-git.exe", "diff", "--exit-code", "apps/web/src/generated"],
     ]
