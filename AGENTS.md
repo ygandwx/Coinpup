@@ -32,3 +32,5 @@
 - 变更范围或验收条件时同步更新路线图和需求；重要架构取舍在 `docs/architecture/decisions/` 新增 ADR，写明原因、备选方案和影响。
 - 新增或改变接口、迁移、配置和启动方式时同步更新文档与示例配置。
 - 结束前检查差异，确保交接内容能让另一位开发者仅凭仓库接续工作。具体流程见 `CONTRIBUTING.md` 和 `docs/engineering/handoff.md`。
+
+进行中的优化计划：docs/engineering/optimization-plan.md（执行规则见其第 0 节）
