@@ -76,11 +76,11 @@ function AmountField({ id, label, value, onChange, asset, locale, disabled, sign
 }
 
 export type PostingFormProps = {
-  locale: Locale; accounts: Account[]; assets: Asset[]; categories: Category[]; initialKind?: Kind; busy: boolean; error?: string | null;
+  locale: Locale; accounts: Account[]; assets: Asset[]; categories: Category[]; initialKind?: Kind; busy: boolean; submitting?: boolean; error?: string | null;
   onSubmit: (input: PostingInput) => void; onCancel: () => void;
 };
 
-export function PostingForm({ locale, accounts, assets, categories, initialKind = "expense", busy, error, onSubmit, onCancel }: PostingFormProps) {
+export function PostingForm({ locale, accounts, assets, categories, initialKind = "expense", busy, submitting = busy, error, onSubmit, onCancel }: PostingFormProps) {
   const t = copy[locale];
   const prefix = useId();
   const enabledAssets = assets.filter((asset) => asset.enabled);
@@ -178,7 +178,7 @@ export function PostingForm({ locale, accounts, assets, categories, initialKind 
     } catch (problem) { setIssue(problem as Issue); }
   }
 
-  return <form className="posting-form" onSubmit={submit} aria-label={t.title} aria-busy={busy}>
+  return <form className="posting-form" onSubmit={submit} aria-label={t.title} aria-busy={submitting}>
     <SelectField id={`${prefix}-kind`} label={t.kind} value={kind} options={(Object.keys(t.kinds) as Kind[]).map((value) => ({ value, label: t.kinds[value] }))} onChange={(value) => { setKind(value as Kind); clearIssue(); }} choose={t.choose} disabled={busy} />
     {!activeAccounts.length && <p className="inline-error" role="status">{t.noAccounts}</p>}
     {(kind === "opening" || twoAccounts) && <p className="help-text posting-intro">{kind === "opening" ? t.openingHelp : kind === "transfer" ? t.transferHelp : t.exchangeHelp}</p>}
@@ -212,6 +212,6 @@ export function PostingForm({ locale, accounts, assets, categories, initialKind 
     </section>}
     <div className="field"><label htmlFor={`${prefix}-description`}>{t.description}</label><textarea id={`${prefix}-description`} maxLength={2000} value={description} disabled={busy} onChange={(event) => setDescription(event.target.value)} /></div>
     {(issue || error) && <p className="inline-error" role="alert">{issue ? <>{t.errors[issue.code]}{issue.asset && ` ${issue.asset} · ${t.precisionHelp}: ${issue.scale}`}</> : error}</p>}
-    <div className="form-actions"><button type="button" className="secondary-button" disabled={busy} onClick={onCancel}>{t.cancel}</button><button type="submit" className="primary-button" disabled={busy || !activeAccounts.length}>{busy ? t.saving : t.save}</button></div>
+    <div className="form-actions"><button type="button" className="secondary-button" disabled={busy} onClick={onCancel}>{t.cancel}</button><button type="submit" className="primary-button" disabled={busy || !activeAccounts.length}>{submitting ? t.saving : t.save}</button></div>
   </form>;
 }
