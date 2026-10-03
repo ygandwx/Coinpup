@@ -11,8 +11,8 @@
 
 ## 正在进行
 
-- 任务：OPT-08 第一部分 8a/8b/8d（私有文件改名与测试分组），等待 CI/合入；8c 尚未开始。分支：`refactor/opt-08-files-and-tests`。[PR #33](https://github.com/ygandwx/Coinpup/pull/33)。
-- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-07 已合入；验证证据见状态表对应 PR。
+- 本轮交付：OPT-01 至 OPT-08；OPT-08 的文件改名和测试分组见 [PR #33](https://github.com/ygandwx/Coinpup/pull/33)，最后的账务服务机械拆分见 [PR #34](https://github.com/ygandwx/Coinpup/pull/34)。全部检查及 CI 通过、合入 main 后，本轮结束并停止等待新指示。
+- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；验证证据见状态表对应 PR。没有启动 OPT-09 及之后的工作包或 T05-3。
 - 仓库保持私有，未选定开源许可证。
 
 ## 任务状态
@@ -44,6 +44,8 @@
 
 ## 下一步
 
-1. OPT-08 第一部分验收、CI 和合入后，从最新 main 开始 8c PostingService 机械拆分。
-2. 第二个 PR 验证零行为变化并合入，完成整包 OPT-08；不启动业务新功能。
-3. 完成 OPT-08 后汇报并停止；后续 OPT-10 起的包和 T05-3 等待新授权。
+1. 本轮全部合入后向用户汇报并停止，等待新的授权；不自行开始后续工作包。
+2. 获得授权后，建议依次执行 OPT-10（读余额锁）、OPT-11（索引）、OPT-12（流水查询）；OPT-09 为可选，不自动启动。
+3. T05-3 的结构前提是 OPT-01 至 OPT-08 完成及后端模块约定已保存；恢复 OCR 仍需用户明确授权，先确定识别方案和虚构样本验收。
+4. T05-4 前完成 OPT-20；新业务和同步按计划补齐 OPT-21/22，涉及产品选择的包先提交待确认 ADR。
+5. 用户在 GitHub 完成 PR #30 列出的分支保护与合并设置；部署前按 OPT-30 先确认访问和登录方案。
