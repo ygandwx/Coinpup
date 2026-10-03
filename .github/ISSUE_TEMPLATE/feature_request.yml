@@ -1,0 +1,53 @@
+name: 功能与开发任务
+description: 提出功能或拆分开发任务，明确范围、依赖和验收条件。
+title: "[Task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先阅读 docs/engineering/roadmap.md 与 status.md，避免重复创建已完成或正在实施的任务。
+        只提供业务描述和虚构示例，不上传真实财务资料。
+  - type: input
+    id: task
+    attributes:
+      label: 路线图任务
+      description: 关联 T01–T12，或说明属于新增范围。
+      placeholder: T05 的票据确认页面
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题与使用场景
+      description: 谁在什么情况下需要完成什么操作？
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 实现范围
+      description: 明确本次交付；涉及已有需求变化时说明差异。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收条件
+      description: 写出可以实际验证的行为及必要的异常场景。
+      placeholder: |
+        - [ ] ……
+        - [ ] ……
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依赖与影响
+      description: 关联任务／PR，以及需要协调的接口、迁移或配置；无则写“无”。
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 设计参考或备选方案
+      description: 可链接相关需求、架构文档或 ADR。

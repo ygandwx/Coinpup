@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: services/api/src
+  PYTHONUTF8: "1"
+
+jobs:
+  quality:
+    name: Lint, unit tests and documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.lock
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-dev.lock
+      - name: Check lint
+        run: python -m ruff check .
+      - name: Check formatting
+        run: python -m ruff format --check .
+      - name: Run tests without external database
+        run: python -m pytest
+      - name: Check documentation
+        run: python scripts/check_docs.py
+      - name: Check OpenAPI snapshot
+        run: python scripts/export_openapi.py --check
+
+  database:
+    name: PostgreSQL migrations and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: coinpup
+          POSTGRES_USER: coinpup
+          # Fictional credentials for this disposable CI database only.
+          POSTGRES_PASSWORD: test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coinpup -d coinpup"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
+      COINPUP_RUN_DB_TESTS: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.lock
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-dev.lock
+      - name: Apply migrations
+        run: python -m alembic upgrade head
+      - name: Check baseline migration round trip on disposable database
+        run: |
+          python -m alembic downgrade base
+          python -m alembic upgrade head
+      - name: Check migration consistency
+        run: python -m alembic check
+      - name: Run PostgreSQL integration tests
+        run: python -m pytest tests/integration -m integration
+
+  container:
+    name: Build and verify development container
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create disposable development configuration
+        run: python3 scripts/init_env.py
+      - name: Start services
+        run: docker compose up -d --build --wait
+      - name: Apply migrations
+        run: docker compose exec -T api python -m alembic upgrade head
+      - name: Verify API connection
+        run: curl --fail http://127.0.0.1:8000/api/v1/health/ready
+      - name: Remove disposable services and database
+        if: always()
+        run: docker compose down --volumes

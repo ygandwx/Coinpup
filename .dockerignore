@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+.venv
+venv
+__pycache__
+.pytest_cache
+.ruff_cache
+data
+backups
+*.pem
+*.key
+*.p12
+*.pfx
