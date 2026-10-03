@@ -2,9 +2,9 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01、T02、T04 和 T05 私有文件后端已合入，当前增量接入票据网页。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。票据目录支持原件上传下载、证据关联与安全重试；本地 OCR 和 App 尚未实现。实际验收、保存与暂停状态见[当前项目状态](docs/engineering/status.md)。
+**T01、T02、T04、T05-1 私有文件和 T05-2 票据网页均已完成验收；本轮保存后按用户要求暂停。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。票据目录支持原件上传下载、证据关联与安全重试；本地 OCR 和 App 尚未实现。实际验收、保存与暂停状态见[当前项目状态](docs/engineering/status.md)。
 
-Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries, corrections, cancellation and version history. Private attachments and consistent file restoration are the current increment. No open-source license has been selected for this private repository.
+Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries, corrections, cancellation and version history. Private uploads, document management and consistent database/file restoration have passed validation. Development pauses at this saved checkpoint pending the user's next instruction; OCR and mobile apps remain unimplemented. No open-source license has been selected for this private repository.
 
 ## 从这里开始
 
