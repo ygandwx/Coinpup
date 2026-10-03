@@ -105,6 +105,6 @@ checker 拒绝已存在的目标库和已有管理员的源库；只执行创建
 
 审计校验要求版本连续，冲销与被冲销凭证的日期、描述和全部本金/费用行精确反向对应。对已封存的正常及反向凭证尝试追加完整平衡行或单独费用组成部分，必须命中封存约束；探测无论成功拒绝或异常放行都回滚，不能为了验证而留下写入。所有重放和拒绝探测后再次比较全部表，要求源库和恢复库均未改变。旧无费用回执不能凭空新增 `fees` 字段。
 
-本地单测通过仅验证控制流程。换汇/手续费夹具已在 T02-5 的 [CI 37128573136](https://github.com/ygandwx/Coinpup/actions/runs/37128573136) 真实 PostgreSQL 演练通过；本次新增更正/取消恢复仍等待 CI。这些检查不代表附件、后续结算、异地灾备或生产服务器已完成恢复验收。
+本地单测通过仅验证控制流程。换汇/手续费夹具已在 T02-5 的 [CI 37128573136](https://github.com/ygandwx/Coinpup/actions/runs/37128573136) 真实 PostgreSQL 演练通过；更正/取消及全部版本历史恢复在 [CI 37129766608](https://github.com/ygandwx/Coinpup/actions/runs/37129766608) 通过。这些检查不代表附件、后续结算、异地灾备或生产服务器已完成恢复验收。
 
 PostgreSQL 工具语义依据：[pg_dump 17](https://www.postgresql.org/docs/17/app-pgdump.html)、[pg_restore 17](https://www.postgresql.org/docs/17/app-pgrestore.html)。

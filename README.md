@@ -2,7 +2,7 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01 工程基础已合入，T02/T03 正在推进，尚未完成可用网页闭环。** 已有管理员会话、双语登录入口、独立账本结构、精确期初/收支/拆分/余额、同资产转账与信用卡还款、实际换汇与独立手续费 API；当前 T02-6 增量实现更正、取消和版本历史，等待 CI。业务网页、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01 工程基础已合入，T02/T03 正在推进，尚未完成可用网页闭环。** 已有管理员会话、双语登录入口、独立账本结构、精确期初/收支/拆分/余额、同资产转账与信用卡还款、实际换汇与独立手续费、更正、取消和版本历史 API。业务网页、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
 Coinpup is a self-hosted personal and multi-company bookkeeping project. The current foundation includes administrator sessions and a bilingual web entry, but is not yet a usable finance application. No open-source license has been selected for this private repository.
 
