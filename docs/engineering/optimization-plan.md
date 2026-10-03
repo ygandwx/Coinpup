@@ -69,7 +69,7 @@
 | --- | --- | --- | --- | --- | --- |
 | OPT-01 | CI 触发去重 | A 流程与结构 | 无 | 已完成 | #26 |
 | OPT-02 | 统一检查入口 `scripts/check.py` | A | 无 | 已完成 | #27 |
-| OPT-03 | 文档单一事实来源与瘦身 | A | OPT-02 | 待开始 | |
+| OPT-03 | 文档单一事实来源与瘦身 | A | OPT-02 | 已完成 | #28 |
 | OPT-04 | AGENTS.md 分层与开发循环 | A | OPT-03 | 待开始 | |
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 待开始 | |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 待开始 | |
@@ -232,7 +232,7 @@ Coinpup/
    - (a) Markdown 中不得出现 `/actions/runs/` 链接；
    - (b) 篇幅预算：`README.md` ≤ 8 KB，`docs/engineering/status.md` ≤ 6 KB。
 - **不要做**：不改 requirements.md、acceptance.md 的业务内容；不改已合并 ADR 的正文，只在索引中标注状态。
-- **验收**：check_docs 通过；仓库 Markdown 中搜不到 `actions/runs`；对照表完整。
+- **验收**：check_docs 通过；仓库 Markdown 中不存在实际 Actions 运行链接（规则示例的 `actions/runs` 字面文本保留）；对照表完整。
 
 ### OPT-04 AGENTS.md 分层与开发循环
 

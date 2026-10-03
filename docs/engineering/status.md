@@ -11,7 +11,7 @@
 
 ## 正在进行
 
-- 任务：OPT-03 文档单一事实来源与瘦身。分支：`chore/opt-03-docs-source`。PR：待创建。
+- 任务：OPT-03 文档单一事实来源与瘦身，等待 CI/合入。分支：`chore/opt-03-docs-source`。[PR #28](https://github.com/ygandwx/Coinpup/pull/28)。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备、OPT-01 和 OPT-02 已合入；验证证据分别见 [PR #25](https://github.com/ygandwx/Coinpup/pull/25)、[PR #26](https://github.com/ygandwx/Coinpup/pull/26)、[PR #27](https://github.com/ygandwx/Coinpup/pull/27)。
 - 仓库保持私有，未选定开源许可证。
 
