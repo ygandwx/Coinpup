@@ -24,7 +24,8 @@ def python_step(name: str, *arguments: str, discard_stdout: bool = False) -> Ste
 
 
 def web_steps(npm: str, *, build: bool) -> list[Step]:
-    scripts = ["typecheck", "test:unit"]
+    scripts = ["format:check", "lint"] if build else []
+    scripts.extend(["typecheck", "test:unit"])
     if build:
         scripts.append("build")
     return [
@@ -34,9 +35,10 @@ def web_steps(npm: str, *, build: bool) -> list[Step]:
 
 def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]]:
     steps = []
+    fix_steps = []
     skipped = []
     if fix:
-        steps.extend(
+        fix_steps.extend(
             [
                 python_step("Fix Python lint", "-m", "ruff", "check", "--fix", "."),
                 python_step("Format Python", "-m", "ruff", "format", "."),
@@ -59,7 +61,7 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
                 ),
             ]
         )
-        return steps, skipped
+        return fix_steps + steps, skipped
     if mode == "fast":
         steps.extend(
             [
@@ -85,10 +87,12 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
             raise ValueError(
                 "npm was not found on PATH; install Node.js/npm before running web checks"
             )
+        if fix:
+            fix_steps.append(Step("Format Web", [npm, "--prefix", "apps/web", "run", "format"]))
         steps.extend(web_steps(npm, build=mode == "web"))
     else:
         skipped.append("Web checks: apps/web/node_modules is absent; run npm --prefix apps/web ci")
-    return steps, skipped
+    return fix_steps + steps, skipped
 
 
 def run_steps(steps: list[Step], root: Path, skipped: list[str]) -> int:
@@ -137,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", nargs="?", choices=("fast", "web", "db"), default="fast")
     parser.add_argument(
-        "--fix", action="store_true", help="Run Python lint fixes and formatting first"
+        "--fix", action="store_true", help="Run lint fixes and Python/Web formatting first"
     )
     arguments = parser.parse_args(argv)
     if arguments.mode == "db":

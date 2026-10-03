@@ -47,8 +47,8 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 
 ```sh
 python scripts/check.py          # 默认 fast：Python、文档、接口、离线迁移 SQL
-python scripts/check.py web      # 前端类型、单元和生产构建
-python scripts/check.py --fix    # 先自动修复 Python lint/格式，再运行默认检查
+python scripts/check.py web      # 前端格式、lint、类型、单元和生产构建
+python scripts/check.py --fix    # 先修复 Python lint/格式及已安装依赖的网页格式
 ```
 
 `fast` 不运行数据库集成测试；安装网页依赖后也运行类型和单元检查。每一步显示名称、耗时和结果，失败返回非零。
