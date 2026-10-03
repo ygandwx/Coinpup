@@ -23,6 +23,12 @@ def structure_database():
 
     def cleanup():
         with database.engine.begin() as connection:
+            # Only this explicitly opted-in disposable fixture may truncate immutable journals.
+            # RESTRICT rejects unexpected dependants; production utilities never do this.
+            connection.exec_driver_sql(
+                "TRUNCATE TABLE command_receipts, opening_positions, journal_lines, journals, "
+                "financial_operations RESTRICT"
+            )
             connection.execute(delete(AccountAsset))
             connection.execute(delete(Account))
             # Delete leaves first; the immutable-parent rule makes every valid graph acyclic.

@@ -165,8 +165,8 @@ def test_all_registered_unsafe_structure_routes_are_covered(client):
     unsafe = {
         (method.upper(), path)
         for path, methods in documented.items()
-        if not path.startswith("/api/v1/auth")
-        for method in methods
+        for method, specification in methods.items()
+        if "ledger structure" in specification.get("tags", [])
         if method in {"post", "patch", "put", "delete"}
     }
     assert unsafe == {

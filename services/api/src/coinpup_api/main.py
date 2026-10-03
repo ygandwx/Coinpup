@@ -1,4 +1,4 @@
-"""Authenticated application with independent ledger structure."""
+"""Authenticated application with independent ledgers and atomic financial posting."""
 
 import logging
 from contextlib import asynccontextmanager
@@ -16,6 +16,7 @@ from coinpup_api import __version__
 from coinpup_api.auth import create_auth_router
 from coinpup_api.config import Settings
 from coinpup_api.database import Database, DatabaseProbe
+from coinpup_api.ledger.posting_router import create_posting_router
 from coinpup_api.ledger.router import create_ledger_router
 
 logger = logging.getLogger("coinpup")
@@ -47,7 +48,7 @@ def create_app(
     app = FastAPI(
         title="Coinpup API",
         version=__version__,
-        description="Coinpup session, health and independent ledger structure API.",
+        description="Coinpup session, ledger structure and exact financial operations API.",
         lifespan=lifespan,
         docs_url=None if production else "/docs",
         redoc_url=None,
@@ -87,6 +88,7 @@ def create_app(
 
     app.include_router(create_auth_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_ledger_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
 
     @app.get("/api/v1/health/live", response_model=Health, tags=["health"])
     def liveness() -> Health:
