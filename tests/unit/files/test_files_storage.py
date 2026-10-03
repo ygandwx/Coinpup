@@ -6,7 +6,7 @@ from pathlib import Path
 
 import anyio
 import pytest
-from coinpup_api.documents.storage import FileStore, FileStoreError, StagedFile
+from coinpup_api.files.storage import FileStore, FileStoreError, StagedFile
 
 PDF = b"%PDF-1.7\n% Fictional upload fixture, not an OCR parsing fixture\n%%EOF\n"
 PNG = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"\x00" * 17 + b"\x00\x00\x00\x00IEND\xaeB`\x82"

@@ -22,7 +22,7 @@ where = ["services/api/src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["services/api/src"]
-addopts = "-ra"
+addopts = "-ra --import-mode=importlib"
 markers = ["integration: requires an explicitly configured disposable PostgreSQL database"]
 
 [tool.ruff]

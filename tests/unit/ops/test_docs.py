@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts/check_docs.py"
+SCRIPT = Path(__file__).resolve().parents[3] / "scripts/check_docs.py"
 SPEC = importlib.util.spec_from_file_location("coinpup_check_docs", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 docs = importlib.util.module_from_spec(SPEC)

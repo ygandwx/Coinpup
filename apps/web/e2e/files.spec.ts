@@ -1,10 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type {
-    DocumentFile as FileRecord,
+    StoredFile as FileRecord,
     OperationFileLink as FileLink,
     UploadCompletion as Completion,
     UploadReservation as UploadState,
-} from "../src/document-api";
+} from "../src/files-api";
 import type {
     Account,
     Balance,
@@ -92,7 +92,7 @@ async function fixture(page: Page, expense = false): Promise<Fixture> {
     return { entity, base, operation };
 }
 
-async function showDocuments(page: Page, data: Fixture): Promise<void> {
+async function showFiles(page: Page, data: Fixture): Promise<void> {
     await page.goto("/");
     await expect(page.getByTestId("current-username")).toHaveText(username);
     await selectLedger(page, data.entity.name);
@@ -186,6 +186,36 @@ async function sameOwnerLogin(page: Page): Promise<void> {
     await expect(page.getByTestId("current-username")).toHaveText(username);
 }
 
+test("private file navigation keeps existing external view links", async ({ page }) => {
+    await login(page);
+    const data = await fixture(page, true);
+    const operationId = data.operation!.id;
+    await page.goto(`/?view=documents&entity=${data.entity.id}&operation=${operationId}`);
+    await expect(
+        page.getByRole("heading", { name: "Files for this entry", exact: true }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(
+        (url) =>
+            url.searchParams.get("view") === "documents" &&
+            url.searchParams.get("entity") === data.entity.id &&
+            url.searchParams.get("operation") === operationId,
+    );
+
+    await page.getByRole("button", { name: "Documents", exact: true }).click();
+    await expect(page.getByLabel("File to upload", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(
+        (url) => url.searchParams.get("view") === "documents" && !url.searchParams.has("operation"),
+    );
+
+    await page.goto(`/?view=files&entity=${data.entity.id}`);
+    await expect(page.getByRole("button", { name: "Overview", exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+    );
+    await expect(page).toHaveURL((url) => url.searchParams.get("view") === "overview");
+    await expect(page.getByLabel("File to upload", { exact: true })).toHaveCount(0);
+});
+
 test("real PDF and PNG downloads retain bytes and duplicate detection stays inside each ledger", async ({
     page,
     browser,
@@ -194,7 +224,7 @@ test("real PDF and PNG downloads retain bytes and duplicate detection stays insi
     await login(page);
     const first = await fixture(page);
     const other = await fixture(page);
-    await showDocuments(page, first);
+    await showFiles(page, first);
     const pdfName = "Fictional receipt 票据.pdf";
     const pdf = await upload(page, first, PDF, pdfName);
     const png = await upload(page, first, PNG, "Fictional photograph.png");
@@ -285,11 +315,11 @@ test("file title conflicts retain drafts and evidence links survive cancellation
     const data = await fixture(page, true);
     const operation = data.operation!;
     const operationPath = `${data.base}/operations/${operation.id}`;
-    await showDocuments(page, data);
+    await showFiles(page, data);
     const receipt = await upload(page, data, PDF, "Fictional linked receipt.pdf");
     const filePath = `${data.base}/files/${receipt.file_id}`;
     const second = await context.newPage();
-    await showDocuments(second, data);
+    await showFiles(second, data);
     for (const window of [page, second])
         await window
             .getByTestId(`file-${receipt.file_id}`)
@@ -458,7 +488,7 @@ test("reauthentication retains the original upload and a lost committed response
     test.setTimeout(60_000);
     await login(page);
     const data = await fixture(page, true);
-    await showDocuments(page, data);
+    await showFiles(page, data);
     const originalBalances = await balances(page, data);
     const reservePath = data.base + "/uploads";
     const manifests: unknown[] = [];
@@ -562,7 +592,7 @@ test("stopping an unconfirmed upload keeps the pending identity until the origin
     test.setTimeout(60_000);
     await login(page);
     const data = await fixture(page);
-    await showDocuments(page, data);
+    await showFiles(page, data);
     const submissions: { path: string; bytes: Buffer | null }[] = [];
     let release: (() => void) | undefined;
     await page.route(

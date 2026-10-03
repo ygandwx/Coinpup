@@ -16,7 +16,7 @@ from starlette.requests import ClientDisconnect
 
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
-from coinpup_api.documents.schemas import (
+from coinpup_api.files.schemas import (
     MEDIA_TYPES,
     FileConfiguration,
     FileResponse,
@@ -27,8 +27,8 @@ from coinpup_api.documents.schemas import (
     UploadCreate,
     UploadResponse,
 )
-from coinpup_api.documents.service import DocumentService
-from coinpup_api.documents.storage import FileStore, FileStoreError
+from coinpup_api.files.service import DocumentService
+from coinpup_api.files.storage import FileStore, FileStoreError
 from coinpup_api.ledger.service import LedgerError
 
 logger = logging.getLogger("coinpup.documents")

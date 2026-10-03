@@ -7,11 +7,11 @@ from uuid import uuid4
 
 import pytest
 from coinpup_api.config import Settings
-from coinpup_api.documents.models import FileUpload, OperationFileLink, StoredFile
-from coinpup_api.documents.router import create_document_router
-from coinpup_api.documents.schemas import FileUpdate, LinkUpdate, UploadCreate
-from coinpup_api.documents.service import DocumentService
-from coinpup_api.documents.storage import FileStore
+from coinpup_api.files.models import FileUpload, OperationFileLink, StoredFile
+from coinpup_api.files.router import create_document_router
+from coinpup_api.files.schemas import FileUpdate, LinkUpdate, UploadCreate
+from coinpup_api.files.service import DocumentService
+from coinpup_api.files.storage import FileStore
 from coinpup_api.ledger.models import FinancialOperation, Journal, JournalLine
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import CancellationCreate, OpeningCreate

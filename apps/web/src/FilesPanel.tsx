@@ -13,13 +13,13 @@ import {
     listOperationFiles,
     updateFile,
     updateLink,
-} from "./document-api";
-import type { DocumentFile, FileConfiguration, OperationFileLink } from "./document-api";
+} from "./files-api";
+import type { StoredFile, FileConfiguration, OperationFileLink } from "./files-api";
 import type { PendingUploadController } from "./pending-upload";
-import "./documents.css";
+import "./files.css";
 
-type TitleDraft = { file: DocumentFile; title: string; error: unknown };
-type LinkedFile = { link: OperationFileLink; file: DocumentFile };
+type TitleDraft = { file: StoredFile; title: string; error: unknown };
+type LinkedFile = { link: OperationFileLink; file: StoredFile };
 const PAGE_SIZE = 25;
 
 function documentError(error: unknown, locale: Locale): string {
@@ -114,7 +114,7 @@ function FileCard({
     onArchive,
     onLinkArchive,
 }: {
-    file: DocumentFile;
+    file: StoredFile;
     link?: OperationFileLink;
     locale: Locale;
     busy: boolean;
@@ -187,7 +187,7 @@ function FileCard({
     );
 }
 
-export type DocumentsPanelProps = {
+export type FilesPanelProps = {
     session: Session;
     locale: Locale;
     entity: Entity;
@@ -198,7 +198,7 @@ export type DocumentsPanelProps = {
     onClose?: () => void;
 };
 
-export function DocumentsPanel({
+export function FilesPanel({
     session,
     locale,
     entity,
@@ -207,7 +207,7 @@ export function DocumentsPanel({
     onUnauthorized,
     onEditingChange,
     onClose,
-}: DocumentsPanelProps) {
+}: FilesPanelProps) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const ledgerId = entity.ledger.id;
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
@@ -217,7 +217,7 @@ export function DocumentsPanel({
     const uploadLocked = !["idle", "rejected", "confirmed"].includes(pending.status);
     const [configuration, setConfiguration] = useState<FileConfiguration | null>(null);
     const [configurationError, setConfigurationError] = useState<unknown>(null);
-    const [files, setFiles] = useState<DocumentFile[]>([]);
+    const [files, setFiles] = useState<StoredFile[]>([]);
     const [linkedFiles, setLinkedFiles] = useState<LinkedFile[]>([]);
     const [fileOffset, setFileOffset] = useState(0);
     const [linkOffset, setLinkOffset] = useState(0);
@@ -235,7 +235,7 @@ export function DocumentsPanel({
         "uploaded" | "duplicate" | "saved" | "archived-link" | null
     >(null);
     const [savedFileId, setSavedFileId] = useState<string | null>(null);
-    const [savedFile, setSavedFile] = useState<DocumentFile | null>(null);
+    const [savedFile, setSavedFile] = useState<StoredFile | null>(null);
     const [savedFileError, setSavedFileError] = useState<unknown>(null);
     const [savedFileRefresh, setSavedFileRefresh] = useState(0);
     const input = useRef<HTMLInputElement | null>(null);
@@ -314,9 +314,9 @@ export function DocumentsPanel({
             ),
             readLinks,
         ])
-            .then(([documents, links]) => {
+            .then(([loadedFiles, links]) => {
                 if (abort.signal.aborted) return;
-                setFiles(documents);
+                setFiles(loadedFiles);
                 setLinkedFiles(links);
                 setLoading(false);
             })
@@ -418,7 +418,7 @@ export function DocumentsPanel({
             failure(problem);
         }
     }
-    async function download(file: DocumentFile) {
+    async function download(file: StoredFile) {
         if (busy) return;
         const abort = new AbortController();
         downloadAbort.current = abort;
@@ -461,7 +461,7 @@ export function DocumentsPanel({
             if (!abort.signal.aborted) setBusy(false);
         }
     }
-    async function archiveFile(file: DocumentFile) {
+    async function archiveFile(file: StoredFile) {
         if (writesDisabled) return;
         setBusy(true);
         setError(null);
@@ -516,7 +516,7 @@ export function DocumentsPanel({
             setRefresh((value) => value + 1);
         }
     }
-    function editTitle(file: DocumentFile) {
+    function editTitle(file: StoredFile) {
         if (writesDisabled) return;
         setError(null);
         setNotice(null);
@@ -571,7 +571,7 @@ export function DocumentsPanel({
     const navDisabled = loading || busy || uploadLocked || !!titleDraft || !!selectedFile;
     const pendingHere = commandHere && pending.command;
     const unconfirmed = pending.status === "unknown" || pending.status === "upload-conflict";
-    const renderCard = (file: DocumentFile, link?: OperationFileLink) => (
+    const renderCard = (file: StoredFile, link?: OperationFileLink) => (
         <FileCard
             key={link?.id ?? file.id}
             file={file}

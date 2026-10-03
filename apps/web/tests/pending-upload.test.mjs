@@ -16,7 +16,7 @@ registerHooks({
 const { ApiError } = await import("../src/api.ts");
 const { PendingUploadController } = await import("../src/pending-upload.ts");
 const { listFiles, listOperationFiles, linkFile, downloadFile } =
-    await import("../src/document-api.ts");
+    await import("../src/files-api.ts");
 const session = {
     user: { id: "11111111-1111-4111-8111-111111111111", username: "fictional-owner" },
     csrf_token: "fictional-old-csrf",

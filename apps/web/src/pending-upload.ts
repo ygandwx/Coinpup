@@ -1,12 +1,12 @@
 import { ApiError } from "./api";
 import type { Session } from "./api";
-import { getUpload, putUploadContent, reserveUpload } from "./document-api";
+import { getUpload, putUploadContent, reserveUpload } from "./files-api";
 import type {
     FileConfiguration,
     UploadCompletion,
     UploadCreate,
     UploadReservation,
-} from "./document-api";
+} from "./files-api";
 
 export type UploadInput = { file: File; operationId?: string | null };
 export type PendingUploadStatus =

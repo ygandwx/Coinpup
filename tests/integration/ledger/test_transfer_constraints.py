@@ -221,7 +221,7 @@ def test_downgrade_refuses_existing_transfer_history(transfer_structure):
         operation, journal = _header(connection, fixture)
         connection.execute(insert(JournalLine), _lines(fixture, journal))
     migration_path = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[3]
         / "services/api/migrations/versions"
         / "20261003_0005_same_asset_transfers.py"
     )

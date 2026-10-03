@@ -2,12 +2,12 @@ import { ApiError, readBlob, readJson, writeBytes, writeJson } from "./api";
 import type { components } from "./generated/openapi";
 import type { ArchivedPageOptions, UUID } from "./ledger-api";
 
-export type DocumentMediaType = components["schemas"]["FileResponse"]["detected_media_type"];
+export type FileMediaType = components["schemas"]["FileResponse"]["detected_media_type"];
 export type FileConfiguration = components["schemas"]["FileConfiguration"];
 export type UploadCreate = components["schemas"]["UploadCreate"];
 export type UploadCompletion = components["schemas"]["UploadCompletion"];
 export type UploadReservation = components["schemas"]["UploadResponse"];
-export type DocumentFile = components["schemas"]["FileResponse"];
+export type StoredFile = components["schemas"]["FileResponse"];
 export type OperationFileLink = components["schemas"]["LinkResponse"];
 export type FileUpdate = components["schemas"]["FileUpdate"];
 export type LinkUpdate = components["schemas"]["LinkUpdate"];
@@ -67,19 +67,15 @@ export const listFiles = (
     ledgerId: UUID,
     options?: ArchivedPageOptions | AbortSignal,
     signal?: AbortSignal,
-): Promise<DocumentFile[]> => list(`${ledger(ledgerId)}/files`, options, signal);
-export const getFile = (
-    ledgerId: UUID,
-    fileId: UUID,
-    signal?: AbortSignal,
-): Promise<DocumentFile> =>
+): Promise<StoredFile[]> => list(`${ledger(ledgerId)}/files`, options, signal);
+export const getFile = (ledgerId: UUID, fileId: UUID, signal?: AbortSignal): Promise<StoredFile> =>
     readJson(`${ledger(ledgerId)}/files/${encodeURIComponent(fileId)}`, signal);
 export const updateFile = (
     csrf: string,
     ledgerId: UUID,
     fileId: UUID,
     body: FileUpdate,
-): Promise<DocumentFile> =>
+): Promise<StoredFile> =>
     writeJson(`${ledger(ledgerId)}/files/${encodeURIComponent(fileId)}`, csrf, body, "PATCH");
 export const listOperationFiles = (
     ledgerId: UUID,

@@ -21,7 +21,7 @@
 3. **🛑 包是需要用户拍板的设计**。只提交 ADR 草稿：PR 设为 Draft，标题加前缀 `[需确认]`，写清可选方案、推荐方案、对验收案例的影响。然后停止，不写实现代码。用户在 PR 中确认后，再开新的 PR 实现。
 4. **不得削弱第 1.2 节的不变量**。除非包内明确要求，不改变任何 API 行为、响应 JSON 结构、数据库语义或幂等结果。
 5. **每个 PR 完成前都要运行检查**。OPT-02 完成前，用 `README.md`“检查”一节的命令；完成后，用 `python scripts/check.py`。在 PR 描述中写明实际执行的命令和结果；无法运行的检查要写明原因。环境里没有 PostgreSQL 时，数据库检查交给 CI 的 `database` job，并在 PR 中注明。
-6. **在同一个 PR 中更新本文件第 2 节的状态表**：把对应行改为“已完成”或“待确认”，并填上 PR 编号。
+6. **在同一个 PR 中更新本文件第 2 节的状态表**：把对应行改为“已完成”或“待确认”，并填上 PR 编号。用户授权拆分的包，中间 PR 列明已完成子项并保持整包“进行中”；最后一个 PR 再标记整包“已完成”。
 7. **同一时间只允许一个含数据库迁移的 PR 处于打开状态**。合并前先 rebase 到最新的 `main`，并确认 `python -m alembic heads` 只输出一个 head。
 8. **发现计划与代码不符，或某一步会破坏现有测试时，停在这一步**。在 PR 中说明情况，并提出修订后的步骤。不要为了“完成计划”而绕过、跳过或删除测试。
 9. 测试和示例只使用明确虚构的数据，不提交任何密钥。
@@ -74,7 +74,7 @@
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 已完成 | #30 |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 已完成 | #31 |
 | OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 已完成 | #32 |
-| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 待开始 | |
+| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 进行中（8a/8b/8d 已完成；8c 待开始） | #33 |
 | OPT-09 | Python 类型检查（可选） | A | OPT-08 | 待开始 | |
 | OPT-10 | 读余额不加行锁 | B 低风险改进 | OPT-08 | 待开始 | |
 | OPT-11 | 余额与日期查询索引 | B | OPT-08 | 待开始 | |
@@ -360,6 +360,7 @@ Coinpup/
   - 文件：`src/DocumentsPanel.tsx` → `src/FilesPanel.tsx`，`src/document-api.ts` → `src/files-api.ts`，`src/documents.css` → `src/files.css`，`e2e/documents.spec.ts` → `e2e/files.spec.ts`。
   - 类型：`DocumentFile` → `StoredFile`，`DocumentMediaType` → `FileMediaType`。
   - `Workspace.tsx` 中的视图键 `"documents"` → `"files"`，`documentOperation` → `fileOperation`。
+  - 视图键只在代码内部改名；现有 URL 查询参数 `view=documents` 的读写保持不变，保留已有链接的行为。
   - **界面文案（“票据与证件”）不变**。ADR 0013 的文件名和正文不改，只在 ADR 索引中注明“代码中已改名为 files”。
 - **8c 拆分 `ledger/posting.py`（950 行）**：
   - `ledger/idempotency.py`：`command_hash`、`_LEGACY_HASH_FIELDS`、`revision_hash`（从 `revisions.py` 移入）、幂等键格式校验、回执读取。

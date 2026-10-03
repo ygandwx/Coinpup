@@ -3,7 +3,7 @@
 from uuid import uuid4
 
 import pytest
-from coinpup_api.documents.schemas import FileUpdate, LinkUpdate, UploadCreate
+from coinpup_api.files.schemas import FileUpdate, LinkUpdate, UploadCreate
 from pydantic import ValidationError
 
 

@@ -16,7 +16,7 @@ from coinpup_api import __version__
 from coinpup_api.auth import create_auth_router
 from coinpup_api.config import Settings
 from coinpup_api.database import Database, DatabaseProbe
-from coinpup_api.documents.router import create_document_router
+from coinpup_api.files.router import create_document_router
 from coinpup_api.ledger.posting_router import create_posting_router
 from coinpup_api.ledger.router import create_ledger_router
 
