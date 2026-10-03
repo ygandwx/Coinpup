@@ -2,9 +2,9 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01、T02 和 T04-1 结构工作区已合入，正在实现 T04 财务网页。** 当前代码接入中英期初、拆分收支、转账、换汇、手续费表单、资产配置和原币流水；更正/取消 API 已实现，网页操作接续实现。OCR 和 App 继续按路线图推进。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01、T02 和 T04-1/T04-2 已合入，正在验收 T04 更正与历史页面。** 当前代码提供中英账本/地区资料、资产/账户/分类、期初/拆分收支/转账/换汇/手续费、原币流水及更正/取消和逐版本历史。OCR 和 App 继续按路线图推进。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
-Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries and original-asset balances. Financial forms and safe retries are under verification; correction and cancellation interfaces follow next. No open-source license has been selected for this private repository.
+Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bilingual workspace manages ledgers, regional company details, accounts, categories, financial entries and original-asset balances. Correction, cancellation and version-history interfaces are under verification. No open-source license has been selected for this private repository.
 
 ## 从这里开始
 
@@ -23,6 +23,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. Its bil
 - [更正、取消与不可变历史](docs/architecture/decisions/0008-operation-revisions-and-cancellation.md)
 - [业务网页、草稿与精确数量](docs/architecture/decisions/0009-business-web-workspace.md)
 - [财务网页与待确认提交](docs/architecture/decisions/0010-financial-web-and-retry.md)
+- [网页修订与版本历史](docs/architecture/decisions/0011-financial-revision-web.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -75,7 +76,9 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 ## 当前财务 API
 
-网页“流水”中可新增期初、收入、支出、同币种转账和换汇，并分别填写分类拆分、实际数量及额外费用。金额按原币保留。未知保存结果时请使用“重试原提交”或“核对记录”；原命令仅保存在当前页面内存，同一用户重新登录可手动继续。刷新或关闭会丢失待确认内容，此后应先检查流水再新增。资产目录可配置和启停资产；新资产需关联到付款账户才能选择。网页更正/取消与历史操作尚未接入。
+网页“流水”中可新增期初、收入、支出、同币种转账和换汇，并分别填写分类拆分、实际数量及额外费用。金额按原币保留。未知保存结果时请使用“重试原提交”或“核对记录”；原命令仅保存在当前页面内存，同一用户重新登录可手动继续。刷新或关闭会丢失待确认内容，此后应先检查流水再新增。资产目录可配置和启停资产；新资产需关联到付款账户才能选择。
+
+流水卡片可以更正或取消，均需填写原因。旧版本冲突时草稿保留，选择“重新载入当前记录”才替换输入；版本历史保留每次入账和冲销。未知修订时，查询既有记录仅提供当前版本，必须原提交重试取得明确回执，不能把查到旧记录误判为修改成功。已取消记录保留历史且不能再次修改。
 
 在 `/api/v1/ledgers/{ledger_id}` 下，`POST /opening-balances`、`POST /income`、`POST /expenses` 分别录入期初、收入、支出；`GET /operations`、`GET /operations/{operation_id}` 和 `GET /balances` 读取记录与原币余额。金额必须是十进制字符串，收支需要交易日、业务归属日和合计相等的分类拆分；单分类也使用一项 `splits`。
 

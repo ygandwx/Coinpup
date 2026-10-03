@@ -11,7 +11,8 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 } });
 const { ApiError } = await import("../src/api.ts");
 const { PendingCommandController } = await import("../src/pending-command.ts");
-const { createAsset, updateAsset, listOperations, getOperation } = await import("../src/ledger-api.ts");
+const { createAsset, updateAsset, listOperations, getOperation, getOperationHistory } = await import("../src/ledger-api.ts");
+const { postingInputFromState, replacementFromInput } = await import("../src/revision-input.ts");
 
 const session = { user: { id: "11111111-1111-4111-8111-111111111111", username: "fictional-owner" }, csrf_token: "fictional-csrf-old" };
 const other = { user: { id: "22222222-2222-4222-8222-222222222222", username: "fictional-owner" }, csrf_token: "fictional-csrf-other" };
@@ -113,7 +114,7 @@ test("401 hides content and same owner must explicitly resume with the new CSRF 
   const original = controller.getSnapshot().command;
   assert.equal(controller.getSnapshot().status, "auth-required");
   controller.setOwner(null);
-  assert.deepEqual(controller.getSnapshot(), { status: "auth-required", command: null, receipt: null, current: null, error: null, checking: false });
+  assert.deepEqual(controller.getSnapshot(), { status: "auth-required", command: null, receipt: null, revisionReceipt: null, current: null, error: null, checking: false });
   await assert.rejects(controller.retry(session), { code: "pending_owner_mismatch" });
   controller.setOwner(session.user.id);
   assert.equal(controller.getSnapshot().command, original);
@@ -269,4 +270,240 @@ test("all five financial endpoints send a mandatory stable key; asset mutations 
   const count = calls.length;
   await assert.rejects(listOperations(ledger, { limit: 201 }), { code: "invalid_pagination" });
   assert.equal(calls.length, count);
+});
+
+const operationId = "44444444-4444-4444-8444-444444444444";
+function correction(kind = "expense", version = 1) {
+  return { expected_version: version, reason: "Fictional correction", replacement: replacementFromInput(input(kind)) };
+}
+function stateAt(command, version, status = "active") {
+  const request = JSON.parse(command.bodyJson);
+  const fields = command.action === "correct" ? request.replacement : input(command.kind).body;
+  const posting = receipt({ ...command, bodyJson: JSON.stringify(fields) });
+  posting.version = status === "cancelled" ? version - 1 : version;
+  const state = { id: command.operationId, ledger_id: command.ledgerId, kind: command.kind, version, status,
+    latest_posting: posting, updated_at: "2026-01-04T00:00:00Z" };
+  if (status === "cancelled") state.cancellation = { version, reversal_journal_id: "reversal", reason: "Fictional cancellation", recorded_at: "2026-01-04T00:00:00Z" };
+  return state;
+}
+
+test("revision GET observations cannot confirm this key, even when current is newer or cancelled", async () => {
+  let version = 1;
+  const controller = controllerWith({ post: async () => { throw new ApiError("network"); }, read: async (_session, command) => stateAt(command, version, version === 3 ? "cancelled" : "active") });
+  await controller.correct(session, ledger, operationId, correction());
+  const frozen = controller.getSnapshot().command;
+  for (version of [1, 2, 3]) {
+    await controller.reconcile(session);
+    assert.equal(controller.getSnapshot().status, "unknown");
+    assert.equal(controller.getSnapshot().current.version, version);
+    assert.equal(controller.getSnapshot().revisionReceipt, null);
+    assert.equal(controller.getSnapshot().command, frozen);
+    assert.equal(controller.dismiss(), false);
+  }
+});
+
+test("dropped correction response replays its old receipt while preserving a newer observed cancellation", async (t) => {
+  const calls = [];
+  let original;
+  let stored;
+  t.mock.method(globalThis, "fetch", async (path, init) => {
+    if (init.method === "POST") {
+      calls.push({ path, init });
+      if (!stored) {
+        const body = JSON.parse(init.body);
+        original = { action: "correct", kind: "expense", operationId, ledgerId: ledger, expectedVersion: body.expected_version, bodyJson: init.body };
+        stored = stateAt(original, 2);
+        throw new TypeError("Commit succeeded but response was dropped");
+      }
+      return Response.json(stored);
+    }
+    return Response.json(stateAt(original, 3, "cancelled"));
+  });
+  const controller = new PendingCommandController();
+  controller.setOwner(session.user.id);
+  const body = correction();
+  await controller.correct(session, ledger, operationId, body);
+  body.expected_version = 3;
+  body.reason = "Edited after original submission";
+  body.replacement.amount = "999.00";
+  await controller.reconcile(session);
+  assert.equal(controller.getSnapshot().status, "unknown");
+  await controller.retry(session);
+  const snapshot = controller.getSnapshot();
+  assert.equal(snapshot.status, "confirmed");
+  assert.equal(snapshot.receipt, null);
+  assert.equal(snapshot.revisionReceipt.version, 2);
+  assert.equal(snapshot.revisionReceipt.status, "active");
+  assert.equal(snapshot.current.version, 3);
+  assert.equal(snapshot.current.status, "cancelled");
+  assert.equal(calls[0].path, `/api/v1/ledgers/${ledger}/operations/${operationId}/corrections`);
+  assert.equal(calls[0].path, calls[1].path);
+  assert.equal(calls[0].init.body, calls[1].init.body);
+  assert.equal(calls[0].init.headers["Idempotency-Key"], calls[1].init.headers["Idempotency-Key"]);
+  const sent = JSON.parse(calls[0].init.body);
+  assert.equal(sent.expected_version, 1);
+  assert.equal("id" in sent, false);
+  assert.equal("id" in sent.replacement, false);
+  assert.equal(snapshot.command.operationId, operationId);
+  assert.notEqual(snapshot.command.key, operationId);
+});
+
+test("cancellation keeps the existing identity and validates the exact next terminal revision", async (t) => {
+  let pathSeen;
+  let bodySeen;
+  t.mock.method(globalThis, "fetch", async (path, init) => {
+    pathSeen = path;
+    bodySeen = JSON.parse(init.body);
+    return Response.json(stateAt({ action: "cancel", operationId, ledgerId: ledger, kind: "expense", bodyJson: init.body }, 5, "cancelled"));
+  });
+  const controller = new PendingCommandController();
+  controller.setOwner(session.user.id);
+  await controller.cancel(session, ledger, operationId, "expense", { expected_version: 4, reason: "Fictional cancellation" });
+  assert.equal(pathSeen, `/api/v1/ledgers/${ledger}/operations/${operationId}/cancellations`);
+  assert.deepEqual(bodySeen, { expected_version: 4, reason: "Fictional cancellation" });
+  assert.equal(controller.getSnapshot().status, "confirmed");
+  assert.equal(controller.getSnapshot().revisionReceipt.version, 5);
+  assert.equal(controller.getSnapshot().revisionReceipt.latest_posting.version, 4);
+});
+
+test("a wrong revision version, action result or existing ID cannot be accepted as this receipt", async () => {
+  for (const [action, version, status, wrongId] of [["correct", 1, "active", false], ["correct", 2, "cancelled", false], ["cancel", 2, "active", false], ["cancel", 3, "cancelled", false], ["correct", 2, "active", true]]) {
+    const controller = controllerWith({ post: async (_session, command) => ({ ...stateAt(command, version, status), ...(wrongId ? { id: "another-operation" } : {}) }) });
+    if (action === "correct") await controller.correct(session, ledger, operationId, correction());
+    else await controller.cancel(session, ledger, operationId, "expense", { expected_version: 1, reason: "Fictional cancellation" });
+    assert.equal(controller.getSnapshot().status, "unknown");
+    assert.equal(controller.getSnapshot().revisionReceipt, null);
+    assert.equal(controller.dismiss(), false);
+  }
+});
+
+test("only an explicit version_conflict followed by a later observed version unlocks a failed revision", async () => {
+  let posts = 0;
+  const controller = controllerWith({ post: async (_session, command) => {
+    posts += 1;
+    if (posts === 1) throw new ApiError("network");
+    if (posts === 2) throw new ApiError("server", 409, "version_conflict");
+    return stateAt(command, command.expectedVersion + 1);
+  }, read: async (_session, command) => stateAt(command, 2) });
+  await controller.correct(session, ledger, operationId, correction());
+  const first = controller.getSnapshot().command;
+  await controller.retry(session);
+  assert.equal(controller.getSnapshot().status, "rejected");
+  assert.equal(controller.getSnapshot().error.code, "version_conflict");
+  assert.equal(controller.getSnapshot().current.version, 2);
+  assert.equal(controller.getSnapshot().revisionReceipt, null);
+  assert.equal(controller.dismiss(), true);
+  await controller.correct(session, ledger, operationId, correction("expense", 2));
+  assert.equal(controller.getSnapshot().status, "confirmed");
+  assert.notEqual(controller.getSnapshot().command.key, first.key);
+  assert.equal(controller.getSnapshot().command.operationId, first.operationId);
+});
+
+test("version_conflict with unchanged version, 404 or mismatched identity remains locked", async () => {
+  for (const mode of ["same", "missing", "wrong-id"]) {
+    let later = false;
+    const controller = controllerWith({ post: async () => { throw new ApiError("server", 409, "version_conflict"); }, read: async (_session, command) => {
+      if (later) return stateAt(command, 2);
+      if (mode === "missing") throw new ApiError("server", 404, "not_found");
+      const state = stateAt(command, mode === "same" ? 1 : 2);
+      return mode === "wrong-id" ? { ...state, id: "another-operation" } : state;
+    } });
+    await controller.correct(session, ledger, operationId, correction());
+    assert.equal(controller.getSnapshot().status, "unknown");
+    assert.equal(controller.dismiss(), false);
+    later = true;
+    await controller.reconcile(session);
+    assert.equal(controller.getSnapshot().status, "rejected");
+    assert.equal(controller.getSnapshot().error.code, "version_conflict");
+  }
+});
+
+test("generic 409, archived entity, incorrect HTTP status and GET errors never supply conflict proof", async () => {
+  for (const error of [new ApiError("server", 409), new ApiError("server", 409, "entity_archived"), new ApiError("server", 500, "version_conflict")]) {
+    let posts = 0;
+    const controller = controllerWith({ post: async () => { if (++posts === 1) throw new ApiError("network"); throw error; }, read: async (_session, command) => stateAt(command, 2) });
+    await controller.correct(session, ledger, operationId, correction());
+    await controller.retry(session);
+    await controller.reconcile(session);
+    assert.equal(controller.getSnapshot().status, "unknown");
+    assert.equal(controller.dismiss(), false);
+  }
+  const controller = controllerWith({ post: async () => { throw new ApiError("network"); }, read: async () => { throw new ApiError("server", 409, "version_conflict"); } });
+  await controller.correct(session, ledger, operationId, correction());
+  await controller.reconcile(session);
+  assert.equal(controller.dismiss(), false);
+});
+
+test("same-owner authentication recovery retains revision action and exact payload without automatic replay", async () => {
+  let posts = 0;
+  const controller = controllerWith({ post: async (_session, command) => { if (++posts === 1) throw new ApiError("unauthorized", 401); return stateAt(command, 2); } });
+  await controller.correct(session, ledger, operationId, correction());
+  const command = controller.getSnapshot().command;
+  controller.setOwner(null);
+  assert.equal(controller.getSnapshot().command, null);
+  assert.equal(controller.getSnapshot().revisionReceipt, null);
+  controller.setOwner(session.user.id);
+  assert.equal(controller.getSnapshot().status, "unknown");
+  assert.equal(controller.getSnapshot().command, command);
+  assert.equal(posts, 1);
+  await controller.retry({ ...session, csrf_token: "fictional-csrf-new" });
+  assert.equal(controller.getSnapshot().status, "confirmed");
+});
+
+test("correction and cancellation share one pending slot, and logout invalidates conflict observations", async () => {
+  const read = deferred();
+  let observed;
+  let posts = 0;
+  const controller = controllerWith({ post: async () => { posts += 1; throw new ApiError("server", 409, "version_conflict"); }, read: async (_session, command) => { observed = command; return read.promise; } });
+  const first = controller.correct(session, ledger, operationId, correction());
+  const second = controller.cancel(session, ledger, operationId, "expense", { expected_version: 1, reason: "Fictional cancellation" });
+  assert.equal(first, second);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(posts, 1);
+  controller.setOwner(null, true);
+  read.resolve(stateAt(observed, 2));
+  await first;
+  assert.equal(controller.getSnapshot().status, "idle");
+  assert.equal(controller.getSnapshot().current, null);
+});
+
+test("whitelist prefill retains exact amounts, full fee/split data and immutable opening identity", () => {
+  for (const kind of ["opening", "income", "expense", "transfer", "exchange"]) {
+    const command = { action: "create", kind, operationId, ledgerId: ledger, bodyJson: JSON.stringify(input(kind).body) };
+    const state = stateAt(command, 1);
+    const posting = state.latest_posting;
+    if (kind !== "opening") posting.fees = [{ account_id: "fee-account", asset_id: "ETH", amount: "0.000000000000000001", category_id: "fee-category", id: "forbidden-fee-metadata" }];
+    const prepared = postingInputFromState(state);
+    const replacement = replacementFromInput({ ...prepared, body: { ...prepared.body, id: "forbidden-id", journal_id: "forbidden-journal", version: 999 } });
+    assert.equal(replacement.kind, kind);
+    for (const field of ["id", "ledger_id", "journal_id", "version", "created_at", "updated_at"]) assert.equal(field in replacement, false);
+    assert.equal(replacement.transaction_date, posting.transaction_date);
+    if (kind === "opening") {
+      assert.equal(replacement.account_id, posting.account_id);
+      assert.equal(replacement.asset_id, posting.asset_id);
+      assert.equal("fees" in replacement, false);
+      assert.equal("recognition_date" in replacement, false);
+    } else {
+      assert.deepEqual(replacement.fees, [{ account_id: "fee-account", asset_id: "ETH", amount: "0.000000000000000001", category_id: "fee-category" }]);
+      posting.fees[0].amount = "1";
+      assert.equal(prepared.body.fees[0].amount, "0.000000000000000001");
+      assert.equal(replacement.fees[0].amount, "0.000000000000000001");
+    }
+    if (["income", "expense"].includes(kind)) {
+      posting.splits[0].amount = "999";
+      assert.equal(replacement.splits[0].amount, "1.00");
+      assert.equal(replacement.recognition_date, "2026-01-01");
+    }
+    if (["transfer", "exchange"].includes(kind)) assert.equal("recognition_date" in replacement, false);
+  }
+});
+
+test("history reads are paginated and keep raw signed audit quantities", async (t) => {
+  let pathSeen;
+  const history = [{ version: 2, action: "correct", actor_id: "owner", reason: "Fictional correction", recorded_at: "2026-01-04T00:00:00Z", journals: [{ lines: [{ amount: "-0.000000000000000001", component_no: 1 }] }] }];
+  t.mock.method(globalThis, "fetch", async (path) => { pathSeen = path; return Response.json(history); });
+  const result = await getOperationHistory(ledger, operationId, { limit: 10, offset: 20 });
+  assert.equal(pathSeen, `/api/v1/ledgers/${ledger}/operations/${operationId}/history?limit=10&offset=20`);
+  assert.equal(result[0].journals[0].lines[0].amount, "-0.000000000000000001");
 });
