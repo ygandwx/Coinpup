@@ -73,7 +73,7 @@
 | OPT-04 | AGENTS.md 分层与开发循环 | A | OPT-03 | 已完成 | #29 |
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 已完成 | #30 |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 已完成 | #31 |
-| OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 待开始 | |
+| OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 已完成 | #32 |
 | OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 待开始 | |
 | OPT-09 | Python 类型检查（可选） | A | OPT-08 | 待开始 | |
 | OPT-10 | 读余额不加行锁 | B 低风险改进 | OPT-08 | 待开始 | |
