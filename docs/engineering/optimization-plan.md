@@ -70,7 +70,7 @@
 | OPT-01 | CI 触发去重 | A 流程与结构 | 无 | 已完成 | #26 |
 | OPT-02 | 统一检查入口 `scripts/check.py` | A | 无 | 已完成 | #27 |
 | OPT-03 | 文档单一事实来源与瘦身 | A | OPT-02 | 已完成 | #28 |
-| OPT-04 | AGENTS.md 分层与开发循环 | A | OPT-03 | 待开始 | |
+| OPT-04 | AGENTS.md 分层与开发循环 | A | OPT-03 | 已完成 | #29 |
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 待开始 | |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 待开始 | |
 | OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 待开始 | |
