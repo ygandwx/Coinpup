@@ -15,9 +15,9 @@ export function operationName(kind: FinancialResponse["kind"], locale: Locale): 
   return names[kind][locale === "zh" ? 0 : 1];
 }
 
-function OperationCard({ operation, accounts, categories, locale, disabled, archived, onCorrect, onCancel, onHistory }: {
+function OperationCard({ operation, accounts, categories, locale, disabled, archived, onCorrect, onCancel, onHistory, onFiles }: {
   operation: OperationState; accounts: Account[]; categories: Category[]; locale: Locale; disabled: boolean; archived: boolean;
-  onCorrect: () => void; onCancel: () => void; onHistory: () => void;
+  onCorrect: () => void; onCancel: () => void; onHistory: () => void; onFiles: () => void;
 }) {
   const t = (zh: string, en: string) => locale === "zh" ? zh : en;
   const posting = operation.latest_posting;
@@ -36,13 +36,13 @@ function OperationCard({ operation, accounts, categories, locale, disabled, arch
     {"splits" in posting && posting.splits.length > 0 && <ul className="operation-breakdown" aria-label={t("分类拆分", "Category splits")}>{posting.splits.map(split => <li key={split.category_id}><span>{category(split.category_id)}</span><span className="money-quantity" tabIndex={0}>{split.amount}</span></li>)}</ul>}
     {!!posting.fees?.length && <details className="operation-fees"><summary>{t("手续费", "Fees")} ({posting.fees.length})</summary><ul className="operation-breakdown">{posting.fees.map((fee, index) => <li key={index}><span>{account(fee.account_id)} · {category(fee.category_id)} · {fee.asset_id}</span><span className="money-quantity" tabIndex={0}>{fee.amount}</span></li>)}</ul></details>}
     {operation.status === "cancelled" && <p className="help-text">{t("取消原因", "Cancellation reason")}: {operation.cancellation.reason}</p>}
-    <div className="row-actions operation-actions"><button id={`history-button-${operation.id}`} disabled={disabled} onClick={onHistory}>{t("版本历史", "Version history")}</button><button id={`correct-button-${operation.id}`} disabled={disabled || archived || operation.status === "cancelled"} onClick={onCorrect}>{t("更正", "Correct entry")}</button><button id={`cancel-button-${operation.id}`} disabled={disabled || archived || operation.status === "cancelled"} onClick={onCancel}>{t("取消记录", "Cancel entry")}</button></div>
+    <div className="row-actions operation-actions"><button id={`files-button-${operation.id}`} disabled={disabled} onClick={onFiles}>{t("票据", "Files")}</button><button id={`history-button-${operation.id}`} disabled={disabled} onClick={onHistory}>{t("版本历史", "Version history")}</button><button id={`correct-button-${operation.id}`} disabled={disabled || archived || operation.status === "cancelled"} onClick={onCorrect}>{t("更正", "Correct entry")}</button><button id={`cancel-button-${operation.id}`} disabled={disabled || archived || operation.status === "cancelled"} onClick={onCancel}>{t("取消记录", "Cancel entry")}</button></div>
   </article>;
 }
 
-export function TransactionsPanel({ session, locale, entity, accounts, assets, categories, controller, dataLoading, onChanged, onUnauthorized, onEditingChange }: {
+export function TransactionsPanel({ session, locale, entity, accounts, assets, categories, controller, dataLoading, onChanged, onUnauthorized, onEditingChange, onFiles }: {
   session: Session; locale: Locale; entity: Entity; accounts: Account[]; assets: Asset[]; categories: Category[];
-  controller: PendingCommandController; dataLoading: boolean; onChanged: () => void; onUnauthorized: () => void; onEditingChange: (value: boolean) => void;
+  controller: PendingCommandController; dataLoading: boolean; onChanged: () => void; onUnauthorized: () => void; onEditingChange: (value: boolean) => void; onFiles: (operationId: string) => void;
 }) {
   const t = (zh: string, en: string) => locale === "zh" ? zh : en;
   const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
@@ -152,7 +152,7 @@ export function TransactionsPanel({ session, locale, entity, accounts, assets, c
         <div className="section-heading"><div><h2>{t("资金流水", "Transactions")}</h2><p className="help-text">{t("原币本金和手续费分别展示。期初与转账本金不计入收支。", "Principal and fees retain their original assets. Opening balances and transfer principal are separate from income and expenses.")}</p></div><button id="new-entry-button" className="primary-button" disabled={entity.archived || dataLoading || locked} onClick={() => { setRevision(null); setEditError(null); setEditing(true); setSaved(false); controller.dismiss(); }}>{t("新增记录", "New entry")}</button></div>
         <div className="transaction-toolbar"><div className="field"><label htmlFor="transaction-status">{t("记录状态", "Entry status")}</label><select id="transaction-status" value={status} disabled={loading} onChange={event => { setStatus(event.target.value as typeof status); setOffset(0); }}><option value="all">{t("全部", "All")}</option><option value="active">{t("有效", "Active")}</option><option value="cancelled">{t("已取消", "Cancelled")}</option></select></div><button className="secondary-button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>{t("刷新流水", "Refresh transactions")}</button></div>
         {loadError !== null && <p role="alert" className="inline-error">{businessError(loadError, locale)}</p>}
-        {loading ? <p role="status" className="help-text">{t("正在读取流水…", "Loading transactions…")}</p> : operations.length ? <div className="operations-list">{operations.map(operation => <OperationCard key={operation.id} operation={operation} accounts={accounts} categories={categories} locale={locale} disabled={locked || dataLoading} archived={entity.archived} onCorrect={() => openRevision(operation, "correct")} onCancel={() => openRevision(operation, "cancel")} onHistory={() => { setHistoryId(operation.id); setSaved(false); }} />)}</div> : <p className="empty-copy">{t("此页没有记录。添加期初、收入或支出，开始记录资金变化。", "No entries on this page. Add an opening balance, income or expense to start.")}</p>}
+        {loading ? <p role="status" className="help-text">{t("正在读取流水…", "Loading transactions…")}</p> : operations.length ? <div className="operations-list">{operations.map(operation => <OperationCard key={operation.id} operation={operation} accounts={accounts} categories={categories} locale={locale} disabled={locked || dataLoading} archived={entity.archived} onFiles={() => onFiles(operation.id)} onCorrect={() => openRevision(operation, "correct")} onCancel={() => openRevision(operation, "cancel")} onHistory={() => { setHistoryId(operation.id); setSaved(false); }} />)}</div> : <p className="empty-copy">{t("此页没有记录。添加期初、收入或支出，开始记录资金变化。", "No entries on this page. Add an opening balance, income or expense to start.")}</p>}
         <nav className="transaction-pagination" aria-label={t("流水分页", "Transaction pages")}><button className="secondary-button" disabled={loading || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>{t("上一页", "Previous page")}</button><span>{t("第", "Page")} {offset / 25 + 1} {locale === "zh" ? "页" : ""}</span><button className="secondary-button" disabled={loading || operations.length < 25 || offset >= 100000} onClick={() => setOffset(value => value + 25)}>{t("下一页", "Next page")}</button></nav>
       </section>
     </>}

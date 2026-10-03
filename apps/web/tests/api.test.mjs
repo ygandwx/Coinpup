@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ApiError, checkHealth, getSession, readJson, signIn, signOut, writeJson } from "../src/api.ts";
+import { ApiError, checkHealth, getSession, readBlob, readJson, signIn, signOut, writeBytes, writeJson } from "../src/api.ts";
 
 test("write preserves string amounts, request-local CSRF and persistent idempotency headers", async (t) => {
   const calls = [];
@@ -96,4 +96,50 @@ test("existing authentication validates sessions and accepts an empty logout res
   assert.equal(await signOut("fictional-token"), undefined);
   assert.equal(await checkHealth("ready"), true);
   await assert.rejects(getSession(), { kind: "server", code: "invalid_response" });
+});
+
+test("raw uploads preserve the original Blob, configurable timeout and protected request options", async (t) => {
+  const file = new File(["fictional raw bytes"], "fictional.pdf", { type: "application/pdf" });
+  const timeouts = [];
+  const schedule = globalThis.setTimeout;
+  t.mock.method(globalThis, "setTimeout", (callback, delay, ...args) => { timeouts.push(delay); return schedule(callback, delay, ...args); });
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (path, init) => { calls.push({ path, init }); return Response.json({ ready: true }); });
+  assert.deepEqual(await writeBytes("/api/v1/example", "fictional-csrf", file, { timeoutMs: 130_000 }), { ready: true });
+  assert.strictEqual(calls[0].init.body, file);
+  assert.equal(calls[0].init.method, "PUT");
+  assert.equal(calls[0].init.headers["Content-Type"], "application/octet-stream");
+  assert.equal(calls[0].init.headers["X-CSRF-Token"], "fictional-csrf");
+  assert.equal(calls[0].init.credentials, "same-origin");
+  assert.equal(calls[0].init.redirect, "error");
+  assert.equal(calls[0].init.cache, "no-store");
+  assert.deepEqual(timeouts, [130_000]);
+  await assert.rejects(writeBytes("https://attacker.invalid/api/v1/file", "secret", file, { timeoutMs: 130_000 }), { code: "invalid_api_path" });
+  await assert.rejects(writeBytes("/api/v1/file", "secret", file, { timeoutMs: Infinity }), { code: "invalid_timeout" });
+  assert.equal(calls.length, 1);
+});
+
+test("private Blob downloads preserve authentication errors and binary bytes", async (t) => {
+  const replies = [new Response("<html>private-login-page</html>", { status: 401 }), new Response("fictional-pdf", { headers: { "content-type": "application/pdf" } })];
+  t.mock.method(globalThis, "fetch", async (_path, init) => {
+    assert.equal(init.headers["X-CSRF-Token"], undefined);
+    assert.equal(init.credentials, "same-origin");
+    return replies.shift();
+  });
+  await assert.rejects(readBlob("/api/v1/file"), { kind: "unauthorized", status: 401 });
+  const blob = await readBlob("/api/v1/file");
+  assert.equal(blob.type, "application/pdf");
+  assert.equal(await blob.text(), "fictional-pdf");
+});
+
+test("raw and JSON requests honor external cancellation without replacing their bodies", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_path, init) => new Promise((_resolve, reject) => {
+    const fail = () => reject(new DOMException("Aborted", "AbortError"));
+    if (init.signal.aborted) fail(); else init.signal.addEventListener("abort", fail, { once: true });
+  }));
+  const abort = new AbortController();
+  const upload = writeBytes("/api/v1/file", "csrf", new Blob(["fixture"]), { timeoutMs: 130_000, signal: abort.signal });
+  abort.abort();
+  await assert.rejects(upload, { kind: "network" });
+  await assert.rejects(writeJson("/api/v1/reservation", "csrf", { id: "fixture" }, "POST", undefined, abort.signal), { kind: "network" });
 });
