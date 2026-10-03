@@ -37,7 +37,7 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -v "$PWD/recover
 
 恢复先校验 manifest、dump 和全部常规原件（拒绝 symlink、缺失、损坏和未列入清单的文件），再检查目标空库、复制字节、单事务导入，最后精确比较全部 `stored_files` 行。缺失或损坏不以空白文件替代。失败不自动删除目录或数据库；不得直接重用失败目标。成功后仍需在隔离应用核对全部账务和关联，手动切换数据库与文件根；脚本不会修改运行中的应用配置。
 
-CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。实际结果以状态文档为准。
+CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。此范围已在 [CI 37136897576](https://github.com/ygandwx/Coinpup/actions/runs/37136897576) 的 PostgreSQL 17/Linux 容器中通过；生产恢复与后续 OCR/经营单据仍按任务继续验收。
 
 ## 运行环境与凭据
 
