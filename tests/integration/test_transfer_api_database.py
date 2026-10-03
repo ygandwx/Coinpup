@@ -104,7 +104,9 @@ def test_http_transfers_card_repayment_and_original_receipt_shapes(structure_dat
         assert "splits" not in receipt and "account_id" not in receipt
         assert receipt["recognition_date"] == receipt["transaction_date"]
         assert post("/transfers", transfer, "cash-transfer").json() == receipt
-        assert client.get(path + f"/operations/{receipt['id']}").json() == receipt
+        state = client.get(path + f"/operations/{receipt['id']}").json()
+        assert state["latest_posting"] == receipt
+        assert state["status"] == "active" and state["version"] == 1
         assert (
             post("/transfers", transfer | {"amount": "201.00"}, "cash-transfer").status_code == 409
         )
@@ -157,6 +159,11 @@ def test_http_transfers_card_repayment_and_original_receipt_shapes(structure_dat
         operations = client.get(path + "/operations").json()
         assert len(operations) == 4
         assert {item["kind"] for item in operations} == {"opening", "expense", "transfer"}
+        assert all(item["status"] == "active" and item["version"] == 1 for item in operations)
+        assert (
+            next(item["latest_posting"] for item in operations if item["id"] == receipt["id"])
+            == receipt
+        )
         assert post("/opening-balances", opening, "bank-opening").json() == initial.json()
         assert post("/expenses", expense, "card-purchase").json() == paid.json()
 

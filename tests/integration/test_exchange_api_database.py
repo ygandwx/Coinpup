@@ -81,7 +81,9 @@ def test_http_exchange_and_crypto_payment_keep_fees_separate(authenticated_clien
     assert receipt["source_amount"] == "100.00" and receipt["destination_amount"] == "90.00"
     assert receipt["fees"] == [fee]
     assert post("/exchanges", exchange, "exchange-1").json() == receipt
-    assert client.get(path + f"/operations/{receipt['id']}").json() == receipt
+    state = client.get(path + f"/operations/{receipt['id']}").json()
+    assert state["status"] == "active" and state["version"] == 1
+    assert state["latest_posting"] == receipt
     assert balances() == {"USD": "898.00", "EUR": "90.00", "BTC": "1.00000000"}
     assert (
         post(
@@ -112,8 +114,13 @@ def test_http_exchange_and_crypto_payment_keep_fees_separate(authenticated_clien
     assert post("/expenses", purchase, "btc-payment").json() == paid.json()
     assert balances()["BTC"] == "0.89999000"
     records = client.get(path + "/operations").json()
-    assert next(item for item in records if item["id"] == paid.json()["id"]) == paid.json()
-    assert next(item for item in records if item["id"] == receipt["id"]) == receipt
+    assert (
+        next(item for item in records if item["id"] == paid.json()["id"])["latest_posting"]
+        == paid.json()
+    )
+    assert (
+        next(item for item in records if item["id"] == receipt["id"])["latest_posting"] == receipt
+    )
     with engine.connect() as connection:
         for asset, expected in [("USD", Decimal("2.00")), ("BTC", Decimal("0.10001"))]:
             assert (
@@ -137,4 +144,7 @@ def test_http_exchange_and_crypto_payment_keep_fees_separate(authenticated_clien
     assert original.status_code == 201, original.text
     assert "fees" not in original.json()
     assert post("/expenses", no_fee | {"fees": []}, "legacy-fee-free").json() == original.json()
-    assert client.get(path + f"/operations/{original.json()['id']}").json() == original.json()
+    assert (
+        client.get(path + f"/operations/{original.json()['id']}").json()["latest_posting"]
+        == original.json()
+    )

@@ -668,7 +668,7 @@ class PostingService(LedgerService):
             ledger_id=operation.ledger_id,
             journal_id=journal.id,
             kind=operation.kind,
-            version=operation.version,
+            version=journal.operation_version,
             account_id=account.account_id,
             asset_id=account.asset_id,
             amount=amount.to_string(),
@@ -677,7 +677,7 @@ class PostingService(LedgerService):
             description=journal.description,
             splits=splits,
             fees=fees,
-            created_at=operation.created_at,
+            created_at=journal.created_at,
         )
 
     @staticmethod
@@ -712,7 +712,7 @@ class PostingService(LedgerService):
             ledger_id=operation.ledger_id,
             journal_id=journal.id,
             kind="transfer",
-            version=operation.version,
+            version=journal.operation_version,
             source_account_id=source[0][0].account_id,
             destination_account_id=destination[0][0].account_id,
             asset_id=definition.asset_id,
@@ -720,7 +720,7 @@ class PostingService(LedgerService):
             transaction_date=journal.transaction_date,
             recognition_date=journal.recognition_date,
             description=journal.description,
-            created_at=operation.created_at,
+            created_at=journal.created_at,
             fees=fees or [],
         )
 
@@ -813,7 +813,7 @@ class PostingService(LedgerService):
             ledger_id=operation.ledger_id,
             journal_id=journal.id,
             kind="exchange",
-            version=operation.version,
+            version=journal.operation_version,
             source_account_id=source[0][0].account_id,
             source_asset_id=source[0][0].asset_id,
             source_amount=(-source[0][1]).to_string(),
@@ -823,11 +823,13 @@ class PostingService(LedgerService):
             transaction_date=journal.transaction_date,
             recognition_date=journal.recognition_date,
             description=journal.description,
-            created_at=operation.created_at,
+            created_at=journal.created_at,
             fees=fees,
         )
 
     def get_operation(self, owner_id, ledger_id, operation_id):
+        from coinpup_api.ledger.revisions import operation_state
+
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
             operation = session.scalar(
@@ -837,20 +839,50 @@ class PostingService(LedgerService):
             )
             if operation is None:
                 raise _not_found()
-            return self._read_operation(session, operation)
+            return operation_state(session, operation)
 
-    def list_operations(self, owner_id, ledger_id, limit=100, offset=0):
+    def list_operations(self, owner_id, ledger_id, limit=100, offset=0, status="all"):
+        from coinpup_api.ledger.revisions import operation_state
+
         _page(limit, offset)
+        if status not in {"active", "cancelled", "all"}:
+            raise LedgerError(
+                "invalid_status", 422, "Select an active, cancelled or all status filter."
+            )
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
+            statement = select(FinancialOperation).where(FinancialOperation.ledger_id == ledger_id)
+            if status != "all":
+                statement = statement.where(FinancialOperation.status == status)
             operations = session.scalars(
-                select(FinancialOperation)
-                .where(FinancialOperation.ledger_id == ledger_id)
-                .order_by(FinancialOperation.created_at.desc(), FinancialOperation.id.desc())
+                statement.order_by(
+                    FinancialOperation.created_at.desc(), FinancialOperation.id.desc()
+                )
                 .limit(limit)
                 .offset(offset)
             ).all()
-            return [self._read_operation(session, operation) for operation in operations]
+            return [operation_state(session, operation) for operation in operations]
+
+    def correct_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+        from coinpup_api.ledger.revisions import RevisionService
+
+        return RevisionService(self.engine).correct(
+            owner_id, ledger_id, operation_id, payload, idempotency_key
+        )
+
+    def cancel_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+        from coinpup_api.ledger.revisions import RevisionService
+
+        return RevisionService(self.engine).cancel(
+            owner_id, ledger_id, operation_id, payload, idempotency_key
+        )
+
+    def history(self, owner_id, ledger_id, operation_id, limit=100, offset=0):
+        from coinpup_api.ledger.revisions import RevisionService
+
+        return RevisionService(self.engine).read_history(
+            owner_id, ledger_id, operation_id, limit, offset
+        )
 
     def balances(self, owner_id, ledger_id, account_id=None, limit=100, offset=0):
         _page(limit, offset)

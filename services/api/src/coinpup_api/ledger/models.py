@@ -244,11 +244,15 @@ class FinancialOperation(Versioned, Base):
             name="ck_financial_operations_kind",
         ),
         CheckConstraint("version > 0", name="ck_financial_operations_version"),
+        CheckConstraint("status IN ('active', 'cancelled')", name="ck_financial_operations_status"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", server_default="active"
+    )
     current_journal_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
 
@@ -279,6 +283,13 @@ class Journal(Base):
         ),
         CheckConstraint("operation_version > 0", name="ck_journals_operation_version"),
         CheckConstraint(
+            "(operation_version = 1 AND revision_reason IS NULL) OR "
+            "(operation_version > 1 AND revision_reason IS NOT NULL "
+            "AND revision_reason = btrim(revision_reason) "
+            "AND revision_reason ~ '[^[:space:]]')",
+            name="ck_journals_revision_reason",
+        ),
+        CheckConstraint(
             "(journal_kind = 'posting' AND reverses_journal_id IS NULL) OR "
             "(journal_kind = 'reversal' AND reverses_journal_id IS NOT NULL)",
             name="ck_journals_kind",
@@ -304,6 +315,7 @@ class Journal(Base):
     description: Mapped[str] = mapped_column(
         String(2000), nullable=False, default="", server_default=""
     )
+    revision_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     sealed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )

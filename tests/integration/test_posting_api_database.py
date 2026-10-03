@@ -115,7 +115,9 @@ def test_http_exact_positions_split_expense_and_durable_replay(structure_databas
         assert receipt["recognition_date"] == "2026-09-30"
         assert receipt["amount"] == "25.00" and len(receipt["splits"]) == 2
         assert post("/expenses", expense, "expense-1").json() == receipt
-        assert client.get(ledger + f"/operations/{receipt['id']}").json() == receipt
+        state = client.get(ledger + f"/operations/{receipt['id']}").json()
+        assert state["latest_posting"] == receipt
+        assert state["status"] == "active" and state["version"] == 1
         assert client.get(other_ledger + f"/operations/{receipt['id']}").status_code == 404
         assert client.get(other_ledger + "/operations").json() == []
         assert client.get(other_ledger + "/balances").json() == []

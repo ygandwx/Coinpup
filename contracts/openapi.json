@@ -420,6 +420,58 @@
         "title": "BalanceResponse",
         "type": "object"
       },
+      "CancellationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "CancellationCreate",
+        "type": "object"
+      },
+      "CancellationInfo": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "reversal_journal_id": {
+            "format": "uuid",
+            "title": "Reversal Journal Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "reversal_journal_id",
+          "reason",
+          "recorded_at"
+        ],
+        "title": "CancellationInfo",
+        "type": "object"
+      },
       "CategoryCreate": {
         "additionalProperties": false,
         "properties": {
@@ -621,6 +673,59 @@
           "expected_version"
         ],
         "title": "CategoryUpdate",
+        "type": "object"
+      },
+      "CorrectionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "replacement": {
+            "discriminator": {
+              "mapping": {
+                "exchange": "#/components/schemas/ExchangeReplacement",
+                "expense": "#/components/schemas/ExpenseReplacement",
+                "income": "#/components/schemas/IncomeReplacement",
+                "opening": "#/components/schemas/OpeningReplacement",
+                "transfer": "#/components/schemas/TransferReplacement"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OpeningReplacement"
+              },
+              {
+                "$ref": "#/components/schemas/IncomeReplacement"
+              },
+              {
+                "$ref": "#/components/schemas/ExpenseReplacement"
+              },
+              {
+                "$ref": "#/components/schemas/TransferReplacement"
+              },
+              {
+                "$ref": "#/components/schemas/ExchangeReplacement"
+              }
+            ],
+            "title": "Replacement"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason",
+          "replacement"
+        ],
+        "title": "CorrectionCreate",
         "type": "object"
       },
       "EntityCreate": {
@@ -1097,6 +1202,83 @@
         "title": "ExchangeCreate",
         "type": "object"
       },
+      "ExchangeReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "kind": {
+            "const": "exchange",
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount",
+          "kind"
+        ],
+        "title": "ExchangeReplacement",
+        "type": "object"
+      },
       "ExchangeResponse": {
         "properties": {
           "created_at": {
@@ -1274,6 +1456,78 @@
         "title": "ExpenseCreate",
         "type": "object"
       },
+      "ExpenseReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "kind": {
+            "const": "expense",
+            "title": "Kind",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id",
+          "recognition_date",
+          "splits",
+          "kind"
+        ],
+        "title": "ExpenseReplacement",
+        "type": "object"
+      },
       "FeeCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1374,6 +1628,61 @@
         "title": "Health",
         "type": "object"
       },
+      "HistoryEntry": {
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "correct",
+              "cancel"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "journals": {
+            "items": {
+              "$ref": "#/components/schemas/JournalAudit"
+            },
+            "title": "Journals",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "action",
+          "actor_id",
+          "reason",
+          "recorded_at",
+          "journals"
+        ],
+        "title": "HistoryEntry",
+        "type": "object"
+      },
       "IncomeCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1452,6 +1761,157 @@
         "title": "IncomeCreate",
         "type": "object"
       },
+      "IncomeReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "kind": {
+            "const": "income",
+            "title": "Kind",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id",
+          "recognition_date",
+          "splits",
+          "kind"
+        ],
+        "title": "IncomeReplacement",
+        "type": "object"
+      },
+      "JournalAudit": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "posting",
+              "reversal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineAudit"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "reverses_journal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverses Journal Id"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "reverses_journal_id",
+          "transaction_date",
+          "recognition_date",
+          "description",
+          "reason",
+          "recorded_at",
+          "lines"
+        ],
+        "title": "JournalAudit",
+        "type": "object"
+      },
       "LedgerResponse": {
         "properties": {
           "base_asset_id": {
@@ -1492,6 +1952,71 @@
           "base_asset_id"
         ],
         "title": "LedgerResponse",
+        "type": "object"
+      },
+      "LineAudit": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "component_no": {
+            "title": "Component No",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line_no": {
+            "title": "Line No",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "line_no",
+          "component_no",
+          "role",
+          "asset_id",
+          "amount",
+          "account_id",
+          "category_id"
+        ],
+        "title": "LineAudit",
         "type": "object"
       },
       "LoginRequest": {
@@ -1570,6 +2095,54 @@
           "account_id"
         ],
         "title": "OpeningCreate",
+        "type": "object"
+      },
+      "OpeningReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "const": "opening",
+            "title": "Kind",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id",
+          "kind"
+        ],
+        "title": "OpeningReplacement",
         "type": "object"
       },
       "OperationResponse": {
@@ -1665,6 +2238,93 @@
           "created_at"
         ],
         "title": "OperationResponse",
+        "type": "object"
+      },
+      "OperationState": {
+        "properties": {
+          "cancellation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CancellationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "opening",
+              "income",
+              "expense",
+              "transfer",
+              "exchange"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "latest_posting": {
+            "discriminator": {
+              "mapping": {
+                "exchange": "#/components/schemas/ExchangeResponse",
+                "expense": "#/components/schemas/OperationResponse",
+                "income": "#/components/schemas/OperationResponse",
+                "opening": "#/components/schemas/OperationResponse",
+                "transfer": "#/components/schemas/TransferResponse"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OperationResponse"
+              },
+              {
+                "$ref": "#/components/schemas/TransferResponse"
+              },
+              {
+                "$ref": "#/components/schemas/ExchangeResponse"
+              }
+            ],
+            "title": "Latest Posting"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "kind",
+          "version",
+          "status",
+          "latest_posting",
+          "updated_at"
+        ],
+        "title": "OperationState",
         "type": "object"
       },
       "PostingSplit": {
@@ -1859,6 +2519,68 @@
           "destination_account_id"
         ],
         "title": "TransferCreate",
+        "type": "object"
+      },
+      "TransferReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "kind": {
+            "const": "transfer",
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "source_account_id",
+          "destination_account_id",
+          "kind"
+        ],
+        "title": "TransferReplacement",
         "type": "object"
       },
       "TransferResponse": {
@@ -3566,6 +4288,21 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "active",
+                "cancelled"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3574,27 +4311,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "discriminator": {
-                      "mapping": {
-                        "exchange": "#/components/schemas/ExchangeResponse",
-                        "expense": "#/components/schemas/OperationResponse",
-                        "income": "#/components/schemas/OperationResponse",
-                        "opening": "#/components/schemas/OperationResponse",
-                        "transfer": "#/components/schemas/TransferResponse"
-                      },
-                      "propertyName": "kind"
-                    },
-                    "oneOf": [
-                      {
-                        "$ref": "#/components/schemas/OperationResponse"
-                      },
-                      {
-                        "$ref": "#/components/schemas/TransferResponse"
-                      },
-                      {
-                        "$ref": "#/components/schemas/ExchangeResponse"
-                      }
-                    ]
+                    "$ref": "#/components/schemas/OperationState"
                   },
                   "title": "Response List Operations Api V1 Ledgers  Ledger Id  Operations Get",
                   "type": "array"
@@ -3650,28 +4367,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "discriminator": {
-                    "mapping": {
-                      "exchange": "#/components/schemas/ExchangeResponse",
-                      "expense": "#/components/schemas/OperationResponse",
-                      "income": "#/components/schemas/OperationResponse",
-                      "opening": "#/components/schemas/OperationResponse",
-                      "transfer": "#/components/schemas/TransferResponse"
-                    },
-                    "propertyName": "kind"
-                  },
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/OperationResponse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/TransferResponse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ExchangeResponse"
-                    }
-                  ],
-                  "title": "Response Get Operation Api V1 Ledgers  Ledger Id  Operations  Operation Id  Get"
+                  "$ref": "#/components/schemas/OperationState"
                 }
               }
             },
@@ -3689,6 +4385,276 @@
           }
         },
         "summary": "Get Operation",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}/cancellations": {
+      "post": {
+        "description": "Reverse the latest posting and retain a terminal cancellation record.",
+        "operationId": "cancel_operation_api_v1_ledgers__ledger_id__operations__operation_id__cancellations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancellationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Operation",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}/corrections": {
+      "post": {
+        "description": "Reverse the prior posting and replace it atomically at the expected version.",
+        "operationId": "correct_operation_api_v1_ledgers__ledger_id__operations__operation_id__corrections_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Correct Operation",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}/history": {
+      "get": {
+        "description": "Read immutable revisions in version order with exact signed audit lines.",
+        "operationId": "operation_history_api_v1_ledgers__ledger_id__operations__operation_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryEntry"
+                  },
+                  "title": "Response Operation History Api V1 Ledgers  Ledger Id  Operations  Operation Id  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Operation History",
         "tags": [
           "financial operations"
         ]

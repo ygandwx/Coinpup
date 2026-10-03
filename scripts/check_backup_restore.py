@@ -215,7 +215,7 @@ def structure_state(engine, owner_id):
         }
     if len(entities) != 2 or len(assets) != 10 or len(ledgers) != 2:
         raise ArchiveError("Original or restored structure fixture has unexpected record counts.")
-    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 7:
+    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 8:
         raise ArchiveError("Original or restored multi-asset account fixture is incomplete.")
     return {
         "assets": records(assets, "asset_id"),
@@ -291,6 +291,7 @@ def create_financial_fixture(engine, owner_id, structure):
     )
     transfer = create_transfer_fixture(engine, owner_id, structure)
     fees = create_fee_fixture(engine, owner_id, structure)
+    revisions = create_revision_fixture(engine, owner_id, structure)
     # History and accepted-command replay remain usable after the account is archived.
     LedgerService(engine).update_account(
         owner_id,
@@ -311,6 +312,12 @@ def create_financial_fixture(engine, owner_id, structure):
         (str(company_account.id), structure["token_asset_id"]): "12.345678",
         (str(company_account.id), "JPY"): "123",
     }
+    expected_amounts.update(
+        {
+            (str(revisions["account_id"]), asset): amount
+            for asset, amount in revisions["amounts"].items()
+        }
+    )
     state = financial_state(engine, owner_id, structure)
     amounts = {
         (balance["account_id"], balance["asset_id"]): balance["amount"]
@@ -335,6 +342,7 @@ def create_financial_fixture(engine, owner_id, structure):
         "balances": state,
         "transfer": transfer,
         "fees": fees,
+        "revisions": revisions,
     }
 
 
@@ -398,7 +406,7 @@ def create_fee_fixture(engine, owner_id, structure):
         }
         if receipt.model_dump(mode="json").get("fees") != [expected_fee]:
             raise ArchiveError("CI fee receipt does not preserve the separate exact fee.")
-        if service.get_operation(owner_id, ledger_id, receipt.id) != receipt:
+        if service.get_operation(owner_id, ledger_id, receipt.id).latest_posting != receipt:
             raise ArchiveError("CI principal/fee operation could not be read without changing it.")
         fixtures.append(
             {
@@ -416,6 +424,295 @@ def create_fee_fixture(engine, owner_id, structure):
     ):
         raise ArchiveError("A fee changed its operation's original principal quantities.")
     return fixtures
+
+
+def create_revision_fixture(engine, owner_id, structure):
+    """Keep corrected and cancelled histories independent of earlier financial examples."""
+    from coinpup_api.ledger.posting import PostingService
+    from coinpup_api.ledger.posting_schemas import (
+        CancellationCreate,
+        CorrectionCreate,
+        ExchangeCreate,
+        ExpenseCreate,
+        OpeningCreate,
+    )
+    from coinpup_api.ledger.schemas import AccountCreate, AccountUpdate
+    from coinpup_api.ledger.service import LedgerService
+
+    service, management = PostingService(engine), LedgerService(engine)
+    ledger_id = structure["personal"].ledger.id
+    token = structure["token_asset_id"]
+    account = management.create_account(
+        owner_id,
+        ledger_id,
+        AccountCreate(
+            name="Fictional isolated revision account",
+            kind="wise",
+            asset_ids=["USD", "EUR", "ETH", token],
+        ),
+    )
+    expenses = [
+        item for item in management.list_categories(owner_id, ledger_id) if item.kind == "expense"
+    ]
+    for asset, amount in [
+        ("USD", "1000.00"),
+        ("ETH", "1.000000000000000001"),
+        (token, "12.345678"),
+    ]:
+        service.post_opening(
+            owner_id,
+            ledger_id,
+            OpeningCreate(
+                account_id=account.id,
+                asset_id=asset,
+                amount=amount,
+                transaction_date=date(2026, 1, 1),
+                description="Fictional revision opening",
+            ),
+            str(uuid4()),
+        )
+    expense = ExpenseCreate(
+        account_id=account.id,
+        asset_id="USD",
+        amount="100.00",
+        transaction_date=date(2026, 3, 1),
+        recognition_date=date(2026, 2, 28),
+        description="Fictional expense before correction",
+        splits=[{"category_id": expenses[0].id, "amount": "100.00"}],
+        fees=[
+            {
+                "account_id": account.id,
+                "asset_id": "ETH",
+                "amount": "0.000000000000000001",
+                "category_id": expenses[1].id,
+            }
+        ],
+    )
+    exchange = ExchangeCreate(
+        source_account_id=account.id,
+        source_asset_id="USD",
+        source_amount="50.00",
+        destination_account_id=account.id,
+        destination_asset_id="EUR",
+        destination_amount="45.00",
+        transaction_date=date(2026, 3, 2),
+        description="Fictional exchange before cancellation",
+        fees=[
+            {
+                "account_id": account.id,
+                "asset_id": token,
+                "amount": "0.100000",
+                "category_id": expenses[1].id,
+            }
+        ],
+    )
+    replacements = [
+        expense.model_dump(exclude={"id"})
+        | {
+            "kind": "expense",
+            "amount": "120.00",
+            "splits": [
+                {"category_id": expenses[0].id, "amount": "80.00"},
+                {"category_id": expenses[1].id, "amount": "40.00"},
+            ],
+            "fees": [expense.fees[0].model_dump() | {"amount": "0.000000000000000002"}],
+        },
+        exchange.model_dump(exclude={"id"})
+        | {
+            "kind": "exchange",
+            "source_amount": "60.00",
+            "destination_amount": "54.00",
+            "fees": [exchange.fees[0].model_dump() | {"amount": "0.200000"}],
+        },
+    ]
+    fixtures = []
+    for method, request, replacement in zip(
+        ["post_expense", "post_exchange"], [expense, exchange], replacements, strict=True
+    ):
+        key, correction_key = str(uuid4()), str(uuid4())
+        original = getattr(service, method)(owner_id, ledger_id, request, key)
+        correction = CorrectionCreate(
+            expected_version=1,
+            reason="Fictional correction for restore verification",
+            replacement=replacement,
+        )
+        corrected = service.correct_operation(
+            owner_id, ledger_id, original.id, correction, correction_key
+        )
+        if corrected.id != original.id or corrected.status != "active" or corrected.version != 2:
+            raise ArchiveError("CI correction did not retain stable identity and advance state.")
+        fixtures.append(
+            {
+                "method": method,
+                "request": request,
+                "key": key,
+                "original": original,
+                "correction": correction,
+                "correction_key": correction_key,
+                "corrected": corrected,
+            }
+        )
+    management.update_account(
+        owner_id, ledger_id, account.id, AccountUpdate(expected_version=1, archived=True)
+    )
+    cancelled = fixtures[1]
+    cancelled["cancellation"] = CancellationCreate(
+        expected_version=2, reason="Fictional cancellation after account archive"
+    )
+    cancelled["cancellation_key"] = str(uuid4())
+    cancelled["cancelled"] = service.cancel_operation(
+        owner_id,
+        ledger_id,
+        cancelled["original"].id,
+        cancelled["cancellation"],
+        cancelled["cancellation_key"],
+    )
+    for fixture in fixtures:
+        fixture["state"] = service.get_operation(owner_id, ledger_id, fixture["original"].id)
+        fixture["history"] = service.history(owner_id, ledger_id, fixture["original"].id)
+        actions = ["create", "correct"] + (["cancel"] if "cancelled" in fixture else [])
+        verify_revision_history(fixture["history"], actions)
+    if (
+        cancelled["state"].status != "cancelled"
+        or cancelled["state"].version != 3
+        or cancelled["state"].latest_posting != cancelled["corrected"].latest_posting
+    ):
+        raise ArchiveError("CI cancellation did not retain its last posting and terminal state.")
+    return {
+        "ledger_id": ledger_id,
+        "account_id": account.id,
+        "amounts": {
+            "USD": "880.00",
+            "EUR": "0.00",
+            "ETH": "0.999999999999999999",
+            token: "12.345678",
+        },
+        "operations": fixtures,
+    }
+
+
+def verify_revision_history(history, expected_actions):
+    """Independently verify exact whole-journal reversals exposed by restored audit reads."""
+    from decimal import Decimal
+
+    if [item.action for item in history] != expected_actions or [
+        item.version for item in history
+    ] != list(range(1, len(history) + 1)):
+        raise ArchiveError("Restored operation revision sequence is incomplete.")
+    previous = None
+    for entry in history:
+        postings = [journal for journal in entry.journals if journal.kind == "posting"]
+        reversals = [journal for journal in entry.journals if journal.kind == "reversal"]
+        if len(postings) != (entry.action != "cancel") or len(reversals) != (
+            entry.action != "create"
+        ):
+            raise ArchiveError("Restored operation revision has an invalid journal pair.")
+        if reversals:
+            reversal = reversals[0]
+            if (
+                previous is None
+                or reversal.reverses_journal_id != previous.id
+                or any(
+                    getattr(reversal, field) != getattr(previous, field)
+                    for field in ("transaction_date", "recognition_date", "description")
+                )
+            ):
+                raise ArchiveError("Restored reversal does not preserve its source journal.")
+
+            def rows(journal, reverse=False):
+                return sorted(
+                    (
+                        line.line_no,
+                        line.component_no,
+                        line.role,
+                        line.asset_id,
+                        line.account_id,
+                        line.category_id,
+                        Decimal(line.amount).copy_negate() if reverse else Decimal(line.amount),
+                    )
+                    for line in journal.lines
+                )
+
+            if rows(reversal) != rows(previous, reverse=True):
+                raise ArchiveError("Restored reversal changed or omitted principal/fee lines.")
+        if postings:
+            previous = postings[0]
+
+
+def verify_restored_revisions(engine, owner_id, revisions):
+    from coinpup_api.ledger.posting import PostingService
+    from coinpup_api.ledger.service import LedgerError
+
+    service = PostingService(engine)
+    ledger_id = revisions["ledger_id"]
+    all_states = {
+        item.id: item for item in service.list_operations(owner_id, ledger_id, status="all")
+    }
+    active_ids = {item.id for item in service.list_operations(owner_id, ledger_id, status="active")}
+    cancelled_ids = {
+        item.id for item in service.list_operations(owner_id, ledger_id, status="cancelled")
+    }
+    for fixture in revisions["operations"]:
+        operation_id = fixture["original"].id
+        if (
+            getattr(service, fixture["method"])(
+                owner_id, ledger_id, fixture["request"], fixture["key"]
+            )
+            != fixture["original"]
+        ):
+            raise ArchiveError("Restored create replay changed a historical financial receipt.")
+        corrected_replay = service.correct_operation(
+            owner_id, ledger_id, operation_id, fixture["correction"], fixture["correction_key"]
+        )
+        if corrected_replay != fixture["corrected"]:
+            raise ArchiveError(
+                "Restored correction replay did not return its original state receipt."
+            )
+        if "cancelled" in fixture:
+            cancelled_replay = service.cancel_operation(
+                owner_id,
+                ledger_id,
+                operation_id,
+                fixture["cancellation"],
+                fixture["cancellation_key"],
+            )
+            if (
+                cancelled_replay != fixture["cancelled"]
+                or operation_id in active_ids
+                or operation_id not in cancelled_ids
+            ):
+                raise ArchiveError(
+                    "Restored cancellation replay or status filtering is inconsistent."
+                )
+            try:
+                service.cancel_operation(
+                    owner_id,
+                    ledger_id,
+                    operation_id,
+                    fixture["cancellation"].model_copy(update={"expected_version": 3}),
+                    str(uuid4()),
+                )
+            except LedgerError as error:
+                if error.status != 409:
+                    raise ArchiveError(
+                        "Restored terminal cancellation returned an unexpected error."
+                    ) from None
+            else:
+                raise ArchiveError("Restored cancelled operation accepted another state mutation.")
+        elif operation_id not in active_ids or operation_id in cancelled_ids:
+            raise ArchiveError("Restored active correction disappeared from the active list.")
+        if (
+            service.get_operation(owner_id, ledger_id, operation_id) != fixture["state"]
+            or all_states.get(operation_id) != fixture["state"]
+        ):
+            raise ArchiveError("Restored replay changed the current operation state.")
+        history = service.history(owner_id, ledger_id, operation_id)
+        if history != fixture["history"]:
+            raise ArchiveError("Restored revision audit no longer matches its original history.")
+        verify_revision_history(history, [item.action for item in fixture["history"]])
+        for entry in history:
+            for journal in entry.journals:
+                verify_sealed_journal(engine, journal.id, component_no=1)
 
 
 def company_classification(engine, ledger_id):
@@ -504,7 +801,7 @@ def create_transfer_fixture(engine, owner_id, structure):
     )
     if company_classification(engine, ledger_id) != {"income": "0.00", "expense": "100.00"}:
         raise ArchiveError("Transfer or card repayment changed the expected income/expense total.")
-    if service.get_operation(owner_id, ledger_id, receipt.id) != receipt:
+    if service.get_operation(owner_id, ledger_id, receipt.id).latest_posting != receipt:
         raise ArchiveError(
             "Transfer could not be read with its original source/destination receipt."
         )
@@ -702,7 +999,7 @@ def check_backup_restore():
             transfer_replay != transfer["receipt"]
             or service.get_operation(
                 administrator_id, transfer["ledger_id"], transfer["receipt"].id
-            )
+            ).latest_posting
             != transfer["receipt"]
         ):
             raise ArchiveError(
@@ -717,17 +1014,18 @@ def check_backup_restore():
                 fee_replay != fixture["receipt"]
                 or service.get_operation(
                     administrator_id, fixture["ledger_id"], fixture["receipt"].id
-                )
+                ).latest_posting
                 != fixture["receipt"]
             ):
                 raise ArchiveError("Restored principal/fee read or replay changed its receipt.")
             listed = {
-                operation.id: operation
+                operation.id: operation.latest_posting
                 for operation in service.list_operations(administrator_id, fixture["ledger_id"])
             }
             if listed.get(fixture["receipt"].id) != fixture["receipt"]:
                 raise ArchiveError("Restored operation list omitted or changed a fee receipt.")
             verify_sealed_journal(target_engine, fixture["receipt"].journal_id, component_no=1)
+        verify_restored_revisions(target_engine, administrator_id, financial["revisions"])
         if before != snapshot(target) or before != snapshot(source):
             raise ArchiveError("Replay or rejected journal append changed restored/source data.")
         print("Backup/restore verified: all application tables and migration rows match exactly.")
@@ -737,6 +1035,9 @@ def check_backup_restore():
         )
         print("Bank/cash transfer and card repayment preserve balances without duplicate expense.")
         print("FX and BTC principal/fees remain exact; fee-component journals remain sealed.")
+        print(
+            "Corrections/cancellations preserve exact reversals, version history and old receipts."
+        )
         print("Test databases retained; no DROP ran.")
     finally:
         source_engine.dispose()

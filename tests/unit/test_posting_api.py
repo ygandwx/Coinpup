@@ -50,6 +50,16 @@ WRITES = [
     ("/transfers", TRANSFER, "post_transfer"),
     ("/exchanges", EXCHANGE, "post_exchange"),
 ]
+CORRECTION = {
+    "expected_version": 1,
+    "reason": "Fictional corrected amount",
+    "replacement": {"kind": "expense", **CLASSIFIED},
+}
+CANCELLATION = {"expected_version": 1, "reason": "Fictional cancelled entry"}
+REVISIONS = [
+    (f"/operations/{RECORD}/corrections", CORRECTION, "correct_operation"),
+    (f"/operations/{RECORD}/cancellations", CANCELLATION, "cancel_operation"),
+]
 
 
 class Probe:
@@ -81,14 +91,16 @@ def signed_in(client, monkeypatch):
     return client
 
 
-@pytest.mark.parametrize("suffix", ["/operations", f"/operations/{RECORD}", "/balances"])
+@pytest.mark.parametrize(
+    "suffix", ["/operations", f"/operations/{RECORD}", f"/operations/{RECORD}/history", "/balances"]
+)
 def test_financial_reads_require_session(client, suffix):
     response = client.get(LEDGER + suffix)
     assert response.status_code == 401
     assert response.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("suffix,body,method", WRITES)
+@pytest.mark.parametrize("suffix,body,method", WRITES + REVISIONS)
 def test_financial_writes_guard_origin_session_and_csrf(
     signed_in, suffix, body, method, monkeypatch
 ):
@@ -140,16 +152,64 @@ def test_financial_command_forwards_exact_body_owner_and_key(
         assert payload["splits"] == body["splits"]
 
 
+@pytest.mark.parametrize("suffix,body,method", REVISIONS)
+def test_revision_forwards_path_identity_version_and_key(
+    signed_in, suffix, body, method, monkeypatch
+):
+    calls = []
+
+    def record(self, owner_id, ledger_id, operation_id, payload, key):
+        calls.append((owner_id, ledger_id, operation_id, payload.model_dump(mode="json"), key))
+        raise LedgerError("version_conflict", 409, "The version changed")
+
+    monkeypatch.setattr(PostingService, method, record)
+    response = signed_in.post(LEDGER + suffix, json=body)
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "version_conflict"
+    owner, ledger, operation, payload, key = calls[0]
+    assert (owner, ledger, operation, key) == (OWNER, UUID(RECORD), UUID(RECORD), "test-command")
+    assert payload["expected_version"] == 1 and payload["reason"] == body["reason"]
+    if method == "correct_operation":
+        assert payload["replacement"]["amount"] == "10.00"
+        assert "id" not in payload["replacement"]
+
+
+@pytest.mark.parametrize("suffix,body,method", REVISIONS)
+@pytest.mark.parametrize(
+    "extra", [{"expected_version": 0}, {"expected_version": True}, {"reason": " "}]
+)
+def test_revision_invalid_version_or_reason_never_reaches_service(
+    signed_in, suffix, body, method, extra, monkeypatch
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid revision reached service")
+
+    monkeypatch.setattr(PostingService, method, forbidden)
+    assert signed_in.post(LEDGER + suffix, json=body | extra).status_code == 422
+
+
+def test_replacement_cannot_change_operation_identity(signed_in, monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Replacement ID reached service")
+
+    monkeypatch.setattr(PostingService, "correct_operation", forbidden)
+    body = CORRECTION | {"replacement": CORRECTION["replacement"] | {"id": RECORD}}
+    assert signed_in.post(LEDGER + REVISIONS[0][0], json=body).status_code == 422
+
+
 @pytest.mark.parametrize("key", [None, "", "contains space", "a" * 129])
-def test_missing_or_invalid_idempotency_key_never_posts(signed_in, monkeypatch, key):
+@pytest.mark.parametrize("suffix,body,method", WRITES + REVISIONS)
+def test_missing_or_invalid_idempotency_key_never_posts(
+    signed_in, monkeypatch, key, suffix, body, method
+):
     def forbidden(*args, **kwargs):
         pytest.fail("Invalid command reached service")
 
-    monkeypatch.setattr(PostingService, "post_opening", forbidden)
+    monkeypatch.setattr(PostingService, method, forbidden)
     signed_in.headers.pop("idempotency-key")
     if key is not None:
         signed_in.headers["idempotency-key"] = key
-    assert signed_in.post(LEDGER + "/opening-balances", json=BASE).status_code == 422
+    assert signed_in.post(LEDGER + suffix, json=body).status_code == 422
 
 
 @pytest.mark.parametrize(
@@ -174,10 +234,32 @@ def test_financial_reads_forward_bounded_query_and_owner(signed_in, monkeypatch)
     monkeypatch.setattr(PostingService, "balances", balances)
     assert signed_in.get(LEDGER + f"/balances?account_id={RECORD}&limit=2&offset=3").json() == []
     assert calls == [(OWNER, UUID(RECORD), {"account_id": UUID(RECORD), "limit": 2, "offset": 3})]
-    for suffix in ("/operations", "/balances"):
+    for suffix in ("/operations", "/balances", f"/operations/{RECORD}/history"):
         for query in ("limit=0", "limit=201", "offset=-1", "offset=100001"):
             assert signed_in.get(LEDGER + suffix + "?" + query).status_code == 422
     assert len(calls) == 1
+
+
+def test_current_state_and_history_queries_keep_filter_and_pagination(signed_in, monkeypatch):
+    calls = []
+
+    def records(self, owner_id, ledger_id, **kwargs):
+        calls.append((owner_id, ledger_id, kwargs))
+        return []
+
+    def history(self, owner_id, ledger_id, operation_id, **kwargs):
+        calls.append((owner_id, ledger_id, operation_id, kwargs))
+        return []
+
+    monkeypatch.setattr(PostingService, "list_operations", records)
+    monkeypatch.setattr(PostingService, "history", history)
+    assert signed_in.get(LEDGER + "/operations").json() == []
+    assert calls[-1] == (OWNER, UUID(RECORD), {"limit": 100, "offset": 0, "status": "all"})
+    assert signed_in.get(LEDGER + "/operations?status=cancelled&limit=2&offset=1").json() == []
+    assert calls[-1] == (OWNER, UUID(RECORD), {"limit": 2, "offset": 1, "status": "cancelled"})
+    assert signed_in.get(LEDGER + "/operations?status=unknown").status_code == 422
+    assert signed_in.get(LEDGER + f"/operations/{RECORD}/history?limit=2&offset=1").json() == []
+    assert calls[-1] == (OWNER, UUID(RECORD), UUID(RECORD), {"limit": 2, "offset": 1})
 
 
 @pytest.mark.parametrize("error_type,status", [(IntegrityError, 409), (OperationalError, 503)])
@@ -205,7 +287,10 @@ def test_every_financial_write_is_guarded_and_documents_command_key(client):
         if method in {"post", "patch", "put", "delete"}
         and "financial operations" in specification.get("tags", [])
     }
-    assert set(writes) == {"/api/v1/ledgers/{ledger_id}" + suffix for suffix, _, _ in WRITES}
+    assert set(writes) == {
+        "/api/v1/ledgers/{ledger_id}" + suffix.replace(RECORD, "{operation_id}")
+        for suffix, _, _ in WRITES + REVISIONS
+    }
     for specification in writes.values():
         headers = {
             item["name"]: item for item in specification["parameters"] if item["in"] == "header"

@@ -121,11 +121,12 @@ def test_a04_transfer_keeps_combined_balance_and_has_no_expense_income(transfer_
     assert balance(s, "bank") == "800.00" and balance(s, "cash") == "200.00"
     assert balance(s, "credit_card") == "0.00"
     assert s["posting"].post_transfer(s["owner"], s["ledger"], request, "a04") == receipt
-    assert s["posting"].get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    state = s["posting"].get_operation(s["owner"], s["ledger"], receipt.id)
+    assert state.latest_posting == receipt and state.status == "active" and state.version == 1
     operations = s["posting"].list_operations(s["owner"], s["ledger"])
-    assert operations == [receipt, original_opening]
-    assert isinstance(operations[1], OperationResponse)
-    assert "destination_account_id" not in operations[1].model_dump()
+    assert [item.latest_posting for item in operations] == [receipt, original_opening]
+    assert isinstance(operations[1].latest_posting, OperationResponse)
+    assert "destination_account_id" not in operations[1].latest_posting.model_dump()
     assert counts(s) == (2, 2, 4, 2)
     with Session(s["engine"]) as session:
         assert (
@@ -176,7 +177,9 @@ def test_a06_card_expense_and_repayment_count_expense_only_once(transfer_setup):
             )
             == 0
         )
-    assert s["posting"].get_operation(s["owner"], s["ledger"], purchase.id) == purchase
+    assert (
+        s["posting"].get_operation(s["owner"], s["ledger"], purchase.id).latest_posting == purchase
+    )
 
 
 @pytest.mark.parametrize(
@@ -288,7 +291,7 @@ def test_transfer_replay_after_archiving_and_disabling_is_exact_and_readable(tra
     )
     fresh, before = PostingService(s["engine"]), counts(s)
     assert fresh.post_transfer(s["owner"], s["ledger"], request, "stable-transfer") == receipt
-    assert fresh.get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    assert fresh.get_operation(s["owner"], s["ledger"], receipt.id).latest_posting == receipt
     assert counts(s) == before and balance(s, "bank") == "800.00" and balance(s, "cash") == "200.00"
     with pytest.raises(LedgerError) as error:
         fresh.post_transfer(

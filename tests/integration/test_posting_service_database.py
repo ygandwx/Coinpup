@@ -133,7 +133,8 @@ def test_a03_exact_multiasset_balance_and_opening_not_income(ledger_setup):
     assert spent.transaction_date == date(2026, 2, 1) and spent.recognition_date == date(
         2026, 1, 31
     )
-    assert posting.get_operation(owner, ledger, spent.id) == spent
+    state = posting.get_operation(owner, ledger, spent.id)
+    assert state.latest_posting == spent and state.status == "active" and state.version == 1
     with Session(s["engine"]) as session:
         opening_roles = session.scalars(
             select(JournalLine.role).where(JournalLine.journal_id == first.journal_id)
@@ -173,7 +174,12 @@ def test_a07_crypto_precision_survives_post_read_and_balance(ledger_setup, asset
         s["owner"], s["ledger"], opening(s, amount, asset), "precision"
     )
     assert receipt.amount == amount
-    assert PostingService(s["engine"]).get_operation(s["owner"], s["ledger"], receipt.id) == receipt
+    assert (
+        PostingService(s["engine"])
+        .get_operation(s["owner"], s["ledger"], receipt.id)
+        .latest_posting
+        == receipt
+    )
     assert quantities(s)[asset] == amount
 
 
@@ -352,7 +358,7 @@ def test_original_receipt_replays_after_archive_disable_and_service_restart(ledg
     before = financial_counts(s["engine"])
     fresh = PostingService(s["engine"])
     assert fresh.post_expense(s["owner"], s["ledger"], request, "persistent") == original
-    assert fresh.get_operation(s["owner"], s["ledger"], original.id) == original
+    assert fresh.get_operation(s["owner"], s["ledger"], original.id).latest_posting == original
     balance = next(
         item for item in fresh.balances(s["owner"], s["ledger"]) if item.asset_id == "USD"
     )
@@ -485,6 +491,8 @@ def test_operation_reads_are_owner_ledger_scoped_and_pagination_is_stable(ledger
     ]
     listed = s["posting"].list_operations(s["owner"], s["ledger"])
     assert [item.id for item in listed] == [item.id for item in reversed(receipts)]
+    assert [item.latest_posting for item in listed] == list(reversed(receipts))
+    assert all(item.status == "active" and item.version == 1 for item in listed)
     assert s["posting"].list_operations(s["owner"], s["ledger"], limit=1, offset=1) == [listed[1]]
     assert s["posting"].list_operations(s["owner"], s["ledger"], offset=3) == []
     other = s["structure"].create_entity(

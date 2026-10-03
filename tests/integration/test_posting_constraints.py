@@ -341,7 +341,7 @@ def test_current_pointer_cannot_claim_another_operations_journal(posting_structu
             connection.execute(insert(JournalLine), _lines(fixture, journal))
     assert rejected.value.orig.diag.constraint_name in {
         "fk_financial_operations_current_journal",
-        "ck_journal_shape",
+        "ck_operation_history",
     }
 
 
