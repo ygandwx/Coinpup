@@ -5,7 +5,8 @@
 ## 当前工作
 
 - 仓库：[ygandwx/Coinpup](https://github.com/ygandwx/Coinpup)，保持私有，未选定开源许可证。
-- 当前任务：**T05-1、T05-2 已完成；暂缓 T05-3，先准备并连续执行 OPT-01 至 OPT-08。**
+- 当前任务：**OPT-01 CI 触发去重验收与合入；暂缓 T05-3，连续执行 OPT-01 至 OPT-08。**
+- 当前优化分支：`chore/opt-01-ci-triggers`；[PR #26](https://github.com/ygandwx/Coinpup/pull/26)。准备计划的 [PR #25](https://github.com/ygandwx/Coinpup/pull/25) 已合入。
 - 本轮保存点：[PR #24](https://github.com/ygandwx/Coinpup/pull/24)，分支 `feat/t05-documents-web`，基于已合入 PR #23 的 `0fa8c005e16b709c32243187f035d19bb88a1328`。合入后从 `main` 续接，最终提交与合入状态以该 PR 为准。
 - 用户最新指示：**暂缓 T05-3；连续执行优化计划 OPT-01 至 OPT-08，全部完成后向用户汇报**。
 - 执行约定：先合入 `chore/opt-plan-setup` 的计划副本；之后以 [优化计划](optimization-plan.md) 为准。每个 PR 只包含一个包，CI 全部通过并合入最新 `main` 后再继续，无需逐包等用户确认。此授权优先于计划开头的逐包停止写法；不执行 OPT-09 及之后的包或 T05-3。检查无法正常修复、范围/产品决定冲突、削弱不变量或改变 API/数据库语义时立即停止汇报。
@@ -64,8 +65,8 @@
 
 ## 可执行下一步
 
-1. 准备 PR 将附件原样保存到仓库、记录新授权；检查通过后合入。
-2. 按优化计划状态表连续执行 OPT-01 至 OPT-08；各包验收和 CI 通过、合入最新 `main` 后再开始下一包。
+1. OPT-01 检查通过并合入后，从最新 `main` 开始 OPT-02 统一检查入口。
+2. 按优化计划状态表连续执行至 OPT-08；各包验收和 CI 通过、合入最新 `main` 后再开始下一包。
 3. 全部完成后汇报各包 PR/检查、计划修订、GitHub 手动设置和 exhaustive-deps 警告数量，然后停止等待新指示。
 4. OPT-09 及之后、T05-3 和其他路线图任务均不在本轮实施范围。
 
