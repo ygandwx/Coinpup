@@ -9,15 +9,21 @@ ROOT = Path(__file__).resolve().parents[1]
 required = [
     "README.md",
     "AGENTS.md",
-    "CONTRIBUTING.md",
+    "services/api/AGENTS.md",
+    "apps/web/AGENTS.md",
     "docs/engineering/status.md",
-    "docs/engineering/handoff.md",
     "docs/engineering/roadmap.md",
     "docs/product/requirements.md",
     "docs/product/acceptance.md",
     "docs/architecture/overview.md",
 ]
-BYTE_BUDGETS = {"README.md": 8 * 1024, "docs/engineering/status.md": 6 * 1024}
+BYTE_BUDGETS = {
+    "README.md": 8 * 1024,
+    "docs/engineering/status.md": 6 * 1024,
+    "AGENTS.md": 8 * 1024,
+}
+AGENT_FILES = ("AGENTS.md", "services/api/AGENTS.md", "apps/web/AGENTS.md")
+AGENT_TOTAL_BUDGET = 24 * 1024
 EXCLUDED_DIRECTORIES = {
     ".git",
     ".venv",
@@ -69,6 +75,14 @@ def check_repository(root: Path) -> tuple[list[str], int]:
         source = root / name
         if source.is_file() and (size := source.stat().st_size) > limit:
             errors.append(f"{name}: byte budget exceeded ({size} bytes; maximum {limit} bytes)")
+    agent_size = sum(
+        (root / name).stat().st_size for name in AGENT_FILES if (root / name).is_file()
+    )
+    if agent_size > AGENT_TOTAL_BUDGET:
+        errors.append(
+            f"Three AGENTS.md files: combined byte budget exceeded "
+            f"({agent_size} bytes; maximum {AGENT_TOTAL_BUDGET} bytes)"
+        )
     files = markdown_files(root)
     for source in files:
         for target in markdown_targets(source.read_text(encoding="utf-8")):

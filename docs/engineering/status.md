@@ -11,8 +11,8 @@
 
 ## 正在进行
 
-- 任务：OPT-03 文档单一事实来源与瘦身，等待 CI/合入。分支：`chore/opt-03-docs-source`。[PR #28](https://github.com/ygandwx/Coinpup/pull/28)。
-- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备、OPT-01 和 OPT-02 已合入；验证证据分别见 [PR #25](https://github.com/ygandwx/Coinpup/pull/25)、[PR #26](https://github.com/ygandwx/Coinpup/pull/26)、[PR #27](https://github.com/ygandwx/Coinpup/pull/27)。
+- 任务：OPT-04 分层开发规则与开发循环，等待 CI/合入。分支：`chore/opt-04-layered-agents`。[PR #29](https://github.com/ygandwx/Coinpup/pull/29)。
+- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-03 已合入；验证证据见状态表对应 PR。
 - 仓库保持私有，未选定开源许可证。
 
 ## 任务状态
@@ -42,6 +42,6 @@
 
 ## 下一步
 
-1. OPT-03 验收、CI 和合入后，从最新 main 开始 OPT-04 分层开发规则。
-2. 按计划继续 OPT-05 至 OPT-08；逐包 PR，不启动业务新功能。
+1. OPT-04 验收、CI 和合入后，从最新 main 开始 OPT-05 PR 模板与并行规则。
+2. 按计划继续 OPT-06 至 OPT-08；逐包 PR，不启动业务新功能。
 3. 完成 OPT-08 后汇报并停止；后续 OPT-10 起的包和 T05-3 等待新授权。
