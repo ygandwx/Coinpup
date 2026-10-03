@@ -29,7 +29,8 @@ def structure_database():
             # Only this explicitly opted-in disposable fixture may truncate immutable journals.
             # RESTRICT rejects unexpected dependants; production utilities never do this.
             connection.exec_driver_sql(
-                "TRUNCATE TABLE command_receipts, opening_positions, journal_lines, journals, "
+                "TRUNCATE TABLE file_uploads, operation_file_links, stored_files, "
+                "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations RESTRICT"
             )
             connection.execute(delete(AccountAsset))

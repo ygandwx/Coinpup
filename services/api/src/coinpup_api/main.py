@@ -16,6 +16,7 @@ from coinpup_api import __version__
 from coinpup_api.auth import create_auth_router
 from coinpup_api.config import Settings
 from coinpup_api.database import Database, DatabaseProbe
+from coinpup_api.documents.router import create_document_router
 from coinpup_api.ledger.posting_router import create_posting_router
 from coinpup_api.ledger.router import create_ledger_router
 
@@ -62,9 +63,12 @@ def create_app(
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "same-origin"
         if request.url.path != "/docs":  # Development-only Swagger uses its own scripts.
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; img-src 'self' data:; style-src 'self'; "
-                "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                (
+                    "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+                ),
             )
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
@@ -89,6 +93,7 @@ def create_app(
     app.include_router(create_auth_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_ledger_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_document_router(settings, getattr(probe, "engine", None)))
 
     @app.get("/api/v1/health/live", response_model=Health, tags=["health"])
     def liveness() -> Health:

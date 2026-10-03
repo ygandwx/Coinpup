@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/api/src"))
 
 from check_backup_restore import check_backup_restore  # noqa: E402
+from check_bundle_restore import check_bundle_restore  # noqa: E402
 from coinpup_api.config import Settings  # noqa: E402
 from coinpup_api.database import Database  # noqa: E402
 from sqlalchemy import text  # noqa: E402
@@ -37,6 +38,7 @@ def main():
     os.environ["COINPUP_BACKUP_TEST_SOURCE_URL"] = source
     os.environ["COINPUP_BACKUP_TEST_TARGET_URL"] = target
     check_backup_restore()
+    check_bundle_restore(source)
 
 
 if __name__ == "__main__":

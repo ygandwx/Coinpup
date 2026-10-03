@@ -155,7 +155,7 @@ jobs:
           api python scripts/create_test_admin.py
       - name: Verify real browser authentication
         run: npm --prefix apps/web run test:e2e
-      - name: Verify database backup and restore into a new empty database
+      - name: Verify database and private-file bundles in isolated recovery targets
         run: >-
           docker compose exec -T
           -e COINPUP_ENVIRONMENT=test -e COINPUP_RUN_BACKUP_TESTS=1
