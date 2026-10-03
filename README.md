@@ -2,7 +2,7 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01 工程基础已合入，T02 账务核心正在开发，尚不能用于真实记账。** 已有管理员初始化、登录/退出、双语网页入口、数据库会话、健康 API、迁移、基础数据库备份恢复及自动检查。T02 从精确金额与资产身份开始；账务接口、记账页面、OCR 和 App 尚未实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01 工程基础已合入，T02/T03 正在推进，尚不能用于真实记账。** 已有管理员会话、双语网页登录入口、精确金额、主体/账本/账户/分类结构 API、迁移及数据库备份恢复工具。收支分录、余额、业务网页、OCR 和 App 尚未实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
 Coinpup is a self-hosted personal and multi-company bookkeeping project. The current foundation includes administrator sessions and a bilingual web entry, but is not yet a usable finance application. No open-source license has been selected for this private repository.
 
@@ -16,6 +16,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. The cur
 - [贡献流程](CONTRIBUTING.md)与[跨环境交接](docs/engineering/handoff.md)
 - [管理员与会话设计](docs/architecture/decisions/0002-administrator-session.md)与[备份恢复操作](docs/engineering/operations.md)
 - [精确金额与资产身份](docs/architecture/decisions/0003-exact-asset-amounts.md)
+- [独立账本与结构接口](docs/architecture/decisions/0004-owned-ledger-structure.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -56,7 +57,15 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 端口仅绑定本机，数据库保存在命名卷中；`docker compose down` 保留数据，不要对需要保留的数据使用 `down -v`。Compose 内部使用容器数据库地址，本地 Python 使用 `.env` 中的 localhost 地址。
 
-迁移包含空基线及管理员、会话、登录限制表，尚无账务数据表。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
+迁移包含空基线、认证表及 `20261003_0003` 的主体/账本/账户/资产/分类结构，尚无收支分录。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
+
+## 当前结构 API
+
+登录后可使用 `/api/v1/assets`、`/category-templates`、`/entities` 与 `/ledgers/{ledger_id}` 下的 `/accounts`、`/categories`。开发环境 `/docs` 和 `contracts/openapi.json` 提供实际请求/响应字段。
+
+接口沿用登录 Cookie；POST/PATCH 必须同时携带允许的 `Origin` 与会话接口返回的 `X-CSRF-Token`。所有 PATCH 需要当前 `expected_version`，过期版本返回 409。账户可配置多个 `asset_ids`；创建主体时可选择 `personal_default` 或 `business_default` 分类模板。归档保留历史，主体归档会暂停该账本写入。
+
+目前结构接口不提供余额、收支或转账，网页登录后的工作区尚未接入这些管理功能。上述接口的设计和限制见 ADR 0004。
 
 ## 网页开发
 

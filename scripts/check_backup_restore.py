@@ -14,21 +14,178 @@ from restore_database import restore_database
 
 
 def snapshot(target):
-    tables = {
-        "administrators": "id",
-        "auth_sessions": "token_hash",
-        "auth_login_guard": "id",
-        "alembic_version": "version_num",
-    }
+    """Compare every application table without decoding precise JSON numbers as floats."""
     with target.connect() as connection:
+        connection.execute("SET LOCAL TIME ZONE 'UTC'")
+        tables = connection.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+            "AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend dependency "
+            "WHERE dependency.classid = 'pg_catalog.pg_class'::regclass "
+            "AND dependency.objid = to_regclass(format('%I.%I', table_schema, table_name)) "
+            "AND dependency.deptype = 'e') ORDER BY table_name"
+        ).fetchall()
         return {
-            table: connection.execute(
-                sql.SQL("SELECT row_to_json(t) FROM {} t ORDER BY {}").format(
-                    sql.Identifier(table), sql.Identifier(key)
-                )
+            name: connection.execute(
+                sql.SQL(
+                    "SELECT row_to_json(t)::text FROM {} t ORDER BY row_to_json(t)::text"
+                ).format(sql.Identifier("public", name))
             ).fetchall()
-            for table, key in tables.items()
+            for (name,) in tables
         }
+
+
+def create_structure_fixture(engine, owner_id):
+    """Seed only explicitly fictional data through the same commands used by the API."""
+    from coinpup_api.ledger.schemas import (
+        AccountCreate,
+        AccountUpdate,
+        AssetCreate,
+        CategoryCreate,
+        CategoryUpdate,
+        EntityCreate,
+    )
+    from coinpup_api.ledger.service import LedgerService
+
+    service = LedgerService(engine)
+    yen = service.create_asset(owner_id, AssetCreate(code="JPY", kind="fiat", scale=0))
+    token = service.create_asset(
+        owner_id,
+        AssetCreate(
+            code="USDC",
+            kind="token",
+            scale=6,
+            network="fictional-backup-chain",
+            token_reference="FictionalBackupToken",
+        ),
+    )
+    personal = service.create_entity(
+        owner_id,
+        EntityCreate(
+            kind="personal",
+            name="Fictional backup personal",
+            base_asset_id="USD",
+            template_key="business_default",
+            locale="en",
+        ),
+    )
+    company = service.create_entity(
+        owner_id,
+        EntityCreate(
+            kind="company",
+            name="Fictional backup company",
+            country_code="US",
+            region_code="NM",
+            company_type="llc",
+            base_asset_id="USD",
+            template_key="business_default",
+            locale="en",
+            details={"fixture_note": "Synthetic CI record; not a registered company"},
+        ),
+    )
+    service.create_account(
+        owner_id,
+        personal.ledger.id,
+        AccountCreate(name="Fictional personal Wise", kind="wise", asset_ids=["USD", yen.asset_id]),
+    )
+    service.create_account(
+        owner_id,
+        company.ledger.id,
+        AccountCreate(
+            name="Fictional company account",
+            kind="bank",
+            asset_ids=["USD", "ETH", yen.asset_id, token.asset_id],
+        ),
+    )
+    old_account = service.create_account(
+        owner_id,
+        company.ledger.id,
+        AccountCreate(name="Fictional archived cash", kind="cash", asset_ids=[yen.asset_id]),
+    )
+    archived = service.update_account(
+        owner_id,
+        company.ledger.id,
+        old_account.id,
+        AccountUpdate(expected_version=old_account.version, archived=True),
+    )
+    original_categories = service.list_categories(owner_id, personal.ledger.id)
+    parent = next(
+        category
+        for category in service.list_categories(owner_id, company.ledger.id)
+        if category.kind == "expense"
+    )
+    renamed = service.update_category(
+        owner_id,
+        company.ledger.id,
+        parent.id,
+        CategoryUpdate(expected_version=parent.version, name="Fictional renamed expense"),
+    )
+    child = service.create_category(
+        owner_id,
+        company.ledger.id,
+        CategoryCreate(name="Fictional child expense", kind="expense", parent_id=parent.id),
+    )
+    if (
+        archived.version != old_account.version + 1
+        or not archived.archived
+        or renamed.version != parent.version + 1
+        or child.parent_id != parent.id
+        or service.list_categories(owner_id, personal.ledger.id) != original_categories
+    ):
+        raise ArchiveError("CI structure fixture did not preserve version or category isolation.")
+
+
+def structure_state(engine, owner_id):
+    """Resolve restored references through business reads, including archived history."""
+    from coinpup_api.ledger.service import LedgerService
+
+    service = LedgerService(engine)
+
+    def records(items, key="id"):
+        return sorted((item.model_dump(mode="json") for item in items), key=lambda item: item[key])
+
+    assets = service.list_assets(owner_id, include_disabled=True)
+    entities = service.list_entities(owner_id, include_archived=True)
+    asset_ids = {asset.asset_id for asset in assets}
+    ledgers = {}
+    for entity in entities:
+        ledger = service.get_ledger(owner_id, entity.ledger.id)
+        accounts = service.list_accounts(owner_id, ledger.id, include_archived=True)
+        active_accounts = service.list_accounts(owner_id, ledger.id)
+        categories = service.list_categories(owner_id, ledger.id, include_archived=True)
+        category_ids = {category.id for category in categories}
+        if (
+            ledger != entity.ledger
+            or ledger.entity_id != entity.id
+            or ledger.base_asset_id not in asset_ids
+            or any(
+                account.ledger_id != ledger.id or not set(account.asset_ids) <= asset_ids
+                for account in accounts
+            )
+            or {account.id for account in active_accounts}
+            != {account.id for account in accounts if not account.archived}
+            or any(
+                category.ledger_id != ledger.id
+                or (category.parent_id is not None and category.parent_id not in category_ids)
+                for category in categories
+            )
+        ):
+            raise ArchiveError("Original or restored business references could not be resolved.")
+        ledgers[str(ledger.id)] = {
+            "ledger": ledger.model_dump(mode="json"),
+            "accounts": records(accounts),
+            "active_accounts": records(active_accounts),
+            "categories": records(categories),
+        }
+    if len(entities) != 2 or len(assets) != 10 or len(ledgers) != 2:
+        raise ArchiveError("Original or restored structure fixture has unexpected record counts.")
+    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 3:
+        raise ArchiveError("Original or restored multi-asset account fixture is incomplete.")
+    return {
+        "assets": records(assets, "asset_id"),
+        "entities": records(entities),
+        "ledgers": ledgers,
+    }
 
 
 def check_backup_restore():
@@ -80,8 +237,22 @@ def check_backup_restore():
         identity, token = AuthService(settings, source_engine).login("backup-ci-fixture", password)
         if identity.id != administrator_id:
             raise ArchiveError("CI fixture login did not match its administrator.")
+        create_structure_fixture(source_engine, administrator_id)
+        expected_structure = structure_state(source_engine, administrator_id)
         source_engine.dispose()
         before = snapshot(source)
+        required_tables = {
+            "assets",
+            "entities",
+            "ledgers",
+            "accounts",
+            "account_assets",
+            "categories",
+        }
+        if any(not before.get(table) for table in required_tables):
+            raise ArchiveError(
+                "CI business structure tables must contain fixture rows before backup."
+            )
         with tempfile.TemporaryDirectory(prefix="coinpup-backup-check-") as temporary:
             archive = Path(temporary) / "backup"
             backup_database(source, archive)
@@ -94,12 +265,17 @@ def check_backup_restore():
             else:
                 raise ArchiveError("Second restore should have refused the nonempty target.")
         if before != snapshot(source) or before != snapshot(target):
-            raise ArchiveError("Source/restore authentication rows or migration revision differ.")
+            raise ArchiveError("Source/restore application rows or migration revision differ.")
         for engine in (source_engine, target_engine):
             if AuthService(settings, engine).get_session(token).id != administrator_id:
                 raise ArchiveError("Restored or original session is not usable.")
-        print("Backup/restore verified: administrator, session, throttle and migration rows match.")
-        print("Original and restored sessions both resolve. Test databases retained; no DROP ran.")
+            if structure_state(engine, administrator_id) != expected_structure:
+                raise ArchiveError(
+                    "Restored or original business structure differs from its fixture."
+                )
+        print("Backup/restore verified: all application tables and migration rows match exactly.")
+        print("Sessions, owned ledgers, multi-asset accounts, categories and archives resolve.")
+        print("Test databases retained; no DROP ran.")
     finally:
         source_engine.dispose()
         target_engine.dispose()

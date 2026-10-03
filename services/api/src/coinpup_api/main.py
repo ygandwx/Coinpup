@@ -1,4 +1,4 @@
-"""Authenticated application foundation. Bookkeeping endpoints follow in T02/T03."""
+"""Authenticated application with independent ledger structure."""
 
 import logging
 from contextlib import asynccontextmanager
@@ -16,6 +16,7 @@ from coinpup_api import __version__
 from coinpup_api.auth import create_auth_router
 from coinpup_api.config import Settings
 from coinpup_api.database import Database, DatabaseProbe
+from coinpup_api.ledger.router import create_ledger_router
 
 logger = logging.getLogger("coinpup")
 
@@ -46,7 +47,7 @@ def create_app(
     app = FastAPI(
         title="Coinpup API",
         version=__version__,
-        description="Coinpup single-administrator session and service health API.",
+        description="Coinpup session, health and independent ledger structure API.",
         lifespan=lifespan,
         docs_url=None if production else "/docs",
         redoc_url=None,
@@ -85,6 +86,7 @@ def create_app(
         return JSONResponse(status_code=503, content={"detail": "Service unavailable"})
 
     app.include_router(create_auth_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_ledger_router(settings, getattr(probe, "engine", None)))
 
     @app.get("/api/v1/health/live", response_model=Health, tags=["health"])
     def liveness() -> Health:

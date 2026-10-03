@@ -2,7 +2,7 @@
 
 更新日期：2026-10-03。技术方向见 [ADR 0001](decisions/0001-modular-api-foundation.md)，产品边界见 [需求基线](../product/requirements.md)，任务状态见 [当前状态](../engineering/status.md)。
 
-**本文同时描述现状与目标架构。T01 已集成管理员初始化、数据库会话、双语登录网页与基础数据库备份恢复。T02 从精确金额与资产身份开始；尚无账户余额、记账接口或同步能力。实际执行证据和集成状态以进度文档为准。**
+**本文同时描述现状与目标架构。T01 已集成管理员初始化、数据库会话、双语登录网页与基础数据库备份恢复。T02 已实现精确金额，并新增独立账本结构和 T03 结构接口；尚无账户余额、收支分录或同步能力。实际执行证据和集成状态以进度文档为准。**
 
 ## 1. 当前工程基础
 
@@ -13,15 +13,18 @@
 | `GET /api/v1/health/live` | 返回进程存活状态，不查询数据库。 | 不证明数据库、登录、账务或后台任务可用。 |
 | `GET /api/v1/health/ready` | 使用 SQLAlchemy 对 PostgreSQL 执行 `SELECT 1`；数据库连接异常时返回 503。 | 不检查业务表、迁移版本、文件存储、OCR、邮件或完整业务流程。 |
 | 环境配置 | `COINPUP_ENVIRONMENT`、`COINPUP_DATABASE_URL`、`COINPUP_DATABASE_CONNECT_TIMEOUT`，读取部署环境及本地未提交的 `.env`。 | 未实现用户设置、公司配置或租户配置。 |
-| 数据库连接 | SQLAlchemy engine 使用 `postgresql+psycopg`，带连接与语句超时、连接检查和退出释放。 | 未实现 ORM 业务模型、账户余额或完整工作单元。 |
+| 数据库连接 | SQLAlchemy engine 使用 `postgresql+psycopg`，带连接与语句超时、连接检查和退出释放。 | 结构管理已有事务；账户余额和财务过账事务待实现。 |
 | Alembic | `20261003_0001` 建立迁移链起点，`upgrade()` 和 `downgrade()` 不创建业务对象。 | 执行空基线不代表业务 schema 已就绪。 |
 | 健康接口输出 | 仅输出服务名及状态，连接错误不向响应暴露连接信息。生产模式关闭 API 文档入口。 | 隐藏文档入口不是身份认证或访问控制。 |
 | 管理员与会话 | 迁移 `20261003_0002` 引入管理员、会话及登录限制表；CLI 初始化/重置，HTTP 登录/会话/退出，Origin 与 CSRF 校验。 | 尚未实现后续账务接口的授权；这些接口上线时必须复用访问检查。 |
 | 网页与基础恢复 | React/TypeScript 中英登录入口、构建后同源提供；PostgreSQL 数据库备份及空目标恢复工具。 | 没有记账页面或附件存储；不能把数据库恢复验收当成完整财务/文件恢复。 |
+| 独立账本结构 | 迁移 `20261003_0003` 增加资产、主体、账本、账户、账户资产、分类；受保护的结构 API、版本与归档。 | 没有收支分录、余额或完整地区页面；不等于 A-01/A-03 全部通过。 |
 
 源代码入口：[应用](../../services/api/src/coinpup_api/main.py)、[配置](../../services/api/src/coinpup_api/config.py)、[数据库连接](../../services/api/src/coinpup_api/database.py)、[空迁移基线](../../services/api/migrations/versions/20261003_0001_baseline.py)。
 
 身份与运行增量的设计见 [ADR 0002](decisions/0002-administrator-session.md)，操作见[备份恢复说明](../engineering/operations.md)。上表的空基线是版本链起点，升级到最新版本还包含认证表。
+
+结构持久化和访问/版本约束见 [ADR 0004](decisions/0004-owned-ledger-structure.md)。归属约束由服务检查和数据库复合外键共同保证，备份验收随应用表扩展。
 
 真实业务数据、私有附件及任何具有财务副作用的接口，必须在实现对应的鉴权、授权、事务和审计约束后接入。健康 API 保持有限语义；未来若增加 schema 或其他依赖检查，应同步修改文档和测试。
 
