@@ -5,7 +5,7 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StrictStr, field_validator, model_validator
+from pydantic import BaseModel, Field, StrictStr, field_validator, model_serializer, model_validator
 
 from coinpup_api.ledger.money import MAX_AMOUNT_STRING_LENGTH
 from coinpup_api.ledger.schemas import AssetId, Command
@@ -18,10 +18,8 @@ QuantityText = Annotated[
 ]
 
 
-class PostingFields(Command):
+class PostingMetadata(Command):
     id: UUID | None = None
-    asset_id: AssetId
-    amount: QuantityText
     transaction_date: date
     description: Annotated[StrictStr, Field(max_length=2000)] = ""
 
@@ -42,6 +40,11 @@ class PostingFields(Command):
         return value
 
 
+class PostingFields(PostingMetadata):
+    asset_id: AssetId
+    amount: QuantityText
+
+
 class PostingCommand(PostingFields):
     account_id: UUID
 
@@ -55,9 +58,20 @@ class PostingSplit(Command):
     amount: QuantityText
 
 
+class FeeCreate(Command):
+    account_id: UUID
+    asset_id: AssetId
+    amount: QuantityText
+    category_id: UUID
+
+
+Fees = Annotated[list[FeeCreate], Field(max_length=20)]
+
+
 class ClassifiedCreate(PostingCommand):
     recognition_date: date
     splits: Annotated[list[PostingSplit], Field(min_length=1, max_length=100)]
+    fees: Fees = Field(default_factory=list)
 
     @field_validator("splits")
     @classmethod
@@ -78,6 +92,7 @@ class ExpenseCreate(ClassifiedCreate):
 class TransferCreate(PostingFields):
     source_account_id: UUID
     destination_account_id: UUID
+    fees: Fees = Field(default_factory=list)
 
     @model_validator(mode="after")
     def distinct_accounts(self):
@@ -86,12 +101,46 @@ class TransferCreate(PostingFields):
         return self
 
 
+class ExchangeCreate(PostingMetadata):
+    source_account_id: UUID
+    source_asset_id: AssetId
+    source_amount: QuantityText
+    destination_account_id: UUID
+    destination_asset_id: AssetId
+    destination_amount: QuantityText
+    fees: Fees = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def distinct_assets(self):
+        if self.source_asset_id == self.destination_asset_id:
+            raise ValueError("Exchange assets must be different")
+        return self
+
+
 class SplitResponse(BaseModel):
     category_id: UUID
     amount: str
 
 
-class OperationResponse(BaseModel):
+class FeeResponse(BaseModel):
+    account_id: UUID
+    asset_id: str
+    amount: str
+    category_id: UUID
+
+
+class LegacyFeeResponse(BaseModel):
+    fees: list[FeeResponse] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def preserve_legacy_shape(self, handler):
+        data = handler(self)
+        if not self.fees:
+            data.pop("fees", None)
+        return data
+
+
+class OperationResponse(LegacyFeeResponse):
     id: UUID
     ledger_id: UUID
     journal_id: UUID
@@ -107,7 +156,7 @@ class OperationResponse(BaseModel):
     created_at: datetime
 
 
-class TransferResponse(BaseModel):
+class TransferResponse(LegacyFeeResponse):
     id: UUID
     ledger_id: UUID
     journal_id: UUID
@@ -123,7 +172,28 @@ class TransferResponse(BaseModel):
     created_at: datetime
 
 
-FinancialResponse = Annotated[OperationResponse | TransferResponse, Field(discriminator="kind")]
+class ExchangeResponse(BaseModel):
+    id: UUID
+    ledger_id: UUID
+    journal_id: UUID
+    kind: Literal["exchange"]
+    version: int
+    source_account_id: UUID
+    source_asset_id: str
+    source_amount: str
+    destination_account_id: UUID
+    destination_asset_id: str
+    destination_amount: str
+    transaction_date: date
+    recognition_date: date
+    description: str
+    created_at: datetime
+    fees: list[FeeResponse] = Field(default_factory=list)
+
+
+FinancialResponse = Annotated[
+    OperationResponse | TransferResponse | ExchangeResponse, Field(discriminator="kind")
+]
 
 
 class BalanceResponse(BaseModel):

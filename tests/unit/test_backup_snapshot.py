@@ -48,11 +48,20 @@ def test_snapshot_includes_new_tables_and_keeps_numeric_json_as_exact_text():
 
 
 @pytest.mark.parametrize("behavior", ["sealed", "wrong_constraint", "allowed"])
-def test_sealed_probe_always_rolls_back_and_rejects_false_positive_constraints(behavior):
+@pytest.mark.parametrize("component_no", [None, 1])
+def test_sealed_probe_always_rolls_back_and_rejects_false_positive_constraints(
+    behavior, component_no
+):
     journal_id = uuid4()
     originals = [
-        {"id": uuid4(), "journal_id": journal_id, "line_no": 1, "amount": Decimal("1.00")},
-        {"id": uuid4(), "journal_id": journal_id, "line_no": 2, "amount": Decimal("-1.00")},
+        {
+            "id": uuid4(),
+            "journal_id": journal_id,
+            "line_no": index,
+            "amount": Decimal(amount),
+            "component_no": 0 if index <= 2 else 1,
+        }
+        for index, amount in enumerate(["1.00", "-1.00", "0.01", "-0.01"], start=1)
     ]
     rolled_back = []
     attempted = []
@@ -78,12 +87,16 @@ def test_sealed_probe_always_rolls_back_and_rejects_false_positive_constraints(b
 
     engine = SimpleNamespace(connect=lambda: nullcontext(Connection()))
     if behavior == "sealed":
-        verify_sealed_journal(engine, journal_id)
+        verify_sealed_journal(engine, journal_id, component_no)
     else:
         message = "unexpectedly allowed" if behavior == "allowed" else "unexpected reason"
         with pytest.raises(ArchiveError, match=message):
-            verify_sealed_journal(engine, journal_id)
+            verify_sealed_journal(engine, journal_id, component_no)
     assert rolled_back == [True]
-    assert [line["amount"] for line in attempted] == [line["amount"] for line in originals]
+    selected = originals if component_no is None else originals[2:]
+    assert [line["amount"] for line in attempted] == [line["amount"] for line in selected]
+    assert [line["component_no"] for line in attempted] == [
+        line["component_no"] for line in selected
+    ]
     assert {line["id"] for line in attempted}.isdisjoint(line["id"] for line in originals)
-    assert all(line["line_no"] > 2 for line in attempted)
+    assert all(line["line_no"] > 4 for line in attempted)

@@ -2,7 +2,7 @@
 
 个人与多家公司共用的自托管记账系统，支持独立账本、多币种、票据处理和跨主体汇总。网页先实现，Android / iOS 与离线同步随后实现。现有网页登录入口支持中文和英文切换。
 
-**T01 工程基础已合入，T02/T03 正在推进，尚未完成可用网页闭环。** 已有管理员会话、双语登录入口、独立账本结构、精确期初/收支/拆分/余额、同资产转账与信用卡还款 API。换汇、更正、业务网页、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
+**T01 工程基础已合入，T02/T03 正在推进，尚未完成可用网页闭环。** 已有管理员会话、双语登录入口、独立账本结构、精确期初/收支/拆分/余额、同资产转账与信用卡还款、实际换汇与独立手续费 API。更正、业务网页、OCR 和 App 继续按路线图实现。实际验收与集成状态见[当前项目状态](docs/engineering/status.md)。
 
 Coinpup is a self-hosted personal and multi-company bookkeeping project. The current foundation includes administrator sessions and a bilingual web entry, but is not yet a usable finance application. No open-source license has been selected for this private repository.
 
@@ -19,6 +19,7 @@ Coinpup is a self-hosted personal and multi-company bookkeeping project. The cur
 - [独立账本与结构接口](docs/architecture/decisions/0004-owned-ledger-structure.md)
 - [原子分录与持久幂等回执](docs/architecture/decisions/0005-atomic-posting-and-receipts.md)
 - [同资产转账与信用卡还款](docs/architecture/decisions/0006-same-asset-transfers.md)
+- [实际换汇数量与独立手续费](docs/architecture/decisions/0007-exchanges-and-explicit-fees.md)
 
 新位置开始工作时先阅读以上入口，核对 Git 分支、PR、CI 和未提交改动，再继续状态文档中的下一步。
 
@@ -59,7 +60,7 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 
 端口仅绑定本机，数据库保存在命名卷中；`docker compose down` 保留数据，不要对需要保留的数据使用 `down -v`。Compose 内部使用容器数据库地址，本地 Python 使用 `.env` 中的 localhost 地址。
 
-迁移包含空基线、认证、主体/账本结构、`20261003_0004` 的不可变财务分录与幂等回执，以及 `20261003_0005` 的同资产转账约束。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
+迁移包含空基线、认证、主体/账本结构、`20261003_0004` 的不可变财务分录与幂等回执、`20261003_0005` 的同资产转账约束，以及 `20261003_0006` 的换汇与手续费组成部分。应用不会自动建表，必须显式执行迁移。忘记密码时，在服务器交互执行 `docker compose exec api python -m coinpup_api.admin reset-password`；此操作撤销全部旧会话。
 
 ## 当前结构 API
 
@@ -78,6 +79,10 @@ docker compose exec api python -m coinpup_api.admin create --username admin
 期初每账户/资产只允许一次且不算收入。余额包括归档账户和停用资产关联，保留状态标志；没有行情换算。账本或账户归档后新记账被拒绝，已经成功的命令仍可重放。当前没有财务修改/删除入口，后续通过冲销与替代保留历史。完整合同见 ADR 0005 和实际 OpenAPI。
 
 `POST /transfers` 在同一账本的两个不同账户之间转移相同资产，填写 `source_account_id`、`destination_account_id`、`asset_id`、正数 `amount` 与交易日；使用同样的幂等与访问保护。信用卡消费是支出，银行向信用卡还款是转账，本金不会重复计为费用。流水根据 `kind` 返回原收支回执或明确包含双方账户的转账回执。设计见 ADR 0006。
+
+`POST /exchanges` 保存实际转出和转入的账户、资产与数量，字段为 `source_account_id`、`source_asset_id`、`source_amount` 及对应的 `destination_*`；两种资产必须不同，可以使用同一个多资产账户。换汇本金逐资产配平，不计作收入或费用，也不使用行情覆盖成交数量。设计见 [ADR 0007](docs/architecture/decisions/0007-exchanges-and-explicit-fees.md)。
+
+收入、支出、转账和换汇可附带最多 20 项 `fees`，每项明确 `account_id`、`asset_id`、正数 `amount` 与费用 `category_id`；允许由同账本其他账户或第三种资产扣费，期初不支持手续费。本金与全部费用原子提交：1000 USD 中兑换 100 USD→90 EUR，另付 2 USD 后余额为 898 USD/90 EUR；1 BTC 支付 0.1 BTC 并另付 0.00001 BTC 后为 0.89999000 BTC。旧收支/转账没有费用时响应不新增 `fees` 字段，省略费用与显式 `fees: []` 保持原幂等摘要。
 
 ## 网页开发
 

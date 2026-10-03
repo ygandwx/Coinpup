@@ -28,7 +28,10 @@ from coinpup_api.ledger.models import (
 from coinpup_api.ledger.money import Amount
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
+    ExchangeCreate,
+    ExchangeResponse,
     ExpenseCreate,
+    FeeResponse,
     FinancialResponse,
     IncomeCreate,
     OpeningCreate,
@@ -42,6 +45,13 @@ from coinpup_api.ledger.service import LedgerError, LedgerService, _not_found, _
 
 _IDEMPOTENCY_KEY = re.compile(r"[!-~]{1,128}")
 _RECEIPT = TypeAdapter(FinancialResponse)
+_COMMON_LEGACY_FIELDS = {"id", "asset_id", "amount", "transaction_date", "description"}
+_LEGACY_HASH_FIELDS = {
+    "opening": _COMMON_LEGACY_FIELDS | {"account_id"},
+    "income": _COMMON_LEGACY_FIELDS | {"account_id", "recognition_date", "splits"},
+    "expense": _COMMON_LEGACY_FIELDS | {"account_id", "recognition_date", "splits"},
+    "transfer": _COMMON_LEGACY_FIELDS | {"source_account_id", "destination_account_id"},
+}
 
 
 def command_hash(kind, ledger_id, payload) -> str:
@@ -50,7 +60,16 @@ def command_hash(kind, ledger_id, payload) -> str:
     Server-generated IDs are absent from the hash. Omitted optional IDs and explicit
     null both serialize to null; retrying with the returned ID is a different command.
     """
-    body = {"kind": kind, "ledger_id": str(ledger_id), "payload": payload.model_dump(mode="json")}
+    serialized = payload.model_dump(mode="json")
+    if kind in _LEGACY_HASH_FIELDS:
+        # Freeze the published command projection: new optional defaults must not invalidate
+        # receipts issued before fees existed. Only a non-empty extension changes the hash.
+        serialized = {
+            field: serialized[field] for field in _LEGACY_HASH_FIELDS[kind] if field in serialized
+        }
+        if getattr(payload, "fees", None):
+            serialized["fees"] = [item.model_dump(mode="json") for item in payload.fees]
+    body = {"kind": kind, "ledger_id": str(ledger_id), "payload": serialized}
     encoded = json.dumps(
         body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
     )
@@ -154,6 +173,82 @@ class PostingService(LedgerService):
             )
         return list(zip(requested, amounts, strict=True))
 
+    def _catalog(self, session, principal_assets, fees):
+        identifiers = sorted(set(principal_assets) | {fee.asset_id for fee in fees})
+        return {
+            record.asset_id: asset_definition(record)
+            for record in self._assets(session, identifiers)
+        }
+
+    def _append_fees(self, session, ledger_id, lines, fees, catalog):
+        responses = []
+        for component, fee in enumerate(fees, 1):
+            self._account(session, ledger_id, fee.account_id, fee.asset_id)
+            category = session.scalar(
+                select(Category).where(
+                    Category.id == fee.category_id, Category.ledger_id == ledger_id
+                )
+            )
+            if category is None:
+                raise _not_found()
+            if category.kind != "expense":
+                raise LedgerError(
+                    "category_kind_mismatch", 422, "A fee requires an expense category."
+                )
+            if category.archived:
+                raise LedgerError(
+                    "category_archived", 409, "Restore the fee category before posting."
+                )
+            quantity = Amount.parse(fee.amount, catalog[fee.asset_id])
+            if quantity.minor_units <= 0:
+                raise MoneyError("amount_positive", "A fee amount must be positive.")
+            first = len(lines) + 1
+            lines.extend(
+                [
+                    PostingLine(
+                        journal_id=lines[0].journal_id,
+                        ledger_id=ledger_id,
+                        line_no=first,
+                        component_no=component,
+                        role="account",
+                        asset_id=fee.asset_id,
+                        amount=-quantity,
+                        account_id=fee.account_id,
+                    ),
+                    PostingLine(
+                        journal_id=lines[0].journal_id,
+                        ledger_id=ledger_id,
+                        line_no=first + 1,
+                        component_no=component,
+                        role="expense",
+                        asset_id=fee.asset_id,
+                        amount=quantity,
+                        category_id=fee.category_id,
+                    ),
+                ]
+            )
+            responses.append(
+                FeeResponse(
+                    account_id=fee.account_id,
+                    asset_id=fee.asset_id,
+                    amount=quantity.to_string(),
+                    category_id=fee.category_id,
+                )
+            )
+        return responses
+
+    def _validate_balance_deltas(self, session, ledger_id, lines, catalog):
+        deltas = {}
+        for line in lines:
+            if line.role == "account":
+                key = (line.account_id, line.asset_id)
+                deltas[key] = deltas.get(key, 0) + line.amount.minor_units
+        # Check the net command, not transient ordering of principal and fee lines.
+        for (account_id, asset_id), delta in deltas.items():
+            definition = catalog[asset_id]
+            current = self._current_units(session, ledger_id, account_id, definition)
+            Amount(definition, current + delta)
+
     def post_opening(self, owner_id, ledger_id, payload: OpeningCreate, idempotency_key: str):
         return self._post(owner_id, ledger_id, "opening", payload, idempotency_key)
 
@@ -198,8 +293,9 @@ class PostingService(LedgerService):
         with self._command(owner_id, ledger_id, kind, payload, key) as (session, digest, replay):
             if replay is not None:
                 return replay
-            record = self._assets(session, [payload.asset_id])[0]
-            definition = asset_definition(record)
+            fees = getattr(payload, "fees", [])
+            catalog = self._catalog(session, [payload.asset_id], fees)
+            definition = catalog[payload.asset_id]
             self._account(session, ledger_id, payload.account_id, payload.asset_id)
             if kind == "opening" and session.get(
                 OpeningPosition, (payload.account_id, payload.asset_id)
@@ -220,10 +316,6 @@ class PostingService(LedgerService):
                     else self._splits(session, ledger_id, payload, kind, quantity)
                 )
                 account_quantity = -quantity if kind == "expense" else quantity
-                current_units = self._current_units(
-                    session, ledger_id, payload.account_id, definition
-                )
-                Amount(definition, current_units + account_quantity.minor_units)
                 operation_id, journal_id = payload.id or uuid4(), uuid4()
                 lines = [
                     PostingLine(
@@ -260,7 +352,9 @@ class PostingService(LedgerService):
                                 category_id=split.category_id,
                             )
                         )
-                parameters = prepare_journal_lines(lines, {payload.asset_id: definition})
+                fee_responses = self._append_fees(session, ledger_id, lines, fees, catalog)
+                self._validate_balance_deltas(session, ledger_id, lines, catalog)
+                parameters = prepare_journal_lines(lines, catalog)
             except MoneyError as error:
                 raise _invalid_money(error) from None
             recognition_date = (
@@ -281,7 +375,9 @@ class PostingService(LedgerService):
                 OperationResponse,
                 {
                     "account_id": payload.account_id,
+                    "asset_id": payload.asset_id,
                     "amount": quantity.to_string(),
+                    "fees": fee_responses,
                     "splits": [
                         SplitResponse(category_id=item.category_id, amount=amount.to_string())
                         for item, amount in splits
@@ -301,22 +397,14 @@ class PostingService(LedgerService):
             # The schema rejects self-transfers; retain the invariant at the service boundary.
             if payload.source_account_id == payload.destination_account_id:
                 raise LedgerError("same_account", 422, "Transfer accounts must be different.")
-            record = self._assets(session, [payload.asset_id])[0]
-            definition = asset_definition(record)
+            catalog = self._catalog(session, [payload.asset_id], payload.fees)
+            definition = catalog[payload.asset_id]
             for account_id in (payload.source_account_id, payload.destination_account_id):
                 self._account(session, ledger_id, account_id, payload.asset_id)
             try:
                 quantity = Amount.parse(payload.amount, definition)
                 if quantity.minor_units <= 0:
                     raise MoneyError("amount_positive", "A transfer amount must be positive.")
-                source = self._current_units(
-                    session, ledger_id, payload.source_account_id, definition
-                )
-                destination = self._current_units(
-                    session, ledger_id, payload.destination_account_id, definition
-                )
-                Amount(definition, source - quantity.minor_units)
-                Amount(definition, destination + quantity.minor_units)
                 operation_id, journal_id = payload.id or uuid4(), uuid4()
                 lines = [
                     PostingLine(
@@ -336,7 +424,9 @@ class PostingService(LedgerService):
                         1,
                     )
                 ]
-                parameters = prepare_journal_lines(lines, {payload.asset_id: definition})
+                fee_responses = self._append_fees(session, ledger_id, lines, payload.fees, catalog)
+                self._validate_balance_deltas(session, ledger_id, lines, catalog)
+                parameters = prepare_journal_lines(lines, catalog)
             except MoneyError as error:
                 raise _invalid_money(error) from None
             return self._persist(
@@ -355,7 +445,94 @@ class PostingService(LedgerService):
                 {
                     "source_account_id": payload.source_account_id,
                     "destination_account_id": payload.destination_account_id,
+                    "asset_id": payload.asset_id,
                     "amount": quantity.to_string(),
+                    "fees": fee_responses,
+                },
+            )
+
+    def post_exchange(self, owner_id, ledger_id, payload: ExchangeCreate, idempotency_key: str):
+        with self._command(owner_id, ledger_id, "exchange", payload, idempotency_key) as (
+            session,
+            digest,
+            replay,
+        ):
+            if replay is not None:
+                return replay
+            if payload.source_asset_id == payload.destination_asset_id:
+                raise LedgerError("same_asset", 422, "Exchange assets must be different.")
+            catalog = self._catalog(
+                session, [payload.source_asset_id, payload.destination_asset_id], payload.fees
+            )
+            self._account(session, ledger_id, payload.source_account_id, payload.source_asset_id)
+            self._account(
+                session, ledger_id, payload.destination_account_id, payload.destination_asset_id
+            )
+            try:
+                source = Amount.parse(payload.source_amount, catalog[payload.source_asset_id])
+                destination = Amount.parse(
+                    payload.destination_amount, catalog[payload.destination_asset_id]
+                )
+                if source.minor_units <= 0 or destination.minor_units <= 0:
+                    raise MoneyError("amount_positive", "Exchange quantities must be positive.")
+                operation_id, journal_id = payload.id or uuid4(), uuid4()
+                lines = [
+                    PostingLine(
+                        journal_id,
+                        ledger_id,
+                        1,
+                        "account",
+                        source.asset.asset_id,
+                        -source,
+                        account_id=payload.source_account_id,
+                    ),
+                    PostingLine(
+                        journal_id, ledger_id, 2, "exchange", source.asset.asset_id, source
+                    ),
+                    PostingLine(
+                        journal_id,
+                        ledger_id,
+                        3,
+                        "account",
+                        destination.asset.asset_id,
+                        destination,
+                        account_id=payload.destination_account_id,
+                    ),
+                    PostingLine(
+                        journal_id,
+                        ledger_id,
+                        4,
+                        "exchange",
+                        destination.asset.asset_id,
+                        -destination,
+                    ),
+                ]
+                fee_responses = self._append_fees(session, ledger_id, lines, payload.fees, catalog)
+                self._validate_balance_deltas(session, ledger_id, lines, catalog)
+                parameters = prepare_journal_lines(lines, catalog)
+            except MoneyError as error:
+                raise _invalid_money(error) from None
+            return self._persist(
+                session,
+                owner_id,
+                ledger_id,
+                "exchange",
+                payload,
+                idempotency_key,
+                digest,
+                operation_id,
+                journal_id,
+                parameters,
+                payload.transaction_date,
+                ExchangeResponse,
+                {
+                    "source_account_id": payload.source_account_id,
+                    "source_asset_id": payload.source_asset_id,
+                    "source_amount": source.to_string(),
+                    "destination_account_id": payload.destination_account_id,
+                    "destination_asset_id": payload.destination_asset_id,
+                    "destination_amount": destination.to_string(),
+                    "fees": fee_responses,
                 },
             )
 
@@ -420,7 +597,6 @@ class PostingService(LedgerService):
             journal_id=journal_id,
             kind=kind,
             version=1,
-            asset_id=payload.asset_id,
             transaction_date=payload.transaction_date,
             recognition_date=recognition_date,
             description=payload.description,
@@ -452,8 +628,12 @@ class PostingService(LedgerService):
             )
             .order_by(JournalLine.line_no)
         ).all()
+        fees = PostingService._read_fees(session, lines)
+        lines = [line for line in lines if line.component_no == 0]
         if operation.kind == "transfer":
-            return PostingService._read_transfer(session, operation, journal, lines)
+            return PostingService._read_transfer(session, operation, journal, lines, fees)
+        if operation.kind == "exchange":
+            return PostingService._read_exchange(session, operation, journal, lines, fees)
         account_lines = [item for item in lines if item.role == "account"]
         if len(account_lines) != 1:
             raise LedgerError(
@@ -496,11 +676,12 @@ class PostingService(LedgerService):
             recognition_date=journal.recognition_date,
             description=journal.description,
             splits=splits,
+            fees=fees,
             created_at=operation.created_at,
         )
 
     @staticmethod
-    def _read_transfer(session, operation, journal, lines):
+    def _read_transfer(session, operation, journal, lines, fees=None):
         def invalid():
             return LedgerError("ledger_integrity", 503, "The transfer journal is inconsistent.")
 
@@ -540,6 +721,110 @@ class PostingService(LedgerService):
             recognition_date=journal.recognition_date,
             description=journal.description,
             created_at=operation.created_at,
+            fees=fees or [],
+        )
+
+    @staticmethod
+    def _read_fees(session, lines):
+        grouped = {}
+        for line in lines:
+            if line.component_no:
+                grouped.setdefault(line.component_no, []).append(line)
+        if sorted(grouped) != list(range(1, len(grouped) + 1)):
+            raise LedgerError("ledger_integrity", 503, "Stored fee components are inconsistent.")
+        result = []
+        for number in sorted(grouped):
+            component = grouped[number]
+            accounts = [line for line in component if line.role == "account"]
+            expenses = [line for line in component if line.role == "expense"]
+            if (
+                len(component) != 2
+                or len(accounts) != 1
+                or len(expenses) != 1
+                or accounts[0].asset_id != expenses[0].asset_id
+            ):
+                raise LedgerError(
+                    "ledger_integrity", 503, "Stored fee components are inconsistent."
+                )
+            account, expense = accounts[0], expenses[0]
+            record = session.get(AssetRecord, account.asset_id)
+            if record is None:
+                raise LedgerError("ledger_integrity", 503, "Stored fee assets are inconsistent.")
+            try:
+                definition = asset_definition(record)
+                debit = Amount.from_decimal(account.amount, definition)
+                quantity = Amount.from_decimal(expense.amount, definition)
+                if (
+                    debit.minor_units >= 0
+                    or quantity.minor_units <= 0
+                    or debit.minor_units + quantity.minor_units
+                ):
+                    raise MoneyError("fee_invalid", "Fee quantities are inconsistent.")
+            except MoneyError:
+                raise LedgerError(
+                    "ledger_integrity", 503, "Stored fee quantities are inconsistent."
+                ) from None
+            result.append(
+                FeeResponse(
+                    account_id=account.account_id,
+                    asset_id=account.asset_id,
+                    amount=quantity.to_string(),
+                    category_id=expense.category_id,
+                )
+            )
+        return result
+
+    @staticmethod
+    def _read_exchange(session, operation, journal, lines, fees):
+        def invalid():
+            return LedgerError("ledger_integrity", 503, "The exchange journal is inconsistent.")
+
+        accounts = [line for line in lines if line.role == "account"]
+        offsets = [line for line in lines if line.role == "exchange"]
+        if (
+            len(lines) != 4
+            or len(accounts) != 2
+            or len(offsets) != 2
+            or accounts[0].asset_id == accounts[1].asset_id
+            or journal.recognition_date != journal.transaction_date
+        ):
+            raise invalid()
+        decoded = []
+        for account in accounts:
+            record = session.get(AssetRecord, account.asset_id)
+            matched = [line for line in offsets if line.asset_id == account.asset_id]
+            if record is None or len(matched) != 1:
+                raise invalid()
+            try:
+                definition = asset_definition(record)
+                quantity = Amount.from_decimal(account.amount, definition)
+                offset = Amount.from_decimal(matched[0].amount, definition)
+                if quantity.minor_units == 0 or quantity.minor_units + offset.minor_units:
+                    raise invalid()
+                decoded.append((account, quantity))
+            except MoneyError:
+                raise invalid() from None
+        source = [item for item in decoded if item[1].minor_units < 0]
+        destination = [item for item in decoded if item[1].minor_units > 0]
+        if len(source) != 1 or len(destination) != 1:
+            raise invalid()
+        return ExchangeResponse(
+            id=operation.id,
+            ledger_id=operation.ledger_id,
+            journal_id=journal.id,
+            kind="exchange",
+            version=operation.version,
+            source_account_id=source[0][0].account_id,
+            source_asset_id=source[0][0].asset_id,
+            source_amount=(-source[0][1]).to_string(),
+            destination_account_id=destination[0][0].account_id,
+            destination_asset_id=destination[0][0].asset_id,
+            destination_amount=destination[0][1].to_string(),
+            transaction_date=journal.transaction_date,
+            recognition_date=journal.recognition_date,
+            description=journal.description,
+            created_at=operation.created_at,
+            fees=fees,
         )
 
     def get_operation(self, owner_id, ledger_id, operation_id):

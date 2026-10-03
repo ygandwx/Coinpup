@@ -240,7 +240,7 @@ class FinancialOperation(Versioned, Base):
             use_alter=True,
         ),
         CheckConstraint(
-            "kind IN ('opening', 'income', 'expense', 'transfer')",
+            "kind IN ('opening', 'income', 'expense', 'transfer', 'exchange')",
             name="ck_financial_operations_kind",
         ),
         CheckConstraint("version > 0", name="ck_financial_operations_version"),
@@ -335,10 +335,11 @@ class JournalLine(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint("line_no > 0", name="ck_journal_lines_number"),
+        CheckConstraint("component_no BETWEEN 0 AND 20", name="ck_journal_lines_component"),
         CheckConstraint(
             "(role = 'account' AND account_id IS NOT NULL AND category_id IS NULL) OR "
             "(role IN ('income', 'expense') AND account_id IS NULL AND category_id IS NOT NULL) OR "
-            "(role = 'equity' AND account_id IS NULL AND category_id IS NULL)",
+            "(role IN ('equity', 'exchange') AND account_id IS NULL AND category_id IS NULL)",
             name="ck_journal_lines_role",
         ),
         CheckConstraint(
@@ -351,6 +352,9 @@ class JournalLine(Base):
     journal_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    component_no: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     asset_id: Mapped[str] = mapped_column(
         String(200),

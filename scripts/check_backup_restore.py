@@ -92,6 +92,16 @@ def create_structure_fixture(engine, owner_id):
             name="Fictional personal Wise", kind="wise", asset_ids=["USD", "EUR", yen.asset_id]
         ),
     )
+    fx_account = service.create_account(
+        owner_id,
+        personal.ledger.id,
+        AccountCreate(name="Fictional isolated FX account", kind="wise", asset_ids=["USD", "EUR"]),
+    )
+    btc_account = service.create_account(
+        owner_id,
+        personal.ledger.id,
+        AccountCreate(name="Fictional isolated BTC account", kind="crypto", asset_ids=["BTC"]),
+    )
     company_account = service.create_account(
         owner_id,
         company.ledger.id,
@@ -151,6 +161,8 @@ def create_structure_fixture(engine, owner_id):
         "personal": personal,
         "company": company,
         "personal_account": personal_account,
+        "fx_account": fx_account,
+        "btc_account": btc_account,
         "company_account": company_account,
         "cash_account": cash_account,
         "card_account": card_account,
@@ -203,7 +215,7 @@ def structure_state(engine, owner_id):
         }
     if len(entities) != 2 or len(assets) != 10 or len(ledgers) != 2:
         raise ArchiveError("Original or restored structure fixture has unexpected record counts.")
-    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 5:
+    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 7:
         raise ArchiveError("Original or restored multi-asset account fixture is incomplete.")
     return {
         "assets": records(assets, "asset_id"),
@@ -227,6 +239,8 @@ def create_financial_fixture(engine, owner_id, structure):
     for ledger_id, account_id, asset_id, quantity in (
         (personal.ledger.id, personal_account.id, "USD", "100.00"),
         (personal.ledger.id, personal_account.id, "EUR", "80.00"),
+        (personal.ledger.id, structure["fx_account"].id, "USD", "1000.00"),
+        (personal.ledger.id, structure["btc_account"].id, "BTC", "1.00000000"),
         (company.ledger.id, company_account.id, "USD", "1000.00"),
         (company.ledger.id, company_account.id, "ETH", "1.000000000000000001"),
         (company.ledger.id, company_account.id, structure["token_asset_id"], "12.345678"),
@@ -276,6 +290,7 @@ def create_financial_fixture(engine, owner_id, structure):
         str(uuid4()),
     )
     transfer = create_transfer_fixture(engine, owner_id, structure)
+    fees = create_fee_fixture(engine, owner_id, structure)
     # History and accepted-command replay remain usable after the account is archived.
     LedgerService(engine).update_account(
         owner_id,
@@ -286,6 +301,9 @@ def create_financial_fixture(engine, owner_id, structure):
     expected_amounts = {
         (str(personal_account.id), "USD"): "75.00",
         (str(personal_account.id), "EUR"): "90.00",
+        (str(structure["fx_account"].id), "USD"): "898.00",
+        (str(structure["fx_account"].id), "EUR"): "90.00",
+        (str(structure["btc_account"].id), "BTC"): "0.89999000",
         (str(company_account.id), "USD"): "700.00",
         (str(structure["cash_account"].id), "USD"): "200.00",
         (str(structure["card_account"].id), "USD"): "0.00",
@@ -307,6 +325,8 @@ def create_financial_fixture(engine, owner_id, structure):
         if balance["account_id"] == str(personal_account.id)
     ):
         raise ArchiveError("Archived account history lost its archive status.")
+    if "fees" in receipt.model_dump(mode="json"):
+        raise ArchiveError("A legacy fee-free expense receipt changed its serialized shape.")
     return {
         "ledger_id": personal.ledger.id,
         "request": request,
@@ -314,7 +334,88 @@ def create_financial_fixture(engine, owner_id, structure):
         "receipt": receipt,
         "balances": state,
         "transfer": transfer,
+        "fees": fees,
     }
+
+
+def create_fee_fixture(engine, owner_id, structure):
+    """Keep fee examples on separate accounts so earlier balance cases remain unchanged."""
+    from coinpup_api.ledger.posting import PostingService
+    from coinpup_api.ledger.posting_schemas import ExchangeCreate, ExpenseCreate
+    from coinpup_api.ledger.service import LedgerService
+
+    service = PostingService(engine)
+    ledger_id = structure["personal"].ledger.id
+    fx_account, btc_account = structure["fx_account"], structure["btc_account"]
+    expenses = [
+        category
+        for category in LedgerService(engine).list_categories(owner_id, ledger_id)
+        if category.kind == "expense"
+    ]
+    fx_fee = {
+        "account_id": fx_account.id,
+        "asset_id": "USD",
+        "amount": "2.00",
+        "category_id": expenses[0].id,
+    }
+    btc_fee = {
+        "account_id": btc_account.id,
+        "asset_id": "BTC",
+        "amount": "0.00001000",
+        "category_id": expenses[0].id,
+    }
+    exchange = ExchangeCreate(
+        source_account_id=fx_account.id,
+        source_asset_id="USD",
+        source_amount="100.00",
+        destination_account_id=fx_account.id,
+        destination_asset_id="EUR",
+        destination_amount="90.00",
+        transaction_date=date(2026, 2, 5),
+        description="Fictional same-account exchange with explicit fee",
+        fees=[fx_fee],
+    )
+    payment = ExpenseCreate(
+        account_id=btc_account.id,
+        asset_id="BTC",
+        amount="0.10000000",
+        transaction_date=date(2026, 2, 6),
+        recognition_date=date(2026, 2, 6),
+        description="Fictional BTC purchase with network fee",
+        splits=[{"category_id": expenses[1].id, "amount": "0.10000000"}],
+        fees=[btc_fee],
+    )
+    fixtures = []
+    for method, request, fee in (
+        ("post_exchange", exchange, fx_fee),
+        ("post_expense", payment, btc_fee),
+    ):
+        key = str(uuid4())
+        receipt = getattr(service, method)(owner_id, ledger_id, request, key)
+        expected_fee = {
+            field: str(value) if field in {"account_id", "category_id"} else value
+            for field, value in fee.items()
+        }
+        if receipt.model_dump(mode="json").get("fees") != [expected_fee]:
+            raise ArchiveError("CI fee receipt does not preserve the separate exact fee.")
+        if service.get_operation(owner_id, ledger_id, receipt.id) != receipt:
+            raise ArchiveError("CI principal/fee operation could not be read without changing it.")
+        fixtures.append(
+            {
+                "method": method,
+                "ledger_id": ledger_id,
+                "request": request,
+                "key": key,
+                "receipt": receipt,
+            }
+        )
+    if (
+        fixtures[0]["receipt"].source_amount != "100.00"
+        or fixtures[0]["receipt"].destination_amount != "90.00"
+        or fixtures[1]["receipt"].amount != "0.10000000"
+    ):
+        raise ArchiveError("A fee changed its operation's original principal quantities.")
+    return fixtures
 
 
 def company_classification(engine, ledger_id):
@@ -407,6 +508,8 @@ def create_transfer_fixture(engine, owner_id, structure):
         raise ArchiveError(
             "Transfer could not be read with its original source/destination receipt."
         )
+    if "fees" in receipt.model_dump(mode="json"):
+        raise ArchiveError("A legacy fee-free transfer receipt changed its serialized shape.")
     # The saved receipt must still replay after its destination becomes archived.
     LedgerService(engine).update_account(
         owner_id,
@@ -433,7 +536,7 @@ def financial_state(engine, owner_id, structure):
     }
 
 
-def verify_sealed_journal(engine, journal_id):
+def verify_sealed_journal(engine, journal_id, component_no=None):
     """Try appending a balanced copy, then roll back regardless of the outcome."""
     from coinpup_api.ledger.models import JournalLine
     from sqlalchemy import insert, select, text
@@ -449,9 +552,13 @@ def verify_sealed_journal(engine, journal_id):
                 .mappings()
                 .all()
             )
+            if not originals:
+                raise ArchiveError("CI sealed journal fixture has no lines.")
+            highest_line = max(row["line_no"] for row in originals)
+            if component_no is not None:
+                originals = [row for row in originals if row["component_no"] == component_no]
             if len(originals) < 2:
                 raise ArchiveError("CI sealed journal fixture has too few lines.")
-            highest_line = max(row["line_no"] for row in originals)
             copies = [
                 dict(row, id=uuid4(), line_no=highest_line + index)
                 for index, row in enumerate(originals, start=1)
@@ -602,6 +709,25 @@ def check_backup_restore():
                 "Restored transfer replay/read changed its original two-account receipt."
             )
         verify_sealed_journal(target_engine, transfer["receipt"].journal_id)
+        for fixture in financial["fees"]:
+            fee_replay = getattr(service, fixture["method"])(
+                administrator_id, fixture["ledger_id"], fixture["request"], fixture["key"]
+            )
+            if (
+                fee_replay != fixture["receipt"]
+                or service.get_operation(
+                    administrator_id, fixture["ledger_id"], fixture["receipt"].id
+                )
+                != fixture["receipt"]
+            ):
+                raise ArchiveError("Restored principal/fee read or replay changed its receipt.")
+            listed = {
+                operation.id: operation
+                for operation in service.list_operations(administrator_id, fixture["ledger_id"])
+            }
+            if listed.get(fixture["receipt"].id) != fixture["receipt"]:
+                raise ArchiveError("Restored operation list omitted or changed a fee receipt.")
+            verify_sealed_journal(target_engine, fixture["receipt"].journal_id, component_no=1)
         if before != snapshot(target) or before != snapshot(source):
             raise ArchiveError("Replay or rejected journal append changed restored/source data.")
         print("Backup/restore verified: all application tables and migration rows match exactly.")
@@ -610,6 +736,7 @@ def check_backup_restore():
             "Exact balances, original idempotency receipt and sealed journal protection verified."
         )
         print("Bank/cash transfer and card repayment preserve balances without duplicate expense.")
+        print("FX and BTC principal/fees remain exact; fee-component journals remain sealed.")
         print("Test databases retained; no DROP ran.")
     finally:
         source_engine.dispose()

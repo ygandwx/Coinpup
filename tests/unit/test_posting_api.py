@@ -34,11 +34,21 @@ TRANSFER = {
     "amount": "10.00",
     "transaction_date": "2026-10-03",
 }
+EXCHANGE = {
+    "source_account_id": RECORD,
+    "destination_account_id": "00000000-0000-0000-0000-000000000003",
+    "source_asset_id": "USD",
+    "source_amount": "10.00",
+    "destination_asset_id": "EUR",
+    "destination_amount": "9.00",
+    "transaction_date": "2026-10-03",
+}
 WRITES = [
     ("/opening-balances", BASE, "post_opening"),
     ("/income", CLASSIFIED, "post_income"),
     ("/expenses", CLASSIFIED, "post_expense"),
     ("/transfers", TRANSFER, "post_transfer"),
+    ("/exchanges", EXCHANGE, "post_exchange"),
 ]
 
 
@@ -119,7 +129,11 @@ def test_financial_command_forwards_exact_body_owner_and_key(
     assert len(calls) == 1
     owner_id, ledger_id, payload, key = calls[0]
     assert (owner_id, ledger_id, key) == (OWNER, UUID(RECORD), "test-command")
-    assert payload["amount"] == "10.00"
+    if suffix == "/exchanges":
+        assert payload["source_amount"] == "10.00"
+        assert payload["destination_amount"] == "9.00"
+    else:
+        assert payload["amount"] == "10.00"
     assert payload["transaction_date"] == "2026-10-03"
     if suffix in {"/income", "/expenses"}:
         assert payload["recognition_date"] == "2026-09-30"
