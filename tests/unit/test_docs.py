@@ -75,7 +75,7 @@ def test_scans_github_and_nested_agents_but_excludes_dependencies_and_builds(rep
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text("[Missing](missing.md)\n", encoding="utf-8")
     errors, count = docs.check_repository(repository)
-    assert count == len(docs.required) + len(owned)
+    assert count == len(set(docs.required + owned))
     assert len(errors) == len(owned)
     assert all(any(str(Path(name)) in error for error in errors) for name in owned)
 
@@ -95,3 +95,29 @@ def test_cli_reports_policy_failure_as_nonzero_exit(repository, monkeypatch):
     monkeypatch.setattr(docs, "ROOT", repository)
     with pytest.raises(SystemExit, match="broken local link"):
         docs.main()
+
+
+def test_agent_combined_budget_accepts_boundary_and_rejects_extra_bytes(repository):
+    sizes = {
+        "AGENTS.md": 4 * 1024,
+        "services/api/AGENTS.md": 16 * 1024,
+        "apps/web/AGENTS.md": 4 * 1024,
+    }
+    for name, size in sizes.items():
+        (repository / name).write_bytes(b"a" * size)
+    assert docs.check_repository(repository)[0] == []
+    api_agents = repository / "services/api/AGENTS.md"
+    api_agents.write_bytes(api_agents.read_bytes() + "é".encode())
+    errors, _ = docs.check_repository(repository)
+    assert errors == [
+        "Three AGENTS.md files: combined byte budget exceeded (24578 bytes; maximum 24576 bytes)"
+    ]
+
+
+@pytest.mark.parametrize("name", ["services/api/AGENTS.md", "apps/web/AGENTS.md"])
+def test_layered_agents_are_required_after_handoff_consolidation(repository, name):
+    assert not (repository / "CONTRIBUTING.md").exists()
+    assert not (repository / "docs/engineering/handoff.md").exists()
+    assert docs.check_repository(repository)[0] == []
+    (repository / name).unlink()
+    assert docs.check_repository(repository)[0] == [f"Missing entry point: {name}"]

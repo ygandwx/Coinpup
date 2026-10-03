@@ -72,7 +72,7 @@ python -m piptools compile pyproject.toml --extra dev --output-file requirements
 
 | 内容 | 入口 |
 | --- | --- |
-| 开发规则与接续 | [AGENTS.md](AGENTS.md)、[贡献约定](CONTRIBUTING.md)、[交接步骤](docs/engineering/handoff.md) |
+| 开发规则与接续 | [AGENTS.md](AGENTS.md) |
 | 最新授权、进度、限制和下一步 | [status.md](docs/engineering/status.md) |
 | 任务依赖与验收条件 | [roadmap.md](docs/engineering/roadmap.md) |
 | 优化工作包与状态 | [optimization-plan.md](docs/engineering/optimization-plan.md) |
