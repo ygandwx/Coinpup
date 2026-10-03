@@ -11,8 +11,8 @@
 
 ## 正在进行
 
-- 任务：OPT-04 分层开发规则与开发循环，等待 CI/合入。分支：`chore/opt-04-layered-agents`。[PR #29](https://github.com/ygandwx/Coinpup/pull/29)。
-- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-03 已合入；验证证据见状态表对应 PR。
+- 任务：OPT-05 PR 模板与并行规则，等待 CI/合入。分支：`chore/opt-05-pr-workflow`。[PR #30](https://github.com/ygandwx/Coinpup/pull/30)。
+- 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)。准备与 OPT-01 至 OPT-04 已合入；验证证据见状态表对应 PR。
 - 仓库保持私有，未选定开源许可证。
 
 ## 任务状态
@@ -35,6 +35,7 @@
 ## 已知限制
 
 - 未部署到用户服务器；服务器系统、域名和邮件需在相应任务配置。
+- main 分支保护、Squash merge 和合并后自动删分支需要用户手动设置，见 PR #30。
 - 网页联网使用，待确认命令和原件仅在页面内存；刷新或关闭后需先核对已存记录。
 - 原件签名校验不等于全文解析、OCR 或恶意文件扫描；上传与证据关联不产生费用。
 - 尚无行情估值、经营单据、跨主体结算、地区提醒、完整同步或 App。
@@ -42,6 +43,6 @@
 
 ## 下一步
 
-1. OPT-04 验收、CI 和合入后，从最新 main 开始 OPT-05 PR 模板与并行规则。
-2. 按计划继续 OPT-06 至 OPT-08；逐包 PR，不启动业务新功能。
+1. OPT-05 验收、CI 和合入后，从最新 main 开始 OPT-06 前端格式与 lint。
+2. 按计划继续 OPT-07 至 OPT-08；逐包 PR，不启动业务新功能。
 3. 完成 OPT-08 后汇报并停止；后续 OPT-10 起的包和 T05-3 等待新授权。
