@@ -5,6 +5,7 @@ import type { ApiErrorKind, Session } from "./api";
 import { copy, LOCALE_KEY, readLocale } from "./i18n";
 import type { Locale, Text } from "./i18n";
 import { BusinessWorkspace } from "./Workspace";
+import { PendingCommandController } from "./pending-command";
 
 type IconName = "arrow" | "lock" | "eye" | "eyeOff" | "grid" | "wallet" | "receipt" | "chart" | "logout" | "refresh" | "check" | "server" | "database" | "globe";
 const paths: Record<IconName, string[]> = {
@@ -94,6 +95,7 @@ function LoginForm({ t, onSuccess }: { t: Text; onSuccess: (session: Session) =>
 
 type AuthState = { status: "checking" } | { status: "anonymous" } | { status: "unavailable"; reason: ApiErrorKind } | { status: "authenticated"; session: Session };
 export function App() {
+  const [commands] = useState(() => new PendingCommandController());
   const [locale, setLocale] = useState<Locale>(readLocale);
   const [auth, setAuth] = useState<AuthState>({ status: "checking" });
   const [retryKey, setRetryKey] = useState(0);
@@ -110,14 +112,14 @@ export function App() {
     const controller = new AbortController();
     setAuth({ status: "checking" });
     void getSession(controller.signal).then((session) => {
-      if (!controller.signal.aborted) setAuth({ status: "authenticated", session });
+      if (!controller.signal.aborted) { commands.setOwner(String(session.user.id)); setAuth({ status: "authenticated", session }); }
     }).catch((problem: unknown) => {
       if (controller.signal.aborted) return;
-      if (problem instanceof ApiError && problem.kind === "unauthorized") setAuth({ status: "anonymous" });
+      if (problem instanceof ApiError && problem.kind === "unauthorized") { commands.setOwner(null); setAuth({ status: "anonymous" }); }
       else setAuth({ status: "unavailable", reason: problem instanceof ApiError ? problem.kind : "server" });
     });
     return () => controller.abort();
-  }, [retryKey]);
+  }, [retryKey, commands]);
 
   useEffect(() => {
     if (auth.status === "checking" || auth.status === "unavailable") return;
@@ -132,9 +134,10 @@ export function App() {
     setLogoutFailed(false);
     try {
       await signOut(auth.session.csrf_token);
+      commands.setOwner(null, true);
       setAuth({ status: "anonymous" });
     } catch (problem) {
-      if (problem instanceof ApiError && problem.kind === "unauthorized") setAuth({ status: "anonymous" });
+      if (problem instanceof ApiError && problem.kind === "unauthorized") { commands.setOwner(null, true); setAuth({ status: "anonymous" }); }
       else setLogoutFailed(true);
     } finally {
       setLoggingOut(false);
@@ -145,9 +148,9 @@ export function App() {
     <a className="skip-link" href="#main">{t.skip}</a>
     <header className="topbar"><Brand linked={auth.status !== "authenticated"} /><div className="topbar-actions"><LanguageSwitch locale={locale} onChange={setLocale} t={t} />{auth.status === "authenticated" && <button className="logout-button" type="button" aria-label={loggingOut ? t.signingOut : t.signOut} onClick={() => void logout()} disabled={loggingOut}><Icon name="logout" /><span>{loggingOut ? t.signingOut : t.signOut}</span></button>}</div></header>
     {logoutFailed && <div className="logout-error" role="alert">{t.logoutError}</div>}
-    {auth.status === "authenticated" ? <BusinessWorkspace session={auth.session} locale={locale} onUnauthorized={() => setAuth({ status: "anonymous" })} /> : <>
-      <main id="main" className="entry-main"><section className="entry-story"><span className="preview-badge"><span className="tiny-dot" />{t.preview}</span><p className="eyebrow">{t.privateSpace}</p><h1>{t.heroTitle}<br /><span>{t.heroAccent}</span></h1><p className="hero-description">{t.heroDescription}</p><Illustration /><div className="hero-features"><div><Icon name="wallet" /><div><strong>{t.separateBooks}</strong><p>{t.separateDescription}</p></div></div><div><Icon name="globe" /><div><strong>{t.allTogether}</strong><p>{t.allDescription}</p></div></div></div><p className="story-planned">{t.planned}</p></section>
-      <div className="entry-form-area">{auth.status === "anonymous" ? <LoginForm t={t} onSuccess={(session) => { setLogoutFailed(false); setAuth({ status: "authenticated", session }); }} /> : <section className="login-card connection-card" aria-live="polite"><div className="card-emblem">{auth.status === "checking" ? <span className="spinner" /> : <Icon name="server" />}</div><h2>{auth.status === "checking" ? t.checkingSession : t.connectionTitle}</h2><p className="muted">{auth.status === "checking" ? t.checkingDescription : feedback(auth.reason, t)}</p>{auth.status === "unavailable" && <button className="primary-button" type="button" onClick={() => setRetryKey((key) => key + 1)}>{t.retry}<Icon name="refresh" /></button>}</section>}<p className="entry-scope">{t.currentScope}</p></div></main>
+    {auth.status === "authenticated" ? <BusinessWorkspace session={auth.session} locale={locale} commands={commands} onUnauthorized={() => { commands.setOwner(null); setAuth({ status: "anonymous" }); }} /> : <>
+      <main id="main" className="entry-main"><section className="entry-story"><span className="preview-badge"><span className="tiny-dot" />{t.preview}</span><p className="eyebrow">{t.privateSpace}</p><h1>{t.heroTitle}<br /><span>{t.heroAccent}</span></h1><p className="hero-description">{t.heroDescription}</p><Illustration /><div className="hero-features"><div><Icon name="wallet" /><div><strong>{t.separateBooks}</strong><p>{t.separateDescription}</p></div></div><div><Icon name="globe" /><div><strong>{t.allTogether}</strong><p>{t.allDescription}</p></div></div></div></section>
+      <div className="entry-form-area">{auth.status === "anonymous" ? <LoginForm t={t} onSuccess={(session) => { commands.setOwner(String(session.user.id)); setLogoutFailed(false); setAuth({ status: "authenticated", session }); }} /> : <section className="login-card connection-card" aria-live="polite"><div className="card-emblem">{auth.status === "checking" ? <span className="spinner" /> : <Icon name="server" />}</div><h2>{auth.status === "checking" ? t.checkingSession : t.connectionTitle}</h2><p className="muted">{auth.status === "checking" ? t.checkingDescription : feedback(auth.reason, t)}</p>{auth.status === "unavailable" && <button className="primary-button" type="button" onClick={() => setRetryKey((key) => key + 1)}>{t.retry}<Icon name="refresh" /></button>}</section>}<p className="entry-scope">{t.currentScope}</p></div></main>
       <footer className="entry-footer"><span>© {new Date().getFullYear()} Coinpup</span><span>{t.footer}</span></footer>
     </>}
   </div>;

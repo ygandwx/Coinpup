@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { ApiError, checkHealth } from "./api";
 import type { Session } from "./api";
 import type { Locale } from "./i18n";
 import { EntityForm } from "./EntityForm";
 import { AccountForm } from "./AccountForm";
+import { businessError } from "./business-errors";
+import { TransactionsPanel } from "./TransactionsPanel";
+import { AssetsPanel } from "./AssetsPanel";
+import type { PendingCommandController } from "./pending-command";
 import { COMPANY_CONTACT_FIELDS, REGIONS } from "./regions";
 import type { CountryCode } from "./regions";
 import {
@@ -17,8 +21,8 @@ import type {
 } from "./ledger-api";
 import "./workspace.css";
 
-type View = "overview" | "accounts" | "categories" | "details" | "settings";
-const views: View[] = ["overview", "accounts", "categories", "details", "settings"];
+type View = "transactions" | "assets" | "overview" | "accounts" | "categories" | "details" | "settings";
+const views: View[] = ["overview", "transactions", "accounts", "categories", "details", "assets", "settings"];
 type Editor = { kind: "entity"; value?: Entity } | { kind: "account"; value?: Account } | { kind: "category"; value?: Category };
 type LedgerData = { id: string; accounts: Account[]; categories: Category[]; balances: Balance[] };
 const text = (locale: Locale, zh: string, en: string) => locale === "zh" ? zh : en;
@@ -36,18 +40,6 @@ async function everyPage<T>(read: (offset: number) => Promise<T[]>): Promise<T[]
     if (items.length < 100) return result;
   }
   throw new ApiError("server");
-}
-
-export function businessError(error: unknown, locale: Locale): string {
-  const t = (zh: string, en: string) => text(locale, zh, en);
-  if (!(error instanceof ApiError)) return t("暂时无法完成操作，请重试。", "This action could not be completed. Please retry.");
-  if (error.kind === "network") return t("连接中断，保存结果可能尚未确认。请刷新列表核对后重试。", "The connection was interrupted. Check the refreshed list before retrying an unconfirmed save.");
-  if (error.code === "version_conflict") return t("这条记录已被修改。你的输入已保留；选择“重新载入”会替换当前输入。", "This record changed elsewhere. Your input is preserved; Reload replaces it with the latest record.");
-  if (error.code === "duplicate_record" || error.status === 409) return t("记录状态已变化或已经存在。请刷新核对，当前输入已保留。", "The record changed or already exists. Refresh to check; your input is preserved.");
-  if (error.status === 422) return t("请检查必填内容、字段格式和所选账本的有效账户或分类。", "Check required fields, formats and the available accounts or categories in this ledger.");
-  if (error.status === 404) return t("找不到这条记录，请刷新列表。", "This record was not found. Refresh the list.");
-  if (error.kind === "forbidden") return t("当前操作未获允许，请重新登录后重试。", "This action is not permitted. Sign in again and retry.");
-  return t("服务暂时不可用，请稍后重试。", "The service is unavailable. Please retry later.");
 }
 
 function CategoryForm({ locale, category, categories, busy, error, onSubmit, onCancel }: {
@@ -101,8 +93,11 @@ function SettingsPanel({ locale }: { locale: Locale }) {
   </section>;
 }
 
-export function BusinessWorkspace({ session, locale, onUnauthorized }: { session: Session; locale: Locale; onUnauthorized: () => void }) {
+export function BusinessWorkspace({ session, locale, commands, onUnauthorized }: { session: Session; locale: Locale; commands: PendingCommandController; onUnauthorized: () => void }) {
   const t = (zh: string, en: string) => text(locale, zh, en);
+  const pending = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
+  const [financialEditing, setFinancialEditing] = useState(false);
+  const financialLocked = !["idle", "rejected", "confirmed"].includes(pending.status);
   const [view, setView] = useState<View>(initialView);
   const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("entity") ?? "");
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -126,7 +121,19 @@ export function BusinessWorkspace({ session, locale, onUnauthorized }: { session
   const current = data?.id === ledgerId ? data : null;
   const visibleEntities = entities.filter(item => showArchived || !item.archived || item.id === selectedId);
   const errorText = actionError ? businessError(actionError, locale) : null;
-  const labels: Record<View, string> = { overview: t("总览", "Overview"), accounts: t("账户", "Accounts"), categories: t("分类", "Categories"), details: t("账本资料", "Ledger details"), settings: t("设置", "Settings") };
+  const labels: Record<View, string> = { transactions: t("流水", "Transactions"), assets: t("资产", "Assets"), overview: t("总览", "Overview"), accounts: t("账户", "Accounts"), categories: t("分类", "Categories"), details: t("账本资料", "Ledger details"), settings: t("设置", "Settings") };
+
+  useEffect(() => {
+    if (!pending.command || !entities.length) return;
+    const owner = entities.find(item => item.ledger.id === pending.command?.ledgerId);
+    if (owner) { setSelectedId(owner.id); setView("transactions"); }
+  }, [pending.command?.key, entities]);
+  useEffect(() => {
+    if (!financialLocked) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [financialLocked]);
 
   function failure(error: unknown) {
     if (error instanceof ApiError && error.kind === "unauthorized") onUnauthorizedRef.current();
@@ -268,13 +275,13 @@ export function BusinessWorkspace({ session, locale, onUnauthorized }: { session
   return <div className="business-layout">
     <aside className="business-sidebar" aria-label={t("管理空间", "Workspace")}>
       <div className="business-profile"><span className="avatar">{session.user.username.charAt(0).toUpperCase()}</span><div><strong data-testid="current-username">{session.user.username}</strong><small>{t("私人财务空间", "Private financial space")}</small></div></div>
-      <div className="ledger-picker field"><label htmlFor="active-ledger">{t("账本", "Ledger")}</label><select id="active-ledger" value={selectedId} disabled={loading || busy || !!editor} onChange={event => { setSelectedId(event.target.value); setActionError(null); setNotice(false); }}><option value="" disabled>{t("选择账本", "Choose a ledger")}</option>{visibleEntities.map(item => <option key={item.id} value={item.id}>{item.name}{item.archived ? t("（已归档）", " (archived)") : ""}</option>)}</select></div>
-      <button className="new-ledger-button" disabled={busy || !!editor || loading} onClick={() => openEditor({ kind: "entity" })}><span aria-hidden="true">＋ </span>{t("新增账本", "New ledger")}</button>
-      <nav className="business-navigation" aria-label={t("工作区导航", "Workspace navigation")}>{views.map(item => <button key={item} disabled={busy || !!editor} aria-current={view === item ? "page" : undefined} onClick={() => { setView(item); setActionError(null); setNotice(false); }}><span aria-hidden="true">{{ overview: "◫", accounts: "▣", categories: "⊞", details: "▤", settings: "⚙" }[item]}</span>{labels[item]}</button>)}</nav>
+      <div className="ledger-picker field"><label htmlFor="active-ledger">{t("账本", "Ledger")}</label><select id="active-ledger" value={selectedId} disabled={loading || busy || !!editor || financialEditing || financialLocked} onChange={event => { setSelectedId(event.target.value); setActionError(null); setNotice(false); }}><option value="" disabled>{t("选择账本", "Choose a ledger")}</option>{visibleEntities.map(item => <option key={item.id} value={item.id}>{item.name}{item.archived ? t("（已归档）", " (archived)") : ""}</option>)}</select></div>
+      <button className="new-ledger-button" disabled={busy || !!editor || loading || financialEditing || financialLocked} onClick={() => openEditor({ kind: "entity" })}><span aria-hidden="true">＋ </span>{t("新增账本", "New ledger")}</button>
+      <nav className="business-navigation" aria-label={t("工作区导航", "Workspace navigation")}>{views.map(item => <button key={item} disabled={busy || !!editor || financialEditing || financialLocked} aria-current={view === item ? "page" : undefined} onClick={() => { setView(item); setActionError(null); setNotice(false); }}><span aria-hidden="true">{{ transactions: "⇄", assets: "◈", overview: "◫", accounts: "▣", categories: "⊞", details: "▤", settings: "⚙" }[item]}</span>{labels[item]}</button>)}</nav>
       <p className="sidebar-caption">{t("每个账本，独立记录。", "Each ledger keeps its own records.")}</p>
     </aside>
     <main id="main" className="business-main">
-      <header className="business-heading"><div><p className="eyebrow">{entity ? entity.kind === "company" ? t("公司账本", "Company ledger") : t("个人账本", "Personal ledger") : "COINPUP"}</p><h1 id="business-title" tabIndex={-1}>{editor ? editorTitle : labels[view]}</h1><p className="muted">{entity?.name ?? t("从你的第一个账本开始。", "Start with your first ledger.")}</p></div>{!editor && <button className="secondary-button" disabled={loading || ledgerLoading || busy} onClick={reload}>{t("刷新", "Refresh")}</button>}</header>
+      <header className="business-heading"><div><p className="eyebrow">{entity ? entity.kind === "company" ? t("公司账本", "Company ledger") : t("个人账本", "Personal ledger") : "COINPUP"}</p><h1 id="business-title" tabIndex={-1}>{editor ? editorTitle : labels[view]}</h1><p className="muted">{entity?.name ?? t("从你的第一个账本开始。", "Start with your first ledger.")}</p></div>{!editor && !financialEditing && !financialLocked && <button className="secondary-button" disabled={loading || ledgerLoading || busy} onClick={reload}>{t("刷新", "Refresh")}</button>}</header>
       {loadError !== null && <p className="inline-error" role="alert">{businessError(loadError, locale)}</p>}
       {!editor && errorText && <p className="inline-error" role="alert">{errorText}</p>}
       {notice && !editor && <p className="save-notice" role="status">{t("已保存。", "Saved.")}</p>}
@@ -283,10 +290,11 @@ export function BusinessWorkspace({ session, locale, onUnauthorized }: { session
         {editor.kind === "account" && <AccountForm key={editorKey} locale={locale} assets={assets} account={editor.value} busy={busy} error={errorText} onSubmit={body => void save(body)} onCancel={closeEditor} />}
         {editor.kind === "category" && <CategoryForm key={editorKey} locale={locale} category={editor.value} categories={current?.categories ?? []} busy={busy} error={errorText} onSubmit={body => void save(body)} onCancel={closeEditor} />}
         {editor.value && actionError instanceof ApiError && actionError.status === 409 && <button className="text-button reload-editor" disabled={busy} onClick={() => void reloadEditor()}>{t("重新载入", "Reload")}</button>}
-      </section> : view === "settings" ? <SettingsPanel locale={locale} /> : loading && !entities.length ? <div className="business-panel" role="status">{t("正在读取账本…", "Loading ledgers…")}</div> : !entity ? <section className="empty-state business-panel"><span className="empty-symbol" aria-hidden="true">◫</span><h2>{t("生活与事业，各有一本账。", "A place for life and business.")}</h2><p>{t("新建个人或公司账本，选择分类模板，再添加你的付款账户。", "Create a personal or company ledger, choose a category template and add your accounts.")}</p><button className="primary-button" disabled={loading || busy} onClick={() => openEditor({ kind: "entity" })}>{t("创建第一个账本", "Create your first ledger")}</button></section> : <>
+      </section> : view === "settings" ? <SettingsPanel locale={locale} /> : view === "assets" ? <AssetsPanel session={session} locale={locale} assets={assets} loading={loading} onChanged={reload} onUnauthorized={onUnauthorized} onEditingChange={setFinancialEditing} /> : loading && !entities.length ? <div className="business-panel" role="status">{t("正在读取账本…", "Loading ledgers…")}</div> : !entity ? <section className="empty-state business-panel"><span className="empty-symbol" aria-hidden="true">◫</span><h2>{t("生活与事业，各有一本账。", "A place for life and business.")}</h2><p>{t("新建个人或公司账本，选择分类模板，再添加你的付款账户。", "Create a personal or company ledger, choose a category template and add your accounts.")}</p><button className="primary-button" disabled={loading || busy} onClick={() => openEditor({ kind: "entity" })}>{t("创建第一个账本", "Create your first ledger")}</button></section> : <>
         {entity.archived && <p className="archive-banner">{t("此账本已归档，历史和余额仍可查看。恢复账本后可继续编辑。", "This ledger is archived. History and balances remain available; restore it to edit.")}</p>}
-        <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} />{t("显示已归档", "Show archived")}</label>
+        {view !== "transactions" && <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} />{t("显示已归档", "Show archived")}</label>}
         {ledgerLoading && <p className="help-text" role="status">{t("正在读取此账本…", "Loading this ledger…")}</p>}
+        {view === "transactions" && <TransactionsPanel key={entity.ledger.id} session={session} locale={locale} entity={entity} accounts={current?.accounts ?? []} assets={assets} categories={current?.categories ?? []} controller={commands} dataLoading={loading || ledgerLoading || !current} onChanged={reload} onUnauthorized={onUnauthorized} onEditingChange={setFinancialEditing} />}
         {view === "overview" && <>
           <div className="overview-cards"><article className="summary-card"><p>{t("账户", "Accounts")}</p><strong>{current?.accounts.filter(item => !item.archived).length ?? "—"}</strong><span>{t("支持多种货币与资产", "Multiple currencies and assets")}</span></article><article className="summary-card"><p>{t("独立分类", "Independent categories")}</p><strong>{current?.categories.filter(item => !item.archived).length ?? "—"}</strong><span>{t("收入与支出分别管理", "Separate income and expenses")}</span></article><article className="summary-card"><p>{t("基础币种", "Base currency")}</p><strong>{entity.ledger.base_asset_id}</strong><span>{t("原币金额始终保留", "Original quantities are retained")}</span></article></div>
           <section className="business-panel"><div className="section-heading"><div><h2>{t("账户余额", "Account balances")}</h2><p className="help-text">{t("按账户与原币分别显示。", "Shown separately by account and original asset.")}</p></div><button className="secondary-button" disabled={entity.archived || busy || ledgerLoading || loading} onClick={() => openEditor({ kind: "account" })}>{t("新增账户", "New account")}</button></div>{!current?.accounts.length ? <p className="empty-copy">{t("还没有账户。添加银行、现金或付款平台账户。", "No accounts yet. Add a bank, cash or payment platform account.")}</p> : <div className="balance-list">{current.balances.filter(balance => showArchived || !balance.account_archived).map(balance => <div className="balance-row" key={`${balance.account_id}:${balance.asset_id}`}><span>{current.accounts.find(account => account.id === balance.account_id)?.name ?? "—"}</span><span className="asset-code">{balance.asset_id}</span><strong className="money-quantity" tabIndex={0} aria-label={`${balance.asset_id} ${balance.amount}`}>{balance.amount}</strong>{(!balance.asset_enabled || !balance.link_enabled) && <small>{t("已停用", "Disabled")}</small>}</div>)}</div>}</section>
