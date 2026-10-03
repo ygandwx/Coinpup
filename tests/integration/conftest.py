@@ -1,6 +1,7 @@
 """Shared structure tests require a separately migrated disposable PostgreSQL database."""
 
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from coinpup_api.admin import create_admin
@@ -9,7 +10,9 @@ from coinpup_api.database import Database
 from coinpup_api.ledger.assets import ASSETS
 from coinpup_api.ledger.models import Account, AccountAsset, AssetRecord, Category, Entity, Ledger
 from coinpup_api.models import Administrator, AuthSession, LoginGuard
+from coinpup_api.security import csrf_token_for, token_digest
 from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -58,3 +61,38 @@ def structure_database():
     finally:
         cleanup()
         database.close()
+
+
+@pytest.fixture
+def authenticated_client(structure_database):
+    """Real session and HTTP boundary against the explicitly disposable fixture database."""
+    from coinpup_api.main import create_app
+    from fastapi.testclient import TestClient
+
+    engine, owner = structure_database
+    token = "fictional-financial-integration-session"
+    with Session(engine) as session, session.begin():
+        session.add(
+            AuthSession(
+                token_hash=token_digest(token),
+                administrator_id=owner,
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            )
+        )
+
+    class Probe:
+        def __init__(self):
+            self.engine = engine
+
+        def check(self):
+            pass
+
+        def close(self):
+            pass  # The database fixture owns disposal after the HTTP client closes.
+
+    with TestClient(create_app(Settings(_env_file=None, environment="test"), Probe())) as client:
+        client.cookies.set("coinpup_session", token)
+        client.headers.update(
+            {"origin": "http://localhost:8000", "x-csrf-token": csrf_token_for(token)}
+        )
+        yield client, engine, owner

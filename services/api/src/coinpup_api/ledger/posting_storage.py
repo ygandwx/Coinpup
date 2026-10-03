@@ -26,6 +26,7 @@ class PostingLine:
     account_id: UUID | None = None
     category_id: UUID | None = None
     id: UUID = field(default_factory=uuid4)
+    component_no: int = 0
 
 
 def prepare_journal_lines(
@@ -37,6 +38,7 @@ def prepare_journal_lines(
     result = []
     totals = {}
     positions = set()
+    components = {}
     journal = lines[0].journal_id
     ledger = lines[0].ledger_id
     for line in lines:
@@ -62,23 +64,28 @@ def prepare_journal_lines(
                 "journal_position", "Journal line positions must be positive and unique."
             )
         positions.add(line.line_no)
+        if type(line.component_no) is not int or not 0 <= line.component_no <= 20:
+            raise MoneyError("journal_component", "Journal component number is invalid.")
+        components.setdefault(line.component_no, []).append(line)
         if line.role == "account":
             valid = line.account_id is not None and line.category_id is None
         elif line.role in {"income", "expense"}:
             valid = line.account_id is None and line.category_id is not None
-        elif line.role == "equity":
+        elif line.role in {"equity", "exchange"}:
             valid = line.account_id is None and line.category_id is None
         else:
             valid = False
         if not valid:
             raise MoneyError("journal_role", "Journal references do not match the line role.")
-        totals[line.asset_id] = totals.get(line.asset_id, 0) + quantity.minor_units
+        total_key = (line.component_no, line.asset_id)
+        totals[total_key] = totals.get(total_key, 0) + quantity.minor_units
         result.append(
             {
                 "id": line.id,
                 "journal_id": line.journal_id,
                 "ledger_id": line.ledger_id,
                 "line_no": line.line_no,
+                "component_no": line.component_no,
                 "role": line.role,
                 "asset_id": line.asset_id,
                 "amount": quantity.to_decimal(),
@@ -90,4 +97,23 @@ def prepare_journal_lines(
         raise MoneyError(
             "journal_unbalanced", "Journal lines must balance separately for every asset."
         )
+    if sorted(components) != list(range(len(components))):
+        raise MoneyError(
+            "journal_component", "Journal components must start at zero and be contiguous."
+        )
+    for number, component in components.items():
+        if number == 0:
+            continue
+        accounts = [line for line in component if line.role == "account"]
+        expenses = [line for line in component if line.role == "expense"]
+        if (
+            len(component) != 2
+            or len(accounts) != 1
+            or len(expenses) != 1
+            or accounts[0].amount.minor_units >= 0
+            or expenses[0].amount.minor_units <= 0
+        ):
+            raise MoneyError(
+                "journal_component", "A fee component must debit an account and record an expense."
+            )
     return result

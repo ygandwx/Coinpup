@@ -1014,6 +1014,188 @@
         "title": "EntityUpdate",
         "type": "object"
       },
+      "ExchangeCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount"
+        ],
+        "title": "ExchangeCreate",
+        "type": "object"
+      },
+      "ExchangeResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeResponse"
+            },
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "exchange",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "journal_id",
+          "kind",
+          "version",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount",
+          "transaction_date",
+          "recognition_date",
+          "description",
+          "created_at"
+        ],
+        "title": "ExchangeResponse",
+        "type": "object"
+      },
       "ExpenseCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1040,6 +1222,14 @@
             "maxLength": 2000,
             "title": "Description",
             "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
           },
           "id": {
             "anyOf": [
@@ -1074,14 +1264,80 @@
           }
         },
         "required": [
+          "transaction_date",
           "asset_id",
           "amount",
-          "transaction_date",
           "account_id",
           "recognition_date",
           "splits"
         ],
         "title": "ExpenseCreate",
+        "type": "object"
+      },
+      "FeeCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "category_id"
+        ],
+        "title": "FeeCreate",
+        "type": "object"
+      },
+      "FeeResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "category_id"
+        ],
+        "title": "FeeResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1145,6 +1401,14 @@
             "title": "Description",
             "type": "string"
           },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
           "id": {
             "anyOf": [
               {
@@ -1178,9 +1442,9 @@
           }
         },
         "required": [
+          "transaction_date",
           "asset_id",
           "amount",
-          "transaction_date",
           "account_id",
           "recognition_date",
           "splits"
@@ -1300,9 +1564,9 @@
           }
         },
         "required": [
+          "transaction_date",
           "asset_id",
           "amount",
-          "transaction_date",
           "account_id"
         ],
         "title": "OpeningCreate",
@@ -1331,6 +1595,13 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeResponse"
+            },
+            "title": "Fees",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
@@ -1549,6 +1820,14 @@
             "title": "Destination Account Id",
             "type": "string"
           },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
           "id": {
             "anyOf": [
               {
@@ -1573,9 +1852,9 @@
           }
         },
         "required": [
+          "transaction_date",
           "asset_id",
           "amount",
-          "transaction_date",
           "source_account_id",
           "destination_account_id"
         ],
@@ -1605,6 +1884,13 @@
             "format": "uuid",
             "title": "Destination Account Id",
             "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeResponse"
+            },
+            "title": "Fees",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
@@ -2907,6 +3193,90 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/exchanges": {
+      "post": {
+        "description": "Record actual exchanged quantities and explicit fees atomically.",
+        "operationId": "exchange_api_v1_ledgers__ledger_id__exchanges_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exchange",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/expenses": {
       "post": {
         "description": "Post a payment and its expense-category splits in one transaction.",
@@ -3206,6 +3576,7 @@
                   "items": {
                     "discriminator": {
                       "mapping": {
+                        "exchange": "#/components/schemas/ExchangeResponse",
                         "expense": "#/components/schemas/OperationResponse",
                         "income": "#/components/schemas/OperationResponse",
                         "opening": "#/components/schemas/OperationResponse",
@@ -3219,6 +3590,9 @@
                       },
                       {
                         "$ref": "#/components/schemas/TransferResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ExchangeResponse"
                       }
                     ]
                   },
@@ -3278,6 +3652,7 @@
                 "schema": {
                   "discriminator": {
                     "mapping": {
+                      "exchange": "#/components/schemas/ExchangeResponse",
                       "expense": "#/components/schemas/OperationResponse",
                       "income": "#/components/schemas/OperationResponse",
                       "opening": "#/components/schemas/OperationResponse",
@@ -3291,6 +3666,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/TransferResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ExchangeResponse"
                     }
                   ],
                   "title": "Response Get Operation Api V1 Ledgers  Ledger Id  Operations  Operation Id  Get"

@@ -13,6 +13,8 @@ from coinpup_api.config import Settings
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
+    ExchangeCreate,
+    ExchangeResponse,
     ExpenseCreate,
     FinancialResponse,
     IncomeCreate,
@@ -82,6 +84,13 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
     ):
         """Move one asset between two accounts, including credit-card repayments."""
         return execute(service.post_transfer, identity.id, ledger_id, body, idempotency_key)
+
+    @router.post("/exchanges", response_model=ExchangeResponse, status_code=201)
+    def exchange(
+        ledger_id: UUID, body: ExchangeCreate, identity: writer, idempotency_key: command_key
+    ):
+        """Record actual exchanged quantities and explicit fees atomically."""
+        return execute(service.post_exchange, identity.id, ledger_id, body, idempotency_key)
 
     @router.get("/operations", response_model=list[FinancialResponse])
     def list_operations(
