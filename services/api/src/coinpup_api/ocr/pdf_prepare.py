@@ -170,7 +170,9 @@ def rendered_page(document, index, limits=_DEFAULT, *, totals=None, expected_siz
             )
         ):
             raise _Uncertain("invalid_geometry")
-        expected = tuple(math.ceil(value * limits.dpi / 72) for value in size)
+        # Match PDFium's multiplication order, including its boundary rounding.
+        scale = limits.dpi / 72
+        expected = tuple(math.ceil(value * scale) for value in size)
 
         def maker(width, height, *, format, rev_byteorder):
             if (
@@ -193,7 +195,7 @@ def rendered_page(document, index, limits=_DEFAULT, *, totals=None, expected_siz
             return bitmap
 
         yield page.render(
-            scale=limits.dpi / 72,
+            scale=scale,
             rotation=0,
             crop=(0, 0, 0, 0),
             bitmap_maker=maker,

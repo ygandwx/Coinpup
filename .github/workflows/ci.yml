@@ -87,6 +87,17 @@ jobs:
         env:
           COINPUP_CORPUS_SOURCES: build/corpus-sources
         run: python scripts/check.py corpus
+      - name: Generate the frozen fictional corpus offline
+        run: |
+          python -m scripts.ocr_benchmark.corpus generate --source-dir build/corpus-sources --output-dir build/fictional-corpus
+          python -m scripts.ocr_benchmark.corpus verify --output-dir build/fictional-corpus
+          python -c 'import json,pathlib; print("CORPUS_MANIFEST_V1=" + json.dumps(json.loads(pathlib.Path("build/fictional-corpus/manifest.json").read_text()), ensure_ascii=False, separators=(",",":")))'
+      - name: Preserve fictional inputs and their actual hashes
+        uses: actions/upload-artifact@v4
+        with:
+          name: fictional-ocr-corpus
+          path: build/fictional-corpus
+          if-no-files-found: error
 
   web:
     name: Web type check and build

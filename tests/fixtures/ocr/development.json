@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "seed": 20261004,
+  "notice": "虚构测试票据 / FICTIONAL TEST DOCUMENT",
+  "templates": [
+    {
+      "id": "D01", "language": "zh-Hans", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构开发发票", "日期: 2034-01-11", "币种: CNY", "小计: 31.25", "税额: 1.75", "合计: 33.00"], "rows": []}],
+      "header": {"document_date": "2034-01-11", "currency": "CNY", "subtotal": "31.25", "tax": "1.75", "total": "33.00"}
+    },
+    {
+      "id": "D02", "language": "zh-Hant", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虛構開發發票", "日期: 2034-02-12", "幣種: HKD", "小計: 45.60", "稅額: 0.00", "合計: 45.60"], "rows": []}],
+      "header": {"document_date": "2034-02-12", "currency": "HKD", "subtotal": "45.60", "tax": "0.00", "total": "45.60"}
+    },
+    {
+      "id": "D03", "language": "en", "kind": "statement",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "FICTIONAL DEVELOPMENT STATEMENT", "Date: 2034-03-31", "Currency: GBP", "Opening balance GBP: 250.00", "Closing balance GBP: 245.25", "Date | Currency | Amount | Description"], "rows": [
+        {"date": "2034-03-05", "currency": "GBP", "raw_amount": "-12.00", "amount": "-12.00", "description": "Fictional debit"},
+        {"date": "2034-03-09", "currency": "GBP", "raw_amount": "+7.25", "amount": "7.25", "description": "Fictional credit"}
+      ]}],
+      "header": {"document_date": "2034-03-31", "currency": "GBP", "opening_balance_gbp": "250.00", "closing_balance_gbp": "245.25"}
+    },
+    {
+      "id": "D04", "language": "mixed", "kind": "statement",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构开发 / FICTIONAL DEVELOPMENT", "日期 Date: 2034-04-30", "币种 Currency: USD", "期初余额 Opening balance USD: 50.00", "期末余额 Closing balance USD: 62.50", "日期 Date | 币种 Currency | 金额 Amount | 说明"], "rows": [
+        {"date": "2034-04-06", "currency": "USD", "raw_amount": "+20.00", "amount": "20.00", "description": "虚构 / Test A"},
+        {"date": "2034-04-08", "currency": "USD", "raw_amount": "-7.50", "amount": "-7.50", "description": "虚构 / Test B"}
+      ]}],
+      "header": {"document_date": "2034-04-30", "currency": "USD", "opening_balance_usd": "50.00", "closing_balance_usd": "62.50"}
+    }
+  ]
+}
