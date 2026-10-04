@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "seed": 20261004,
+  "notice": "虚构测试票据 / FICTIONAL TEST DOCUMENT",
+  "templates": [
+    {
+      "id": "S01", "language": "zh-Hans", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构发票", "虚构文具公司", "日期: 2026-09-01", "币种: CNY", "小计: 80.00", "税额: 10.40", "合计: 90.40", "虚构商品: 测试文件夹"], "rows": []}],
+      "header": {"document_date": "2026-09-01", "currency": "CNY", "subtotal": "80.00", "tax": "10.40", "total": "90.40"}
+    },
+    {
+      "id": "S02", "language": "zh-Hans", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构发票", "虚构设备公司", "日期: 2026-09-02", "币种: USD", "小计: 999.99", "税额: 80.00", "合计: 1,079.99", "虚构商品: 测试显示器"], "rows": []}],
+      "header": {"document_date": "2026-09-02", "currency": "USD", "subtotal": "999.99", "tax": "80.00", "total": "1079.99"}
+    },
+    {
+      "id": "S03", "language": "zh-Hans", "kind": "statement",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构账户流水", "日期: 2026-09-30", "币种: CNY", "期初余额 CNY: 1000.00", "期末余额 CNY: 1030.00", "日期 | 币种 | 金额 | 说明"], "rows": [
+        {"date": "2026-09-01", "currency": "CNY", "raw_amount": "-12.34", "amount": "-12.34", "description": "虚构采购甲"},
+        {"date": "2026-09-02", "currency": "CNY", "raw_amount": "+200.00", "amount": "200.00", "description": "虚构收款乙"},
+        {"date": "2026-09-03", "currency": "CNY", "raw_amount": "-50.01", "amount": "-50.01", "description": "虚构采购丙"},
+        {"date": "2026-09-04", "currency": "CNY", "raw_amount": "-100.00", "amount": "-100.00", "description": "虚构付款丁"},
+        {"date": "2026-09-05", "currency": "CNY", "raw_amount": "+0.01", "amount": "0.01", "description": "虚构退款戊"},
+        {"date": "2026-09-06", "currency": "CNY", "raw_amount": "-7.66", "amount": "-7.66", "description": "虚构费用己"}
+      ]}],
+      "header": {"document_date": "2026-09-30", "currency": "CNY", "opening_balance_cny": "1000.00", "closing_balance_cny": "1030.00"}
+    },
+    {
+      "id": "T01", "language": "zh-Hant", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虛構發票", "虛構文具公司", "日期: 2026-09-07", "幣種: HKD", "小計: 88.88", "稅額: 0.00", "合計: 88.88", "虛構商品: 測試信封"], "rows": []}],
+      "header": {"document_date": "2026-09-07", "currency": "HKD", "subtotal": "88.88", "tax": "0.00", "total": "88.88"}
+    },
+    {
+      "id": "T02", "language": "zh-Hant", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虛構貸項通知", "虛構設備公司", "日期: 2026-09-08", "幣種: USD", "小計: -11.11", "稅額: -1.19", "合計: -12.30", "虛構商品: 測試退款"], "rows": []}],
+      "header": {"document_date": "2026-09-08", "currency": "USD", "subtotal": "-11.11", "tax": "-1.19", "total": "-12.30"}
+    },
+    {
+      "id": "T03", "language": "zh-Hant", "kind": "statement",
+      "pages": [
+        {"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虛構帳戶流水", "日期: 2026-09-30", "幣種: HKD", "期初餘額 HKD: 500.00", "期末餘額 HKD: 710.00", "第 1 頁，共 2 頁", "日期 | 幣種 | 金額 | 說明"], "rows": [
+          {"date": "2026-09-01", "currency": "HKD", "raw_amount": "+100.10", "amount": "100.10", "description": "虛構收款甲"},
+          {"date": "2026-09-02", "currency": "HKD", "raw_amount": "-88.88", "amount": "-88.88", "description": "虛構採購乙"},
+          {"date": "2026-09-03", "currency": "HKD", "raw_amount": "+0.01", "amount": "0.01", "description": "虛構退款丙"},
+          {"date": "2026-09-04", "currency": "HKD", "raw_amount": "-20.00", "amount": "-20.00", "description": "虛構付款丁"}
+        ]},
+        {"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虛構帳戶流水", "第 2 頁，共 2 頁", "日期 | 幣種 | 金額 | 說明"], "rows": [
+          {"date": "2026-09-05", "currency": "HKD", "raw_amount": "+200.00", "amount": "200.00", "description": "虛構收款戊"},
+          {"date": "2026-09-06", "currency": "HKD", "raw_amount": "-1.23", "amount": "-1.23", "description": "虛構費用己"},
+          {"date": "2026-09-07", "currency": "HKD", "raw_amount": "-30.00", "amount": "-30.00", "description": "虛構付款庚"},
+          {"date": "2026-09-08", "currency": "HKD", "raw_amount": "+50.00", "amount": "50.00", "description": "虛構收款辛"}
+        ]}
+      ],
+      "header": {"document_date": "2026-09-30", "currency": "HKD", "opening_balance_hkd": "500.00", "closing_balance_hkd": "710.00"}
+    },
+    {
+      "id": "E01", "language": "en", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "FICTIONAL INVOICE", "FICTIONAL PAPER COMPANY", "Date: 2026-09-10", "Currency: GBP", "Subtotal: 1200.00", "Tax: 240.00", "Total: 1440.00", "Fictional item: test paper"], "rows": []}],
+      "header": {"document_date": "2026-09-10", "currency": "GBP", "subtotal": "1200.00", "tax": "240.00", "total": "1440.00"}
+    },
+    {
+      "id": "E02", "language": "en", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "FICTIONAL CREDIT NOTE", "FICTIONAL DEVICE COMPANY", "Date: 2026-09-11", "Currency: EUR", "Subtotal: -123.45", "Tax: -24.69", "Total: -148.14", "Fictional item: test refund"], "rows": []}],
+      "header": {"document_date": "2026-09-11", "currency": "EUR", "subtotal": "-123.45", "tax": "-24.69", "total": "-148.14"}
+    },
+    {
+      "id": "E03", "language": "en", "kind": "statement",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "FICTIONAL BANK STATEMENT", "Date: 2026-09-30", "Currency: USD", "Opening balance USD: 10000.00", "Closing balance USD: 12000.00", "Date | Currency | Amount | Description"], "rows": [
+        {"date": "2026-09-01", "currency": "USD", "raw_amount": "-99.99", "amount": "-99.99", "description": "Fictional purchase A"},
+        {"date": "2026-09-02", "currency": "USD", "raw_amount": "+1000.00", "amount": "1000.00", "description": "Fictional receipt B"},
+        {"date": "2026-09-03", "currency": "USD", "raw_amount": "-12.00", "amount": "-12.00", "description": "Fictional fee C"},
+        {"date": "2026-09-04", "currency": "USD", "raw_amount": "-7.01", "amount": "-7.01", "description": "Fictional fee D"},
+        {"date": "2026-09-05", "currency": "USD", "raw_amount": "+0.01", "amount": "0.01", "description": "Fictional refund E"},
+        {"date": "2026-09-06", "currency": "USD", "raw_amount": "-99.99", "amount": "-99.99", "description": "Fictional purchase F"},
+        {"date": "2026-09-07", "currency": "USD", "raw_amount": "-500.00", "amount": "-500.00", "description": "Fictional payment G"},
+        {"date": "2026-09-08", "currency": "USD", "raw_amount": "+2000.00", "amount": "2000.00", "description": "Fictional receipt H"},
+        {"date": "2026-09-09", "currency": "USD", "raw_amount": "-0.01", "amount": "-0.01", "description": "Fictional fee I"},
+        {"date": "2026-09-10", "currency": "USD", "raw_amount": "-281.01", "amount": "-281.01", "description": "Fictional payment J"}
+      ]}],
+      "header": {"document_date": "2026-09-30", "currency": "USD", "opening_balance_usd": "10000.00", "closing_balance_usd": "12000.00"}
+    },
+    {
+      "id": "M01", "language": "mixed", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构发票 / FICTIONAL INVOICE", "虚构服务 / FICTIONAL SERVICES", "日期 Date: 2026-09-12", "币种 Currency: USD", "小计 Subtotal: 100.50", "税额 Tax: 8.04", "合计 Total: 108.54", "虚构服务 / Fictional test service"], "rows": []}],
+      "header": {"document_date": "2026-09-12", "currency": "USD", "subtotal": "100.50", "tax": "8.04", "total": "108.54"}
+    },
+    {
+      "id": "M02", "language": "mixed", "kind": "invoice",
+      "pages": [{"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构收据 / FICTIONAL RECEIPT", "日期 Date: 2026-09-13", "币种 Currency: CNY", "虚构品项 A / Test item A: 5.00", "虚构品项 B / Test item B: 5.00", "小计 Subtotal: 10.00", "税额 Tax: 0.00", "合计 Total: 10.00"], "rows": []}],
+      "header": {"document_date": "2026-09-13", "currency": "CNY", "subtotal": "10.00", "tax": "0.00", "total": "10.00"}
+    },
+    {
+      "id": "M03", "language": "mixed", "kind": "statement",
+      "pages": [
+        {"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构账户流水 / FICTIONAL STATEMENT", "日期 Date: 2026-09-30", "资产 Assets: USD, GBP", "期初余额 Opening balance USD: 100.00", "期初余额 Opening balance GBP: 50.00", "期末余额 Closing balance USD: 100.01", "期末余额 Closing balance GBP: 70.00", "第 1 页 / Page 1 of 2", "日期 Date | 币种 Currency | 金额 Amount | 说明"], "rows": [
+          {"date": "2026-09-01", "currency": "USD", "raw_amount": "-10.00", "amount": "-10.00", "description": "虚构付款 / Test A"},
+          {"date": "2026-09-02", "currency": "GBP", "raw_amount": "+25.50", "amount": "25.50", "description": "虚构收款 / Test B"},
+          {"date": "2026-09-03", "currency": "USD", "raw_amount": "+20.00", "amount": "20.00", "description": "虚构收款 / Test C"},
+          {"date": "2026-09-04", "currency": "GBP", "raw_amount": "-5.50", "amount": "-5.50", "description": "虚构付款 / Test D"}
+        ]},
+        {"lines": ["虚构测试票据 / FICTIONAL TEST DOCUMENT", "虚构账户流水 / FICTIONAL STATEMENT", "第 2 页 / Page 2 of 2", "日期 Date | 币种 Currency | 金额 Amount | 说明"], "rows": [
+          {"date": "2026-09-05", "currency": "USD", "raw_amount": "-10.00", "amount": "-10.00", "description": "虚构付款 / Test E"},
+          {"date": "2026-09-06", "currency": "GBP", "raw_amount": "-0.01", "amount": "-0.01", "description": "虚构费用 / Test F"},
+          {"date": "2026-09-07", "currency": "USD", "raw_amount": "+0.01", "amount": "0.01", "description": "虚构退款 / Test G"},
+          {"date": "2026-09-08", "currency": "GBP", "raw_amount": "+0.01", "amount": "0.01", "description": "虚构退款 / Test H"}
+        ]}
+      ],
+      "header": {"document_date": "2026-09-30", "opening_balance_usd": "100.00", "closing_balance_usd": "100.01", "opening_balance_gbp": "50.00", "closing_balance_gbp": "70.00"}
+    }
+  ]
+}
