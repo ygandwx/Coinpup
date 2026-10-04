@@ -1,0 +1,627 @@
+{
+  "version": 1,
+  "target": "CPython 3.12 Linux x86_64 CPU",
+  "scope": "Pinned candidate inputs and original notices; not an installed or loaded native dependency chain.",
+  "source_commits": [
+    {
+      "repository": "tesseract",
+      "tag": "5.5.3",
+      "tag_object": "6951ffe10ce031374bcd04fe400811da1e7e04ad",
+      "commit": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+    },
+    {
+      "repository": "tessdata_best",
+      "tag": "4.1.0",
+      "tag_object": "f0c187c74d3038e6d135fd080e30909af350eae0",
+      "commit": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "repository": "tessdata_fast",
+      "tag": "4.1.0",
+      "tag_object": "a8ba5063ab8013372a20e300da0c97ee46b92b07",
+      "commit": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    }
+  ],
+  "model_licenses": {
+    "det": {
+      "declaration_file": "models/det/README.md",
+      "declared_license": "apache-2.0",
+      "standalone_LICENSE_present": false
+    },
+    "rec": {
+      "declaration_file": "models/rec/README.md",
+      "declared_license": "apache-2.0",
+      "standalone_LICENSE_present": false
+    }
+  },
+  "files": [
+    {
+      "name": "models/det/.gitattributes",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det/resolve/106c97591b235f607453300d9fc8c1cad1b25488/.gitattributes",
+      "byte_size": 1575,
+      "sha256": "a3a43406012ee8c7b9b38dfab1b11610f33e8245cd864a9a9302d042616a859e",
+      "revision": "106c97591b235f607453300d9fc8c1cad1b25488"
+    },
+    {
+      "name": "models/det/README.md",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det/resolve/106c97591b235f607453300d9fc8c1cad1b25488/README.md",
+      "byte_size": 23234,
+      "sha256": "525eef5858b48c009772cd9df422e8a440e1cc3d0cd7e0b5d4fbe8400dc2ecd1",
+      "revision": "106c97591b235f607453300d9fc8c1cad1b25488"
+    },
+    {
+      "name": "models/det/inference.json",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det/resolve/106c97591b235f607453300d9fc8c1cad1b25488/inference.json",
+      "byte_size": 229307,
+      "sha256": "89240f689a4a77aad75ef55a8df0a15c8e1d4980a327d17e58f24bbadde5aeab",
+      "revision": "106c97591b235f607453300d9fc8c1cad1b25488"
+    },
+    {
+      "name": "models/det/inference.pdiparams",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det/resolve/106c97591b235f607453300d9fc8c1cad1b25488/inference.pdiparams",
+      "byte_size": 9817888,
+      "sha256": "5043d4ccc8d63402ccea8feefcee4db57077431a873e78d2191836a178a492da",
+      "revision": "106c97591b235f607453300d9fc8c1cad1b25488"
+    },
+    {
+      "name": "models/det/inference.yml",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det/resolve/106c97591b235f607453300d9fc8c1cad1b25488/inference.yml",
+      "byte_size": 885,
+      "sha256": "193f435274bf9f0b5f71a929bbfbcf148282df7e633b34e7c373e8f44741b516",
+      "revision": "106c97591b235f607453300d9fc8c1cad1b25488"
+    },
+    {
+      "name": "models/rec/.gitattributes",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec/resolve/bd619643acac4b9650c040234da8d944476ee3f1/.gitattributes",
+      "byte_size": 1575,
+      "sha256": "a3a43406012ee8c7b9b38dfab1b11610f33e8245cd864a9a9302d042616a859e",
+      "revision": "bd619643acac4b9650c040234da8d944476ee3f1"
+    },
+    {
+      "name": "models/rec/README.md",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec/resolve/bd619643acac4b9650c040234da8d944476ee3f1/README.md",
+      "byte_size": 23473,
+      "sha256": "832f68feddefeffd63ba133b961b7c44a9603d5cde20c14c87383c9440694f7a",
+      "revision": "bd619643acac4b9650c040234da8d944476ee3f1"
+    },
+    {
+      "name": "models/rec/inference.json",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec/resolve/bd619643acac4b9650c040234da8d944476ee3f1/inference.json",
+      "byte_size": 208004,
+      "sha256": "f0bf53c853937a917affdd74467472167727f8ab0f0f7bded01c4a16c27e46e6",
+      "revision": "bd619643acac4b9650c040234da8d944476ee3f1"
+    },
+    {
+      "name": "models/rec/inference.pdiparams",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec/resolve/bd619643acac4b9650c040234da8d944476ee3f1/inference.pdiparams",
+      "byte_size": 21074618,
+      "sha256": "406e1e689c9a7fbb04178007a3fe10cf852afe7bf8bb3bc6dbb9d532b13bd907",
+      "revision": "bd619643acac4b9650c040234da8d944476ee3f1"
+    },
+    {
+      "name": "models/rec/inference.yml",
+      "role": "model",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec/resolve/bd619643acac4b9650c040234da8d944476ee3f1/inference.yml",
+      "byte_size": 150579,
+      "sha256": "ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1",
+      "revision": "bd619643acac4b9650c040234da8d944476ee3f1"
+    },
+    {
+      "name": "native-notices/gcc/COPYING.RUNTIME",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/2da13f5a051c8a28a85311fea990355b4797c179/COPYING.RUNTIME",
+      "byte_size": 3324,
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "revision": "2da13f5a051c8a28a85311fea990355b4797c179"
+    },
+    {
+      "name": "native-notices/gcc/COPYING3",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/2da13f5a051c8a28a85311fea990355b4797c179/COPYING3",
+      "byte_size": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "revision": "2da13f5a051c8a28a85311fea990355b4797c179"
+    },
+    {
+      "name": "native-notices/gcc/libgfortran/io/read.c",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/2da13f5a051c8a28a85311fea990355b4797c179/libgfortran/io/read.c",
+      "byte_size": 25724,
+      "sha256": "e17d59a9fde25d5dd804807bd6cdf62257ca4bdde4d0c823d045e95f01e34b0e",
+      "revision": "2da13f5a051c8a28a85311fea990355b4797c179"
+    },
+    {
+      "name": "native-notices/gcc/libquadmath/COPYING.LIB",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/2da13f5a051c8a28a85311fea990355b4797c179/libquadmath/COPYING.LIB",
+      "byte_size": 26440,
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
+      "revision": "2da13f5a051c8a28a85311fea990355b4797c179"
+    },
+    {
+      "name": "native-notices/gcc/libquadmath/quadmath-imp.h",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/gcc-mirror/gcc/2da13f5a051c8a28a85311fea990355b4797c179/libquadmath/quadmath-imp.h",
+      "byte_size": 5281,
+      "sha256": "d38ce1eafa60356af53b8c2a9cfd0628f8ab8063620449f4091341783ca848e1",
+      "revision": "2da13f5a051c8a28a85311fea990355b4797c179"
+    },
+    {
+      "name": "native-notices/leptonica/CMakeLists.txt",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/DanBloomberg/leptonica/dbb48b0fd0e10e943ecd9bab7439701842894733/CMakeLists.txt",
+      "byte_size": 11562,
+      "sha256": "c602f1317fdf97bb1a4b98472e9b5fe3405e4a13cfb62551d416a91ded796601",
+      "revision": "dbb48b0fd0e10e943ecd9bab7439701842894733"
+    },
+    {
+      "name": "native-notices/leptonica/README.html",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/DanBloomberg/leptonica/dbb48b0fd0e10e943ecd9bab7439701842894733/README.html",
+      "byte_size": 57884,
+      "sha256": "f90d4004065f75cc14224cc51f95ccffcfd874b90fe915c374a3b7332583d408",
+      "revision": "dbb48b0fd0e10e943ecd9bab7439701842894733"
+    },
+    {
+      "name": "native-notices/leptonica/cmake/LeptonicaFunc.cmake",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/DanBloomberg/leptonica/dbb48b0fd0e10e943ecd9bab7439701842894733/cmake/LeptonicaFunc.cmake",
+      "byte_size": 1238,
+      "sha256": "85f046f841e96b035a59d8078ef4bdf3d1d2d726b6c0d63ccdb8525f8cd193b4",
+      "revision": "dbb48b0fd0e10e943ecd9bab7439701842894733"
+    },
+    {
+      "name": "native-notices/leptonica/leptonica-license.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/DanBloomberg/leptonica/dbb48b0fd0e10e943ecd9bab7439701842894733/leptonica-license.txt",
+      "byte_size": 1521,
+      "sha256": "87829abb5bbb00b55a107365da89e9a33f86c4250169e5a1e5588505be7d5806",
+      "revision": "dbb48b0fd0e10e943ecd9bab7439701842894733"
+    },
+    {
+      "name": "native-notices/ubuntu/libjpeg-turbo-2.1.5-2ubuntu2-copyright",
+      "role": "license",
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/libj/libjpeg-turbo/libjpeg-turbo_2.1.5-2ubuntu2/copyright",
+      "byte_size": 38846,
+      "sha256": "3821184e23385bf2cdc01f56bd999b34036fc3aa03d5135d41680374eb81bf8a",
+      "revision": null
+    },
+    {
+      "name": "native-notices/ubuntu/libjpeg-turbo-2.1.5-2ubuntu2.dsc",
+      "role": "source_reference",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libj/libjpeg-turbo/libjpeg-turbo_2.1.5-2ubuntu2.dsc",
+      "byte_size": 2535,
+      "sha256": "7d17c0964d491cad7237491f28f1ee42d8335a57f9b1c01a5cd141bea418d3a2",
+      "revision": null
+    },
+    {
+      "name": "native-notices/ubuntu/libpng1.6-1.6.43-5ubuntu0.6-copyright",
+      "role": "license",
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.6/copyright",
+      "byte_size": 13051,
+      "sha256": "4620d402b97601a910946acccbbe2e15bdffac11615bf9046520990d3b00f2b9",
+      "revision": null
+    },
+    {
+      "name": "native-notices/ubuntu/libpng1.6-1.6.43-5ubuntu0.6.dsc",
+      "role": "source_reference",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.6.dsc",
+      "byte_size": 2384,
+      "sha256": "b5c3539ad4f9289480671a5a89aad2d9ad60c5eae79255460f1e929be1e272ad",
+      "revision": null
+    },
+    {
+      "name": "native-notices/ubuntu/zlib-1.3.dfsg-3.1ubuntu2.2-copyright",
+      "role": "license",
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/z/zlib/zlib_1.3.dfsg-3.1ubuntu2.2/copyright",
+      "byte_size": 2927,
+      "sha256": "9e5b96d63773a5d177ba264254390f792be07e41748ebd94730981c6cac31cc6",
+      "revision": null
+    },
+    {
+      "name": "native-notices/ubuntu/zlib-1.3.dfsg-3.1ubuntu2.2.dsc",
+      "role": "source_reference",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib_1.3.dfsg-3.1ubuntu2.2.dsc",
+      "byte_size": 2987,
+      "sha256": "56a7cd029863cbddafce831e4e63cccfa84017f93617929cb7c02f80bb5a122a",
+      "revision": null
+    },
+    {
+      "name": "paddle-vendors/lapack3.10.0/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/Reference-LAPACK/lapack/v3.10.0/LICENSE",
+      "byte_size": 2266,
+      "sha256": "66246b7d3e6736aea46e63fd5e087659474d07edfe2f9b051d085d9b42aaac61",
+      "revision": null
+    },
+    {
+      "name": "paddle-vendors/onednn/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/oneapi-src/oneDNN/28d696724426b943e2f4a0e607f90cdc19aedaf6/LICENSE",
+      "byte_size": 11607,
+      "sha256": "9dad27256276bb4fce6725c162ef619b5aa2e8abc8f341a4dab0b870aad55664",
+      "revision": "28d696724426b943e2f4a0e607f90cdc19aedaf6"
+    },
+    {
+      "name": "paddle-vendors/onetbb2021.13.0/LICENSE.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/oneapi-src/oneTBB/v2021.13.0/LICENSE.txt",
+      "byte_size": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "revision": null
+    },
+    {
+      "name": "paddle-vendors/openvino/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/07ecdf07d2974410dc1d67d9fa2d3433dcab7865/LICENSE",
+      "byte_size": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "revision": "07ecdf07d2974410dc1d67d9fa2d3433dcab7865"
+    },
+    {
+      "name": "paddle-vendors/openvino/licensing/onednn_third-party-programs.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/07ecdf07d2974410dc1d67d9fa2d3433dcab7865/licensing/onednn_third-party-programs.txt",
+      "byte_size": 28475,
+      "sha256": "f1b16991dfe8488f3f5f07cccba575c31c91175a9f2c8d9e1569665f86e0b2f6",
+      "revision": "07ecdf07d2974410dc1d67d9fa2d3433dcab7865"
+    },
+    {
+      "name": "paddle-vendors/openvino/licensing/onetbb_third-party-programs.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/07ecdf07d2974410dc1d67d9fa2d3433dcab7865/licensing/onetbb_third-party-programs.txt",
+      "byte_size": 46979,
+      "sha256": "b10997cc50652ba6ab365e3bc43e13057681cd4a56533b46171529bd249749f3",
+      "revision": "07ecdf07d2974410dc1d67d9fa2d3433dcab7865"
+    },
+    {
+      "name": "paddle-vendors/openvino/licensing/runtime-third-party-programs.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/07ecdf07d2974410dc1d67d9fa2d3433dcab7865/licensing/runtime-third-party-programs.txt",
+      "byte_size": 98131,
+      "sha256": "7a8dce1367db91f163881aac0476e6e565dd47a22601ce58f4dc883c78cdb8e5",
+      "revision": "07ecdf07d2974410dc1d67d9fa2d3433dcab7865"
+    },
+    {
+      "name": "paddle-vendors/openvino/licensing/third-party-programs.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/openvinotoolkit/openvino/07ecdf07d2974410dc1d67d9fa2d3433dcab7865/licensing/third-party-programs.txt",
+      "byte_size": 105419,
+      "sha256": "27753b0342247ba036c9c1c2c41642cbf2304b98c28a9d512dd0fe87752eabe4",
+      "revision": "07ecdf07d2974410dc1d67d9fa2d3433dcab7865"
+    },
+    {
+      "name": "paddle-vendors/warpctc/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/baidu-research/warp-ctc/bdc2b4550453e0ef2d3b5190f9c6103a84eff184/LICENSE",
+      "byte_size": 11407,
+      "sha256": "67eabb03e6c7adac5044ecb78eea4ab55da9b9312ed48fe018dd73ecbc295d2d",
+      "revision": "bdc2b4550453e0ef2d3b5190f9c6103a84eff184"
+    },
+    {
+      "name": "paddle-vendors/warprnnt/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/PaddlePaddle/warp-transducer/7ea6bfe748779c245a0fcaa5dd9383826273eff2/LICENSE",
+      "byte_size": 11350,
+      "sha256": "fab7b4805769f920d3061013453f90d77ecbffcb1e83bd63e896fb788d4ea966",
+      "revision": "7ea6bfe748779c245a0fcaa5dd9383826273eff2"
+    },
+    {
+      "name": "tesseract/best/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e2aad9b983032bb1beff9133104a67cdbb87ca4d/LICENSE",
+      "byte_size": 10173,
+      "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+      "revision": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "name": "tesseract/best/README.md",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e2aad9b983032bb1beff9133104a67cdbb87ca4d/README.md",
+      "byte_size": 470,
+      "sha256": "08c87523fb799c5bae6380f6ffa1a823494ab78f63906d7255dddd7671f94a5f",
+      "revision": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "name": "tesseract/best/chi_sim.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e2aad9b983032bb1beff9133104a67cdbb87ca4d/chi_sim.traineddata",
+      "byte_size": 13077423,
+      "sha256": "4fef2d1306c8e87616d4d3e4c6c67faf5d44be3342290cf8f2f0f6e3aa7e735b",
+      "revision": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "name": "tesseract/best/chi_tra.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e2aad9b983032bb1beff9133104a67cdbb87ca4d/chi_tra.traineddata",
+      "byte_size": 12985735,
+      "sha256": "1aa60488574cafa69486d919284f079ca9b68fcc7f6ad8dc1ff1b318dfd97028",
+      "revision": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "name": "tesseract/best/eng.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e2aad9b983032bb1beff9133104a67cdbb87ca4d/eng.traineddata",
+      "byte_size": 15400601,
+      "sha256": "8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba",
+      "revision": "e2aad9b983032bb1beff9133104a67cdbb87ca4d"
+    },
+    {
+      "name": "tesseract/fast/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185/LICENSE",
+      "byte_size": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "revision": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    },
+    {
+      "name": "tesseract/fast/README.md",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185/README.md",
+      "byte_size": 3955,
+      "sha256": "5196105c05ef1eb4b690878ab01629f8638e4eb96202787cde345ec5bb1031a5",
+      "revision": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    },
+    {
+      "name": "tesseract/fast/chi_sim.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185/chi_sim.traineddata",
+      "byte_size": 2469156,
+      "sha256": "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730",
+      "revision": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    },
+    {
+      "name": "tesseract/fast/chi_tra.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185/chi_tra.traineddata",
+      "byte_size": 2366642,
+      "sha256": "529c5b5797d64b126065cd55f2bb4c7fd7b15790798091b1ff259941a829330b",
+      "revision": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    },
+    {
+      "name": "tesseract/fast/eng.traineddata",
+      "role": "traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185/eng.traineddata",
+      "byte_size": 4113088,
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "revision": "65727574dfcd264acbb0c3e07860e4e9e9b22185"
+    },
+    {
+      "name": "tesseract/source/CMakeLists.txt",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/db0ec62f81b0737fbbe184d8fea40af5738f8eef/CMakeLists.txt",
+      "byte_size": 34016,
+      "sha256": "10dcc709b89b9b81bae54b6eb2d5cb24987cbbc8436d833c3051dad37d524e09",
+      "revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+    },
+    {
+      "name": "tesseract/source/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/db0ec62f81b0737fbbe184d8fea40af5738f8eef/LICENSE",
+      "byte_size": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+    },
+    {
+      "name": "tesseract/source/README.md",
+      "role": "source_reference",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/db0ec62f81b0737fbbe184d8fea40af5738f8eef/README.md",
+      "byte_size": 8152,
+      "sha256": "35ca53a67a2895ebdc2cf6777fc5808c1b0c5df650b896b79c82b2c4a004bd76",
+      "revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+    },
+    {
+      "name": "tesseract/source/tesseract-5.5.3-db0ec62f81b0737fbbe184d8fea40af5738f8eef.zip",
+      "role": "source_archive",
+      "url": "https://codeload.github.com/tesseract-ocr/tesseract/zip/db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+      "byte_size": 2533335,
+      "sha256": "d2470cc33ee34deeae6fc47809d0b33a3623a4343d92ff317ac3b9903c507bad",
+      "revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+    },
+    {
+      "name": "wheels/opencv_contrib_python-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "role": "wheel",
+      "url": "https://files.pythonhosted.org/packages/b0/e0/8f5d065ebb2e5941d289c5f653f944318f9e418bc5167bc6a346ab5e0f6a/opencv_contrib_python-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "byte_size": 68681489,
+      "sha256": "a261223db41f6e512d76deaf21c8fcfb4fbbcbc2de62ca7f74a05f2c9ee489ef",
+      "revision": null
+    },
+    {
+      "name": "wheels/paddleocr-3.7.0-py3-none-any.whl",
+      "role": "wheel",
+      "url": "https://files.pythonhosted.org/packages/d2/79/2ade66cf72074a3d2a013e2ba1f256d6116fec797b908fc1b4f9c320d8c4/paddleocr-3.7.0-py3-none-any.whl",
+      "byte_size": 146750,
+      "sha256": "c0f0a81ad4112727f30c6fcf986ac0ef6a120d31ee0991a01fae0357ee32d338",
+      "revision": null
+    },
+    {
+      "name": "wheels/paddlepaddle-3.4.0-cp312-cp312-linux_x86_64.whl",
+      "role": "wheel",
+      "url": "https://paddle-whl.cdn.bcebos.com/stable/cpu/paddlepaddle/paddlepaddle-3.4.0-cp312-cp312-linux_x86_64.whl",
+      "byte_size": 192978926,
+      "sha256": "166d66d2e873443f32e5f42bb08bf8dcf09109b94e4ab54f4683fbc1e2053f4b",
+      "revision": null
+    },
+    {
+      "name": "wheels/paddlex-3.7.0-py3-none-any.whl",
+      "role": "wheel",
+      "url": "https://files.pythonhosted.org/packages/93/3b/32d5eb2d830587c0a4be39a8ff080bf635ebc3c9a92ef5bc43a2dd5a3abf/paddlex-3.7.0-py3-none-any.whl",
+      "byte_size": 2220975,
+      "sha256": "70c5762d6bae7efe3a7db0e3264eb88e9ce1c3bf88d8e30cd32759924357acdc",
+      "revision": null
+    }
+  ],
+  "native_expected": {
+    "wheels/paddlepaddle-3.4.0-cp312-cp312-linux_x86_64.whl": [
+      {
+        "name": "_foo.cpython-312-x86_64-linux-gnu.so",
+        "byte_size": 15680,
+        "sha256": "a3e14959f9095b8eb7df693b32505279410c823f8aacf1365972e04fff59b9c6"
+      },
+      {
+        "name": "paddle/base/libpaddle.so",
+        "byte_size": 266392336,
+        "sha256": "873be24a57af1a470fa197941fd918a45b70ef17b9a05b4348b8fd50aba2579f"
+      },
+      {
+        "name": "paddle/libs/libblas.so.3",
+        "byte_size": 547096,
+        "sha256": "3aa37a3929095a40a8af3e7578b659ae2b04f3d829539ae9d618ea65a9d3bc3d"
+      },
+      {
+        "name": "paddle/libs/libcommon.so",
+        "byte_size": 497312,
+        "sha256": "cb16419c3d9cc0c72be39110da6fe4acd0107aeb7b9590e80b3c4dd1fb85f205"
+      },
+      {
+        "name": "paddle/libs/libdnnl.so.3",
+        "byte_size": 63727816,
+        "sha256": "5a07abc169434cab6d0e94eb662158feb07fc9d517bc704f5e20e6d59dc47f33"
+      },
+      {
+        "name": "paddle/libs/libgfortran.so.3",
+        "byte_size": 1229288,
+        "sha256": "426eb80df096bcd0b2a821522086ce1aeccf0bf7b9c65197389bc8659b456408"
+      },
+      {
+        "name": "paddle/libs/libiomp5.so",
+        "byte_size": 1932448,
+        "sha256": "85d288e9799382766377a042b1d2f8044bb0a0af76ed6ff19b41f27a2029414e"
+      },
+      {
+        "name": "paddle/libs/liblapack.so.3",
+        "byte_size": 9546272,
+        "sha256": "8fb4dcb814e6f242dedc6fc9d3d6887a9d39c42eff1822d820c783fe00b7356d"
+      },
+      {
+        "name": "paddle/libs/libmklml_intel.so",
+        "byte_size": 130096544,
+        "sha256": "51fbd95a70504b0c6b7a1fbc316560580a32bf308cca7af4eea7bacd1e0d137b"
+      },
+      {
+        "name": "paddle/libs/libopenvino.so.2500",
+        "byte_size": 20589456,
+        "sha256": "650ff6fb8c2a537285231b437371881f8eebdbfd2a3c140242c0daad8ed4b88d"
+      },
+      {
+        "name": "paddle/libs/libopenvino_intel_cpu_plugin.so",
+        "byte_size": 62626840,
+        "sha256": "dd7910362a9f6942ff6966283ebcfa3e957c32679c34c51c9d325befbc830f22"
+      },
+      {
+        "name": "paddle/libs/libopenvino_paddle_frontend.so.2500",
+        "byte_size": 2845360,
+        "sha256": "327386687f4c0a41870cf15e3d1c2f9bcfedca8ea24d6a22b54a8905cf8b1917"
+      },
+      {
+        "name": "paddle/libs/libphi.so",
+        "byte_size": 14048,
+        "sha256": "3d789880ee5b6efb86550415f8119bd4f48d603695efe99aca321567b1b05e42"
+      },
+      {
+        "name": "paddle/libs/libphi_core.so",
+        "byte_size": 116778264,
+        "sha256": "78b42b79e7a433076ba2b67a094972bee626be66b8b20d7e8c4ef4f95864995f"
+      },
+      {
+        "name": "paddle/libs/libquadmath.so.0",
+        "byte_size": 244904,
+        "sha256": "96973f995bad4e4b80eaa188b7bac60bd0df44b22ee67bd046b3aa4ecb9e34fd"
+      },
+      {
+        "name": "paddle/libs/libtbb.so.12",
+        "byte_size": 309680,
+        "sha256": "3f901522e7c1180e67e987ed6771e639b3b2ebbdcef3ced142f6cb751b93343d"
+      },
+      {
+        "name": "paddle/libs/libwarpctc.so",
+        "byte_size": 43208,
+        "sha256": "1a0a04c57bd60f2b3bf5f1336e9318710ebb430b0a944942ca4710aa64037299"
+      },
+      {
+        "name": "paddle/libs/libwarprnnt.so",
+        "byte_size": 26920,
+        "sha256": "4b2ecc21b111c5230cc0e524d00b050b124cba31febe1f3aa928e5574d4e01ba"
+      }
+    ]
+  },
+  "embedded_notices": [
+    {
+      "name": "mklml/license.txt",
+      "text_encoding": "utf-8",
+      "text": "Intel Simplified Software License (Version April 2018)\n\nCopyright (c) 2018 Intel Corporation.\n\nUse and Redistribution.  You may use and redistribute the software (the\n\"Software\"), without modification, provided the following conditions are met:\n\n* Redistributions must reproduce the above copyright notice and the following\n  terms of use in the Software and in the documentation and/or other materials\n  provided with the distribution.\n* Neither the name of Intel nor the names of its suppliers may be used to\n  endorse or promote products derived from this Software without specific prior\n  written permission.\n* No reverse engineering, decompilation, or disassembly of this Software is\n  permitted.\n\nLimited patent license.  Intel grants you a world-wide, royalty-free,\nnon-exclusive license under patents it now or hereafter owns or controls to\nmake, have made, use, import, offer to sell and sell (\"Utilize\") this Software,\nbut solely to the extent that any such patent is necessary to Utilize the\nSoftware alone. The patent license shall not apply to any combinations which\ninclude this software. No hardware per se is licensed hereunder.\n\nThird party and other Intel programs.  \"Third Party Programs\" are the files\nlisted in the \"third-party-programs.txt\" text file that is included with the\nSoftware and may include Intel programs under separate license terms. Third\nParty Programs, even if included with the distribution of the Materials, are\ngoverned by separate license terms and those license terms solely govern your\nuse of those programs.\n\nDISCLAIMER.  THIS SOFTWARE IS PROVIDED \"AS IS\" AND ANY EXPRESS OR IMPLIED\nWARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT ARE\nDISCLAIMED. THIS SOFTWARE IS NOT INTENDED FOR USE IN SYSTEMS OR APPLICATIONS\nWHERE FAILURE OF THE SOFTWARE MAY CAUSE PERSONAL INJURY OR DEATH AND YOU AGREE\nTHAT YOU ARE FULLY RESPONSIBLE FOR ANY CLAIMS, COSTS, DAMAGES, EXPENSES, AND\nATTORNEYS' FEES ARISING OUT OF ANY SUCH USE, EVEN IF ANY CLAIM ALLEGES THAT\nINTEL WAS NEGLIGENT REGARDING THE DESIGN OR MANUFACTURE OF THE MATERIALS.\n\nLIMITATION OF LIABILITY.  IN NO EVENT WILL INTEL BE LIABLE FOR ANY DIRECT,\nINDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,\nBUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\nLIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE\nOR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF\nADVISED OF THE POSSIBILITY OF SUCH DAMAGE. YOU AGREE TO INDEMNIFY AND HOLD INTEL\nHARMLESS AGAINST ANY CLAIMS AND EXPENSES RESULTING FROM YOUR USE OR UNAUTHORIZED\nUSE OF THE SOFTWARE.\n\nNo support.  Intel may make changes to the Software, at any time without notice,\nand is not obligated to support, update or provide training for the Software.\n\nTermination.  Intel may terminate your right to use the Software in the event of\nyour breach of this Agreement and you fail to cure the breach within a\nreasonable period of time.\n\nFeedback.  Should you provide Intel with comments, modifications, corrections,\nenhancements or other input (\"Feedback\") related to the Software Intel will be\nfree to use, disclose, reproduce, license or otherwise distribute or exploit the\nFeedback in its sole discretion without any obligations or restrictions of any\nkind, including without limitation, intellectual property rights or licensing\nobligations.\n\nCompliance with laws.  You agree to comply with all relevant laws and\nregulations governing your use, transfer, import or export (or prohibition\nthereof) of the Software.\n\nGoverning law.  All disputes will be governed by the laws of the United States\nof America and the State of Delaware without reference to conflict of law\nprinciples and subject to the exclusive jurisdiction of the state or federal\ncourts sitting in the State of Delaware, and each party agrees that it submits\nto the personal jurisdiction and venue of those courts and waives any\nobjections. The United Nations Convention on Contracts for the International\nSale of Goods (1980) is specifically excluded and will not apply to the\nSoftware.\n\n*Other names and brands may be claimed as the property of others.\n\n",
+      "byte_size": 4335,
+      "sha256": "bfda9286e31251fdc9eaacddb1856c5e73342126efcf6e34a53f1d55ddd54f4b",
+      "source_archive": {
+        "url": "https://paddlepaddledeps.bj.bcebos.com/csrmm_mklml_lnx_2019.0.5.tgz",
+        "byte_size": 72019387,
+        "sha256": "8b190a13cc21be6030363d119b3a8e0830dd8601902900fa0c05d1129d55b5ab"
+      },
+      "archive_member": "mklml_lnx_2019.0.5.20190502/license.txt"
+    },
+    {
+      "name": "mklml/third-party-programs.txt",
+      "text_encoding": "utf-8",
+      "text": "There are no Third Party Programs (as defined in the Agreement) included in this version of the Intel(R) Math Kernel Library.\n",
+      "byte_size": 126,
+      "sha256": "231eeb31dc4f8df14607e26bc47ed438bf090b7a1147afc1022d7b0446359076",
+      "source_archive": {
+        "url": "https://paddlepaddledeps.bj.bcebos.com/csrmm_mklml_lnx_2019.0.5.tgz",
+        "byte_size": 72019387,
+        "sha256": "8b190a13cc21be6030363d119b3a8e0830dd8601902900fa0c05d1129d55b5ab"
+      },
+      "archive_member": "mklml_lnx_2019.0.5.20190502/third-party-programs.txt"
+    }
+  ],
+  "inspection_context": {
+    "scope": "Artifact-specific static observations only; no installed dependency closure or active native loading has been verified.",
+    "opencv": {
+      "artifact": "wheels/opencv_contrib_python-4.10.0.84-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "artifact_sha256": "a261223db41f6e512d76deaf21c8fcfb4fbbcbc2de62ca7f74a05f2c9ee489ef",
+      "platform": "Linux x86_64",
+      "notice_member": "opencv_contrib_python-4.10.0.84.dist-info/LICENSE-3RD-PARTY.txt",
+      "notice_sha256": "4fc3c113d53e95da0f3c433655a67067b7310e53af31eb6d280e94cc6927a363",
+      "interpretation": "The Affero occurrence is the MPL 2.0 secondary-license definition in the macOS-only libsrt notice. The pinned Linux wheel has no libsrt member. This observation is not a general exclusion rule for AGPL or for other artifacts."
+    },
+    "paddle_gnu": {
+      "artifact": "wheels/paddlepaddle-3.4.0-cp312-cp312-linux_x86_64.whl",
+      "artifact_sha256": "166d66d2e873443f32e5f42bb08bf8dcf09109b94e4ab54f4683fbc1e2053f4b",
+      "members": {
+        "paddle/libs/libgfortran.so.3": {
+          "license_family": "GPL-3.0 with GCC Runtime Library Exception 3.1",
+          "exact_compiler_patch": null,
+          "evidence": "Runtime identifier reports UNKNOWN; .comment section is absent."
+        },
+        "paddle/libs/libquadmath.so.0": {
+          "license_family": "LGPL-2.1",
+          "exact_compiler_patch": null
+        }
+      },
+      "source_notice_reference": "native-notices/gcc/",
+      "interpretation": "Full upstream notices are preserved as license-family references, not proof of the exact compiler build or static dependency closure."
+    },
+    "paddle_mkl": {
+      "artifact": "wheels/paddlepaddle-3.4.0-cp312-cp312-linux_x86_64.whl",
+      "artifact_sha256": "166d66d2e873443f32e5f42bb08bf8dcf09109b94e4ab54f4683fbc1e2053f4b",
+      "members": [
+        "paddle/libs/libmklml_intel.so",
+        "paddle/libs/libiomp5.so"
+      ],
+      "license": "Intel Simplified Software License, April 2018",
+      "correspondence": "The source archive and wheel members share GNU build IDs, but their bytes differ; this is not a byte-identical binary provenance claim.",
+      "notices": [
+        "mklml/license.txt",
+        "mklml/third-party-programs.txt"
+      ]
+    }
+  }
+}

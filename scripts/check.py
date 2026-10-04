@@ -44,6 +44,21 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
                 python_step("Format Python", "-m", "ruff", "format", "."),
             ]
         )
+    if mode == "assets":
+        steps.extend(
+            [
+                python_step("Dependency consistency", "-m", "pip", "check"),
+                python_step(
+                    "Pinned engine input checks",
+                    "-m",
+                    "pytest",
+                    "tests/engine_assets",
+                    "-m",
+                    "engine_assets",
+                ),
+            ]
+        )
+        return fix_steps + steps, skipped
     if mode == "corpus":
         steps.extend(
             [
@@ -175,7 +190,7 @@ def run_steps(steps: list[Step], root: Path, skipped: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "mode", nargs="?", choices=("fast", "web", "db", "ocr", "corpus"), default="fast"
+        "mode", nargs="?", choices=("fast", "web", "db", "ocr", "corpus", "assets"), default="fast"
     )
     parser.add_argument(
         "--fix", action="store_true", help="Run lint fixes and Python/Web formatting first"
