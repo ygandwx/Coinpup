@@ -2,6 +2,8 @@
 
 本协议落实 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md)，字段计分实现为 [scoring.py](../../scripts/ocr_benchmark/scoring.py)。进度只见 [status.md](status.md)，实际制品摘要、环境、命令和结果留在对应 PR 与实测报告；本文不代表已运行引擎或已经达标。
 
+旧正式集已转为诊断证据，见[只读字段归因](ocr-formal-diagnosis.md)；后续新种子验收遵循当前用户指示，不能复用旧正式集作验收。
+
 ## 语料与冻结顺序
 
 [truth.json](../../tests/fixtures/ocr/truth.json) 是先于生成器与识别器逐项写定的独立真值：简中、繁中、英文、混排各三个模板，共八张发票/贷项/收据、四份流水。它保存字面正文、原始金额及规范字段，包含五种法币、负数、税额、千位分隔、重复同额交易和跨页、多币种流水。每份文档首页标明“虚构测试票据 / FICTIONAL TEST DOCUMENT”，续页有打印页码及虚构条目；组织、条目均虚构，不使用真实账单、账号或证件。
