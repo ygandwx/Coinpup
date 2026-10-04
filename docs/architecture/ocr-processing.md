@@ -1,6 +1,6 @@
 # OCR 私有处理协议
 
-本文件落实 [ADR 0019](decisions/0019-local-ocr-worker.md)，描述 worker 与受限子进程的内部协议；它不是业务 API。实际进度只见 [status.md](../engineering/status.md)，安装和运行边界见 [operations.md](../engineering/operations.md)。识别不产生分录，确认另按 T05-4 调用既有财务命令。
+本文件落实 [ADR 0019](decisions/0019-local-ocr-worker.md)及其建议值策略后继 [ADR 0020](decisions/0020-ocr-prefill-and-review.md)，描述 worker 与受限子进程的内部协议；它不是业务 API。实际进度只见 [status.md](../engineering/status.md)，安装和运行边界见 [operations.md](../engineering/operations.md)。识别不产生分录，确认另按 T05-4 调用既有财务命令。
 
 ## 固定入口与原件
 
