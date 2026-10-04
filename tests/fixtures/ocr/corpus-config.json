@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "seed": 20261004,
+  "page_size": [420, 595],
+  "dpi": 300,
+  "font_size": 11,
+  "line_step": 22,
+  "margin": 20,
+  "first_baseline": 555,
+  "column_centers": [65, 155, 235, 345],
+  "row_positions": [35, 155, 260, 294],
+  "separators": [110, 195, 285],
+  "jpeg": {"quality": 95, "subsampling": 0, "optimize": false, "progressive": false},
+  "degraded": [
+    {"template": "S01", "kind": "rotate", "angle": -3},
+    {"template": "T01", "kind": "rotate", "angle": 3},
+    {"template": "E01", "kind": "rotate", "angle": 5, "literal_edits": [{"page": 0, "match": "Date: 2026-09-10", "replace": "Date: 01/02/2026", "review_path": "header.document_date"}]},
+    {"template": "S02", "kind": "contrast", "factor": 0.35},
+    {"template": "T02", "kind": "contrast", "factor": 0.35, "literal_edits": [{"page": 0, "match": "幣種: USD", "replace": "幣種: $", "review_path": "header.currency"}]},
+    {"template": "M01", "kind": "contrast", "factor": 0.35},
+    {"template": "S03", "kind": "blur", "radius": 1.2},
+    {"template": "E02", "kind": "blur", "radius": 1.2},
+    {"template": "M02", "kind": "blur", "radius": 1.2, "literal_edits": [{"page": 0, "match": "合计 Total: 10.00", "append": "合计 Total: 11.00", "review_path": "header.total"}]},
+    {"template": "T03", "kind": "perspective", "inset_x": 0.03, "inset_y": 0.02, "padding": 0.04},
+    {"template": "E03", "kind": "perspective", "inset_x": 0.03, "inset_y": 0.02, "padding": 0.04},
+    {"template": "M03", "kind": "perspective", "inset_x": 0.03, "inset_y": 0.02, "padding": 0.04}
+  ],
+  "errors": ["damaged", "encrypted", "page_limit", "pixel_limit", "stream_limit", "missing_model", "timeout", "garbled_layer"]
+}
