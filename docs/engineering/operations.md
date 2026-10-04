@@ -6,6 +6,18 @@
 
 `COINPUP_ALLOWED_ORIGINS` 是 JSON 格式的精确 scheme/host/port 列表，开发来源示例见 [.env.example](../../.env.example)。生产模式须显式设置 HTTPS 来源，并核对反向代理、TLS 与 Cookie 的 Secure 行为。默认登录限制为 15 分钟内 5 次失败后限制 15 分钟，会话默认 12 小时；可配置项以 [Settings](../../services/api/src/coinpup_api/config.py) 为准。来源、CSRF 和会话不是可互相替代的检查，见 [API 约定](../architecture/api-conventions.md)。
 
+## 可选文字解析环境
+
+默认 API 使用 `requirements.lock`，开发检查使用 `requirements-dev.lock`；PDF 依赖另锁在 `requirements-ocr.lock`，受默认锁约束并包含安装哈希。安装可选组不会自动启用 OCR 任务；引擎、模型和实际处理配置仍按 ADR 0019 的同机验收推进。
+
+```sh
+python -m pip install -r requirements-dev.lock
+python -m pip install --require-hashes -r requirements-ocr.lock
+python scripts/check.py ocr
+```
+
+默认 `fast` 保留全部普通测试；可选库测试由单独的必需 CI 作业实际安装并运行，不用 `importorskip` 冒充验收。依赖和许可证登记见[可选解析依赖](ocr-dependencies.md)。隔离 helper 仅在 Linux 执行，固定 Python/处理入口，先设资源限制再导入解析库；私有临时目录和请求文件分别为 0700/0600，不继承数据库、会话或代理环境，stderr 不进日志。地址空间限制不是 RSS 上限，单文件上限不是临时目录总量；禁网、只读原件卷、容器内存/PID 与临时总量限制由后续 worker 部署落实，不能把 helper 当作完整沙箱。API 镜像本步不改变。
+
 ## 备份范围
 
 余额与交易日/归属日的查询索引通过显式 Alembic 迁移建立，模型定义见 [账务模型](../../services/api/src/coinpup_api/ledger/models.py)。普通建索引在迁移事务中执行，安排维护窗口；降级只删除本次新增索引，不改财务行或回执。测试中的 `enable_seqscan=off` 仅验证索引适用性，不是部署设置，也不代表实际性能提升。

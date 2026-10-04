@@ -44,6 +44,15 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
                 python_step("Format Python", "-m", "ruff", "format", "."),
             ]
         )
+    if mode == "ocr":
+        steps.extend(
+            [
+                python_step("Dependency consistency", "-m", "pip", "check"),
+                python_step("Optional dependency notices", "scripts/check_ocr_dependencies.py"),
+                python_step("Optional OCR checks", "-m", "pytest", "tests/ocr", "-m", "ocr"),
+            ]
+        )
+        return fix_steps + steps, skipped
     if mode == "db":
         steps.extend(
             [
@@ -67,7 +76,9 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
             [
                 python_step("Python lint", "-m", "ruff", "check", "."),
                 python_step("Python formatting", "-m", "ruff", "format", "--check", "."),
-                python_step("Tests without database", "-m", "pytest", "-m", "not integration"),
+                python_step(
+                    "Tests without database", "-m", "pytest", "-m", "not integration and not ocr"
+                ),
                 python_step("Documentation", "scripts/check_docs.py"),
                 python_step("OpenAPI snapshot", "scripts/export_openapi.py", "--check"),
                 python_step(
@@ -152,7 +163,7 @@ def run_steps(steps: list[Step], root: Path, skipped: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", nargs="?", choices=("fast", "web", "db"), default="fast")
+    parser.add_argument("mode", nargs="?", choices=("fast", "web", "db", "ocr"), default="fast")
     parser.add_argument(
         "--fix", action="store_true", help="Run lint fixes and Python/Web formatting first"
     )

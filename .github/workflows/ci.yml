@@ -40,6 +40,28 @@ jobs:
       - name: Run fast checks
         run: python scripts/check.py fast
 
+  ocr:
+    name: Optional OCR dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.lock
+            requirements-ocr.lock
+      - name: Install default and optional locked dependencies
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install --require-hashes -r requirements-ocr.lock
+      - name: Check real optional libraries
+        run: python scripts/check.py ocr
+
   web:
     name: Web type check and build
     runs-on: ubuntu-latest
