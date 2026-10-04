@@ -198,7 +198,7 @@ def _admit(data, media_type, limits, options):
 
 
 @contextmanager
-def prepared_image(data, media_type, limits=_DEFAULT, image_limits=_IMAGE_DEFAULT):
+def _prepared_image(data, media_type, limits=_DEFAULT, image_limits=_IMAGE_DEFAULT):
     """Yield upright white-backed RGBX; the consumer must finish before context exit."""
     if (
         type(media_type) is not str
@@ -256,6 +256,20 @@ def prepared_image(data, media_type, limits=_DEFAULT, image_limits=_IMAGE_DEFAUL
             raise _Uncertain("invalid_image") from None
         finally:
             ImageFile.LOAD_TRUNCATED_IMAGES = truncated
+        yield raster
+
+
+@contextmanager
+def prepared_image(
+    data, media_type, limits=_DEFAULT, image_limits=_IMAGE_DEFAULT, *, _phase_observer=None
+):
+    from .pdf_prepare import _phase_interval
+
+    with ExitStack() as resources:
+        with _phase_interval(_phase_observer, "image_decode", 0):
+            raster = resources.enter_context(
+                _prepared_image(data, media_type, limits, image_limits)
+            )
         yield raster
 
 

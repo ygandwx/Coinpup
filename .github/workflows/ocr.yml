@@ -278,4 +278,3 @@ jobs:
           name: isolated-ocr-candidate-evidence
           path: build/candidate-reports
           if-no-files-found: warn
-

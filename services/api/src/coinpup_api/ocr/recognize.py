@@ -7,7 +7,7 @@ import time
 from .engine_adapters import EngineError
 from .field_parser import parse_document
 from .parser_types import TextPage
-from .pdf_prepare import PrepareLimits, prepare_pdf
+from .pdf_prepare import PrepareLimits, _phase, _phase_interval, prepare_pdf
 from .pdf_probe import MAX_SOURCE_BYTES, _Uncertain
 
 _LIMITS = PrepareLimits(dpi=300)
@@ -47,7 +47,9 @@ def failed_result(reason, *, page_indices=()):
     }
 
 
-def recognize_document(data, media_type, adapter, *, page_done=None, _observe_native=None):
+def recognize_document(
+    data, media_type, adapter, *, page_done=None, _observe_native=None, _phase_observer=None
+):
     """Consume each genuine raster while alive; manual pages retain their physical indices."""
     if (
         type(data) is not bytes
@@ -75,15 +77,25 @@ def recognize_document(data, media_type, adapter, *, page_done=None, _observe_na
         else:
             # PdfBitmap.to_pil is a live view. RGB conversion and the adapter finish
             # before either the view or the native bitmap can be released.
-            view = source.to_pil() if media_type == "application/pdf" else source
+            view, materialized = None, False
+            _phase(_phase_observer, "rgb_materialize", index, "start")
             try:
+                view = source.to_pil() if media_type == "application/pdf" else source
                 with view.convert("RGB") as rgb:
                     rgb_bytes = rgb.tobytes()
                     width, height = rgb.size
                     digest = hashlib.sha256(rgb_bytes).hexdigest()
+                    materialized = True
+                    _phase(_phase_observer, "rgb_materialize", index, "end", {"outcome": "passed"})
                     before = time.monotonic_ns()
                     try:
-                        text_page = adapter.recognize(rgb_bytes, width, height)
+                        with _phase_interval(
+                            _phase_observer,
+                            "sdk_recognize",
+                            index,
+                            {"raster_rgb_sha256": digest, "width": width, "height": height},
+                        ):
+                            text_page = adapter.recognize(rgb_bytes, width, height)
                         if type(text_page) is not TextPage or (
                             text_page.width,
                             text_page.height,
@@ -106,10 +118,14 @@ def recognize_document(data, media_type, adapter, *, page_done=None, _observe_na
                         recognition_ns += time.monotonic_ns() - before
             finally:
                 try:
+                    if not materialized:
+                        _phase(
+                            _phase_observer, "rgb_materialize", index, "end", {"outcome": "failed"}
+                        )
                     if _observe_native is not None:
                         _observe_native()
                 finally:
-                    if media_type == "application/pdf":
+                    if media_type == "application/pdf" and view is not None:
                         view.close()
         slots[index] = text_page
         pages[index] = {
@@ -122,39 +138,42 @@ def recognize_document(data, media_type, adapter, *, page_done=None, _observe_na
             "raster_rgb_sha256": digest,
         }
 
-    if media_type == "application/pdf":
-        prepared = prepare_pdf(
-            data,
-            _LIMITS,
-            _page_consumer=consume,
-            _page_done=done,
-        )
-    else:
-        from .image_prepare import prepared_image
+    phase_options = {} if _phase_observer is None else {"_phase_observer": _phase_observer}
+    with _phase_interval(_phase_observer, "prepare_total"):
+        if media_type == "application/pdf":
+            prepared = prepare_pdf(
+                data,
+                _LIMITS,
+                _page_consumer=consume,
+                _page_done=done,
+                **phase_options,
+            )
+        else:
+            from .image_prepare import prepared_image
 
-        reason = None
-        try:
-            with prepared_image(data, media_type, _LIMITS) as raster:
-                consume(0, raster)
-        except MemoryError:
-            raise
-        except _Uncertain as error:
-            reason = error.reason
-        except Exception:
-            reason = "preparation_failed"
-        finally:
-            done(0)
-        prepared = {
-            "reason_code": None,
-            "pages": [
-                {
-                    "page_index": 0,
-                    "layer": "absent",
-                    "route": "manual" if reason else "render",
-                    "reason_code": reason,
-                }
-            ],
-        }
+            reason = None
+            try:
+                with prepared_image(data, media_type, _LIMITS, **phase_options) as raster:
+                    consume(0, raster)
+            except MemoryError:
+                raise
+            except _Uncertain as error:
+                reason = error.reason
+            except Exception:
+                reason = "preparation_failed"
+            finally:
+                done(0)
+            prepared = {
+                "reason_code": None,
+                "pages": [
+                    {
+                        "page_index": 0,
+                        "layer": "absent",
+                        "route": "manual" if reason else "render",
+                        "reason_code": reason,
+                    }
+                ],
+            }
     prepare_ns = time.monotonic_ns() - started - recognition_ns
     document_reason = prepared["reason_code"]
     manual_reason = document_reason
@@ -184,7 +203,8 @@ def recognize_document(data, media_type, adapter, *, page_done=None, _observe_na
         elif index in errors:
             page["reason_code"] = errors[index]
     before = time.monotonic_ns()
-    parsed = parse_document(tuple(slots[index] for index in sorted(slots)))
+    with _phase_interval(_phase_observer, "parse"):
+        parsed = parse_document(tuple(slots[index] for index in sorted(slots)))
     parse_ns = time.monotonic_ns() - before
     result = {
         "version": 1,

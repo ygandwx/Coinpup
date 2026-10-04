@@ -57,3 +57,17 @@ python -m scripts.ocr_benchmark.resource_smoke --corpus-dir build/fictional-corp
 ```
 
 此验证只消费 D01 开发原件，分别启动两个候选，核验实际 raster、资源、初始化时序及识别后审计；JSON 保留原始采样，私有原件仍在输出目录之外。它只验证采集能力，不是五次冷启动/五轮正式热运行，不能作为正式性能或达标结果。
+
+## 冻结后的正式比较
+
+[冻结入口](../../scripts/ocr_benchmark/formal_freeze.py)只从已提交的 Linux 语料清单、固定模型制品和真实 DEV 证据生成新配置，生成前须确认全部源码稳定且原字节与 Git index 相同。运行时核验源码精确清单和全部实际制品，不重新写摘要；新增未冻结代码、缺项、漂移或不一致均失败。
+
+```sh
+python -m scripts.ocr_benchmark.formal_run --corpus-dir build/fictional-corpus --assets-dir build/engine-assets --output-dir build/formal-reports --selection-path build/development-reports/selection.json
+```
+
+CI 在 DEV 选择与测量烟测后执行这个入口；候选 job 总时限为 80 分钟，两个 CPU、4 GiB/禁 swap/pids 128、每页 60 秒和启动 120 秒保持不变。两个候选各五次 D01 新进程冷启动，未清 OS 页缓存；热运行各五轮、每轮 24 份清晰 OCR，以 AB/BA/AB/BA/AB 配对，D01/D02 只用于预热。12 份文字层、12 份退化、8 类错误也完整保存；全部五轮输出稳定后，最终质量只计 round 0，失败和人工结果不从分母中删除。
+
+阶段 JSONL 保存真实 SDK/渲染/解码/RGB/解析区间，包含式准备区间不与子阶段相加，IPC 仅计入宿主端到端。10 ms 是采样目标，公开实际间隔、每轮窗口和 PID 身份；RSS 用同窗口总和，HWM 各自列出，cgroup 生命周期峰值另列。缺模型使用同机同 job 的实际初始化前负例，不编造正式请求延迟；超时是在真实 SDK 开始后暂停容器等待 60 秒的受控故障，不称模型自然超时。
+
+公开 `build/formal-reports` 内 JSON/JSONL 在失败时也上传，原件只在同级 `formal-reports-staging`，不纳入报告制品。两候选均未达到清晰 OCR 95% 时返回非零并保留完整证据，按冻结协议停止；不能调参、替换真值/解析器或降低门槛继续当前验收。实际 CI 的性能只属于该宿主，不能冒充用户物理服务器结果。

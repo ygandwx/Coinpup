@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import re
+import time
 import unicodedata
 import warnings
 from contextlib import contextmanager
@@ -45,6 +46,22 @@ class PrepareLimits:
 
 _DEFAULT = PrepareLimits()
 _PROBE_DEFAULT = ProbeLimits()
+
+
+def _phase(observer, name, page_index, edge, details=None):
+    if observer is not None:
+        observer(name, page_index, edge, time.monotonic_ns(), details)
+
+
+@contextmanager
+def _phase_interval(observer, name, page_index=None, details=None, *, _end_details=None):
+    _phase(observer, name, page_index, "start", details)
+    outcome = "failed"
+    try:
+        yield
+        outcome = "passed"
+    finally:
+        _phase(observer, name, page_index, "end", {**(_end_details or {}), "outcome": outcome})
 
 
 def _json_bytes(value):
@@ -154,7 +171,9 @@ def _image_header(image, resources, probe, limits, totals):
 
 
 @contextmanager
-def rendered_page(document, index, limits=_DEFAULT, *, totals=None, expected_size=None):
+def rendered_page(
+    document, index, limits=_DEFAULT, *, totals=None, expected_size=None, _phase_observer=None
+):
     """Yield a live RGBX bitmap; every consumer/view must finish before context exit."""
     import pypdfium2 as pdfium
 
@@ -174,6 +193,8 @@ def rendered_page(document, index, limits=_DEFAULT, *, totals=None, expected_siz
         scale = limits.dpi / 72
         expected = tuple(math.ceil(value * scale) for value in size)
 
+        allocation_evidence = {"bitmap_allocation_attempted": False}
+
         def maker(width, height, *, format, rev_byteorder):
             if (
                 type(width) is not int
@@ -188,23 +209,30 @@ def rendered_page(document, index, limits=_DEFAULT, *, totals=None, expected_siz
             _bound(width * height, limits.page_pixels)
             _bound(4 * width * height, limits.bitmap_bytes)
             _charge(totals, "pixels", width * height, limits.document_pixels)
+            # A render call can be rejected by the maker without allocating pixels.
+            # Record attempted allocation before native code, including failed attempts.
+            allocation_evidence["bitmap_allocation_attempted"] = True
             bitmap = pdfium.PdfBitmap.new_native(
                 width, height, format, rev_byteorder=True, stride=4 * width
             )
             created.append(bitmap)
             return bitmap
 
-        yield page.render(
-            scale=scale,
-            rotation=0,
-            crop=(0, 0, 0, 0),
-            bitmap_maker=maker,
-            force_bitmap_format=pdfium.raw.FPDFBitmap_BGRx,
-            rev_byteorder=True,
-            draw_annots=False,
-            may_draw_forms=False,
-            limit_image_cache=True,
-        )
+        with _phase_interval(
+            _phase_observer, "pdf_render", index, _end_details=allocation_evidence
+        ):
+            bitmap = page.render(
+                scale=scale,
+                rotation=0,
+                crop=(0, 0, 0, 0),
+                bitmap_maker=maker,
+                force_bitmap_format=pdfium.raw.FPDFBitmap_BGRx,
+                rev_byteorder=True,
+                draw_annots=False,
+                may_draw_forms=False,
+                limit_image_cache=True,
+            )
+        yield bitmap
     finally:
         try:
             for bitmap in created:
@@ -256,6 +284,7 @@ def prepare_pdf(
     *,
     _page_consumer=None,
     _page_done=None,
+    _phase_observer=None,
 ) -> dict:
     if not isinstance(limits, PrepareLimits):
         return manual_result("request_invalid")
@@ -298,6 +327,7 @@ def prepare_pdf(
                             limits,
                             totals=totals,
                             expected_size=plans[page["page_index"]],
+                            _phase_observer=_phase_observer,
                         ) as bitmap:
                             page["raster"] = {
                                 "width": bitmap.width,

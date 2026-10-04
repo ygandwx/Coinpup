@@ -154,7 +154,17 @@ def _command(arguments, *, timeout=30):
 class ContainerSession:
     """Bounded serial NDJSON; sources are private random names, never template identities."""
 
-    def __init__(self, profile, staging, assets, cpus, *, audit_output=None, resource_output=None):
+    def __init__(
+        self,
+        profile,
+        staging,
+        assets,
+        cpus,
+        *,
+        audit_output=None,
+        resource_output=None,
+        phase_clock=False,
+    ):
         if sys.platform != "linux" or profile not in PROFILES:
             _fail("candidate_platform_invalid")
         self.name = "coinpup-dev-" + uuid.uuid4().hex
@@ -163,6 +173,7 @@ class ContainerSession:
         self.selector = selectors.DefaultSelector()
         self.process = None
         self.monitor, self.measurement = None, None
+        self.poll_hook = None
         self.started_ns = time.monotonic_ns()
         preflight = assets.parent / "candidate-reports" / profile["engine"] / "report.json"
         audit_output = audit_output or staging.parent / "native-audit"
@@ -218,6 +229,8 @@ class ContainerSession:
             "--audit-output",
             "/audit/native.json",
         ]
+        if phase_clock:
+            arguments.extend(["--phase-clock-path", "/audit/phases.jsonl"])
         try:
             self.process = subprocess.Popen(
                 arguments,
@@ -259,6 +272,9 @@ class ContainerSession:
 
     def _frame(self, deadline):
         while True:
+            hook = getattr(self, "poll_hook", None)
+            if hook is not None:
+                hook(self)
             newline = self.buffer.find(b"\n")
             if newline >= 0:
                 if newline > FRAME_BYTES:
@@ -271,7 +287,8 @@ class ContainerSession:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 _fail("candidate_timeout")
-            for key, _ in self.selector.select(min(remaining, 0.05)):
+            poll_seconds = 0.005 if hook is not None else 0.05
+            for key, _ in self.selector.select(min(remaining, poll_seconds)):
                 chunk = os.read(key.fileobj.fileno(), 65536)
                 if not chunk:
                     self.selector.unregister(key.fileobj)
@@ -294,6 +311,7 @@ class ContainerSession:
         if len(encoded) > FRAME_BYTES:
             _fail("candidate_protocol_invalid")
         submitted_ns = time.monotonic_ns()
+        self.last_submitted_ns = submitted_ns
         self.process.stdin.write(encoded)
         self.process.stdin.flush()
         deadline, pages = time.monotonic() + 60, set()
