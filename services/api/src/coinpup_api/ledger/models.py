@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
@@ -261,6 +262,8 @@ class FinancialOperation(Versioned, Base):
 class Journal(Base):
     __tablename__ = "journals"
     __table_args__ = (
+        Index("ix_journals_ledger_transaction_date", "ledger_id", "transaction_date"),
+        Index("ix_journals_ledger_recognition_date", "ledger_id", "recognition_date"),
         UniqueConstraint("id", "operation_id", "ledger_id", name="uq_journals_id_operation_ledger"),
         UniqueConstraint("id", "ledger_id", name="uq_journals_id_ledger"),
         UniqueConstraint(
@@ -328,6 +331,14 @@ class Journal(Base):
 class JournalLine(Base):
     __tablename__ = "journal_lines"
     __table_args__ = (
+        Index(
+            "ix_journal_lines_account_balance",
+            "ledger_id",
+            "account_id",
+            "asset_id",
+            postgresql_include=["amount"],
+            postgresql_where=text("role = 'account'"),
+        ),
         UniqueConstraint("journal_id", "line_no", name="uq_journal_lines_number"),
         ForeignKeyConstraint(
             ["journal_id", "ledger_id"],

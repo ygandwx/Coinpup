@@ -8,6 +8,8 @@
 
 ## 备份范围
 
+余额与交易日/归属日的查询索引通过显式 Alembic 迁移建立，模型定义见 [账务模型](../../services/api/src/coinpup_api/ledger/models.py)。普通建索引在迁移事务中执行，安排维护窗口；降级只删除本次新增索引，不改财务行或回执。测试中的 `enable_seqscan=off` 仅验证索引适用性，不是部署设置，也不代表实际性能提升。
+
 财务回执的 `hash_version` 随数据库一起备份。升级到摘要 v2 后，存在任何 v2 回执就拒绝降级到无版本字段的结构；不得改写或删除回执来规避保护。旧 v1 回执升级后保持原响应与重放规则，见 [ADR 0014](../architecture/decisions/0014-versioned-command-hashes.md)。
 
 **`backup_database.py` 始终只备份数据库；有原件时使用 `backup_bundle.py`。** 两者都不包含配置、密钥、PostgreSQL 角色或整个服务器；自动定时、异地副本、保留策略与生产演练属于 T10。
