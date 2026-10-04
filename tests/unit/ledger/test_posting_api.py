@@ -1,5 +1,6 @@
 """Financial HTTP boundaries must preserve exact commands and session ownership."""
 
+import json
 from uuid import UUID
 
 import pytest
@@ -130,8 +131,8 @@ def test_financial_command_forwards_exact_body_owner_and_key(
 ):
     calls = []
 
-    def record(self, owner_id, ledger_id, payload, key):
-        calls.append((owner_id, ledger_id, payload.model_dump(mode="json"), key))
+    def record(self, owner_id, ledger_id, payload, key, *, raw_body):
+        calls.append((owner_id, ledger_id, payload.model_dump(mode="json"), key, raw_body))
         raise LedgerError("synthetic_conflict", 409, "Synthetic conflict")
 
     monkeypatch.setattr(PostingService, method, record)
@@ -139,8 +140,11 @@ def test_financial_command_forwards_exact_body_owner_and_key(
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "synthetic_conflict"
     assert len(calls) == 1
-    owner_id, ledger_id, payload, key = calls[0]
+    owner_id, ledger_id, payload, key, raw = calls[0]
     assert (owner_id, ledger_id, key) == (OWNER, UUID(RECORD), "test-command")
+    assert isinstance(raw, bytes) and json.loads(raw) == body
+    assert "id" not in json.loads(raw) and payload["id"] is None
+    assert "description" not in json.loads(raw) and payload["description"] == ""
     if suffix == "/exchanges":
         assert payload["source_amount"] == "10.00"
         assert payload["destination_amount"] == "9.00"
@@ -158,20 +162,42 @@ def test_revision_forwards_path_identity_version_and_key(
 ):
     calls = []
 
-    def record(self, owner_id, ledger_id, operation_id, payload, key):
-        calls.append((owner_id, ledger_id, operation_id, payload.model_dump(mode="json"), key))
+    def record(self, owner_id, ledger_id, operation_id, payload, key, *, raw_body):
+        calls.append(
+            (owner_id, ledger_id, operation_id, payload.model_dump(mode="json"), key, raw_body)
+        )
         raise LedgerError("version_conflict", 409, "The version changed")
 
     monkeypatch.setattr(PostingService, method, record)
     response = signed_in.post(LEDGER + suffix, json=body)
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "version_conflict"
-    owner, ledger, operation, payload, key = calls[0]
+    owner, ledger, operation, payload, key, raw = calls[0]
     assert (owner, ledger, operation, key) == (OWNER, UUID(RECORD), UUID(RECORD), "test-command")
+    assert isinstance(raw, bytes) and json.loads(raw) == body
     assert payload["expected_version"] == 1 and payload["reason"] == body["reason"]
     if method == "correct_operation":
         assert payload["replacement"]["amount"] == "10.00"
         assert "id" not in payload["replacement"]
+
+
+@pytest.mark.parametrize("suffix,body,method", WRITES + REVISIONS)
+def test_financial_dependency_forwards_actual_cached_request_bytes(
+    signed_in, suffix, body, method, monkeypatch
+):
+    calls = []
+    received = json.dumps(body, ensure_ascii=True, indent=3).encode("utf-8")
+
+    def record(*args, raw_body):
+        calls.append(raw_body)
+        raise LedgerError("synthetic_conflict", 409, "Synthetic conflict")
+
+    monkeypatch.setattr(PostingService, method, record)
+    response = signed_in.post(
+        LEDGER + suffix, content=received, headers={"content-type": "application/json"}
+    )
+    assert response.status_code == 409
+    assert calls == [received]
 
 
 @pytest.mark.parametrize("suffix,body,method", REVISIONS)

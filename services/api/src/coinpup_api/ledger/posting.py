@@ -30,14 +30,32 @@ class PostingService(
 ):
     """Use the same owner transaction and ledger lock order as structure maintenance."""
 
-    def correct_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+    def correct_operation(
+        self,
+        owner_id,
+        ledger_id,
+        operation_id,
+        payload,
+        idempotency_key,
+        *,
+        raw_body: bytes | None = None,
+    ):
         return RevisionService(self.engine).correct(
-            owner_id, ledger_id, operation_id, payload, idempotency_key
+            owner_id, ledger_id, operation_id, payload, idempotency_key, raw_body=raw_body
         )
 
-    def cancel_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+    def cancel_operation(
+        self,
+        owner_id,
+        ledger_id,
+        operation_id,
+        payload,
+        idempotency_key,
+        *,
+        raw_body: bytes | None = None,
+    ):
         return RevisionService(self.engine).cancel(
-            owner_id, ledger_id, operation_id, payload, idempotency_key
+            owner_id, ledger_id, operation_id, payload, idempotency_key, raw_body=raw_body
         )
 
     def history(self, owner_id, ledger_id, operation_id, limit=100, offset=0):

@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     UniqueConstraint,
     Uuid,
@@ -413,6 +414,7 @@ class CommandReceipt(Base):
         ),
         CheckConstraint("key <> ''", name="ck_command_receipts_key"),
         CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="ck_command_receipts_hash"),
+        CheckConstraint("hash_version IN (1, 2)", name="ck_command_receipts_hash_version"),
         CheckConstraint("response_status BETWEEN 200 AND 299", name="ck_command_receipts_status"),
         CheckConstraint("jsonb_typeof(response) = 'object'", name="ck_command_receipts_response"),
     )
@@ -420,6 +422,7 @@ class CommandReceipt(Base):
     ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    hash_version: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="1")
     response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     response_status: Mapped[int] = mapped_column(Integer, nullable=False)
     operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)

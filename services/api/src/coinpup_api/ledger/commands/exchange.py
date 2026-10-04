@@ -11,8 +11,18 @@ from coinpup_api.ledger.service import LedgerError
 
 
 class ExchangeCommands:
-    def post_exchange(self, owner_id, ledger_id, payload: ExchangeCreate, idempotency_key: str):
-        with self._command(owner_id, ledger_id, "exchange", payload, idempotency_key) as (
+    def post_exchange(
+        self,
+        owner_id,
+        ledger_id,
+        payload: ExchangeCreate,
+        idempotency_key: str,
+        *,
+        raw_body: bytes | None = None,
+    ):
+        with self._command(
+            owner_id, ledger_id, "exchange", payload, idempotency_key, raw_body=raw_body
+        ) as (
             session,
             digest,
             replay,

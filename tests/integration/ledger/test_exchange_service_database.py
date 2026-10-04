@@ -400,9 +400,11 @@ def test_fees_do_not_change_legacy_principal_amount_or_classification(kind, exch
     )
 
 
-def test_old_no_fee_request_and_explicit_empty_fees_replay_same_persisted_receipt(exchange_setup):
-    s = exchange_setup
-    request = expense(s, "10", "USD")
+def test_old_no_fee_request_and_explicit_empty_fees_replay_same_persisted_receipt(
+    legacy_v1_receipts,
+):
+    s = legacy_v1_receipts
+    request = ExpenseCreate.model_validate(s["cases"]["expense"]["body"])
     receipt = s["posting"].post_expense(s["owner"], s["ledger"], request, "legacy-empty")
     explicit = request.model_copy(update={"fees": []})
     assert (

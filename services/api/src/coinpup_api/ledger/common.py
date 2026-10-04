@@ -177,6 +177,7 @@ class PostingCore(LedgerService):
                 ledger_id=ledger_id,
                 key=key,
                 request_hash=digest,
+                hash_version=2,
                 response=response.model_dump(mode="json"),
                 response_status=201,
                 operation_id=operation_id,

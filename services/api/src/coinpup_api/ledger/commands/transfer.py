@@ -11,8 +11,18 @@ from coinpup_api.ledger.service import LedgerError
 
 
 class TransferCommands:
-    def post_transfer(self, owner_id, ledger_id, payload: TransferCreate, idempotency_key: str):
-        with self._command(owner_id, ledger_id, "transfer", payload, idempotency_key) as (
+    def post_transfer(
+        self,
+        owner_id,
+        ledger_id,
+        payload: TransferCreate,
+        idempotency_key: str,
+        *,
+        raw_body: bytes | None = None,
+    ):
+        with self._command(
+            owner_id, ledger_id, "transfer", payload, idempotency_key, raw_body=raw_body
+        ) as (
             session,
             digest,
             replay,
