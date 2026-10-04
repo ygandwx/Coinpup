@@ -1,6 +1,6 @@
 # OCR 可选依赖与许可证清单
 
-本文件对应 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md) 的 PDF 前置依赖。它不代表文字层路由、OCR 引擎、worker 部署或识别准确率已经实现；进度见 [status.md](status.md)，执行结果见对应 PR。
+本文件记录 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md) 的 PDF 依赖和虚构语料构建依赖。安装依赖不代表 worker 部署或识别准确率已经验收；进度见 [status.md](status.md)，执行结果见对应 PR。
 
 ## 锁定与安装边界
 
@@ -64,3 +64,27 @@ python scripts/check.py ocr
 OCR CI 必须安装上述 hash 锁并实际运行此入口；不通过 `importorskip` 充当依赖验收。默认 API 检查与 OCR 检查分开执行，已有默认 API 的独立进程测试继续阻止 PDF/引擎库被 API 导入。Linux 子进程资源限制另由隔离测试实测，不能用 Windows 的依赖冒烟结果代替。
 
 上游依据：[pypdf 6.19 公开配置 API](https://pypdf.readthedocs.io/en/6.19.0/modules/configuration.html)、[pdfplumber 0.11.10 依赖](https://github.com/jsvine/pdfplumber/blob/v0.11.10/requirements.txt)、[pypdfium2 5.13 原生许可证说明](https://github.com/pypdfium2-team/pypdfium2/blob/5.13.0/README.md#licensing)。制品实际内容仍优先于概括说明。
+
+## 虚构语料的构建工具与字体
+
+`benchmark` 是构建专用组：ReportLab 5.0.1 生成 PDF，fontTools 4.66.1 将固定 Noto CJK 可变字体子集化并实例化为 400 字重。`requirements-benchmark.lock` 同时包含 `ocr`，约束于原 OCR 锁；不得把这些生成工具加入基础 API 或生产 OCR 镜像。重生成命令为：
+
+```sh
+python -m piptools compile pyproject.toml --extra ocr --extra benchmark --constraint requirements-ocr.lock --output-file requirements-benchmark.lock --generate-hashes --strip-extras --no-emit-index-url --no-emit-trusted-host
+```
+
+ReportLab 包本身为 BSD-3-Clause，但随 wheel 保留的 DarkGarden 字体为 GPLv2-or-later 加字体嵌入例外，Vera 使用其专有许可文本；生成器不使用这两种字体。fontTools 主许可证为 MIT，`LICENSE.external` 另含 OFL、Adobe 字形表 BSD、cu2qu Apache-2.0 和 PyFilesystem MIT 通知。不能将全部随附内容概括为包的主许可证；`check_corpus_dependencies.py` 保留并审阅这些非标准文件名的通知。
+
+源字体来自固定 Noto CJK 提交，下载 URL、实际字节数和 SHA-256 见 [font-assets.json](../../tests/fixtures/ocr/font-assets.json)；[OFL 全文](../licenses/noto-cjk-OFL.txt) 保持原始内容。构建先验证来源，离线运行；输出静态子集、相对文件名及源/输出摘要，不使用系统字体。保留版权、商标、许可和 URL 记录，移除变量轴及实例名称，衍生字体更名为 `CoinpupCorpusSC/TC`。
+
+字体选择必须覆盖整行的全部字形，否则失败。繁中模板正文使用 TC；统一的简中“虚构测试票据”标记在 TC 子集缺字，整行显式使用 SC，不修改真值或用缺字方框代替。构建日期固定，并禁止可选 HarfBuzz 打包器影响输出；在独立进程、不同输出路径验证同字节重建。
+
+```sh
+python -m pip install --require-hashes -r requirements-benchmark.lock
+python scripts/ocr_benchmark/fonts.py fetch --source-dir build/corpus-sources
+python scripts/ocr_benchmark/fonts.py build --source-dir build/corpus-sources --output-dir build/corpus-fonts
+# 将 COINPUP_CORPUS_SOURCES 设置为 build/corpus-sources 后执行：
+python scripts/check.py corpus
+```
+
+只有显式 `fetch` 可以下载字体；缺失或摘要不符均失败，构建和测试不自动联网。独立 corpus CI 必须实际安装 hash 锁、取得已锁定字体并运行原生字形、确定性、文字提取及渲染检查，不以缺依赖跳过测试；默认 API 和原 OCR 检查入口保持各自边界。

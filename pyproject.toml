@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.9,<1", "pip-tools>=7,<8"]
 ocr = ["pypdf==6.19.0", "pdfplumber==0.11.10", "pypdfium2==5.13.0"]
+benchmark = ["reportlab==5.0.1", "fonttools==4.66.1"]
 
 [tool.setuptools.packages.find]
 where = ["services/api/src"]
@@ -27,6 +28,7 @@ addopts = "-ra --import-mode=importlib"
 markers = [
   "integration: requires an explicitly configured disposable PostgreSQL database",
   "ocr: requires the separately locked optional OCR dependencies",
+  "benchmark: requires the separately locked fictional-corpus build dependencies and fonts",
 ]
 
 [tool.ruff]
