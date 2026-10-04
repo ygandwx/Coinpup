@@ -73,7 +73,12 @@ def test_instrumentation_preserves_every_non_time_output_and_only_real_phases(tm
         ticks = [event["at_ns"] for event in clock.events]
         assert all(type(tick) is int and tick > 0 for tick in ticks) and ticks == sorted(ticks)
         assert all(
-            event["details"] == {"outcome": "passed"}
+            event["details"]
+            == (
+                {"outcome": "passed", "bitmap_allocation_attempted": True}
+                if event["phase"] == "pdf_render"
+                else {"outcome": "passed"}
+            )
             for event in clock.events
             if event["edge"] == "end"
         )
@@ -204,6 +209,9 @@ def test_real_native_render_failure_has_failed_end_and_releases_allocated_bitmap
     with PhaseJournal(tmp_path / "phases.jsonl") as clock:
         actual = prepare_pdf(image_document(), PrepareLimits(dpi=300), _phase_observer=clock)
         assert clock.events[-1]["phase"] == "pdf_render"
-        assert clock.events[-1]["details"] == {"outcome": "failed"}
+        assert clock.events[-1]["details"] == {
+            "outcome": "failed",
+            "bitmap_allocation_attempted": True,
+        }
     assert actual["pages"][0]["route"] == "manual"
     assert len(allocated) == 1 and allocated[0].raw is None

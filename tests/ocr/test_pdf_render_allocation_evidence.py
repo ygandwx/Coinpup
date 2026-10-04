@@ -2,12 +2,13 @@
 
 from dataclasses import replace
 
-import pypdfium2 as pdfium
 import pytest
 from coinpup_api.ocr.pdf_prepare import PrepareLimits, rendered_page
 from coinpup_api.ocr.pdf_probe import _Uncertain
 
 from tests.ocr.pdf_fixtures import image_document
+
+pytestmark = pytest.mark.ocr
 
 
 def observer_events():
@@ -29,6 +30,8 @@ def observer_events():
 
 @pytest.mark.parametrize("limit", ["max_side", "page_pixels", "bitmap_bytes", "document_pixels"])
 def test_actual_budget_rejection_is_observed_before_any_native_allocation(monkeypatch, limit):
+    import pypdfium2 as pdfium
+
     events, observe = observer_events()
     calls = []
 
@@ -56,6 +59,8 @@ def test_actual_budget_rejection_is_observed_before_any_native_allocation(monkey
 
 @pytest.mark.parametrize("error", [RuntimeError, MemoryError])
 def test_native_allocation_failure_cannot_claim_preallocation_rejection(monkeypatch, error):
+    import pypdfium2 as pdfium
+
     events, observe = observer_events()
     calls = []
 
@@ -78,6 +83,8 @@ def test_native_allocation_failure_cannot_claim_preallocation_rejection(monkeypa
 
 
 def test_successful_real_bitmap_and_consumer_failure_keep_attempt_evidence():
+    import pypdfium2 as pdfium
+
     events, observe = observer_events()
     with pdfium.PdfDocument(image_document()) as document:
         with pytest.raises(RuntimeError, match="fictional consumer failure"):
