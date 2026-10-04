@@ -13,13 +13,18 @@ from .pdf_probe import MAX_SOURCE_BYTES, ProbeLimits, manual_result
 def _request(request):
     if type(request) is not dict or not {"version", "action", "source"} <= request.keys():
         raise ValueError
-    prepare = request.get("action") == "prepare_pdf"
-    allowed = {"version", "action", "source", "limits"} | ({"prepare_limits"} if prepare else set())
+    image = request.get("action") == "prepare_image"
+    prepare = request.get("action") in ("prepare_pdf", "prepare_image")
+    allowed = {"version", "action", "source"} | (
+        {"media_type", "prepare_limits", "image_limits"}
+        if image
+        else {"limits"} | ({"prepare_limits"} if prepare else set())
+    )
     if request.keys() - allowed:
         raise ValueError
     if type(request["version"]) is not int or request["version"] != 1:
         raise ValueError
-    if request["action"] not in ("inspect_pdf", "prepare_pdf"):
+    if request["action"] not in ("inspect_pdf", "prepare_pdf", "prepare_image"):
         raise ValueError
     source, options = request["source"], request.get("limits", {})
     if type(source) is not dict or source.keys() != {"path", "sha256", "byte_size"}:
@@ -27,7 +32,7 @@ def _request(request):
     if type(options) is not dict:
         raise ValueError
     limits = ProbeLimits(**options)
-    preparation = None
+    preparation, image_limits = None, None
     if prepare:
         from .pdf_prepare import PrepareLimits
 
@@ -35,16 +40,27 @@ def _request(request):
         if type(options) is not dict:
             raise ValueError
         preparation = PrepareLimits(**options)
+    suffix = "pdf"
+    if image:
+        from .image_prepare import ImageLimits
+
+        suffix = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(
+            request.get("media_type")
+        )
+        options = request.get("image_limits", {})
+        if suffix is None or type(options) is not dict:
+            raise ValueError
+        image_limits = ImageLimits(**options)
     if type(source["path"]) is not str or type(source["sha256"]) is not str:
         raise ValueError
     path = Path(source["path"])
-    if not path.is_absolute() or re.fullmatch(r"[0-9a-f]{32}\.pdf", path.name) is None:
+    if not path.is_absolute() or re.fullmatch(r"[0-9a-f]{32}\." + suffix, path.name) is None:
         raise ValueError
     if re.fullmatch(r"[0-9a-f]{64}", source["sha256"]) is None:
         raise ValueError
     if type(source["byte_size"]) is not int or not 1 <= source["byte_size"] <= MAX_SOURCE_BYTES:
         raise ValueError
-    return source, path, limits, preparation
+    return source, path, limits, preparation, image_limits
 
 
 def _read_source(source, path):
@@ -86,13 +102,17 @@ def _read_source(source, path):
 def process(request: dict, workdir: Path) -> dict:
     """No database, OCR engine, subprocess command or external entry selection."""
     try:
-        source, path, limits, preparation = _request(request)
+        source, path, limits, preparation, image_limits = _request(request)
     except (ValueError, TypeError, OSError, OverflowError):
         return manual_result("request_invalid")
     try:
         data = _read_source(source, path)
     except (ValueError, OSError, RuntimeError):
         return manual_result("source_invalid")
+    if image_limits is not None:
+        from .image_prepare import prepare_image
+
+        return prepare_image(data, request["media_type"], preparation, image_limits)
     if preparation is not None:
         from .pdf_prepare import prepare_pdf
 

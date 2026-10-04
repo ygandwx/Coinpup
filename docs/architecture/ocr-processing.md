@@ -4,9 +4,9 @@
 
 ## 固定入口与原件
 
-`run_isolated` 启动包内固定 bootstrap，先安装资源限制，再加载固定 `processor.process`。请求为 version=1、action=`inspect_pdf` 或 `prepare_pdf`、source 和可选 limits；只有 prepare_pdf 接受额外 prepare_limits。未知字段/动作/版本、布尔冒充整数或超硬上限均拒绝，不提供客户端可选择的命令、模块或解释器。inspect_pdf 的响应保持原样。
+`run_isolated` 启动包内固定 bootstrap，先安装资源限制，再加载固定 `processor.process`。version=1；inspect_pdf 接受 source/limits，prepare_pdf 另接受 prepare_limits；prepare_image 接受 source/media_type/prepare_limits/image_limits，不接受 PDF 的 limits。未知字段/动作/版本、布尔冒充整数或超硬上限均拒绝，不提供客户端可选择的命令、模块或解释器。inspect_pdf 的响应保持原样。
 
-source 仅包含 `path`、`sha256`、`byte_size`：可信 worker 准备的随机私有 staging 绝对路径、小写 SHA-256 和严格正整数大小，至多 20 MiB。随机文件名为 32 位小写十六进制加 `.pdf`，不得用上传名称。Linux 检查私有父目录/文件、当前 UID、常规文件及 no-follow 边界；读到的实际长度和摘要必须匹配。Windows 可直接验证纯解析函数，不能由此声称具备 Linux 隔离或 ACL 保证。
+source 仅包含 `path`、`sha256`、`byte_size`：可信 worker 准备的随机私有 staging 绝对路径、小写 SHA-256 和严格正整数大小，至多 20 MiB。随机文件名为 32 位小写十六进制；PDF 后缀 .pdf，图片按固定 media_type 使用 .jpg/.png/.webp，不得用上传名称。Linux 检查私有父目录/文件、当前 UID、常规文件及 no-follow 边界；读到的实际长度和摘要必须匹配。Windows 可直接验证纯解析函数，不能由此声称具备 Linux 隔离或 ACL 保证。
 
 领取事务必须先提交，随后才读原件和计算。后续 worker 从已有鉴权/descriptor 原件通道复制并验证 staging，禁止把数据库 URL、会话、租约 token 或原件全文传入处理环境。输入/输出 JSON 与管道总量有界，错误及 stderr 不显示原件、路径或 traceback。
 
@@ -38,5 +38,13 @@ prepare_pdf 仅将 present/extract 页交给 pdfplumber，保留原始文字和�
 pypdf 先检查继承 MediaBox/CropBox、Rotate 和 UserUnit；非默认 UserUnit 暂转人工。PDFium 的实际有效尺寸必须一致，原生 bitmap maker 在分配前检查边长、页/文档像素和 RGBX 四字节预算。Rotate 只由页面自身应用一次；不额外旋转或再次裁剪。默认 200 DPI，允许 72–300；正式同机比较和 worker 配置须明确冻结 300 DPI，不从默认值推断实验配置。
 
 prepare_pdf 每页额外含 text、words 和 raster，后者只含尺寸、stride、RGBX 和 DPI。位图在 rendered_page 上下文中供后续引擎消费，消费结束或异常均依次释放位图和页，文档由外层关闭；图像视图不得越过上下文生命周期。当前步骤不返回像素、base64、临时路径或识别字段，也不产生草稿或费用。
+
+## 图片准备
+
+prepare_image 只接受现有 JPEG/PNG/WebP 三种 media_type，签名、固有尺寸和实际 Pillow format 必须一致。有限 JPEG marker、PNG chunk/CRC、WebP RIFF 检查先于 Image.open；不扩展原件接口，不把上传签名检查当作解码保证。动画、多帧、ICC/XMP、复杂压缩文字 metadata 及当前子集外的结构转人工；普通灰度、RGB/CMYK、PNG palette 和 alpha 在实际 codec 中验证。
+
+WebP 的 Pillow open 会创建原生动画解码器及两块画布，不能称为只读头。先核验完整 RIFF 长度、有限 chunk/padding、唯一 primary，以及 VP8X canvas 与 VP8/VP8L 固有尺寸；在原生构造前检查 8×像素预算。图像共用像素/边长/最终 RGBX 字节限额；另以 ImageLimits 限工作缓冲 256 MiB、metadata 64 KiB、chunk 128，仅可下调。普通/WebP 分别预收 16/24×像素的保守工作估算，不能将此估算称为实测 RSS 或 OS 硬上限。A4 300 DPI 在默认限额内，正式配置仍须显式冻结。
+
+EXIF 方向仅应用一次，透明像素按白底合成；不缩放、不猜原图 DPI，raster.dpi=null，坐标使用方向纠正后的像素。prepared_image 上下文内供后续引擎消费 live PIL RGBX，退出或消费者异常时关闭全部图像及输入流，丢弃 metadata；内部解码 warning 转人工，消费者不继承该 warning 策略。响应只有单页路由和 raster 元数据，不返回像素、私有路径或候选字段。
 
 预算、失败路由和锁规则由虚构 PDF/图片、真实 Linux 子进程及后续恢复检查验证；依赖冒烟、探测结果和设计本身不能代替 OCR 准确率、部署或人工确认验收。
