@@ -65,7 +65,12 @@ class PhaseJournal:
             if type(details) is not dict:
                 raise ValueError
             if edge == "end":
-                if details.keys() != {"outcome"} or details["outcome"] not in ("passed", "failed"):
+                keys = {"outcome"}
+                if name == "pdf_render" and "bitmap_allocation_attempted" in details:
+                    keys.add("bitmap_allocation_attempted")
+                    if type(details["bitmap_allocation_attempted"]) is not bool:
+                        raise ValueError
+                if details.keys() != keys or details["outcome"] not in ("passed", "failed"):
                     raise ValueError
             elif name == "sdk_recognize":
                 if (

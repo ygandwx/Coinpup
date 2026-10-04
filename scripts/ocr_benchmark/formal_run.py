@@ -309,8 +309,38 @@ def _error_guard(case, record):
     if output["status"] not in ("manual", "failed"):
         _fail("benchmark_error_not_rejected")
     events = output["timings_ns"].get("events", [])
-    if any(event["phase"] in ("sdk_recognize", "pdf_render") for event in events):
+    if any(event["phase"] in ("sdk_recognize", "rgb_materialize") for event in events):
         _fail("benchmark_error_allocated_or_ocr_called")
+    renders = [event for event in events if event["phase"] == "pdf_render"]
+    if renders:
+        pages = output.get("pages", [])
+        # PDFium calls the budget-checking maker inside page.render. Entering that
+        # call is permitted only with explicit proof that no allocation was attempted.
+        if not (
+            kind == "pixel_limit"
+            and output["status"] == "manual"
+            and output["reason"] == "prepare_limit"
+            and len(renders) == 2
+            and [event.get("edge") for event in renders] == ["start", "end"]
+            and all(type(event.get("page_index")) is int for event in renders)
+            and 0 <= renders[0]["page_index"] < 50
+            and renders[0]["page_index"] == renders[1]["page_index"]
+            and all(type(event.get("at_ns")) is int for event in renders)
+            and 0 <= renders[0]["at_ns"] <= renders[1]["at_ns"]
+            and type(renders[1].get("details")) is dict
+            and renders[1]["details"].get("outcome") == "failed"
+            and renders[1]["details"].get("bitmap_allocation_attempted") is False
+            and type(pages) is list
+            and len(pages) == 1
+            and type(pages[0]) is dict
+            and type(pages[0].get("page_index")) is int
+            and pages[0]["page_index"] == renders[0]["page_index"]
+            and pages[0].get("layer") == "absent"
+            and pages[0].get("route") == "manual"
+            and pages[0].get("reason_code") == "prepare_limit"
+            and pages[0].get("raster_rgb_sha256") is None
+        ):
+            _fail("benchmark_error_allocated_or_ocr_called")
     expected = {
         "encrypted": {"encrypted_pdf"},
         "page_limit": {"probe_limit"},

@@ -54,14 +54,14 @@ def _phase(observer, name, page_index, edge, details=None):
 
 
 @contextmanager
-def _phase_interval(observer, name, page_index=None, details=None):
+def _phase_interval(observer, name, page_index=None, details=None, *, _end_details=None):
     _phase(observer, name, page_index, "start", details)
     outcome = "failed"
     try:
         yield
         outcome = "passed"
     finally:
-        _phase(observer, name, page_index, "end", {"outcome": outcome})
+        _phase(observer, name, page_index, "end", {**(_end_details or {}), "outcome": outcome})
 
 
 def _json_bytes(value):
@@ -193,6 +193,8 @@ def rendered_page(
         scale = limits.dpi / 72
         expected = tuple(math.ceil(value * scale) for value in size)
 
+        allocation_evidence = {"bitmap_allocation_attempted": False}
+
         def maker(width, height, *, format, rev_byteorder):
             if (
                 type(width) is not int
@@ -207,13 +209,18 @@ def rendered_page(
             _bound(width * height, limits.page_pixels)
             _bound(4 * width * height, limits.bitmap_bytes)
             _charge(totals, "pixels", width * height, limits.document_pixels)
+            # A render call can be rejected by the maker without allocating pixels.
+            # Record attempted allocation before native code, including failed attempts.
+            allocation_evidence["bitmap_allocation_attempted"] = True
             bitmap = pdfium.PdfBitmap.new_native(
                 width, height, format, rev_byteorder=True, stride=4 * width
             )
             created.append(bitmap)
             return bitmap
 
-        with _phase_interval(_phase_observer, "pdf_render", index):
+        with _phase_interval(
+            _phase_observer, "pdf_render", index, _end_details=allocation_evidence
+        ):
             bitmap = page.render(
                 scale=scale,
                 rotation=0,

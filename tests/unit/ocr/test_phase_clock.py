@@ -140,3 +140,46 @@ def test_close_is_idempotent_but_events_cannot_be_written_after_close(tmp_path):
     with pytest.raises(PhaseClockError):
         start(clock, 2)
     assert len(clock.events) == 1
+
+
+@pytest.mark.parametrize("attempted", [False, True])
+@pytest.mark.parametrize("outcome", ["passed", "failed"])
+def test_render_allocation_evidence_is_preserved_without_mutable_aliases(
+    tmp_path, attempted, outcome
+):
+    path = tmp_path / "render.jsonl"
+    details = {"outcome": outcome, "bitmap_allocation_attempted": attempted}
+    with PhaseJournal(path) as clock:
+        clock("pdf_render", 0, "start", 1)
+        clock("pdf_render", 0, "end", 2, details)
+        details["bitmap_allocation_attempted"] = not attempted
+        assert clock.events[-1]["details"]["bitmap_allocation_attempted"] is attempted
+    assert json.loads(path.read_bytes().splitlines()[-1])["details"] == {
+        "outcome": outcome,
+        "bitmap_allocation_attempted": attempted,
+    }
+
+
+@pytest.mark.parametrize(
+    "phase,edge,attempted,extra",
+    [
+        ("pdf_render", "end", 0, {}),
+        ("pdf_render", "end", 1, {}),
+        ("pdf_render", "end", None, {}),
+        ("pdf_render", "end", "false", {}),
+        ("pdf_render", "end", False, {"raw_text": "fictional-private"}),
+        ("pdf_render", "start", False, {}),
+        ("source", "end", False, {}),
+        ("sdk_recognize", "end", False, {}),
+        ("rgb_materialize", "end", False, {}),
+    ],
+)
+def test_allocation_evidence_cannot_broaden_other_phase_contracts(
+    tmp_path, phase, edge, attempted, extra
+):
+    path = tmp_path / "invalid.jsonl"
+    details = {"outcome": "failed", "bitmap_allocation_attempted": attempted, **extra}
+    with PhaseJournal(path) as clock:
+        with pytest.raises(PhaseClockError, match="^phase_clock_invalid$"):
+            clock(phase, 0, edge, 1, details)
+        assert clock.failed and clock.events == [] and path.read_bytes() == b""

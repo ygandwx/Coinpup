@@ -620,3 +620,133 @@ def test_missing_model_evidence_is_real_file_hash_and_has_no_invented_latency(tm
             )
         assert caught.value.reason == "benchmark_missing_model_evidence_invalid"
         negative[key] = False
+
+
+def preallocation_rejection():
+    item = case("error", error_kind="pixel_limit")
+    actual = record(item)
+    actual["output"]["pages"][0].update(layer="absent", reason_code="prepare_limit")
+    actual["output"]["timings_ns"]["events"] = [
+        {"phase": "pdf_render", "page_index": 0, "edge": "start", "at_ns": 10, "details": None},
+        {
+            "phase": "pdf_render",
+            "page_index": 0,
+            "edge": "end",
+            "at_ns": 20,
+            "details": {"outcome": "failed", "bitmap_allocation_attempted": False},
+        },
+    ]
+    return item, actual
+
+
+def test_pixel_limit_allows_a_failed_render_call_only_with_proven_no_allocation():
+    item, actual = preallocation_rejection()
+    before = deepcopy(actual)
+    run._error_guard(item, actual)
+    assert actual == before
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "allocation_true",
+        "allocation_missing",
+        "allocation_zero",
+        "allocation_null",
+        "allocation_string",
+        "missing_end",
+        "missing_start",
+        "reversed_pair",
+        "duplicate_pair",
+        "different_page",
+        "boolean_page",
+        "negative_page",
+        "missing_time",
+        "boolean_time",
+        "reversed_time",
+        "end_passed",
+        "details_missing",
+        "nonpixel",
+        "wrong_reason",
+        "failed_status",
+        "missing_page",
+        "multiple_pages",
+        "wrong_output_page",
+        "boolean_output_page",
+        "present_layer",
+        "render_route",
+        "wrong_page_reason",
+        "raster_present",
+    ],
+)
+def test_error_render_exception_requires_complete_matching_preallocation_evidence(fault):
+    item, actual = preallocation_rejection()
+    result = actual["output"]
+    events, page = result["timings_ns"]["events"], result["pages"][0]
+    if fault.startswith("allocation_"):
+        details = events[1]["details"]
+        if fault == "allocation_missing":
+            del details["bitmap_allocation_attempted"]
+        else:
+            details["bitmap_allocation_attempted"] = {
+                "allocation_true": True,
+                "allocation_zero": 0,
+                "allocation_null": None,
+                "allocation_string": "false",
+            }[fault]
+    elif fault in ("missing_end", "missing_start"):
+        events.pop(1 if fault == "missing_end" else 0)
+    elif fault == "reversed_pair":
+        events.reverse()
+    elif fault == "duplicate_pair":
+        events.extend(deepcopy(events))
+    elif fault == "different_page":
+        events[1]["page_index"] = 1
+    elif fault in ("boolean_page", "negative_page"):
+        for event in events:
+            event["page_index"] = False if fault == "boolean_page" else -1
+    elif fault == "missing_time":
+        del events[1]["at_ns"]
+    elif fault == "boolean_time":
+        events[0]["at_ns"] = True
+    elif fault == "reversed_time":
+        events[1]["at_ns"] = 9
+    elif fault == "end_passed":
+        events[1]["details"]["outcome"] = "passed"
+    elif fault == "details_missing":
+        del events[1]["details"]
+    elif fault == "nonpixel":
+        item["error_kind"] = "stream_limit"
+    elif fault == "wrong_reason":
+        result["reason"] = "probe_limit"
+    elif fault == "failed_status":
+        result["status"] = "failed"
+    elif fault == "missing_page":
+        result["pages"] = []
+    elif fault == "multiple_pages":
+        result["pages"].append({**page, "page_index": 1})
+    elif fault == "wrong_output_page":
+        page["page_index"] = 1
+    elif fault == "boolean_output_page":
+        page["page_index"] = False
+    elif fault == "present_layer":
+        page["layer"] = "present"
+    elif fault == "render_route":
+        page["route"] = "render"
+    elif fault == "wrong_page_reason":
+        page["reason_code"] = "probe_limit"
+    else:
+        page["raster_rgb_sha256"] = SHA
+    with pytest.raises(DevelopmentError) as caught:
+        run._error_guard(item, actual)
+    assert caught.value.reason == "benchmark_error_allocated_or_ocr_called"
+
+
+@pytest.mark.parametrize("phase", ["sdk_recognize", "rgb_materialize"])
+@pytest.mark.parametrize("edge", ["start", "end", None])
+def test_no_sdk_or_rgb_event_is_allowed_even_with_a_proven_preallocation_rejection(phase, edge):
+    item, actual = preallocation_rejection()
+    actual["output"]["timings_ns"]["events"].append({"phase": phase, "edge": edge})
+    with pytest.raises(DevelopmentError) as caught:
+        run._error_guard(item, actual)
+    assert caught.value.reason == "benchmark_error_allocated_or_ocr_called"
