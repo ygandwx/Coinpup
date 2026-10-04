@@ -15,7 +15,7 @@
 
 ## 正在进行
 
-- 当前：采纳 ADR 0017（[#44](https://github.com/ygandwx/Coinpup/pull/44)）；前序 ADR 已按顺序合入。随后继续采纳剩余 ADR。
+- 当前：采纳 ADR 0018（[#45](https://github.com/ygandwx/Coinpup/pull/45)）；前序 ADR 已按顺序合入。随后继续采纳剩余 ADR。
 - 四份 ADR 逐一采纳，决定见 [ADR 索引](../architecture/decisions/README.md)；全部合入前不启动 OCR 实现。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库保持私有，未选定开源许可证。
