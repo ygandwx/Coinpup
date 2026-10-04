@@ -449,17 +449,17 @@ Coinpup/
 
 ### OPT-21 数据库形状校验按业务类型分发（T06 之前完成）
 
-- **现状**：每种业务的分录形状都写在 PL/pgSQL 大函数的 `IF operation.kind = ... ELSIF ...` 分支里。迁移 0005、0006、0007 都对 `coinpup_validate_initial_journal` 做了整体的 `CREATE OR REPLACE`，0007 中的 `coinpup_validate_posting_shape` 又复制了一份同样的分支逻辑。按这个模式，T06/T07 每新增一种业务，都要重写整段函数。
+- **已确认修订及原因**：原计划按 0005/0006 的结构编写；0007 已把 `coinpup_validate_initial_journal` 改为经 `coinpup_validate_operation_history` 校验完整历史，其中正常凭证进入 `posting_shape`，冲销进入 `reversal`。直接把 initial 改成 posting_shape 会拒绝合法冲销并绕过历史链；因此只拆现有 posting_shape。
 - **改动**：新增一个迁移，**语义必须与现状完全一致**：
-  - 新建通用不变量函数 `coinpup_validate_journal_common(journal uuid)`，检查行数 ≥ 2、逐资产配平、逐组成部分配平、费用组成部分的形状、归属一致。
-  - 每种业务一个函数：`coinpup_validate_shape_opening`、`_income`、`_expense`、`_transfer`、`_exchange`。
-  - `coinpup_validate_posting_shape` 只负责分发：先调用通用函数，再按 `kind` 调用对应的函数；遇到未知的 kind 就报错。
-  - `coinpup_validate_initial_journal` 改为调用 `coinpup_validate_posting_shape`，不再复制分支逻辑。
-  - 这样以后每新增一种业务，只需新增一个 `coinpup_validate_shape_<kind>`，再改几行分发函数。
-  - 降级时恢复 0007 的原函数体（冻结 SQL）。
-- **不要做**：不要把形状校验移出数据库。数据库约束是应用出 bug 时的最后一道防线。
-- **测试**：现有的 `tests/integration/test_*_constraints.py` 不做任何修改即可全部通过；错误码和约束名（例如 `ck_journal_shape`）保持不变。
-- **验收**：集成测试全部通过；迁移往返通过。
+  - 保留 initial → operation_history 的调用链、`coinpup_validate_reversal`、全部历史校验函数和 `tr_financial_operations_deferred` 延迟触发器，不改写它们。
+  - posting_shape 保留原凭证存在检查和身份校验：`journal_kind='posting'`、`reverses_journal_id` 为空、业务与凭证账本一致；随后调用 `coinpup_validate_journal_common`，按 kind 分发到 opening/income/expense/transfer/exchange 五个形状函数，未知 kind 报错。
+  - common 汇总原有行数、账户及资产数量、费用组成部分和逐资产配平检查；五个形状函数保留各自本金、日期、期初标记及收支符号规则，不新增或放宽财务规则。
+  - **保留错误优先级**：原函数顺序为身份 → 本金形状/日期 → 费用连续性/形状 → 整体配平 → 期初标记/收支符号。common 先收集通用结果，延迟至原位置抛出错误；不能因拆分而提前抛出费用或配平错误。SQLSTATE、MESSAGE 和 CONSTRAINT 名（如 `ck_journal_shape`）均保持不变。
+  - 以后新增业务仅增加对应形状函数及分发项；不重写历史链或把正常形状规则施加于冲销凭证。
+  - downgrade 原样恢复 0007 冻结的 posting_shape 函数体，并删除本包新增函数。
+- **不要做**：不要把形状校验移出数据库；不要改动冲销、历史链或延迟校验以通过测试。
+- **测试**：`tests/integration` 中全部 `*_constraints` 测试文件不作任何修改即全部通过；补充升级后更正/取消产生的冲销仍能写入并通过延迟校验、旧历史保留、函数/触发器不变、重叠故障的错误优先级及迁移往返验证。
+- **验收**：集成测试全部通过；迁移往返通过，Alembic 只有一个 head。
 
 ### OPT-22 变更日志与同步游标（T06 之前完成）
 
