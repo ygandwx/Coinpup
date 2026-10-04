@@ -42,6 +42,8 @@ EntityType = Literal[
     "financial_operations",
     "stored_files",
     "operation_file_links",
+    "ocr_jobs",
+    "ocr_drafts",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 
