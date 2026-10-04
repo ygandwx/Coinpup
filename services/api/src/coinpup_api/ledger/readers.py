@@ -32,12 +32,12 @@ class PostingReaders:
             )
             .order_by(JournalLine.line_no)
         ).all()
-        fees = PostingService._read_fees(session, lines)
+        fees = PostingReaders._read_fees(session, lines)
         lines = [line for line in lines if line.component_no == 0]
         if operation.kind == "transfer":
-            return PostingService._read_transfer(session, operation, journal, lines, fees)
+            return PostingReaders._read_transfer(session, operation, journal, lines, fees)
         if operation.kind == "exchange":
-            return PostingService._read_exchange(session, operation, journal, lines, fees)
+            return PostingReaders._read_exchange(session, operation, journal, lines, fees)
         account_lines = [item for item in lines if item.role == "account"]
         if len(account_lines) != 1:
             raise LedgerError(
@@ -264,11 +264,6 @@ class PostingReaders:
             return [operation_state(session, operation) for operation in operations]
 
 
-# Default for direct revision imports; the facade binds its class after definition.
-# Keep original class-based dispatch, including PostingService monkeypatches.
-PostingService = PostingReaders
-
-
 def operation_state(session, operation):
     cancellation = None
     if operation.status == "cancelled":
@@ -295,7 +290,7 @@ def operation_state(session, operation):
             kind=operation.kind,
             version=operation.version,
             status=operation.status,
-            latest_posting=PostingService._read_operation(session, operation),
+            latest_posting=PostingReaders._read_operation(session, operation),
             updated_at=operation.updated_at,
             cancellation=cancellation,
         )

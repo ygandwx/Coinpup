@@ -350,6 +350,7 @@ export function BusinessWorkspace({
             setSelectedId(owner.id);
             setView("transactions");
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen command key or entity list changes; retries retain its ledger.
     }, [pending.command?.key, entities]);
     useEffect(() => {
         if (!financialLocked && !uploadLocked) return;
@@ -368,6 +369,7 @@ export function BusinessWorkspace({
             setFileOperation(upload.command.operationId);
             setView("files");
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen upload ID or entity list changes; retries retain its ledger and operation.
     }, [upload.command?.uploadId, entities]);
 
     function failure(error: unknown) {
@@ -459,6 +461,7 @@ export function BusinessWorkspace({
         if (selectedId) params.set("entity", selectedId);
         window.history.replaceState(null, "", `/?${params.toString()}`);
         document.title = `${labels[view]} · Coinpup`;
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Labels are derived solely from locale; view and locale already trigger the title update.
     }, [view, selectedId, locale, fileOperation]);
 
     function openEditor(next: Editor) {

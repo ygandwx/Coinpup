@@ -1,6 +1,5 @@
 """Compatibility facade for atomic postings, revisions and exact balances."""
 
-from coinpup_api.ledger import readers as _readers
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.commands.classified import ClassifiedCommands
 from coinpup_api.ledger.commands.exchange import ExchangeCommands
@@ -45,7 +44,3 @@ class PostingService(
         return RevisionService(self.engine).read_history(
             owner_id, ledger_id, operation_id, limit, offset
         )
-
-
-# Readers retain the original facade class dispatch without importing this module.
-_readers.PostingService = PostingService

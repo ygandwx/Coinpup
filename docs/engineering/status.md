@@ -9,11 +9,13 @@
 - OPT-08 收尾保留 mixin 组合、依赖数组、运行行为及逐字节 OpenAPI；移除 reader 门面回写，测试改 patch 实际调用处且数量不减，四条有意按 key 触发的 Hook 增加说明，lint 零警告。
 - 明确允许包内要求的 OPT-12 查询参数、OPT-20 hash_version/v2 摘要、OPT-22 change_log 与 /changes；除此之外保留现有 API/响应/数据库语义和计划第 1.2 节不变量。检查无法保留测试修复、需要范围或产品决定、削弱不变量时立即停止汇报。
 - OPT-20 验证全部旧回执原样重放；OPT-12 验证默认 JSON 等价；OPT-21 不改集成 constraints 测试；OPT-22 采用咨询锁并验证先分配后提交不漏读。不执行 OPT-09，不启动 T05-3 实现。
+- 用户已确认 PR #35 的 OPT-21 修订：保留 initial_journal → operation_history、reversal/history 及延迟触发器；只拆 posting_shape，保留身份校验和全部错误文本/约束名，downgrade 恢复冻结 SQL；补升级后更正/取消的冲销校验测试，在 OPT-21 PR 同步修订计划。
+- 同类计划前提不符时，允许以完全保留财务语义及包目标的最保守修订继续，在 PR 说明并同步修订计划；只有改变范围、产品行为或削弱不变量时停止等用户。
 - 四份 ADR 各自一个只含 ADR 文件的 [需确认] Draft PR，不合入；最后用小 PR 更新待确认状态。汇报 PR、检查/CI、计划差异、EXPLAIN、查询次数及四份草稿的选择后停止，等待确认。
 
 ## 正在进行
 
-- 任务：第二轮授权准备与预检（受阻）。分支：`chore/opt-batch-2-setup`；尚未开始 OPT-08 收尾或后续实现，按用户异常停止规则等待计划修订确认。
+- 任务：OPT-08 收尾。分支：`refactor/opt-08-followup`；移除 reader 门面回写及解释四处 Hook 触发键，验收与 CI 全部通过后合入。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库保持私有，未选定开源许可证。
 
@@ -36,10 +38,8 @@
 
 ## 已知限制
 
-- OPT-21 计划要求 initial_journal 直接调用 posting_shape，但现有 0007 已经调用 operation_history 验证冲销和完整版本链；直接替换会拒绝冲销凭证并绕过该入口的整链校验。需先确认保留 history/reversal/延迟触发器，只拆 posting_shape 的修订；计划和代码尚未修改。
 - 未部署到用户服务器；服务器系统、域名和邮件需在相应任务配置。
 - main 分支保护、Squash merge 和合并后自动删分支需要用户手动设置，见 PR #30。
-- OPT-06 保留 4 条 exhaustive-deps 警告，未改依赖数组；后续需要逐项验证运行行为。
 - 网页联网使用，待确认命令和原件仅在页面内存；刷新或关闭后需先核对已存记录。
 - 原件签名校验不等于全文解析、OCR 或恶意文件扫描；上传与证据关联不产生费用。
 - 尚无行情估值、经营单据、跨主体结算、地区提醒、完整同步或 App。
@@ -47,8 +47,8 @@
 
 ## 下一步
 
-1. 用户确认 OPT-21 修订：保留 initial_journal → operation_history、冲销校验和延迟触发器，只拆 posting_shape 的通用/五类规则；现有约束测试不改。
-2. 解除阻塞后，以 `refactor/opt-08-followup` 完成收尾，再逐 PR 合入 OPT-10 → OPT-20 → OPT-11 → OPT-12 → OPT-21 → OPT-22。
+1. OPT-08 收尾合入后，逐 PR 合入 OPT-10 → OPT-20 → OPT-11 → OPT-12 → OPT-21 → OPT-22。
+2. OPT-21 按已确认修订执行并更新计划；每次迁移保持单 head，原 constraints 测试保留。
 3. 全部实现合入后分别提交 OPT-23、OPT-25、OPT-30 和 T05-3 OCR 的 Draft ADR；只写方案，等待用户选择。
 4. 最后合入待确认状态与下一步的小 PR，向用户汇报后停止，不开始 ADR 实现。
 5. 用户在 GitHub 完成 PR #30 的分支保护与合并设置；生产部署仍需后续批准。
