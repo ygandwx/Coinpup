@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "reports": [
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "fast",
+        "psm": 6
+      },
+      "C": 29,
+      "T": 30,
+      "E": 0,
+      "edits": 47,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "fast",
+        "psm": 3
+      },
+      "C": 23,
+      "T": 30,
+      "E": 0,
+      "edits": 50,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "fast",
+        "psm": 11
+      },
+      "C": 15,
+      "T": 30,
+      "E": 0,
+      "edits": 185,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "best",
+        "psm": 6
+      },
+      "C": 23,
+      "T": 30,
+      "E": 0,
+      "edits": 51,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "best",
+        "psm": 3
+      },
+      "C": 23,
+      "T": 30,
+      "E": 0,
+      "edits": 53,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "tesseract",
+        "model_set": "best",
+        "psm": 11
+      },
+      "C": 16,
+      "T": 30,
+      "E": 0,
+      "edits": 184,
+      "reference_chars": 740,
+      "stable_passes": 2
+    },
+    {
+      "profile": {
+        "engine": "paddle"
+      },
+      "C": 14,
+      "T": 30,
+      "E": 0,
+      "edits": 136,
+      "reference_chars": 740,
+      "stable_passes": 2
+    }
+  ],
+  "selection": {
+    "version": 1,
+    "tesseract": {
+      "engine": "tesseract",
+      "model_set": "fast",
+      "psm": 6
+    },
+    "paddle": {
+      "engine": "paddle"
+    },
+    "selection_rule": "accuracy_then_CER_then_fast_then_PSM_6_3_11",
+    "formal_inference_performed": false
+  },
+  "source": {
+    "pull_request": 63,
+    "workflow_run_id": 37222896988,
+    "head_sha": "17869ca08d5802fc994fae199f54387c130993f6",
+    "job_id": 111496852739,
+    "scope": "actual_independent_DEVELOPMENT_markers_only_not_full_responses"
+  }
+}

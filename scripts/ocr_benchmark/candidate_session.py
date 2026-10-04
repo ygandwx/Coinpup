@@ -10,6 +10,7 @@ from pathlib import Path
 
 from coinpup_api.ocr.engine_adapters import EngineError, create_adapter
 from coinpup_api.ocr.isolation import _json_value, _reject_constant, _unique_object
+from coinpup_api.ocr.pdf_prepare import _phase_interval
 from coinpup_api.ocr.processor import _read_source, _request
 from coinpup_api.ocr.recognize import _ENGINE_REASONS, failed_result, recognize_document
 
@@ -58,7 +59,16 @@ def _source(request):
     return _read_source(source, path)
 
 
-def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_output=None):
+def serve(
+    profile,
+    assets_dir,
+    reader,
+    writer,
+    *,
+    preflight_report=None,
+    audit_output=None,
+    phase_clock=None,
+):
     """One immutable profile and adapter; every complete input receives one terminal frame."""
     initialization = {"start": time.monotonic_ns()}
     adapter = None
@@ -81,15 +91,19 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
         if type(profile) is not dict or profile.get("engine") not in ("paddle", "tesseract"):
             raise EngineError("engine_profile_invalid")
         initialization["model_verification_start"] = time.monotonic_ns()
-        _models(Path(assets_dir), profile["engine"])
+        with _phase_interval(phase_clock, "model_verify"):
+            _models(Path(assets_dir), profile["engine"])
         initialization["model_verification_end"] = time.monotonic_ns()
         initialization["adapter_init_start"] = time.monotonic_ns()
-        adapter = create_adapter(profile, Path(assets_dir))
+        with _phase_interval(phase_clock, "engine_init"):
+            adapter = create_adapter(profile, Path(assets_dir))
         initialization["adapter_init_end"] = time.monotonic_ns()
         if preflight_report is not None and audit_output is not None:
             observe()
         metadata = adapter.metadata
         initialization["end"] = time.monotonic_ns()
+        if phase_clock is not None:
+            initialization["events"] = phase_clock.events
         _send(
             writer,
             {"v": 1, "event": "ready", "metadata": metadata, "timings_ns": initialization},
@@ -164,10 +178,12 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
                     return 1
                 _send(writer, {"v": 1, "id": identifier, "event": "audit_done", "summary": summary})
                 return 0
+            first_event = 0 if phase_clock is None else len(phase_clock.events)
             source_start = time.monotonic_ns()
             try:
                 try:
-                    original = _source(request)
+                    with _phase_interval(phase_clock, "source"):
+                        original = _source(request)
                 finally:
                     source_end = time.monotonic_ns()
             except (ValueError, TypeError, OSError, RuntimeError, RecursionError, OverflowError):
@@ -185,12 +201,14 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
                     )
 
                 try:
+                    phase_options = {} if phase_clock is None else {"_phase_observer": phase_clock}
                     result = recognize_document(
                         original,
                         request["media_type"],
                         adapter,
                         page_done=progress,
                         _observe_native=observe if preflight_report is not None else None,
+                        **phase_options,
                     )
                     if preflight_report is not None:
                         observe()
@@ -199,6 +217,12 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
                 except Exception:
                     result = failed_result("processing_failed", page_indices=completed)
             result["timings_ns"]["source"] = {"start": source_start, "end": source_end}
+            if phase_clock is not None:
+                if phase_clock.failed:
+                    from scripts.ocr_benchmark.phase_clock import PhaseClockError
+
+                    raise PhaseClockError()
+                result["timings_ns"]["events"] = phase_clock.events[first_event:]
             _send(writer, {"v": 1, "id": identifier, "event": "result", "result": result})
         return int(preflight_report is not None or audit_output is not None)
     finally:
@@ -213,6 +237,7 @@ def main(*, protocol_writer=None):
     parser.add_argument("--assets-dir", type=Path, default=Path("/opt/assets"))
     parser.add_argument("--preflight-report", type=Path, required=True)
     parser.add_argument("--audit-output", type=Path, required=True)
+    parser.add_argument("--phase-clock-path", type=Path)
     arguments = parser.parse_args()
     # A bootstrap owns its supplied descriptor and has already redirected native stdout.
     if protocol_writer is None:
@@ -236,14 +261,21 @@ def main(*, protocol_writer=None):
             _send(writer, {"v": 1, "event": "startup_failed", "reason": "engine_profile_invalid"})
             return 1
         try:
-            return serve(
-                selected,
-                arguments.assets_dir,
-                sys.stdin.buffer,
-                writer,
-                preflight_report=arguments.preflight_report,
-                audit_output=arguments.audit_output,
-            )
+            phase_context = nullcontext(None)
+            if arguments.phase_clock_path is not None:
+                from scripts.ocr_benchmark.phase_clock import PhaseJournal
+
+                phase_context = PhaseJournal(arguments.phase_clock_path)
+            with phase_context as phase_clock:
+                return serve(
+                    selected,
+                    arguments.assets_dir,
+                    sys.stdin.buffer,
+                    writer,
+                    preflight_report=arguments.preflight_report,
+                    audit_output=arguments.audit_output,
+                    **({} if phase_clock is None else {"phase_clock": phase_clock}),
+                )
         except Exception:
             print("processing_failed", file=sys.stderr)
             return 1

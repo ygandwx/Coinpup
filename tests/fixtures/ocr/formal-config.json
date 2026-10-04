@@ -1,0 +1,270 @@
+{
+  "cases": {
+    "degraded": 12,
+    "error": 8,
+    "ocr": 24,
+    "text": 12
+  },
+  "corpus_manifest_sha256": "f7d88e49740c8eda1d0af9127b44b5d0c0205d42b905b83fdb137d262b9149e4",
+  "development_evidence": "tests/fixtures/ocr/development-results.json",
+  "inputs": {
+    "docs/engineering/ocr-benchmark.md": {
+      "byte_size": 15169,
+      "sha256": "8f8635d6614e117f2facb5f596bb3dab3b9de9793bfb58d131f24114d424fdb8"
+    },
+    "ops/ocr-benchmark/Dockerfile": {
+      "byte_size": 6185,
+      "sha256": "e46e8449f71dfd64b9d51c9bb9d930f5edb380c289e860255b5a915b89465055"
+    },
+    "ops/ocr-benchmark/bootstrap.lock": {
+      "byte_size": 156,
+      "sha256": "b857f5072f8cdf32130898e5bbc068360ea45dfcca7389cf809e021110216396"
+    },
+    "ops/ocr-benchmark/build-inputs.json": {
+      "byte_size": 18940,
+      "sha256": "4f0f291b6bf468d34ca87f1b99f3210362bca2f98f02c16eefafe771a104bc29"
+    },
+    "ops/ocr-benchmark/build_inputs.py": {
+      "byte_size": 15470,
+      "sha256": "a1621652520e77e6b60eb568413b0799bffcafad15d46febe18c964ce8206f04"
+    },
+    "ops/ocr-benchmark/native-system-policy.json": {
+      "byte_size": 102121,
+      "sha256": "b147774dccd042d568f5b8460b25cedf3121477a21615deab5491b306801e7e0"
+    },
+    "ops/ocr-benchmark/native-wheels-policy.json": {
+      "byte_size": 325529,
+      "sha256": "5867fdc251ee9fba8ad4cebd951c947b970ce3ffd52ddb59bec4c31f357d4b8c"
+    },
+    "ops/ocr-benchmark/paddle-provenance.json": {
+      "byte_size": 509592,
+      "sha256": "849227c35df1e223348d57fdefd28d3e16266fcb714f08b75d471de402477c0c"
+    },
+    "ops/ocr-benchmark/paddle.in": {
+      "byte_size": 913,
+      "sha256": "be058d49f8e045195818256335b52465d21187ab9632893b83c925f7e3805406"
+    },
+    "ops/ocr-benchmark/paddle.lock": {
+      "byte_size": 86456,
+      "sha256": "7fc92e8d4be06b8925885b177ded6244a65eeed73e05270822d9b3db667ccd9d"
+    },
+    "pyproject.toml": {
+      "byte_size": 1385,
+      "sha256": "80d875798c72ee34720a585d11972a172fa7caffb52360fa79da40e72cf5516c"
+    },
+    "requirements-benchmark.lock": {
+      "byte_size": 88494,
+      "sha256": "588b3ae4a12f152952d044f5ac323c8136687791c8b1a44d06c30f2ca4a62754"
+    },
+    "requirements-dev.lock": {
+      "byte_size": 2548,
+      "sha256": "0916fbe7d8413e8ba78168afd25f303a7af1d9bccaf3d394951a798b0a234e0f"
+    },
+    "requirements-ocr.lock": {
+      "byte_size": 82830,
+      "sha256": "eec5da05bb06deaea1bf96102772e2cbb2bfb17de8e8ef6c4794913f6858c9f7"
+    },
+    "requirements.lock": {
+      "byte_size": 1678,
+      "sha256": "ad4dac6cf01e02b05a5bedeed4b746d6822daeadd940030d7f71705d5a59a700"
+    },
+    "tests/fixtures/ocr/corpus-config.json": {
+      "byte_size": 1694,
+      "sha256": "8b24f66daf70c6b249fbc294bee33c145635083b3b91927c84e45c55812a5090"
+    },
+    "tests/fixtures/ocr/corpus-frozen.json": {
+      "byte_size": 11469,
+      "sha256": "8fed0aee8eef2a75ae4e08702c4059498be630f6d25ce3be464c2e1efffd1b19"
+    },
+    "tests/fixtures/ocr/development-results.json": {
+      "byte_size": 2184,
+      "sha256": "ac50725a80a5e2874c9b705f8d4dcdef62297161b239a88bf7f9260e84fdbb8e"
+    },
+    "tests/fixtures/ocr/development.json": {
+      "byte_size": 2431,
+      "sha256": "aaf63e7e5b08ec2f953706b9f7b0efc52722afcdb310e5c89c4ce4281ca420e5"
+    },
+    "tests/fixtures/ocr/engine-assets.json": {
+      "byte_size": 33138,
+      "sha256": "c20bc24c61e1446c2cebb502ebc0a3d66e32d04847a73228390111bcdd95a13f"
+    },
+    "tests/fixtures/ocr/font-assets.json": {
+      "byte_size": 1020,
+      "sha256": "111d5137f4d7c2fdce85aef6c8fb078d2b13bab380e67fb0c22925d283b500d1"
+    },
+    "tests/fixtures/ocr/truth.json": {
+      "byte_size": 10635,
+      "sha256": "c049f25124b1e344bd3fb7ec17603e5c806176edbbbc3df058af1c108181854c"
+    }
+  },
+  "profiles": {
+    "paddle": {
+      "engine": "paddle"
+    },
+    "tesseract": {
+      "engine": "tesseract",
+      "model_set": "fast",
+      "psm": 6
+    }
+  },
+  "resources": {
+    "cpu_count": 2,
+    "memory_bytes": 4294967296,
+    "page_seconds": 60,
+    "pids": 128,
+    "sampling_ns": 10000000,
+    "startup_seconds": 120,
+    "swap_bytes": 0,
+    "threads": 1
+  },
+  "schedule": {
+    "A": "tesseract",
+    "B": "paddle",
+    "case_order": "sorted_case_id",
+    "cold_anchor": "D01",
+    "cold_repeats": 5,
+    "hot_repeats": 5,
+    "paired_orders": [
+      "AB",
+      "BA",
+      "AB",
+      "BA",
+      "AB"
+    ],
+    "warm_templates": [
+      "D01",
+      "D02"
+    ]
+  },
+  "source_inventory": {
+    "scripts/ocr_benchmark/__init__.py": {
+      "byte_size": 91,
+      "sha256": "65039c7d6eec0edf96d5a4a2350c0fbd082a447ab7deacb44a401ecd5c1844fa"
+    },
+    "scripts/ocr_benchmark/candidate_bootstrap.py": {
+      "byte_size": 2551,
+      "sha256": "bdcdfa971a923fbeb93b0cbf75eeefa3fc42f4a016660df6380edb2b9eedc60e"
+    },
+    "scripts/ocr_benchmark/candidate_session.py": {
+      "byte_size": 11506,
+      "sha256": "8df04c432a83700ea058028fe18cdfa3b0556bd4f7308ff7022e01b3230f3e25"
+    },
+    "scripts/ocr_benchmark/corpus.py": {
+      "byte_size": 23924,
+      "sha256": "d000c39a3b7eab2273792ac97fc333b9e4fb743c81d4e66e609633b4bb984dd0"
+    },
+    "scripts/ocr_benchmark/development_run.py": {
+      "byte_size": 21421,
+      "sha256": "680b6d45a2eab06c74f73c2bc1f5ad5886e19884cd8d55ef724028cd860113e6"
+    },
+    "scripts/ocr_benchmark/engine_assets.py": {
+      "byte_size": 15272,
+      "sha256": "af54f1082614fdfa29fc4981a8667a4efd4bf76f2c14d429221e273ce8d325a2"
+    },
+    "scripts/ocr_benchmark/engine_environment.py": {
+      "byte_size": 24370,
+      "sha256": "f82743f8627989431983058a6a7edb093ffd6ee16ca296ad4f5f327c7c34232c"
+    },
+    "scripts/ocr_benchmark/fonts.py": {
+      "byte_size": 12429,
+      "sha256": "952b2dce5aa0a4a6faad31ee182f25d3d2cd4e9b1ec0dd646093f0b784906332"
+    },
+    "scripts/ocr_benchmark/formal_freeze.py": {
+      "byte_size": 15944,
+      "sha256": "b66fc4a7521f194f33471f70cd4aafe2f00fa5e414066dfc267ca7d400f31021"
+    },
+    "scripts/ocr_benchmark/formal_report.py": {
+      "byte_size": 15152,
+      "sha256": "de5202964b4ab93a5941e624b17aef2063abd68cebda9fee0a1b5d4d1554885a"
+    },
+    "scripts/ocr_benchmark/formal_run.py": {
+      "byte_size": 25598,
+      "sha256": "93c6008445330be10249dc2e734d60e3d5762f42ea68f416bd73420c20c2ba86"
+    },
+    "scripts/ocr_benchmark/phase_clock.py": {
+      "byte_size": 3915,
+      "sha256": "afd70c28b7ecc5ee940cea7f933d7e8801d47ae40a321d435d0c593b1a545d62"
+    },
+    "scripts/ocr_benchmark/recognition_audit.py": {
+      "byte_size": 4686,
+      "sha256": "bf2f36d2eeea2a995ad63b7433fb6c83d4233043c0adef8ff7d1f59aa09c67bb"
+    },
+    "scripts/ocr_benchmark/resource_monitor.py": {
+      "byte_size": 17829,
+      "sha256": "25011095c4b1fdff307ee1a32778b652bcfebba3be98fa4dcbf6a37a4ef0593b"
+    },
+    "scripts/ocr_benchmark/resource_smoke.py": {
+      "byte_size": 6788,
+      "sha256": "a146478e84bddca299f9f0e974145759e33db802f3db5fc1d8698314cd7a0b14"
+    },
+    "scripts/ocr_benchmark/scoring.py": {
+      "byte_size": 6621,
+      "sha256": "310a0f53411e07b240f65237ceed892e00f42498e682e6692c78442ce1c5611e"
+    },
+    "services/api/src/coinpup_api/ocr/__init__.py": {
+      "byte_size": 83,
+      "sha256": "82ff412ed691bc5aff8933c7f5e9399b2d8ed3ac3c344aaa8dbb8147574bea2a"
+    },
+    "services/api/src/coinpup_api/ocr/_isolation_child.py": {
+      "byte_size": 2679,
+      "sha256": "71e05a9600dad5ff835bb7857246910f4386fdeb31af9c87d80a11e7128d54f0"
+    },
+    "services/api/src/coinpup_api/ocr/contracts.py": {
+      "byte_size": 6284,
+      "sha256": "34e8711b72be38e1a4916fb17a57d76b9572313cf98f3d46814d1fe1e7d70547"
+    },
+    "services/api/src/coinpup_api/ocr/engine_adapters.py": {
+      "byte_size": 14510,
+      "sha256": "2bf0100018cd04eaa1261929b4f462ac6936b925eecfd87fc9c43b15f03ce154"
+    },
+    "services/api/src/coinpup_api/ocr/field_parser.py": {
+      "byte_size": 18837,
+      "sha256": "fdb21665e36aad9edbc17495a94761375a7803e6a4e01b597e5396c872b64a4d"
+    },
+    "services/api/src/coinpup_api/ocr/image_prepare.py": {
+      "byte_size": 12457,
+      "sha256": "6b7f2dab3838f5fd3e5d32e1cf07359faabdc35d8b93c995637ccf7b04ce307d"
+    },
+    "services/api/src/coinpup_api/ocr/isolation.py": {
+      "byte_size": 8588,
+      "sha256": "ea92488eb94354c6bed3db609496da61c2ad4a6e3beac41528146ddff46b8488"
+    },
+    "services/api/src/coinpup_api/ocr/models.py": {
+      "byte_size": 6318,
+      "sha256": "ebd45c1e8d5549f0bb1794a26452be65ab1a4738ac99fdf9c44776d46926c3ed"
+    },
+    "services/api/src/coinpup_api/ocr/parser_types.py": {
+      "byte_size": 1043,
+      "sha256": "a0bac139230e581beaac684c2c8cfa3a6a094bfd264778a8f222c3ce7a17d26d"
+    },
+    "services/api/src/coinpup_api/ocr/pdf_prepare.py": {
+      "byte_size": 16220,
+      "sha256": "3069b4c0de361c528d201f523ec43099c3695eaccdf1493915f7b3425b51251a"
+    },
+    "services/api/src/coinpup_api/ocr/pdf_probe.py": {
+      "byte_size": 15120,
+      "sha256": "8732d92e84596a8066c203946d97be327a68daa4d3ee16afa82ed26d9c0a86d5"
+    },
+    "services/api/src/coinpup_api/ocr/processor.py": {
+      "byte_size": 4820,
+      "sha256": "30a80f2b4e873f73e6deb0186181e7cfeb82d7b2e86c7dee70ed5d04a8f5fb5c"
+    },
+    "services/api/src/coinpup_api/ocr/queue.py": {
+      "byte_size": 18384,
+      "sha256": "eac38eb0fed1195b1b478126f4d32c09c9d6cd30106bdcc6bd961ac247c53e6b"
+    },
+    "services/api/src/coinpup_api/ocr/recognize.py": {
+      "byte_size": 8848,
+      "sha256": "96960ae99c61b4b9a6d9b682df738e95767f96a97f2d7ce60d2ddbb3903edae1"
+    },
+    "services/api/src/coinpup_api/ocr/router.py": {
+      "byte_size": 3525,
+      "sha256": "d82b10ceb847480042cdd0cf0b70386ceee52b73d5251fd825514b0710eb0f32"
+    },
+    "services/api/src/coinpup_api/ocr/schemas.py": {
+      "byte_size": 333,
+      "sha256": "d57aa983189b57cc0334535dfb757b751301bc94d8840e196a766fd118ee6e43"
+    }
+  },
+  "version": 1
+}

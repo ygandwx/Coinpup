@@ -142,7 +142,7 @@ jobs:
     name: Isolated Linux OCR candidates
     needs: corpus
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -262,6 +262,22 @@ jobs:
         with:
           name: ocr-resource-smoke-evidence
           path: build/resource-smoke/**/*.json
+          if-no-files-found: warn
+      - name: Run the frozen formal quality and resource comparison
+        run: >-
+          python -m scripts.ocr_benchmark.formal_run
+          --corpus-dir build/fictional-corpus
+          --assets-dir build/engine-assets
+          --output-dir build/formal-reports
+          --selection-path build/development-reports/selection.json
+      - name: Preserve every formal result, partial observation and phase journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-formal-evidence
+          path: |
+            build/formal-reports/**/*.json
+            build/formal-reports/**/*.jsonl
           if-no-files-found: warn
       - name: Print actual public provenance for review
         if: always()
