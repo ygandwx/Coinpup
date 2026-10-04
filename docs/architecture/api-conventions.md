@@ -57,6 +57,9 @@
 
 ## 网页未知结果
 
+- OCR 创建冻结所有者、账本、原件和稳定 `intent_id`，同意图返回任务当前视图，改变原件冲突；首次配置永久保留，不能随服务器默认值升级。未配置处理器时仍先核归属及旧意图，新建才返回 `ocr_unavailable`。创建响应丢失可按原意图查询并重发；404 不能证明未创建，不静默换意图。任务 pending 只表示排队，上传或排队不产生费用。来源：[ADR 0019](decisions/0019-local-ocr-worker.md)。
+- OCR 显式重试沿用原任务和配置，并要求当前版本；尝试次数不清零。重试响应未知时先查询，不能自动用新版本再次重排。状态查询不暴露租约 token、私有路径或原始全文，草稿与人工确认使用独立协议。来源：[ADR 0019](decisions/0019-local-ocr-worker.md)。
+
 - 财务命令和原件上传分别由应用内存控制器保留一个未解决意图；冻结用户、账本、UUID、键/预留元数据和原正文或 File，不写入浏览器持久存储。重复点击共享请求，待确认时限制新命令和导航；刷新/关闭后先核对服务端列表。来源：[ADR 0010](decisions/0010-financial-web-and-retry.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 新增命令可按客户端 UUID 核对当前业务；404 不能证明原提交失败。修订针对既有 UUID，查询任何版本都不能单独确认本次修订，必须以原 POST/原键取得回执；只有明确 version_conflict 加随后更高当前版本的组合证据才可解除该旧修订意图。来源：[ADR 0010](decisions/0010-financial-web-and-retry.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 上传只有相同冻结预留、ready 状态和匹配回执能经查询确认；pending、404、身份不符或无效响应保留待确认。已知字节冲突跨重新登录保留，不能以同文件名/大小误认成功；停止只中断浏览器等待，不能表示服务端取消。来源：[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
