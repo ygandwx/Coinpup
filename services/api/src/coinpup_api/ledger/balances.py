@@ -1,4 +1,4 @@
-"""Exact balance reads and net-command quantity guards with existing locks."""
+"""Exact snapshot balance reads and locked net-command quantity guards."""
 
 from decimal import Decimal
 
@@ -46,8 +46,8 @@ class BalanceQueries:
 
     def balances(self, owner_id, ledger_id, account_id=None, limit=100, offset=0):
         _page(limit, offset)
-        with self._transaction(owner_id) as session:
-            self._locked_ledger(session, owner_id, ledger_id)
+        with self._transaction(owner_id, read_only=True) as session:
+            self._ledger(session, owner_id, ledger_id)
             if (
                 account_id is not None
                 and session.scalar(

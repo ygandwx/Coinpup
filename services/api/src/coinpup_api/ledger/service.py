@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from uuid import uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -73,9 +73,14 @@ class LedgerService:
         return self.engine
 
     @contextmanager
-    def _transaction(self, owner_id):
+    def _transaction(self, owner_id, *, read_only=False):
         try:
             with Session(self.require_engine()) as session, session.begin():
+                if read_only:
+                    # Configure this transaction before the owner lookup establishes its snapshot.
+                    session.execute(
+                        text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                    )
                 # A service caller cannot bypass authentication by providing an unknown owner.
                 if session.get(Administrator, owner_id) is None:
                     raise _not_found()
