@@ -15,7 +15,7 @@
 
 ## 正在进行
 
-- 任务：OPT-20，等待 CI/合入。分支：`refactor/opt-20-versioned-idempotency`，[PR #38](https://github.com/ygandwx/Coinpup/pull/38)；冻结 v1 全部嵌套摘要，新回执使用原始 JSON 的 v2 摘要。OPT-08 收尾与 OPT-10 已合入。
+- 任务：OPT-11，等待 CI/合入。分支：`chore/opt-11-query-indexes`，[PR #39](https://github.com/ygandwx/Coinpup/pull/39)；增加余额及交易日/归属日索引。OPT-08 收尾、OPT-10 与 OPT-20 已合入。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库保持私有，未选定开源许可证。
 
@@ -47,7 +47,7 @@
 
 ## 下一步
 
-1. OPT-20 合入后，逐 PR 合入 OPT-11 → OPT-12 → OPT-21 → OPT-22。
+1. OPT-11 合入后，逐 PR 合入 OPT-12 → OPT-21 → OPT-22。
 2. OPT-21 按已确认修订执行并更新计划；每次迁移保持单 head，原 constraints 测试保留。
 3. 全部实现合入后分别提交 OPT-23、OPT-25、OPT-30 和 T05-3 OCR 的 Draft ADR；只写方案，等待用户选择。
 4. 最后合入待确认状态与下一步的小 PR，向用户汇报后停止，不开始 ADR 实现。
