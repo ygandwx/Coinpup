@@ -71,9 +71,9 @@ def _notice_text(path):
         return {"encoding": "latin-1", "text": data.decode("latin-1")}
 
 
-def _command(arguments):
+def _command(arguments, *, env=None):
     try:
-        result = subprocess.run(arguments, capture_output=True, timeout=120, check=False)
+        result = subprocess.run(arguments, capture_output=True, timeout=120, check=False, env=env)
         output = result.stdout + result.stderr
         if len(output) > 1024**2 or result.returncode:
             _fail("candidate_command_failed")
@@ -215,13 +215,32 @@ def _elf(path):
         return False
 
 
-def _native_inventory(paths):
+def _native_inventory(paths, *, mapped_paths=()):
+    inherited = os.environ.get("LD_LIBRARY_PATH")
+    directories = sorted({str(path.resolve().parent) for path in mapped_paths if _elf(path)})
+    search = ":".join([*([inherited] if inherited else []), *directories])
+    context = {
+        "inherited_ld_library_path": inherited,
+        "mapped_directories": directories,
+        "ld_library_path": search,
+    }
+    # Standalone ldd loses the parent's loader context for private wheel libraries.
+    # Only its subprocess receives directories from the actual loaded ELF snapshot.
+    default_environment = {"LC_ALL": "C"}
+    if inherited is not None:
+        default_environment["LD_LIBRARY_PATH"] = inherited
+    audit_environment = {"LC_ALL": "C", "LD_LIBRARY_PATH": search}
     pending, records = list(paths), {}
     while pending:
         path = pending.pop().resolve()
         if str(path) in records or not _elf(path):
             continue
-        output = _command(["ldd", str(path)])
+        default = _command(["ldd", str(path)], env=default_environment)
+        output = (
+            _command(["ldd", str(path)], env=audit_environment)
+            if audit_environment != default_environment
+            else default
+        )
         dependencies = sorted(
             {
                 str(Path(item).resolve())
@@ -232,8 +251,10 @@ def _native_inventory(paths):
             "path": str(path),
             **_identity(path),
             "ldd": output,
+            "ldd_default": default,
+            "ldd_search_context": context,
             "dependencies": dependencies,
-            "missing": "not found" in output,
+            "missing": "not found" in output or any(not _elf(Path(item)) for item in dependencies),
         }
         records[str(path)] = record
         pending.extend(Path(item) for item in dependencies)
@@ -395,10 +416,52 @@ def _tesseract(directory):
     library.TessBaseAPICreate.restype = ctypes.c_void_p
     library.TessBaseAPIInit3.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
     library.TessBaseAPIInit3.restype = ctypes.c_int
+    text_array = ctypes.POINTER(ctypes.c_void_p)
+    library.TessBaseAPIGetLoadedLanguagesAsVector.argtypes = [ctypes.c_void_p]
+    library.TessBaseAPIGetLoadedLanguagesAsVector.restype = text_array
+    library.TessDeleteTextArray.argtypes = [text_array]
+    library.TessDeleteTextArray.restype = None
     for name in ("TessBaseAPIEnd", "TessBaseAPIDelete"):
         getattr(library, name).argtypes = [ctypes.c_void_p]
         getattr(library, name).restype = None
+
+    def languages_for(handle):
+        # This owned, null-terminated C array reports successful loads, unlike Init3's input.
+        values = library.TessBaseAPIGetLoadedLanguagesAsVector(handle)
+        if not values:
+            _fail("candidate_initialization_failed")
+        try:
+            names = []
+            for index in range(16):
+                address = values[index]
+                if not address:
+                    break
+                value = ctypes.cast(address, ctypes.POINTER(ctypes.c_ubyte))
+                copied = bytearray()
+                for offset in range(64):
+                    character = value[offset]
+                    if not character:
+                        break
+                    copied.append(character)
+                else:
+                    _fail("candidate_initialization_failed")
+                try:
+                    name = copied.decode("ascii")
+                except UnicodeError:
+                    _fail("candidate_initialization_failed")
+                if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name in names:
+                    _fail("candidate_initialization_failed")
+                names.append(name)
+            else:
+                _fail("candidate_initialization_failed")
+            if not {"eng", "chi_sim", "chi_tra"}.issubset(names):
+                _fail("candidate_initialization_failed")
+            return names
+        finally:
+            library.TessDeleteTextArray(values)
+
     loaded = set()
+    loaded_languages = {}
     for kind in ("fast", "best"):
         handle = library.TessBaseAPICreate()
         if not handle:
@@ -408,15 +471,19 @@ def _tesseract(directory):
                 handle, os.fsencode(directory / "tesseract" / kind), b"eng+chi_sim+chi_tra"
             ):
                 _fail("candidate_initialization_failed")
+            loaded_languages[kind] = languages_for(handle)
             loaded.update(str(path) for path in _loaded_native())
         finally:
-            library.TessBaseAPIEnd(handle)
-            library.TessBaseAPIDelete(handle)
+            try:
+                library.TessBaseAPIEnd(handle)
+            finally:
+                library.TessBaseAPIDelete(handle)
     return {
         "versions": {"tesseract": "5.5.3", "leptonica": "1.86.0"},
         "version_output": output,
         "model_sets": ["fast", "best"],
         "languages": ["eng", "chi_sim", "chi_tra"],
+        "loaded_languages": loaded_languages,
         "loaded_native": sorted(loaded),
     }
 
@@ -476,7 +543,9 @@ def audit_environment(engine, assets_dir, output_dir):
                 report["build_notices"].append(
                     {"path": str(path), **_identity(path), **_notice_text(path)}
                 )
-        roots = [Path(sys.executable), *_loaded_native()]
+        mapped = _loaded_native()
+        roots = [Path(sys.executable), *mapped]
+        report["native_search_roots"] = [str(path) for path in mapped]
         if engine == "tesseract":
             roots.extend(
                 [
@@ -484,7 +553,7 @@ def audit_environment(engine, assets_dir, output_dir):
                     Path("/opt/tesseract/lib/libtesseract.so.5.5.3"),
                 ]
             )
-        report["native"] = _native_inventory(roots)
+        report["native"] = _native_inventory(roots, mapped_paths=mapped)
         _save(output, report)
         if any(record["missing"] for record in report["native"]):
             _fail("candidate_native_unresolved")
@@ -503,9 +572,11 @@ def audit_environment(engine, assets_dir, output_dir):
                 report["initialization"] = (_paddle if engine == "paddle" else _tesseract)(
                     directory
                 )
-        report["native"] = _native_inventory(
-            [*roots, *(Path(path) for path in report["initialization"]["loaded_native"])]
+        mapped = sorted(
+            {*mapped, *(Path(path) for path in report["initialization"]["loaded_native"])}
         )
+        report["native_search_roots"] = [str(path) for path in mapped]
+        report["native"] = _native_inventory([*roots, *mapped], mapped_paths=mapped)
         policy = {"records": []}
         report["native_policy_identities"] = []
         for path in POLICY_PATHS:

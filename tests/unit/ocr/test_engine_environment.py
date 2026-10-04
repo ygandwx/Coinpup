@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 
 import pytest
@@ -234,6 +234,14 @@ def test_paddle_uses_local_small_models_and_closes_without_inference(
     )
 
 
+def _language_array(names, *, terminated=True):
+    buffers = [environment.ctypes.create_string_buffer(name) for name in names]
+    addresses = [environment.ctypes.addressof(buffer) for buffer in buffers]
+    if terminated:
+        addresses.append(None)
+    return buffers, (environment.ctypes.c_void_p * len(addresses))(*addresses)
+
+
 @pytest.mark.parametrize("fail", [False, True])
 def test_tesseract_capi_contract_initializes_both_sets_and_always_disposes(
     tmp_path, monkeypatch, fail
@@ -244,9 +252,12 @@ def test_tesseract_capi_contract_initializes_both_sets_and_always_disposes(
         calls.append((path, languages))
         return int(fail)
 
+    buffers, languages = _language_array([b"eng", b"chi_sim", b"chi_tra"])
     library = SimpleNamespace(
         TessBaseAPICreate=lambda: 123,
         TessBaseAPIInit3=initialize,
+        TessBaseAPIGetLoadedLanguagesAsVector=lambda handle: languages,
+        TessDeleteTextArray=lambda values: calls.append("free_languages"),
         TessBaseAPIEnd=lambda handle: calls.append("end"),
         TessBaseAPIDelete=lambda handle: calls.append("delete"),
     )
@@ -265,6 +276,16 @@ def test_tesseract_capi_contract_initializes_both_sets_and_always_disposes(
     else:
         result = environment._tesseract(tmp_path)
         assert result["languages"] == ["eng", "chi_sim", "chi_tra"]
+        assert result["loaded_languages"] == {
+            "fast": ["eng", "chi_sim", "chi_tra"],
+            "best": ["eng", "chi_sim", "chi_tra"],
+        }
+        assert buffers and library.TessBaseAPIGetLoadedLanguagesAsVector.argtypes == [
+            environment.ctypes.c_void_p
+        ]
+        assert library.TessDeleteTextArray.argtypes == [
+            environment.ctypes.POINTER(environment.ctypes.c_void_p)
+        ]
         expected = []
         for kind in ("fast", "best"):
             expected.extend(
@@ -273,11 +294,112 @@ def test_tesseract_capi_contract_initializes_both_sets_and_always_disposes(
                         environment.os.fsencode(tmp_path / "tesseract" / kind),
                         b"eng+chi_sim+chi_tra",
                     ),
+                    "free_languages",
                     "end",
                     "delete",
                 ]
             )
         assert calls == expected
+
+
+@pytest.mark.parametrize("kind", ["fast", "best"])
+@pytest.mark.parametrize("missing", [b"eng", b"chi_sim", b"chi_tra"])
+def test_tesseract_success_code_does_not_hide_missing_explicit_language(
+    tmp_path, monkeypatch, kind, missing
+):
+    required = [b"eng", b"chi_sim", b"chi_tra"]
+    _check_tesseract_language_failure(
+        tmp_path, monkeypatch, [name for name in required if name != missing], kind=kind
+    )
+
+
+@pytest.mark.parametrize(
+    "names,terminated",
+    [
+        (None, True),
+        ([], True),
+        ([b"eng", b"chi_sim", b"chi_tra", b"\xff"], True),
+        ([b"eng", b"chi_sim", b"chi_tra", b""], True),
+        ([b"eng", b"chi_sim", b"chi_tra", b"../private"], True),
+        ([b"eng", b"chi_sim", b"chi_tra", b"eng"], True),
+        ([b"eng", b"chi_sim", b"chi_tra", b"a" * 64], True),
+        ([b"eng", b"chi_sim", b"chi_tra"] + [f"lang{i}".encode() for i in range(13)], False),
+    ],
+)
+def test_tesseract_rejects_null_or_malformed_language_arrays_and_frees_owned_memory(
+    tmp_path, monkeypatch, names, terminated
+):
+    _check_tesseract_language_failure(tmp_path, monkeypatch, names, terminated=terminated)
+
+
+def _check_tesseract_language_failure(
+    tmp_path, monkeypatch, names, *, kind="fast", terminated=True
+):
+    calls = []
+    buffers, valid = _language_array([b"eng", b"chi_sim", b"chi_tra"])
+    bad_buffers, invalid = (
+        _language_array(names, terminated=terminated)
+        if names is not None
+        else ([], environment.ctypes.POINTER(environment.ctypes.c_void_p)())
+    )
+    current = None
+
+    def initialize(handle, path, languages):
+        nonlocal current
+        current = Path(environment.os.fsdecode(path)).name
+        assert languages == b"eng+chi_sim+chi_tra"
+        calls.append((current, "init"))
+        return 0
+
+    library = SimpleNamespace(
+        TessBaseAPICreate=lambda: 123,
+        TessBaseAPIInit3=initialize,
+        TessBaseAPIGetLoadedLanguagesAsVector=lambda handle: invalid if current == kind else valid,
+        TessDeleteTextArray=lambda values: calls.append((current, "free")),
+        TessBaseAPIEnd=lambda handle: calls.append((current, "end")),
+        TessBaseAPIDelete=lambda handle: calls.append((current, "delete")),
+    )
+    monkeypatch.setattr(environment.ctypes, "CDLL", lambda path: library)
+    monkeypatch.setattr(environment, "_command", lambda args: "tesseract 5.5.3\nleptonica-1.86.0\n")
+    monkeypatch.setattr(environment, "_loaded_native", lambda: [])
+    with rejected("candidate_initialization_failed"):
+        environment._tesseract(tmp_path)
+    expected = []
+    for name in ("fast", "best"):
+        expected.append((name, "init"))
+        if name != kind or names is not None:
+            expected.append((name, "free"))
+        expected.extend([(name, "end"), (name, "delete")])
+        if name == kind:
+            break
+    assert calls == expected
+    assert buffers and (bad_buffers or names in (None, []))
+
+
+@pytest.mark.parametrize("cleanup", ["free", "end"])
+def test_tesseract_cleanup_exception_still_disposes_api(tmp_path, monkeypatch, cleanup):
+    calls = []
+    buffers, languages = _language_array([b"eng", b"chi_sim", b"chi_tra"])
+
+    def dispose(name):
+        calls.append(name)
+        if name == cleanup:
+            raise RuntimeError("fictional cleanup failure")
+
+    library = SimpleNamespace(
+        TessBaseAPICreate=lambda: 123,
+        TessBaseAPIInit3=lambda *args: 0,
+        TessBaseAPIGetLoadedLanguagesAsVector=lambda handle: languages,
+        TessDeleteTextArray=lambda values: dispose("free"),
+        TessBaseAPIEnd=lambda handle: dispose("end"),
+        TessBaseAPIDelete=lambda handle: calls.append("delete"),
+    )
+    monkeypatch.setattr(environment.ctypes, "CDLL", lambda path: library)
+    monkeypatch.setattr(environment, "_command", lambda args: "tesseract 5.5.3\nleptonica-1.86.0\n")
+    monkeypatch.setattr(environment, "_loaded_native", lambda: [])
+    with pytest.raises(RuntimeError, match="fictional cleanup failure"):
+        environment._tesseract(tmp_path)
+    assert buffers and calls == ["free", "end", "delete"]
 
 
 def test_cli_missing_models_is_stable_without_private_inputs(tmp_path, monkeypatch, capsys):
@@ -337,8 +459,9 @@ def test_audit_preserves_initialization_facts_and_gates_only_active_native_closu
     monkeypatch.setattr(environment, "_loaded_native", lambda: [active])
     observed_roots, calls = [], []
 
-    def native(paths):
+    def native(paths, *, mapped_paths):
         observed_roots.extend(paths)
+        assert inactive not in mapped_paths
         return [{"path": str(active), **environment._identity(active), "missing": False}]
 
     def initialize(path):
@@ -441,3 +564,108 @@ def test_embedded_python_source_notices_require_real_files_and_exact_original_by
     else:
         with rejected("candidate_inventory_invalid"):
             environment._system_inventory()
+
+
+@pytest.mark.parametrize("inherited", [None, "/inherited"])
+def test_ldd_recovers_only_actual_mapped_loader_context_without_mutating_runtime(
+    monkeypatch, inherited
+):
+    files, calls = _fictional_native_context(monkeypatch, inherited)
+    roots = [environment.Path("/mapped/root.so"), environment.Path("/vendored/loaded.so")]
+    before = dict(environment.os.environ)
+    records = environment._native_inventory(roots, mapped_paths=roots)
+    assert dict(environment.os.environ) == before
+    assert {item["path"] for item in records} == {
+        "/mapped/root.so",
+        "/vendored/loaded.so",
+        "/vendored/private.so",
+        "/system/runtime.so",
+    }
+    parent = next(item for item in records if item["path"] == "/mapped/root.so")
+    assert "not found" in parent["ldd_default"] and "not found" not in parent["ldd"]
+    assert parent["dependencies"] == ["/vendored/private.so"]
+    assert all(not item["missing"] for item in records)
+    for item in records:
+        data = files[item["path"]]
+        assert item["byte_size"] == len(data)
+        assert item["sha256"] == hashlib.sha256(data).hexdigest()
+        assert item["ldd_search_context"] == {
+            "inherited_ld_library_path": inherited,
+            "mapped_directories": ["/mapped", "/vendored"],
+            "ld_library_path": (inherited + ":" if inherited else "") + "/mapped:/vendored",
+        }
+    assert all("/unused" not in call["env"].get("LD_LIBRARY_PATH", "") for call in calls)
+    assert all(set(call["env"]) <= {"LC_ALL", "LD_LIBRARY_PATH"} for call in calls)
+    assert calls and all(call["env"]["LC_ALL"] == "C" for call in calls)
+
+
+@pytest.mark.parametrize("defect", ["not_found", "nonexistent", "non_elf"])
+def test_ldd_context_cannot_hide_unresolved_or_invalid_dependency_files(monkeypatch, defect):
+    _fictional_native_context(monkeypatch, None, defect)
+    roots = [environment.Path("/mapped/root.so"), environment.Path("/vendored/loaded.so")]
+    records = environment._native_inventory(roots, mapped_paths=roots)
+    parent = next(item for item in records if item["path"] == "/mapped/root.so")
+    assert parent["missing"] is True
+    if defect == "not_found":
+        assert "not found" in parent["ldd"]
+    else:
+        assert parent["dependencies"] == ["/vendored/private.so"]
+        assert "/vendored/private.so" not in {item["path"] for item in records}
+
+
+def _fictional_native_context(monkeypatch, inherited, defect=None):
+    class AuditPath(PurePosixPath):
+        def resolve(self):
+            return self
+
+    files = {
+        path: b"\x7fELF" + path.encode()
+        for path in (
+            "/mapped/root.so",
+            "/vendored/loaded.so",
+            "/vendored/private.so",
+            "/system/runtime.so",
+            "/unused/not_loaded.so",
+        )
+    }
+    if defect == "nonexistent":
+        del files["/vendored/private.so"]
+    elif defect == "non_elf":
+        files["/vendored/private.so"] = b"This fictional file is not ELF."
+    calls = []
+
+    def run(arguments, **kwargs):
+        assert arguments[0] == "ldd"
+        calls.append(kwargs)
+        paths = kwargs["env"].get("LD_LIBRARY_PATH", "").split(":")
+        if arguments[1] == "/mapped/root.so":
+            output = (
+                "private.so => /vendored/private.so (0x1)\n"
+                if "/vendored" in paths and defect != "not_found"
+                else "private.so => not found\n"
+            )
+        elif arguments[1] == "/vendored/private.so":
+            output = "runtime.so => /system/runtime.so (0x2)\n"
+        else:
+            output = "statically linked\n"
+        return SimpleNamespace(stdout=output.encode(), stderr=b"", returncode=0)
+
+    monkeypatch.setattr(environment, "Path", AuditPath)
+    monkeypatch.setattr(
+        environment, "_elf", lambda path: files.get(str(path), b"").startswith(b"\x7fELF")
+    )
+    monkeypatch.setattr(
+        environment,
+        "_identity",
+        lambda path: {
+            "byte_size": len(files[str(path)]),
+            "sha256": hashlib.sha256(files[str(path)]).hexdigest(),
+        },
+    )
+    monkeypatch.setattr(environment.subprocess, "run", run)
+    monkeypatch.setenv("FICTIONAL_DO_NOT_INHERIT", "secret")
+    if inherited is None:
+        monkeypatch.delenv("LD_LIBRARY_PATH", raising=False)
+    else:
+        monkeypatch.setenv("LD_LIBRARY_PATH", inherited)
+    return files, calls

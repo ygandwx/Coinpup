@@ -64,6 +64,11 @@ def test_actual_initialization_and_offline_finite_resources(report, capsys):
         assert initialized["versions"] == {"tesseract": "5.5.3", "leptonica": "1.86.0"}
         assert initialized["languages"] == ["eng", "chi_sim", "chi_tra"]
         assert initialized["model_sets"] == ["fast", "best"]
+        assert set(initialized["loaded_languages"]) == {"fast", "best"}
+        assert all(
+            {"eng", "chi_sim", "chi_tra"}.issubset(languages)
+            for languages in initialized["loaded_languages"].values()
+        )
     with capsys.disabled():
         print(
             "CANDIDATE_INITIALIZED "
@@ -141,6 +146,10 @@ def test_actual_loaded_and_ldd_closure_has_no_missing_or_unreviewed_native(repor
     paths = {item["path"] for item in report["native"]}
     assert len(paths) == len(report["native"]) > 5
     assert set(report["initialization"]["loaded_native"]).issubset(paths)
+    mapped = report["native_search_roots"]
+    assert mapped == sorted(set(mapped)) and set(mapped).issubset(paths)
+    assert set(report["initialization"]["loaded_native"]).issubset(mapped)
+    directories = sorted({str(Path(path).parent) for path in mapped})
     records = []
     for identity in report["native_policy_identities"]:
         path = ROOT / "ops/ocr-benchmark" / identity["name"]
@@ -158,6 +167,13 @@ def test_actual_loaded_and_ldd_closure_has_no_missing_or_unreviewed_native(repor
         assert item["missing"] is False and "not found" not in item["ldd"]
         assert set(item["dependencies"]).issubset(paths)
         assert item["reviewed_license_policy"]["status"] == "allowed"
+        context = item["ldd_search_context"]
+        assert context["mapped_directories"] == directories
+        inherited = context["inherited_ld_library_path"]
+        assert context["ld_library_path"] == ":".join(
+            [*([inherited] if inherited else []), *directories]
+        )
+        assert type(item["ldd_default"]) is str and item["ldd_default"]
 
 
 def test_real_missing_models_fail_before_candidate_initialization(report):
