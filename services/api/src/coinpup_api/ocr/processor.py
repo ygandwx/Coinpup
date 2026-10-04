@@ -13,11 +13,13 @@ from .pdf_probe import MAX_SOURCE_BYTES, ProbeLimits, manual_result
 def _request(request):
     if type(request) is not dict or not {"version", "action", "source"} <= request.keys():
         raise ValueError
-    if request.keys() - {"version", "action", "source", "limits"}:
+    prepare = request.get("action") == "prepare_pdf"
+    allowed = {"version", "action", "source", "limits"} | ({"prepare_limits"} if prepare else set())
+    if request.keys() - allowed:
         raise ValueError
     if type(request["version"]) is not int or request["version"] != 1:
         raise ValueError
-    if request["action"] != "inspect_pdf":
+    if request["action"] not in ("inspect_pdf", "prepare_pdf"):
         raise ValueError
     source, options = request["source"], request.get("limits", {})
     if type(source) is not dict or source.keys() != {"path", "sha256", "byte_size"}:
@@ -25,6 +27,14 @@ def _request(request):
     if type(options) is not dict:
         raise ValueError
     limits = ProbeLimits(**options)
+    preparation = None
+    if prepare:
+        from .pdf_prepare import PrepareLimits
+
+        options = request.get("prepare_limits", {})
+        if type(options) is not dict:
+            raise ValueError
+        preparation = PrepareLimits(**options)
     if type(source["path"]) is not str or type(source["sha256"]) is not str:
         raise ValueError
     path = Path(source["path"])
@@ -34,7 +44,7 @@ def _request(request):
         raise ValueError
     if type(source["byte_size"]) is not int or not 1 <= source["byte_size"] <= MAX_SOURCE_BYTES:
         raise ValueError
-    return source, path, limits
+    return source, path, limits, preparation
 
 
 def _read_source(source, path):
@@ -74,15 +84,19 @@ def _read_source(source, path):
 
 
 def process(request: dict, workdir: Path) -> dict:
-    """No database, extraction, rendering, subprocess command or external entry selection."""
+    """No database, OCR engine, subprocess command or external entry selection."""
     try:
-        source, path, limits = _request(request)
+        source, path, limits, preparation = _request(request)
     except (ValueError, TypeError, OSError, OverflowError):
         return manual_result("request_invalid")
     try:
         data = _read_source(source, path)
     except (ValueError, OSError, RuntimeError):
         return manual_result("source_invalid")
+    if preparation is not None:
+        from .pdf_prepare import prepare_pdf
+
+        return prepare_pdf(data, preparation, limits)
     from .pdf_probe import probe_pdf
 
     return probe_pdf(data, limits)
