@@ -13,6 +13,7 @@ from coinpup_api.config import Settings
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import (
     BalanceResponse,
+    CalendarDateFilter,
     CancellationCreate,
     CorrectionCreate,
     ExchangeCreate,
@@ -182,6 +183,9 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
         limit: page_size = 100,
         offset: page_offset = 0,
         status: Literal["all", "active", "cancelled"] = "all",
+        order: Literal["created_at", "transaction_date"] = "created_at",
+        from_date: CalendarDateFilter | None = None,
+        to_date: CalendarDateFilter | None = None,
     ):
         return execute(
             service.list_operations,
@@ -190,6 +194,9 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
             limit=limit,
             offset=offset,
             status=status,
+            order=order,
+            from_date=from_date,
+            to_date=to_date,
         )
 
     @router.get("/operations/{operation_id}", response_model=OperationState)

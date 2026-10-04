@@ -2956,6 +2956,9 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 status?: "all" | "active" | "cancelled";
+                order?: "created_at" | "transaction_date";
+                from_date?: string | null;
+                to_date?: string | null;
             };
             header?: never;
             path: {

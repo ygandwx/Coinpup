@@ -240,7 +240,11 @@ export function TransactionsPanel({
         const abort = new AbortController();
         setLoading(true);
         setLoadError(null);
-        void listOperations(entity.ledger.id, { status, offset, limit: 25 }, abort.signal)
+        void listOperations(
+            entity.ledger.id,
+            { status, offset, limit: 25, order: "transaction_date" },
+            abort.signal,
+        )
             .then((items) => {
                 if (abort.signal.aborted) return;
                 setOperations(items);
