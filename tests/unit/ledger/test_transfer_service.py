@@ -16,6 +16,7 @@ from coinpup_api.ledger.posting_schemas import (
     TransferCreate,
     TransferResponse,
 )
+from coinpup_api.ledger.readers import PostingReaders
 from coinpup_api.ledger.service import LedgerError
 from pydantic import TypeAdapter, ValidationError
 
@@ -125,7 +126,7 @@ def transfer_rows():
 
 def test_transfer_reader_derives_accounts_by_sign_not_row_order():
     session, operation, journal, source, destination = transfer_rows()
-    result = PostingService._read_transfer(session, operation, journal, [destination, source])
+    result = PostingReaders._read_transfer(session, operation, journal, [destination, source])
     assert isinstance(result, TransferResponse)
     assert result.source_account_id == source.account_id
     assert result.destination_account_id == destination.account_id
@@ -163,7 +164,7 @@ def test_transfer_reader_rejects_corrupted_shapes(corruption):
     else:
         journal.recognition_date = date(2026, 1, 1)
     with pytest.raises(LedgerError) as error:
-        PostingService._read_transfer(session, operation, journal, [source, destination])
+        PostingReaders._read_transfer(session, operation, journal, [source, destination])
     assert (error.value.code, error.value.status) == ("ledger_integrity", 503)
 
 

@@ -74,7 +74,7 @@
 | OPT-05 | PR 模板、并行规则、GitHub 设置 | A | OPT-04 | 已完成 | #30 |
 | OPT-06 | 前端格式化与 lint | A | OPT-02 | 已完成 | #31 |
 | OPT-07 | 前端类型由 OpenAPI 生成 | A | OPT-06 | 已完成 | #32 |
-| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 已完成 | #33、#34 |
+| OPT-08 | 模块整理与 documents→files 改名（零行为变化） | A | OPT-02、OPT-06 | 已完成 | #33、#34、#36 |
 | OPT-09 | Python 类型检查（可选） | A | OPT-08 | 待开始 | |
 | OPT-10 | 读余额不加行锁 | B 低风险改进 | OPT-08 | 待开始 | |
 | OPT-11 | 余额与日期查询索引 | B | OPT-08 | 待开始 | |
@@ -370,6 +370,7 @@ Coinpup/
   - `ledger/common.py`：共享的归属校验、锁与持久化辅助代码；供门面和修订服务共同组合，避免循环导入。
   - `PostingService` 保留为门面，公共方法签名不变，路由和大部分测试都不需要改。
   - 顺带消除 `posting.py` 方法内部 `from coinpup_api.ledger.revisions import ...` 造成的循环导入。
+  - 收尾约定：读取器直接调用 `PostingReaders`，不通过模块别名或门面回写；私有方法测试调用实际实现位置，mixin 组合不变。四处有意按 key 触发的 Hook 逐行解释并仅禁用对应 exhaustive-deps 提示，依赖数组和行为不变；lint 使用 `--max-warnings 0`，OpenAPI 逐字节不变。
 - **8d 测试目录按源码模块分组**：例如 `tests/unit/{app,auth,ledger,files,ops}/`、`tests/integration/{auth,ledger,files}/`。为避免同名测试文件冲突，二选一：在 `pyproject.toml` 的 pytest 配置中加入 `--import-mode=importlib`，或者给每个测试子目录加 `__init__.py`。确保 `tests/integration/conftest.py` 仍然生效。
 - **不要做**：不改包名、表名、URL、响应结构和界面文案；不改业务逻辑；不“顺手”优化其他东西。
 - **验收**：全部检查通过，包括 e2e；OpenAPI 快照除 tag 外没有变化；`git diff -M --stat` 显示改动以移动和重命名为主；PR 描述写明零行为变化。

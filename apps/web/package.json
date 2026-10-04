@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "gen:api": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts --default-non-nullable false"
   },
   "dependencies": {

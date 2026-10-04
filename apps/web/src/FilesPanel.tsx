@@ -381,6 +381,7 @@ export function FilesPanel({
     }, [ledgerId, savedFileId, savedFileRefresh, session.user.id]);
     useEffect(() => {
         if (titleDraft) document.getElementById("document-title-editor")?.focus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Focus when the edited file ID changes; title and error updates preserve editing focus.
     }, [titleDraft?.file.id]);
 
     function clearFile() {
