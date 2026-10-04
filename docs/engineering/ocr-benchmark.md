@@ -1,8 +1,10 @@
-# OCR 同机验收协议 v1
+# OCR 同机验收协议
 
 本协议落实 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md)，字段计分实现为 [scoring.py](../../scripts/ocr_benchmark/scoring.py)。进度只见 [status.md](status.md)，实际制品摘要、环境、命令和结果留在对应 PR 与实测报告；本文不代表已运行引擎或已经达标。
 
 旧正式集已转为诊断证据，见[只读字段归因](ocr-formal-diagnosis.md)；后续新种子验收遵循当前用户指示，不能复用旧正式集作验收。
+
+本轮现行决定见 [ADR 0020](../architecture/decisions/0020-ocr-prefill-and-review.md)：旧正式集不可再验收，改进只用DEV；新种子清晰文字层/OCR冻结后仅运行一次，热三轮/冷三次、两引擎同资源。95%门槛只决定OCR建议值预填；均不达标时Tesseract全部OCR字段待确认，文字层仍按原规则。以下v1五轮/辅助组及硬停止运行器保留作历史协议；普通CI不运行旧正式集。新清晰模式的输入、安全、资源与完整性失败不能作为质量降级掩盖。
 
 ## 语料与冻结顺序
 
