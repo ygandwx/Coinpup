@@ -18,6 +18,7 @@
 | [0012](0012-private-files-and-consistent-bundles.md) | 私有文件、可重试上传与一致恢复 | 采用 | 私有文件使用两步上传与账本内查重，数据库和原件由共享快照 bundle 恢复。 |
 | [0013](0013-document-web-and-upload-recovery.md) | 票据网页与上传恢复 | 采用 | 网页保留原 File 和上传 UUID，核对完整回执，下载前校验字节身份；代码中已改名为 files。 |
 | [0014](0014-versioned-command-hashes.md) | 财务命令摘要版本与原请求重放 | 采用 | 冻结旧 v1 全部嵌套投影，新回执使用原始 JSON 的 v2 摘要；升级保留历史重放。 |
+| [0015](0015-ordered-change-log.md) | 按提交顺序追加变更日志 | 采用 | 写事务先咨询锁再业务锁，九表触发器追加通知，游标只推进至实际交付的序号。 |
 
 ## 新 ADR 模板
 

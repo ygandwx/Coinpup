@@ -107,6 +107,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Changes
+         * @description Read notifications after an exact cursor; an empty page retains that cursor.
+         */
+        get: operations["changes_api_v1_changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/entities": {
         parameters: {
             query?: never;
@@ -877,6 +897,44 @@ export interface components {
             name?: string | null;
             /** Name En */
             name_en?: string | null;
+        };
+        /** ChangePage */
+        ChangePage: {
+            /** Changes */
+            changes: components["schemas"]["ChangeRecord"][];
+            /** Next Cursor */
+            next_cursor: string;
+        };
+        /** ChangeRecord */
+        ChangeRecord: {
+            /**
+             * Change Kind
+             * @enum {string}
+             */
+            change_kind: "upsert" | "archive" | "restore" | "cancel";
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            /** Entity Id */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links";
+            /** Entity Version */
+            entity_version: number;
+            /** Ledger Id */
+            ledger_id: string | null;
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
+            /** Seq */
+            seq: string;
         };
         /** CorrectionCreate */
         CorrectionCreate: {
@@ -2159,6 +2217,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateResponse"][];
+                };
+            };
+        };
+    };
+    changes_api_v1_changes_get: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

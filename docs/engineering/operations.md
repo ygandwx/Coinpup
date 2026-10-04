@@ -119,7 +119,7 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -e COINPUP_RESTO
 单元检查不需要 PostgreSQL：
 
 ```sh
-python -m pytest tests/unit/test_backup_restore.py tests/unit/test_backup_snapshot.py
+python -m pytest tests/unit/ops/test_backup_restore.py tests/unit/ops/test_backup_snapshot.py
 ```
 
 这些检查覆盖现有备份不得覆盖、损坏备份拒绝、非空/错误/有其他连接的目标拒绝、工具失败传播、凭据不进入参数与环境、精确文本快照、封存探测始终回滚，以及 POSIX 私有文件权限。Windows 单测跳过实际 POSIX 权限检查，不能把跳过写成已验收。
@@ -155,5 +155,9 @@ checker 拒绝已存在的目标库和已有管理员的源库；只执行创建
 审计校验要求版本连续，冲销与被冲销凭证的日期、描述和全部本金/费用行精确反向对应。对已封存的正常及反向凭证尝试追加完整平衡行或单独费用组成部分，必须命中封存约束；探测无论成功拒绝或异常放行都回滚，不能为了验证而留下写入。所有重放和拒绝探测后再次比较全部表，要求源库和恢复库均未改变。旧无费用回执不能凭空新增 `fees` 字段。
 
 本地单测仅验证控制流程；恢复 checker 不能替代后续业务、异地灾备或生产服务器的恢复核对。实际命令、结果和 CI 证据保存在对应 PR 中。
+
+变更日志与 identity 序列状态同样进入数据库和原件 bundle；恢复后核对日志、已保存游标与新写入序号的连续有效性。游标只代表其所属恢复快照，设备已经读取较新数据而服务器回到较早备份时的协调仍需完整同步协议。规则见 [ADR 0015](../architecture/decisions/0015-ordered-change-log.md)。
+
+变更日志迁移须在暂停业务写入的维护窗口执行；已有日志时拒绝降级，不能以清空日志丢弃已发布游标。降级与业务写服务都先获取相同咨询锁再取其他业务/表锁，只读查询不获取写锁。
 
 PostgreSQL 工具语义依据：[pg_dump 17](https://www.postgresql.org/docs/17/app-pgdump.html)、[pg_restore 17](https://www.postgresql.org/docs/17/app-pgrestore.html)。

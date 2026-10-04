@@ -675,6 +675,108 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
+      "ChangePage": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeRecord"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "next_cursor": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Next Cursor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changes",
+          "next_cursor"
+        ],
+        "title": "ChangePage",
+        "type": "object"
+      },
+      "ChangeRecord": {
+        "properties": {
+          "change_kind": {
+            "enum": [
+              "upsert",
+              "archive",
+              "restore",
+              "cancel"
+            ],
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "entity_id": {
+            "minLength": 1,
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "enum": [
+              "entities",
+              "ledgers",
+              "accounts",
+              "account_assets",
+              "categories",
+              "assets",
+              "financial_operations",
+              "stored_files",
+              "operation_file_links"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "entity_version": {
+            "minimum": 1.0,
+            "title": "Entity Version",
+            "type": "integer"
+          },
+          "ledger_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Id"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "seq": {
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Seq",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "owner_id",
+          "ledger_id",
+          "entity_type",
+          "entity_id",
+          "entity_version",
+          "change_kind",
+          "changed_at"
+        ],
+        "title": "ChangeRecord",
+        "type": "object"
+      },
       "CorrectionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -3446,6 +3548,65 @@
         "summary": "Templates",
         "tags": [
           "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/changes": {
+      "get": {
+        "description": "Read notifications after an exact cursor; an empty page retains that cursor.",
+        "operationId": "changes_api_v1_changes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": "0",
+              "maxLength": 19,
+              "minLength": 1,
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "title": "After",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Changes",
+        "tags": [
+          "change notifications"
         ]
       }
     },

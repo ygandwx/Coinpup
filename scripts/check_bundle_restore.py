@@ -14,7 +14,7 @@ from uuid import uuid4
 from _bundle_archive import verified_bundle
 from _database_archive import ArchiveError, read_target, require_posix
 from backup_bundle import backup_bundle
-from check_backup_restore import snapshot
+from check_backup_restore import change_state, snapshot, verify_change_continuation
 from restore_bundle import restore_bundle
 
 
@@ -220,6 +220,7 @@ def check_bundle_restore(source_url):
             store.publish(asyncio.run(stage_bytes(store, fictional_pdf("Fictional orphan"))))
             engine.dispose()
             before = snapshot(source)
+            expected_changes = change_state(engine, owner)
             import backup_bundle as implementation
 
             actual_run = implementation.run_tool
@@ -321,6 +322,10 @@ def check_bundle_restore(source_url):
                     raise
             else:
                 raise ArchiveError("Bundle restore accepted a nonempty target database.")
+            # Late writes can advance non-MVCC identity state beyond the exported snapshot.
+            verify_change_continuation(restored_engine, target, owner, ledger_b, expected_changes)
+            if snapshot(source) != after:
+                raise ArchiveError("Restored cursor continuation changed the bundle source.")
             print(
                 "Bundle restore verified: consistent PostgreSQL snapshot, "
                 "exact private files and metadata."
@@ -330,6 +335,9 @@ def check_bundle_restore(source_url):
                 "archived reads and replay verified."
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
+            print(
+                "Restored change cursor continues above visible rows and captured identity state."
+            )
     finally:
         engine.dispose()
         restored_engine.dispose()
