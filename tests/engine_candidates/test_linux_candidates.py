@@ -42,6 +42,7 @@ def test_actual_initialization_and_offline_finite_resources(report, capsys):
     initialized = report["initialization"]
     assert initialized["loaded_native"]
     if report["engine"] == "paddle":
+        assert initialized["opencv_threads"] == 1
         assert initialized["versions"] == {
             "paddle": "3.4.0",
             "paddleocr": "3.7.0",

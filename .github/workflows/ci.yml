@@ -164,6 +164,8 @@ jobs:
       - name: Acquire fixed sources and complete hashed wheelhouse
         run: |
           python -m scripts.ocr_benchmark.engine_assets fetch --output-dir build/engine-assets
+          # Public pinned artifacts must be readable by the isolated non-root candidate.
+          chmod -R go+rX build/engine-assets
           python ops/ocr-benchmark/build_inputs.py fetch --output-dir build/engine-build-inputs
           python ops/ocr-benchmark/build_inputs.py verify --output-dir build/engine-build-inputs
           python - <<'PY'
@@ -181,7 +183,7 @@ jobs:
       - name: Reject missing local models before engine initialization
         run: |
           mkdir -p build/empty-assets build/candidate-reports/missing-models-paddle build/candidate-reports/missing-models-tesseract
-          sudo chown -R 10001:10001 build/candidate-reports
+          sudo chown 10001:10001 build/candidate-reports/missing-models-paddle build/candidate-reports/missing-models-tesseract
           COINPUP_TASK_CPUS=$(python -c 'import os; print(",".join(map(str, sorted(os.sched_getaffinity(0))[:2])))')
           for engine in tesseract paddle; do
             if timeout --signal=TERM --kill-after=10s 600s docker run --rm --init --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
@@ -207,7 +209,7 @@ jobs:
       - name: Audit and initialize both candidates without network or recognition
         run: |
           mkdir -p build/candidate-reports/paddle build/candidate-reports/tesseract build/empty-assets
-          sudo chown -R 10001:10001 build/candidate-reports
+          sudo chown 10001:10001 build/candidate-reports/paddle build/candidate-reports/tesseract
           COINPUP_TASK_CPUS=$(python -c 'import os; print(",".join(map(str, sorted(os.sched_getaffinity(0))[:2])))')
           COINPUP_TASK_FAILURE=0
           for engine in tesseract paddle; do

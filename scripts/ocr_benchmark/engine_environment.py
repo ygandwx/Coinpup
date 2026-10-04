@@ -333,6 +333,9 @@ def _paddle(directory):
     modules = {
         name: importlib.import_module(name) for name in ("paddle", "paddlex", "cv2", "paddleocr")
     }
+    modules["cv2"].setNumThreads(1)
+    if modules["cv2"].getNumThreads() != 1:
+        _fail("candidate_resource_invalid")
     arguments = {
         "device": "cpu",
         "cpu_threads": 1,
@@ -347,6 +350,9 @@ def _paddle(directory):
     }
     pipeline = modules["paddleocr"].PaddleOCR(**arguments)
     try:
+        opencv_threads = modules["cv2"].getNumThreads()
+        if opencv_threads != 1:
+            _fail("candidate_resource_invalid")
         versions = {name: module.__version__ for name, module in modules.items()}
         if versions != {
             "paddle": "3.4.0",
@@ -359,6 +365,7 @@ def _paddle(directory):
             "versions": versions,
             "model_sets": ["small_det", "small_rec"],
             "arguments": arguments,
+            "opencv_threads": opencv_threads,
             "loaded_native": [str(path) for path in _loaded_native()],
         }
     finally:

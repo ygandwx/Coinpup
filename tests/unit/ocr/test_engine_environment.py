@@ -188,10 +188,15 @@ def test_runtime_requires_offline_two_cpu_and_finite_caps(monkeypatch, defect):
         assert environment._runtime()["affinity"] == [2, 3]
 
 
-def test_paddle_uses_local_small_models_and_closes_without_inference(tmp_path, monkeypatch):
+@pytest.mark.parametrize("threads", [(1, 1), (4,), (1, 4)])
+def test_paddle_uses_local_small_models_and_closes_without_inference(
+    tmp_path, monkeypatch, threads
+):
     calls = []
+    thread_calls, observed_threads = [], iter(threads)
 
     def construct(**kwargs):
+        assert thread_calls == [1]
         calls.append(kwargs)
         return SimpleNamespace(
             close=lambda: calls.append("closed"),
@@ -200,10 +205,20 @@ def test_paddle_uses_local_small_models_and_closes_without_inference(tmp_path, m
 
     versions = {"paddle": "3.4.0", "paddlex": "3.7.0", "cv2": "4.10.0", "paddleocr": "3.7.0"}
     modules = {name: SimpleNamespace(__version__=version) for name, version in versions.items()}
+    modules["cv2"].setNumThreads = lambda count: thread_calls.append(count)
+    modules["cv2"].getNumThreads = lambda: next(observed_threads)
     modules["paddleocr"].PaddleOCR = construct
     monkeypatch.setattr(environment.importlib, "import_module", lambda name: modules[name])
     monkeypatch.setattr(environment, "_loaded_native", lambda: [])
-    assert environment._paddle(tmp_path)["model_sets"] == ["small_det", "small_rec"]
+    if threads != (1, 1):
+        with rejected("candidate_resource_invalid"):
+            environment._paddle(tmp_path)
+        assert thread_calls == [1]
+        assert calls == [] if threads == (4,) else calls[-1] == "closed"
+        return
+    result = environment._paddle(tmp_path)
+    assert result["model_sets"] == ["small_det", "small_rec"]
+    assert result["opencv_threads"] == 1 and thread_calls == [1]
     assert calls[-1] == "closed"
     assert calls[0]["device"] == "cpu" and calls[0]["cpu_threads"] == 1
     assert calls[0]["text_detection_model_dir"] == str(tmp_path / "models/det")
