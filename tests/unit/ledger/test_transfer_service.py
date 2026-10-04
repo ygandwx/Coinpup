@@ -120,13 +120,13 @@ def transfer_rows():
     asset = SimpleNamespace(
         code="BTC", kind="native", scale=8, network="bitcoin", token_reference=None, enabled=False
     )
-    session = SimpleNamespace(get=lambda _model, _identifier: asset)
-    return session, operation, journal, source, destination
+    assets = {"BTC": asset}
+    return assets, operation, journal, source, destination
 
 
 def test_transfer_reader_derives_accounts_by_sign_not_row_order():
-    session, operation, journal, source, destination = transfer_rows()
-    result = PostingReaders._read_transfer(session, operation, journal, [destination, source])
+    assets, operation, journal, source, destination = transfer_rows()
+    result = PostingReaders._read_transfer(assets, operation, journal, [destination, source])
     assert isinstance(result, TransferResponse)
     assert result.source_account_id == source.account_id
     assert result.destination_account_id == destination.account_id
@@ -145,10 +145,11 @@ def test_transfer_reader_derives_accounts_by_sign_not_row_order():
         "both_positive",
         "precision",
         "wrong_date",
+        "missing_asset",
     ],
 )
 def test_transfer_reader_rejects_corrupted_shapes(corruption):
-    session, operation, journal, source, destination = transfer_rows()
+    assets, operation, journal, source, destination = transfer_rows()
     if corruption == "same_account":
         destination.account_id = source.account_id
     elif corruption == "other_asset":
@@ -161,10 +162,12 @@ def test_transfer_reader_rejects_corrupted_shapes(corruption):
         source.amount = destination.amount
     elif corruption == "precision":
         destination.amount = Decimal("0.123456789")
+    elif corruption == "missing_asset":
+        assets.clear()
     else:
         journal.recognition_date = date(2026, 1, 1)
     with pytest.raises(LedgerError) as error:
-        PostingReaders._read_transfer(session, operation, journal, [source, destination])
+        PostingReaders._read_transfer(assets, operation, journal, [source, destination])
     assert (error.value.code, error.value.status) == ("ledger_integrity", 503)
 
 

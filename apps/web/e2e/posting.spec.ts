@@ -149,6 +149,49 @@ async function quantities(page: Page, entity: Entity): Promise<Record<string, st
     );
 }
 
+test("transactions use transaction dates while the API keeps its creation-order default", async ({
+    page,
+}) => {
+    await login(page);
+    const entity = await ledger(page);
+    const wallet = await account(page, entity, "cash", ["USD"]);
+    const category = (await api<Category[]>(page, "GET", path(entity, "/categories"))).find(
+        (item) => item.kind === "income",
+    )!;
+    const receipts: FinancialResponse[] = [];
+    for (const transaction_date of ["2026-10-03", "2026-09-01"]) {
+        receipts.push(
+            await api<FinancialResponse>(page, "POST", path(entity, "/income"), {
+                account_id: wallet.id,
+                asset_id: "USD",
+                amount: "1.00",
+                transaction_date,
+                recognition_date: transaction_date,
+                description: "Fictional date-order browser fixture",
+                splits: [{ category_id: category.id, amount: "1.00" }],
+            }),
+        );
+    }
+    expect((await operations(page, entity)).map((item) => item.id)).toEqual([
+        receipts[1].id,
+        receipts[0].id,
+    ]);
+    await openLedger(page, entity);
+    const cards = page.locator(".operation-card");
+    for (const width of [1440, 375, 320]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await expect(cards).toHaveCount(2);
+        await expect(cards.nth(0)).toHaveAttribute("data-testid", `operation-${receipts[0].id}`);
+        await expect(cards.nth(1)).toHaveAttribute("data-testid", `operation-${receipts[1].id}`);
+        await expectNoOverflow(page);
+    }
+    await page.getByRole("button", { name: "中文", exact: true }).click();
+    await expect(cards.nth(0)).toContainText("收入");
+    await expect(cards.nth(0)).toHaveAttribute("data-testid", `operation-${receipts[0].id}`);
+    await expect(cards.nth(1)).toHaveAttribute("data-testid", `operation-${receipts[1].id}`);
+    await expectNoOverflow(page);
+});
+
 test("real opening positions and split income and expense retain original quantities and dates", async ({
     page,
 }) => {

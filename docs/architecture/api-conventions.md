@@ -37,6 +37,7 @@
 
 - 有界列表返回数组，`limit` 为 1–200、默认 100，`offset` 为 0–100000、默认 0。采用各接口规定的稳定排序，历史按版本升序；一页未见不代表记录不存在，这些参数不是增量同步游标。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 是否包含归档/停用项由接口参数控制，默认值以 OpenAPI 为准；财务列表默认保留全部状态，可显式筛选 active、cancelled 或 all。文件目录和流水证据列表分别分页，不能用一页目录判定关联原件不存在。来源：[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
+- 流水列表 `order` 默认 `created_at`，按创建时间、业务 ID 倒序；可选 `transaction_date` 按当前入账凭证的交易日、创建时间、业务 ID 倒序。`from_date` 和 `to_date` 使用严格 `YYYY-MM-DD`，按同一当前凭证的交易日作闭区间筛选；反向区间返回 422。已取消业务仍使用最后一张入账凭证的交易日。网页显式选择交易日排序，不改变 API 的默认响应。
 
 ## 错误与客户端处理
 

@@ -1,6 +1,7 @@
 """Financial HTTP boundaries must preserve exact commands and session ownership."""
 
 import json
+from datetime import date
 from uuid import UUID
 
 import pytest
@@ -280,12 +281,143 @@ def test_current_state_and_history_queries_keep_filter_and_pagination(signed_in,
     monkeypatch.setattr(PostingService, "list_operations", records)
     monkeypatch.setattr(PostingService, "history", history)
     assert signed_in.get(LEDGER + "/operations").json() == []
-    assert calls[-1] == (OWNER, UUID(RECORD), {"limit": 100, "offset": 0, "status": "all"})
+    assert calls[-1] == (
+        OWNER,
+        UUID(RECORD),
+        {
+            "limit": 100,
+            "offset": 0,
+            "status": "all",
+            "order": "created_at",
+            "from_date": None,
+            "to_date": None,
+        },
+    )
     assert signed_in.get(LEDGER + "/operations?status=cancelled&limit=2&offset=1").json() == []
-    assert calls[-1] == (OWNER, UUID(RECORD), {"limit": 2, "offset": 1, "status": "cancelled"})
+    assert calls[-1] == (
+        OWNER,
+        UUID(RECORD),
+        {
+            "limit": 2,
+            "offset": 1,
+            "status": "cancelled",
+            "order": "created_at",
+            "from_date": None,
+            "to_date": None,
+        },
+    )
     assert signed_in.get(LEDGER + "/operations?status=unknown").status_code == 422
     assert signed_in.get(LEDGER + f"/operations/{RECORD}/history?limit=2&offset=1").json() == []
     assert calls[-1] == (OWNER, UUID(RECORD), UUID(RECORD), {"limit": 2, "offset": 1})
+
+
+@pytest.mark.parametrize("order", ["created_at", "transaction_date"])
+def test_current_state_query_forwards_date_order_bounds_and_existing_scope(
+    signed_in, monkeypatch, order
+):
+    calls = []
+
+    def records(self, owner_id, ledger_id, **kwargs):
+        calls.append((owner_id, ledger_id, kwargs))
+        return []
+
+    monkeypatch.setattr(PostingService, "list_operations", records)
+    response = signed_in.get(
+        LEDGER + "/operations",
+        params={
+            "order": order,
+            "from_date": "2026-01-02",
+            "to_date": "2026-03-04",
+            "status": "active",
+            "limit": 2,
+            "offset": 3,
+        },
+    )
+    assert response.status_code == 200 and response.json() == []
+    assert calls == [
+        (
+            OWNER,
+            UUID(RECORD),
+            {
+                "limit": 2,
+                "offset": 3,
+                "status": "active",
+                "order": order,
+                "from_date": date(2026, 1, 2),
+                "to_date": date(2026, 3, 4),
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("parameter", ["from_date", "to_date"])
+def test_current_state_query_allows_independent_date_bounds(signed_in, monkeypatch, parameter):
+    calls = []
+
+    def records(self, owner_id, ledger_id, **kwargs):
+        calls.append((owner_id, ledger_id, kwargs))
+        return []
+
+    monkeypatch.setattr(PostingService, "list_operations", records)
+    response = signed_in.get(LEDGER + "/operations", params={parameter: "2026-01-02"})
+    assert response.status_code == 200 and response.json() == []
+    owner, ledger, options = calls[0]
+    assert (owner, ledger) == (OWNER, UUID(RECORD))
+    assert options[parameter] == date(2026, 1, 2)
+    other_bound = "to_date" if parameter == "from_date" else "from_date"
+    assert options.get(other_bound) is None
+    assert options["limit"] == 100 and options["offset"] == 0 and options["status"] == "all"
+
+
+def test_current_state_query_accepts_a_single_day_closed_interval(signed_in, monkeypatch):
+    calls = []
+
+    def records(self, owner_id, ledger_id, **kwargs):
+        calls.append(kwargs)
+        return []
+
+    monkeypatch.setattr(PostingService, "list_operations", records)
+    response = signed_in.get(
+        LEDGER + "/operations", params={"from_date": "2026-01-02", "to_date": "2026-01-02"}
+    )
+    assert response.status_code == 200 and response.json() == []
+    assert calls[0]["from_date"] == calls[0]["to_date"] == date(2026, 1, 2)
+
+
+def test_current_state_query_rejects_reversed_date_interval(signed_in):
+    response = signed_in.get(
+        LEDGER + "/operations", params={"from_date": "2026-01-03", "to_date": "2026-01-02"}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "invalid_date_range"
+
+
+@pytest.mark.parametrize("order", ["unknown", "recognition_date", "CREATED_AT", "", " created_at"])
+def test_current_state_query_rejects_unknown_order_before_service(signed_in, monkeypatch, order):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid order reached financial service")
+
+    monkeypatch.setattr(PostingService, "list_operations", forbidden)
+    response = signed_in.get(LEDGER + "/operations", params={"order": order})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", "order"]
+
+
+@pytest.mark.parametrize("parameter", ["from_date", "to_date"])
+@pytest.mark.parametrize(
+    "invalid_date",
+    ["2026-02-30", "2026-13-01", "20260102", "2026-1-2", "2026-01-02T00:00:00Z", "0", ""],
+)
+def test_current_state_query_rejects_non_calendar_dates_before_service(
+    signed_in, monkeypatch, parameter, invalid_date
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid calendar date reached financial service")
+
+    monkeypatch.setattr(PostingService, "list_operations", forbidden)
+    response = signed_in.get(LEDGER + "/operations", params={parameter: invalid_date})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", parameter]
 
 
 @pytest.mark.parametrize("error_type,status", [(IntegrityError, 409), (OperationalError, 503)])

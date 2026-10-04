@@ -5,10 +5,33 @@ from datetime import date, datetime
 from typing import Annotated, ClassVar, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StrictStr, field_validator, model_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    StrictStr,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from coinpup_api.ledger.money import MAX_AMOUNT_STRING_LENGTH
 from coinpup_api.ledger.schemas import AssetId, Command, Version
+
+
+def validate_calendar_date_input(value):
+    if type(value) is date:
+        return value
+    if isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            pass
+    raise ValueError("Use a calendar date in YYYY-MM-DD format")
+
+
+CalendarDateFilter = Annotated[date, BeforeValidator(validate_calendar_date_input)]
+
 
 QuantityText = Annotated[
     StrictStr,
