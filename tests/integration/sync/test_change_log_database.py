@@ -470,8 +470,9 @@ def test_real_chain_downgrade_refuses_published_changes_without_altering_history
     before = log_rows(engine)
     with engine.connect() as connection:
         head = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        triggers = connection.exec_driver_sql(
-            "SELECT tgname FROM pg_trigger WHERE tgname LIKE 'trg_%_change_log' ORDER BY tgname"
+        triggers = connection.execute(
+            text("SELECT tgname FROM pg_trigger WHERE tgname LIKE :pattern ORDER BY tgname"),
+            {"pattern": "trg_%_change_log"},
         ).all()
     with pytest.raises(IntegrityError) as rejected:
         command.downgrade(Config(str(ROOT / "alembic.ini")), "20261004_0011")
@@ -481,8 +482,9 @@ def test_real_chain_downgrade_refuses_published_changes_without_altering_history
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == head
         assert (
-            connection.exec_driver_sql(
-                "SELECT tgname FROM pg_trigger WHERE tgname LIKE 'trg_%_change_log' ORDER BY tgname"
+            connection.execute(
+                text("SELECT tgname FROM pg_trigger WHERE tgname LIKE :pattern ORDER BY tgname"),
+                {"pattern": "trg_%_change_log"},
             ).all()
             == triggers
         )
