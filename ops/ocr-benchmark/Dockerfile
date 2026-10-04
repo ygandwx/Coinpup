@@ -43,7 +43,7 @@ RUN --network=none cmake -S /build/sources/tesseract -B /build/tesseract -G Ninj
     -DCMAKE_PREFIX_PATH=/opt/tesseract -DCMAKE_INSTALL_RPATH=/opt/tesseract/lib \
     -DBUILD_SHARED_LIBS=ON -DBUILD_TRAINING_TOOLS=OFF -DBUILD_TESTS=OFF -DOPENMP_BUILD=OFF \
     -DGRAPHICS_DISABLED=ON -DDISABLED_LEGACY_ENGINE=ON -DENABLE_NATIVE=OFF -DENABLE_LTO=OFF \
-    -DDISABLE_CURL=ON -DDISABLE_ARCHIVE=ON -DDISABLE_TIFF=ON -DENABLE_CCACHE=OFF \
+    -DDISABLE_CURL=ON -DDISABLE_ARCHIVE=ON -DDISABLE_TIFF=ON -DENABLE_CCACHE=OFF -DENABLE_NINJA_POOL=OFF \
     && cmake --build /build/tesseract --parallel 2 && cmake --install /build/tesseract \
     && python ops/ocr-benchmark/build_inputs.py record --sources-dir /build/sources --lept-build /build/leptonica --tess-build /build/tesseract --output-dir /opt/environment-build/tesseract
 
