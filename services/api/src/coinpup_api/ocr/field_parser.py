@@ -216,6 +216,29 @@ def _columns(words):
     return result
 
 
+def _literal_columns(words):
+    """Recognize delimiters in one genuine source box, without inventing column positions."""
+    if len(words) != 1 or "|" not in words[0].text:
+        return None
+    roles = [_ROLES.get(_label(cell)) for cell in words[0].text.split("|")]
+    roles = ["date" if role == "document_date" else role for role in roles]
+    allowed = {"date", "currency", "amount", "description"}
+    if (
+        all(role in allowed for role in roles)
+        and {"date", "currency", "amount"} <= set(roles)
+        and len(set(roles)) == len(roles)
+    ):
+        return roles
+    # An incomplete or conflicting visible header must not reuse a previous table's roles.
+    return [] if sum(role in allowed for role in roles) >= 2 else None
+
+
+def _same_literal_table(table, roles, box, width):
+    return table["literal"] == roles and all(
+        abs(box[index] - table["header_box"][index]) <= width / 100 for index in (0, 2)
+    )
+
+
 def _marker(text):
     compact = re.sub(r"\s+", "", text).casefold()
     patterns = (
@@ -286,16 +309,25 @@ class _Parser:
             if new_marker:
                 marker, active = new_marker, False
                 continue
-            columns = _columns(words)
-            if columns:
+            literal = _literal_columns(words)
+            if literal == []:
+                active = False
+                self.diagnostic("ambiguous_layout")
+                continue
+            columns = _columns(words) if literal is None else None
+            if columns or literal:
                 same = (
                     table is not None
+                    and literal is None
+                    and table["literal"] is None
                     and len(columns) == len(table["columns"])
                     and all(
                         left[0] == right[0] and abs(left[1] - right[1]) <= page.width / 100
                         for left, right in zip(columns, table["columns"], strict=True)
                     )
                 )
+                if table is not None and literal is not None:
+                    same = _same_literal_table(table, literal, box, page.width)
                 continuation = (
                     same
                     and marker
@@ -304,10 +336,10 @@ class _Parser:
                     and "conflicting_field" not in self.diagnostics
                 )
                 if not continuation:
-                    table = {"index": count, "row": 0, "columns": columns}
+                    table = {"index": count, "row": 0, "columns": columns, "literal": literal}
                     count += 1
                     _bound(count, self.limits.max_tables)
-                table.update(marker=marker, box=box)
+                table.update(marker=marker, box=box, header_box=box)
                 active = True
                 continue
             header = _header(words)
@@ -321,6 +353,10 @@ class _Parser:
             if box[1] - table["box"][3] > 2 * (table["box"][3] - table["box"][1]):
                 active = False
                 self.diagnostic("ambiguous_layout")
+                continue
+            if table["literal"] is not None:
+                self.literal_row(words, table, page_index)
+                table.update(row=table["row"] + 1, box=box)
                 continue
             cells = {role: [] for role, _ in table["columns"]}
             centers = [position for _, position in table["columns"]]
@@ -359,6 +395,30 @@ class _Parser:
                     ambiguous=ambiguous,
                 )
             table.update(row=table["row"] + 1, box=box)
+
+    def literal_row(self, words, table, page_index):
+        raw = _text(words)
+        parts = raw.split("|")
+        valid_shape = len(words) == 1 and len(parts) == len(table["literal"])
+        cells = dict(zip(table["literal"], parts, strict=True)) if valid_shape else {}
+        self.rows.append(
+            {
+                "page": page_index,
+                "table": table["index"],
+                "row": table["row"],
+                "description": cells.get("description", "").strip(),
+            }
+        )
+        _bound(len(self.rows), self.limits.max_rows)
+        for role in ("date", "currency", "amount"):
+            self.field(
+                f"rows.{page_index}.{table['index']}.{table['row']}.{role}",
+                role,
+                cells.get(role, raw),
+                words,
+                page_index,
+                ambiguous=not valid_shape,
+            )
 
     def arithmetic(self):
         certain = {
