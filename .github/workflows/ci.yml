@@ -157,6 +157,25 @@ jobs:
             ops/ocr-benchmark/bootstrap.lock
       - name: Install host test tools only
         run: python -m pip install -r requirements-dev.lock
+      - name: Verify actual host facts before engine work
+        run: |
+          python - <<'PY'
+          import json, re
+          from scripts.ocr_benchmark.formal_freeze import PROC_ROOT, OS_RELEASE, _bytes, host_facts
+          for name, path in (("cpu", PROC_ROOT / "cpuinfo"), ("memory", PROC_ROOT / "meminfo"), ("os", OS_RELEASE.resolve(strict=True)), ("boot", PROC_ROOT / "sys/kernel/random/boot_id")):
+              try:
+                  raw = _bytes(path)
+                  evidence = {"stage": name, "bytes": len(raw)}
+                  if name == "cpu":
+                      evidence["models"] = re.findall(r"^model name\s*:\s*(.+)$", raw.decode("utf8"), flags=re.MULTILINE)
+                  elif name == "memory":
+                      evidence["totals"] = re.findall(r"^MemTotal:\s+([0-9]+) kB$", raw.decode("ascii"), flags=re.MULTILINE)
+                  print("OCR_HOST_INPUT_V1=" + json.dumps(evidence), flush=True)
+              except Exception as error:
+                  print("OCR_HOST_INPUT_V1=" + json.dumps({"stage": name, "exception": type(error).__name__, "errno": getattr(error, "errno", None)}), flush=True)
+                  raise
+          print("OCR_HOST_FACTS_V1=" + json.dumps(host_facts()), flush=True)
+          PY
       - name: Reuse fixed inputs, always verify restored bytes
         uses: actions/cache@v4
         with:
