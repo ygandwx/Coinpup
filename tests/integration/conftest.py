@@ -17,8 +17,40 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 
+def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
+    """Assert current registration; repair only the known isolated 0008 table round trip."""
+    with engine.begin() as connection:
+        if connection.exec_driver_sql("SELECT to_regclass('public.change_log')").scalar() is None:
+            return
+        migration = runpy.run_path(
+            str(
+                Path(__file__).resolve().parents[2]
+                / "services/api/migrations/versions/20261004_0012_ordered_change_log.py"
+            )
+        )
+        definitions = migration["_CHANGE_TRIGGER_SQL"]
+        registered = dict(
+            connection.exec_driver_sql(
+                "SELECT trigger.tgname, relation.relname FROM pg_trigger trigger "
+                "JOIN pg_class relation ON relation.oid = trigger.tgrelid "
+                "JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace "
+                "WHERE namespace.nspname = 'public' AND NOT trigger.tgisinternal"
+            ).all()
+        )
+        for table, definition in definitions.items():
+            name = f"trg_{table}_change_log"
+            if (
+                name not in registered
+                and repair_recreated_file_tables
+                and table in {"stored_files", "operation_file_links"}
+            ):
+                connection.exec_driver_sql(definition)
+                registered[name] = table
+            assert registered.get(name) == table, f"Missing change-log registration for {table}"
+
+
 @pytest.fixture
-def structure_database():
+def structure_database(request):
     if os.environ.get("COINPUP_RUN_DB_TESTS") != "1":
         pytest.skip("Requires an explicitly configured disposable PostgreSQL database")
     url = os.environ.get("COINPUP_DATABASE_URL")
@@ -31,7 +63,7 @@ def structure_database():
             # Only this explicitly opted-in disposable fixture may truncate immutable journals.
             # RESTRICT rejects unexpected dependants; production utilities never do this.
             connection.exec_driver_sql(
-                "TRUNCATE TABLE file_uploads, operation_file_links, stored_files, "
+                "TRUNCATE TABLE change_log, file_uploads, operation_file_links, stored_files, "
                 "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations RESTRICT"
             )
@@ -47,6 +79,9 @@ def structure_database():
             connection.execute(delete(Entity))
             connection.execute(delete(AssetRecord).where(AssetRecord.asset_id.not_in(list(ASSETS))))
             connection.execute(update(AssetRecord).values(enabled=True, version=1))
+            # Resetting builtin assets creates events while the fixture owner still exists.
+            # This explicitly disposable cleanup must remove them before deleting that owner.
+            connection.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             connection.execute(delete(AuthSession))
             connection.execute(delete(Administrator))
             connection.execute(
@@ -56,12 +91,18 @@ def structure_database():
             )
 
     try:
+        change_trigger_registration(database.engine)
         cleanup()
         owner = create_admin(
             database.engine, "structure-test-admin", "fictional-structure-password-2026"
         )
         yield database.engine, owner
     finally:
+        file_round_trip = (
+            request.node.name == "test_empty_documents_migration_round_trip"
+            and request.node.path == Path(__file__).parent / "files/test_files_schema.py"
+        )
+        change_trigger_registration(database.engine, repair_recreated_file_tables=file_round_trip)
         cleanup()
         database.close()
 

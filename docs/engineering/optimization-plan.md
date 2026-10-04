@@ -81,7 +81,7 @@
 | OPT-12 | 流水列表批量读取与按日期浏览 | B | OPT-07、OPT-11 | 已完成 | [#40](https://github.com/ygandwx/Coinpup/pull/40) |
 | OPT-20 | 幂等摘要 v2 | C 结构性改进 | OPT-08 | 已完成 | #38 |
 | OPT-21 | 数据库形状校验按业务类型分发 | C | OPT-08 | 已完成 | [#41](https://github.com/ygandwx/Coinpup/pull/41) |
-| OPT-22 | 变更日志与同步游标 | C | OPT-08 | 待开始 | |
+| OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
 | OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 待开始 | |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
 | OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 待开始 | |
@@ -466,18 +466,20 @@ Coinpup/
 - **依据**：需求 P-08 要求在第一阶段就保留“修改游标及删除标记”，但目前仓库中没有全局递增的变更序号。T05-3 以后还会陆续新增任务、草稿、经营单据等十几张表，先建立统一机制，就不用以后逐表补做。
 - **方案**：先写 ADR。这是技术决定，不需要用户确认。
   - **新表 `change_log`**：字段为 `seq bigint identity`、`owner_id`、`ledger_id`（全局对象可以为空）、`entity_type`、`entity_id`、`entity_version`、`change_kind`（`upsert`/`archive`/`restore`/`cancel`）、`changed_at`。只能追加，禁止 UPDATE/DELETE，沿用现有封存触发器的写法。
-  - **由 AFTER INSERT/UPDATE 触发器写入**，保证不会漏写。覆盖的表：`entities`、`ledgers`、`accounts`、`account_assets`、`categories`、`assets`、`financial_operations`、`stored_files`、`operation_file_links`。
+  - **由 AFTER INSERT/UPDATE 触发器写入**，保证不会漏写。覆盖的表：`entities`、`ledgers`、`accounts`、`account_assets`、`categories`、`assets`、`financial_operations`、`stored_files`、`operation_file_links`。现有资产使用文本 ID；account_assets 无独立 ID/版本，使用稳定 `account_uuid:asset_id` 和触发时父账户版本并要求重读父账户，不改其已有列。管理员建立前的全局资产种子由首次全量读取覆盖。
   - **提交顺序陷阱（必须处理）**：序列号按分配顺序可见，而不是按提交顺序。比如事务 T1 拿到 seq=10，T2 拿到 seq=11；T2 先提交，客户端读到 11 后把游标推进到 11；T1 随后才提交，seq=10 就永远不会被读到。二选一：
-    - **推荐（简单）**：写变更前先获取 `pg_advisory_xact_lock(<所有者常量键>)`，让写事务按提交顺序拿到序列号。单用户场景下这个代价可以忽略。服务层在每个写事务开始时、在获取任何业务锁之前先取这把锁，触发器里再取一次作为保险（同一会话可以重入）。
+    - **推荐（简单）**：写变更前先获取 `pg_advisory_xact_lock(<所有者常量键>)`，让写事务按提交顺序拿到序列号。单用户场景下这个代价可以忽略。服务层在每个写事务开始时、在获取任何业务锁之前先取这把锁，业务触发器里在 INSERT 日志、identity 分配之前再取一次作为保险（同一会话可以重入）；不依赖日志 BEFORE INSERT 触发器在默认值计算之后才取锁，并拒绝直接注入日志。只读路径不获取写锁。
     - **无锁方案**：记录 `pg_current_xact_id()`（xid8）；读取时只返回 `txid < pg_snapshot_xmin(pg_current_snapshot())` 的行，游标改为 `(txid, seq)`，并按这个顺序分页。
-  - **读取接口**：`GET /api/v1/changes?after=<cursor>&limit=`，返回变更行和新的游标。首次同步时，先用现有列表接口取全量数据，再从当时的游标开始增量同步。
+  - **读取接口**：`GET /api/v1/changes?after=<cursor>&limit=`，返回变更行和新的游标；seq/游标为十进制字符串，非空页只推进至最后交付的序号，空页保留原游标。**首次同步先取得起始游标，再用现有列表分页取全量数据，最后从该游标增量重放**，允许对象重复读取；原计划先全量后取游标的写法可能遗漏扫描期间发生的变化，按不漏读目标保守修订。
   - **删除标记**：系统不做物理删除。归档和取消就是 tombstone，由 `change_kind` 表达。
-  - `change_log` 要纳入备份 bundle，恢复后游标继续有效。
+  - `change_log` 与 identity 状态要纳入备份 bundle，恢复快照包含的游标继续有效。PostgreSQL 序列不是 MVCC 数据，导出期间写入可使序列值领先于快照日志；验收恢复值不低于可见日志最大序号、新写入超过恢复序列值，不要求它等于快照行的最大值。已有日志时拒绝降级，避免丢弃已发布游标。
 - **测试**：
   - 并发乱序提交时不漏读（用两个连接构造“先分配、后提交”的场景）；
   - 每张受跟踪的表在插入和更新时都会产生变更行；
   - 游标分页既不重复也不遗漏；
   - 恢复后可以继续增量同步。
+  - 原约束测试保持不变。既有单独执行 0008 文件表往返的测试会重建表并丢失后加的日志触发器；只在该一次性测试收尾按本包冻结 DDL 恢复两张表的日志触发器。正常测试初始化须断言九表触发器已完整安装，不能用通用自动修复掩盖部署缺漏。
+  - 既有 0009 v2 回执降级保护测试改为单独执行冻结的 0009 downgrade，保留原断言及财务历史快照；新的非空日志保护会在整链降级时先拒绝，不能因此绕过它。整链空库往返及本包非空拒绝另行验收。
 - **验收**：测试通过；ADR 已合入；`services/api/AGENTS.md` 已加入“新业务表必须接入变更日志”的规则。
 
 ### OPT-23 🛑 资产负债类账户与维度（T06/T07 的前置）

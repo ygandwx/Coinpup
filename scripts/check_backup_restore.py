@@ -37,6 +37,65 @@ def snapshot(target):
         }
 
 
+def change_state(engine, owner_id):
+    """Read every delivered page, including its exact decimal cursor."""
+    from coinpup_api.sync.service import ChangeService
+
+    service, records, cursor = ChangeService(engine), [], "0"
+    while True:
+        page = service.list_changes(owner_id, after=cursor, limit=200)
+        if not page.changes:
+            if page.next_cursor != cursor:
+                raise ArchiveError("An empty change page advanced the saved cursor.")
+            return records, cursor
+        records.extend(record.model_dump(mode="json") for record in page.changes)
+        cursor = page.next_cursor
+
+
+def change_sequence_state(target):
+    """Identity is non-MVCC; compare its real state separately from visible rows."""
+    with target.connect() as connection:
+        sequence = connection.execute(
+            "SELECT pg_get_serial_sequence('public.change_log', 'seq')"
+        ).fetchone()[0]
+        if sequence is None:
+            raise ArchiveError("Restored change log has no identity sequence.")
+        # PostgreSQL generated these identifiers; still quote each part independently.
+        return connection.execute(
+            sql.SQL("SELECT last_value, is_called FROM {}").format(
+                sql.Identifier(*sequence.split("."))
+            )
+        ).fetchone()
+
+
+def verify_change_continuation(engine, target, owner_id, ledger_id, expected):
+    """After old restore assertions, make one real write only in the isolated target."""
+    from coinpup_api.ledger.schemas import CategoryCreate
+    from coinpup_api.ledger.service import LedgerService
+    from coinpup_api.sync.service import ChangeService
+
+    if change_state(engine, owner_id) != expected:
+        raise ArchiveError("Restored change pages or saved cursor differ from their snapshot.")
+    last_value, _called = change_sequence_state(target)
+    visible_max = int(expected[1])
+    if last_value < visible_max:
+        raise ArchiveError("Restored identity is below a published change cursor.")
+    category = LedgerService(engine).create_category(
+        owner_id,
+        ledger_id,
+        CategoryCreate(name="Fictional restored cursor continuation", kind="expense"),
+    )
+    page = ChangeService(engine).list_changes(owner_id, after=expected[1])
+    if (
+        len(page.changes) != 1
+        or page.changes[0].entity_type != "categories"
+        or page.changes[0].entity_id != str(category.id)
+        or int(page.changes[0].seq) <= max(last_value, visible_max)
+        or page.next_cursor != page.changes[0].seq
+    ):
+        raise ArchiveError("A restored target did not continue above its saved identity/cursor.")
+
+
 def create_structure_fixture(engine, owner_id):
     """Seed only explicitly fictional data through the same commands used by the API."""
     from coinpup_api.ledger.schemas import (
@@ -931,6 +990,8 @@ def check_backup_restore():
         structure = create_structure_fixture(source_engine, administrator_id)
         financial = create_financial_fixture(source_engine, administrator_id, structure)
         expected_structure = structure_state(source_engine, administrator_id)
+        expected_changes = change_state(source_engine, administrator_id)
+        expected_sequence = change_sequence_state(source)
         source_engine.dispose()
         before = snapshot(source)
         required_tables = {
@@ -945,6 +1006,7 @@ def check_backup_restore():
             "journal_lines",
             "opening_positions",
             "command_receipts",
+            "change_log",
         }
         if any(not before.get(table) for table in required_tables):
             raise ArchiveError(
@@ -1028,6 +1090,17 @@ def check_backup_restore():
         verify_restored_revisions(target_engine, administrator_id, financial["revisions"])
         if before != snapshot(target) or before != snapshot(source):
             raise ArchiveError("Replay or rejected journal append changed restored/source data.")
+        if change_sequence_state(target) != expected_sequence:
+            raise ArchiveError("Database restore changed the exact identity sequence state.")
+        verify_change_continuation(
+            target_engine,
+            target,
+            administrator_id,
+            structure["personal"].ledger.id,
+            expected_changes,
+        )
+        if snapshot(source) != before:
+            raise ArchiveError("Restored cursor continuation changed the source database.")
         print("Backup/restore verified: all application tables and migration rows match exactly.")
         print("Sessions, owned ledgers, multi-asset accounts, categories and archives resolve.")
         print(
@@ -1039,6 +1112,9 @@ def check_backup_restore():
             "Corrections/cancellations preserve exact reversals, version history and old receipts."
         )
         print("Test databases retained; no DROP ran.")
+        print(
+            "Change pages and identity restored; saved cursors continue after a real target write."
+        )
     finally:
         source_engine.dispose()
         target_engine.dispose()

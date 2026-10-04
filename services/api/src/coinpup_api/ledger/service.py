@@ -30,6 +30,7 @@ from coinpup_api.ledger.schemas import (
 )
 from coinpup_api.ledger.templates import TEMPLATES, get_templates
 from coinpup_api.models import Administrator
+from coinpup_api.sync.locking import acquire_write_lock
 
 
 class LedgerError(Exception):
@@ -73,7 +74,7 @@ class LedgerService:
         return self.engine
 
     @contextmanager
-    def _transaction(self, owner_id, *, read_only=False):
+    def _transaction(self, owner_id, *, read_only=False, write=False):
         try:
             with Session(self.require_engine()) as session, session.begin():
                 if read_only:
@@ -81,6 +82,9 @@ class LedgerService:
                     session.execute(
                         text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                     )
+                if write:
+                    # Order cursor allocation before the owner lookup or any business row lock.
+                    acquire_write_lock(session)
                 # A service caller cannot bypass authentication by providing an unknown owner.
                 if session.get(Administrator, owner_id) is None:
                     raise _not_found()
@@ -162,14 +166,14 @@ class LedgerService:
             definition = AssetDefinition(**payload.model_dump())
         except MoneyError as error:
             raise LedgerError(error.code, 422, "Asset identity or precision is invalid.") from None
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             record = AssetRecord(asset_id=definition.asset_id, **payload.model_dump())
             session.add(record)
             session.flush()
             return AssetResponse.model_validate(record)
 
     def update_asset(self, owner_id, asset_id, payload: AssetUpdate) -> AssetResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             record = session.scalar(
                 select(AssetRecord).where(AssetRecord.asset_id == asset_id).with_for_update()
             )
@@ -222,7 +226,7 @@ class LedgerService:
             return LedgerResponse.model_validate(ledger)
 
     def create_entity(self, owner_id, payload: EntityCreate) -> EntityResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             asset = self._assets(session, [payload.base_asset_id])[0]
             if asset.kind != "fiat":
                 raise LedgerError("invalid_base_asset", 422, "A ledger base asset must be fiat.")
@@ -260,7 +264,7 @@ class LedgerService:
             return self._entity_response(entity, ledger)
 
     def update_entity(self, owner_id, entity_id, payload: EntityUpdate) -> EntityResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             # Every ledger mutation acquires ledger then entity, including archive/unarchive.
             ledger = session.scalar(
                 select(Ledger)
@@ -326,7 +330,7 @@ class LedgerService:
                 )
 
     def create_account(self, owner_id, ledger_id, payload: AccountCreate) -> AccountResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             account = Account(
                 id=payload.id or uuid4(),
@@ -340,7 +344,7 @@ class LedgerService:
             return self._account_response(session, account)
 
     def update_account(self, owner_id, ledger_id, account_id, payload: AccountUpdate):
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             account = session.scalar(
                 select(Account).where(Account.id == account_id, Account.ledger_id == ledger_id)
@@ -388,7 +392,7 @@ class LedgerService:
             raise LedgerError("parent_archived", 409, "Restore the parent category before use.")
 
     def create_category(self, owner_id, ledger_id, payload: CategoryCreate) -> CategoryResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             self._parent(session, ledger_id, payload.parent_id, payload.kind)
             category = Category(
@@ -399,7 +403,7 @@ class LedgerService:
             return CategoryResponse.model_validate(category)
 
     def update_category(self, owner_id, ledger_id, category_id, payload: CategoryUpdate):
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             category = session.scalar(
                 select(Category).where(Category.id == category_id, Category.ledger_id == ledger_id)

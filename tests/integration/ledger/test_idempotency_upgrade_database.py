@@ -1,12 +1,15 @@
 """Real pre-version receipts survive upgrades; new receipts hash the original JSON."""
 
 import json
+import runpy
 from pathlib import Path
 from uuid import UUID
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 from coinpup_api.ledger.models import CommandReceipt
 from coinpup_api.ledger.posting_schemas import (
     CorrectionCreate,
@@ -19,6 +22,7 @@ from coinpup_api.ledger.posting_schemas import (
 )
 from coinpup_api.ledger.schemas import AssetUpdate, EntityUpdate
 from coinpup_api.ledger.service import LedgerService
+from coinpup_api.sync.models import ChangeLog
 from pydantic import Field
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
@@ -227,10 +231,23 @@ def test_real_downgrade_rejects_v2_receipts_without_changing_history(
     before, versions = s["snapshot"](engine), receipt_versions(engine)
     with engine.connect() as connection:
         head = connection.scalar(text("SELECT version_num FROM alembic_version"))
+        log = (
+            connection.execute(select(ChangeLog.__table__).order_by(ChangeLog.seq)).mappings().all()
+        )
+    migration = runpy.run_path(
+        str(ROOT / "services/api/migrations/versions/20261004_0009_receipt_hash_versions.py")
+    )
     with pytest.raises(IntegrityError) as rejected:
-        command.downgrade(Config(str(ROOT / "alembic.ini")), "20261003_0008")
+        # Exercise the receipt-version guard itself; newer protected migrations stay installed.
+        with engine.begin() as connection:
+            with Operations.context(MigrationContext.configure(connection)):
+                migration["downgrade"]()
     assert rejected.value.orig.diag.constraint_name == "ck_command_receipts_hash_version_downgrade"
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == head
+        assert (
+            connection.execute(select(ChangeLog.__table__).order_by(ChangeLog.seq)).mappings().all()
+            == log
+        )
     assert s["snapshot"](engine) == before
     assert receipt_versions(engine) == versions and versions["protect-v2-history"] == 2

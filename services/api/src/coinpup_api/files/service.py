@@ -106,7 +106,7 @@ class DocumentService(LedgerService):
                 payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
             ).encode()
         ).hexdigest()
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             entity = self._locked_scope(session, owner_id, ledger_id)
             existing = session.scalar(
                 select(FileUpload).where(
@@ -210,7 +210,7 @@ class DocumentService(LedgerService):
         self, owner_id, ledger_id, upload_id, staged, blob_key=None
     ) -> UploadCompletion:
         """Commit metadata only after the caller has durably published a complete blob."""
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             entity = self._locked_scope(session, owner_id, ledger_id)
             upload = self._record(session, FileUpload, ledger_id, upload_id)
             self._verify_staged(upload, staged)
@@ -287,7 +287,7 @@ class DocumentService(LedgerService):
             ]
 
     def update_file(self, owner_id, ledger_id, file_id, payload: FileUpdate) -> FileResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             _active(self._locked_scope(session, owner_id, ledger_id))
             file = self._record(session, StoredFile, ledger_id, file_id)
             _version(file, payload.expected_version)
@@ -299,7 +299,7 @@ class DocumentService(LedgerService):
             return FileResponse.model_validate(file)
 
     def link_file(self, owner_id, ledger_id, operation_id, file_id) -> LinkResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             _active(self._locked_scope(session, owner_id, ledger_id))
             file = self._record(session, StoredFile, ledger_id, file_id)
             return LinkResponse.model_validate(
@@ -329,7 +329,7 @@ class DocumentService(LedgerService):
     def update_link(
         self, owner_id, ledger_id, operation_id, file_id, payload: LinkUpdate
     ) -> LinkResponse:
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             _active(self._locked_scope(session, owner_id, ledger_id))
             link = session.scalar(
                 select(OperationFileLink).where(

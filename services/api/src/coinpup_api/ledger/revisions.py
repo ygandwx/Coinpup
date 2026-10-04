@@ -176,7 +176,7 @@ class RevisionService(
                 422,
                 "Use 1–128 visible ASCII characters for the command key.",
             )
-        with self._transaction(owner_id) as session:
+        with self._transaction(owner_id, write=True) as session:
             _, entity = self._locked_ledger(session, owner_id, ledger_id)
             receipt = session.get(CommandReceipt, (ledger_id, key))
             hash_version = receipt_hash_version(receipt)
