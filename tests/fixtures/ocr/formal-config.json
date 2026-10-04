@@ -170,8 +170,8 @@
       "sha256": "952b2dce5aa0a4a6faad31ee182f25d3d2cd4e9b1ec0dd646093f0b784906332"
     },
     "scripts/ocr_benchmark/formal_freeze.py": {
-      "byte_size": 15944,
-      "sha256": "b66fc4a7521f194f33471f70cd4aafe2f00fa5e414066dfc267ca7d400f31021"
+      "byte_size": 16165,
+      "sha256": "ebb0e5897491c88a7970cff4347911e203c8ed93a7b6b919c6ea58124adc1e11"
     },
     "scripts/ocr_benchmark/formal_report.py": {
       "byte_size": 15152,

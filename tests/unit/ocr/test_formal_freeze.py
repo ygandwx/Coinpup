@@ -1,7 +1,11 @@
 """Fictional files exercise real hashing/offline verifiers without SDKs or recognition."""
 
+import errno
+import hashlib
 import json
 from copy import deepcopy
+from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -374,3 +378,44 @@ def test_host_release_resolves_fixed_system_link_before_regular_read(host_kernel
     monkeypatch.setattr(freeze, "OS_RELEASE", SimpleNamespace(resolve=resolve))
     assert freeze.host_facts()["os_release"] == release.read_text(encoding="utf8")
     assert calls == [True]
+
+
+@pytest.mark.parametrize("maximum", [0, -1, True, False, freeze.MAX_BYTES + 1, 1.5, None])
+def test_invalid_read_budget_is_rejected_before_file_access(maximum):
+    with pytest.raises(freeze.FormalFreezeError, match="formal_input_invalid"):
+        freeze._bytes(None, maximum=maximum)
+
+
+def test_small_read_budget_rejects_oversize_without_truncation(tmp_path):
+    path = tmp_path / "bounded"
+    path.write_bytes(b"12345")
+    assert freeze._bytes(path, maximum=5) == b"12345"
+    with pytest.raises(freeze.FormalFreezeError, match="formal_input_limit"):
+        freeze._bytes(path, maximum=4)
+
+
+def test_boot_sysctl_small_read_avoids_enomem_and_preserves_raw_hash(host_kernel, monkeypatch):
+    proc, _ = host_kernel
+    boot = proc / "sys/kernel/random/boot_id"
+    original = Path.open
+    data = boot.read_bytes()
+    requested = []
+
+    class Sysctl(BytesIO):
+        def read(self, size=-1):
+            requested.append(size)
+            if size > 129:
+                raise OSError(errno.ENOMEM, "Fictional kernel allocation limit")
+            return super().read(size)
+
+    def open_file(path, *args, **kwargs):
+        return Sysctl(data) if path == boot else original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_file)
+    with pytest.raises(OSError) as old:
+        freeze._identity(boot)
+    assert old.value.errno == errno.ENOMEM
+    assert requested == [freeze.MAX_BYTES + 1]
+    requested.clear()
+    assert freeze.host_facts()["boot_id_sha256"] == hashlib.sha256(data).hexdigest()
+    assert requested == [129]

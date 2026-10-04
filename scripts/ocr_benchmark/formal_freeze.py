@@ -59,12 +59,14 @@ def _fail(reason):
     raise FormalFreezeError(reason)
 
 
-def _bytes(path):
+def _bytes(path, *, maximum=MAX_BYTES):
+    if type(maximum) is not int or not 1 <= maximum <= MAX_BYTES:
+        _fail("formal_input_invalid")
     if path.is_symlink() or path.is_junction() or not path.is_file():
         _fail("formal_input_invalid")
     with path.open("rb") as stream:
-        data = stream.read(MAX_BYTES + 1)
-    if len(data) > MAX_BYTES:
+        data = stream.read(maximum + 1)
+    if len(data) > maximum:
         _fail("formal_input_limit")
     return data
 
@@ -93,7 +95,9 @@ def _canonical(value):
 
 def _json(path):
     try:
-        value = json.loads(_bytes(path), object_pairs_hook=_pairs, parse_constant=_constant)
+        value = json.loads(
+            _bytes(path, maximum=MAX_BYTES), object_pairs_hook=_pairs, parse_constant=_constant
+        )
         _canonical(value)  # Also reject overflowed JSON floats and invalid recursive structures.
         if type(value) is not dict:
             _fail("formal_input_invalid")
@@ -364,7 +368,9 @@ def host_facts():
             "kernel_version": platform.version(),
             "machine": platform.machine(),
             "python": platform.python_version(),
-            "boot_id_sha256": _identity(PROC_ROOT / "sys/kernel/random/boot_id")["sha256"],
+            "boot_id_sha256": hashlib.sha256(
+                _bytes(PROC_ROOT / "sys/kernel/random/boot_id", maximum=128)
+            ).hexdigest(),
         }
     except FormalFreezeError:
         raise

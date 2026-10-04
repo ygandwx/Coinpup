@@ -161,10 +161,10 @@ jobs:
         run: |
           python - <<'PY'
           import json, re
-          from scripts.ocr_benchmark.formal_freeze import PROC_ROOT, OS_RELEASE, _bytes, host_facts
+          from scripts.ocr_benchmark.formal_freeze import MAX_BYTES, PROC_ROOT, OS_RELEASE, _bytes, host_facts
           for name, path in (("cpu", PROC_ROOT / "cpuinfo"), ("memory", PROC_ROOT / "meminfo"), ("os", OS_RELEASE.resolve(strict=True)), ("boot", PROC_ROOT / "sys/kernel/random/boot_id")):
               try:
-                  raw = _bytes(path)
+                  raw = _bytes(path, maximum=128 if name == "boot" else MAX_BYTES)
                   evidence = {"stage": name, "bytes": len(raw)}
                   if name == "cpu":
                       evidence["models"] = re.findall(r"^model name\s*:\s*(.+)$", raw.decode("utf8"), flags=re.MULTILINE)
