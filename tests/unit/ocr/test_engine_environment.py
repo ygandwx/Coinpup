@@ -613,6 +613,25 @@ def test_ldd_context_cannot_hide_unresolved_or_invalid_dependency_files(monkeypa
         assert "/vendored/private.so" not in {item["path"] for item in records}
 
 
+def test_loaded_mapping_names_serialize_in_string_order_with_nested_and_dot_directories(
+    monkeypatch,
+):
+    nested = "/fictional/numpy/_core/module.so"
+    dotted = "/fictional/numpy.libs/runtime.so"
+
+    class MappingPath(PurePosixPath):
+        def resolve(self):
+            return self
+
+        def read_text(self):
+            assert str(self) == "/proc/self/maps"
+            return "\n".join(f"0 0 0 0 0 {path}" for path in (nested, dotted, nested))
+
+    monkeypatch.setattr(environment, "Path", MappingPath)
+    monkeypatch.setattr(environment, "_elf", lambda path: str(path) in (nested, dotted))
+    assert [str(path) for path in environment._loaded_native()] == [dotted, nested]
+
+
 def _fictional_native_context(monkeypatch, inherited, defect=None):
     class AuditPath(PurePosixPath):
         def resolve(self):

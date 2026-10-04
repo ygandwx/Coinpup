@@ -269,7 +269,7 @@ def _loaded_native():
             path = Path(parts[5])
             if _elf(path):
                 paths.append(path.resolve())
-    return sorted(set(paths))
+    return sorted(set(paths), key=str)
 
 
 def _system_inventory():
@@ -573,7 +573,8 @@ def audit_environment(engine, assets_dir, output_dir):
                     directory
                 )
         mapped = sorted(
-            {*mapped, *(Path(path) for path in report["initialization"]["loaded_native"])}
+            {*mapped, *(Path(path) for path in report["initialization"]["loaded_native"])},
+            key=str,
         )
         report["native_search_roots"] = [str(path) for path in mapped]
         report["native"] = _native_inventory([*roots, *mapped], mapped_paths=mapped)
