@@ -19,6 +19,7 @@ from coinpup_api.database import Database, DatabaseProbe
 from coinpup_api.files.router import create_document_router
 from coinpup_api.ledger.posting_router import create_posting_router
 from coinpup_api.ledger.router import create_ledger_router
+from coinpup_api.ocr.router import create_ocr_router
 from coinpup_api.sync.router import create_sync_router
 
 logger = logging.getLogger("coinpup")
@@ -33,6 +34,8 @@ def create_app(
     settings: Settings | None = None,
     database: DatabaseProbe | None = None,
     web_dist: Path | None = None,
+    *,
+    ocr_configuration: dict | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     probe = database if database is not None else Database(settings)
@@ -96,6 +99,9 @@ def create_app(
     app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_document_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_sync_router(settings, getattr(probe, "engine", None)))
+    app.include_router(
+        create_ocr_router(settings, getattr(probe, "engine", None), ocr_configuration)
+    )
 
     @app.get("/api/v1/health/live", response_model=Health, tags=["health"])
     def liveness() -> Health:
