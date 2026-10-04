@@ -3,9 +3,11 @@
 import hashlib
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from coinpup_api.ocr.engine_adapters import EngineError
@@ -439,3 +441,143 @@ def test_failed_live_observation_cannot_be_masked_by_later_success(
         "event": "audit_failed",
         "reason": "recognition_observation_incomplete",
     }
+
+
+def test_ready_ticks_bound_real_stages_without_changing_metadata(candidate, monkeypatch, tmp_path):
+    clock = iter(range(100, 1000))
+    monkeypatch.setattr(session.time, "monotonic_ns", lambda: next(clock))
+    observed = {}
+
+    def verify(*_):
+        observed["verify"] = session.time.monotonic_ns()
+
+    def create(*_):
+        observed["create"] = session.time.monotonic_ns()
+        return candidate[0]
+
+    monkeypatch.setattr(session, "_models", verify)
+    monkeypatch.setattr(session, "create_adapter", create)
+    code, frames = invoke([], tmp_path)
+    assert code == 0 and frames[0]["metadata"] == candidate[0].metadata
+    assert "timings_ns" not in frames[0]["metadata"]
+    ticks = frames[0]["timings_ns"]
+    assert ticks.keys() == {
+        "start",
+        "end",
+        "model_verification_start",
+        "model_verification_end",
+        "adapter_init_start",
+        "adapter_init_end",
+    }
+    assert (
+        ticks["start"]
+        < ticks["model_verification_start"]
+        < observed["verify"]
+        < ticks["model_verification_end"]
+        < ticks["adapter_init_start"]
+        < observed["create"]
+        < ticks["adapter_init_end"]
+        < ticks["end"]
+    )
+
+
+@pytest.mark.parametrize("bad_hash", [False, True])
+def test_source_ticks_cover_admission_and_exclude_recognition(
+    staged, candidate, monkeypatch, bad_hash
+):
+    clock = iter(range(100, 1000))
+    monkeypatch.setattr(session.time, "monotonic_ns", lambda: next(clock))
+    original_source, observed = session._source, {}
+
+    def read(request):
+        observed["source"] = session.time.monotonic_ns()
+        return original_source(request)
+
+    def recognize(*args, **kwargs):
+        observed["recognize"] = session.time.monotonic_ns()
+        return failed_result("fictional_test")
+
+    monkeypatch.setattr(session, "_source", read)
+    monkeypatch.setattr(session, "recognize_document", recognize)
+    if bad_hash:
+        staged["source"]["sha256"] = "0" * 64
+    code, frames = invoke([staged], Path(staged["source"]["path"]).parent)
+    assert code == 0
+    result = frames[-1]["result"]
+    ticks = result["timings_ns"]["source"]
+    assert frames[0]["timings_ns"]["end"] < ticks["start"] < observed["source"] < ticks["end"]
+    assert {key: value for key, value in result["timings_ns"].items() if key != "source"} == {
+        "prepare": 0,
+        "recognize": 0,
+        "parse": 0,
+    }
+    if bad_hash:
+        assert "recognize" not in observed and result["reason"] == "source_invalid"
+    else:
+        assert ticks["end"] < observed["recognize"] and result["reason"] == "fictional_test"
+
+
+def test_repeated_outputs_differ_only_in_timing_tree(staged, candidate, monkeypatch):
+    from scripts.ocr_benchmark.development_run import _canonical
+
+    clock = iter(range(100, 1000))
+    monkeypatch.setattr(session.time, "monotonic_ns", lambda: next(clock))
+    monkeypatch.setattr(
+        session, "recognize_document", lambda *args, **kwargs: failed_result("fictional_test")
+    )
+    code, frames = invoke([staged, {**staged, "id": 1}], Path(staged["source"]["path"]).parent)
+    results = [frame["result"] for frame in frames if frame["event"] == "result"]
+    assert code == 0 and results[0]["timings_ns"] != results[1]["timings_ns"]
+    assert _canonical(results[0]) == _canonical(results[1])
+
+
+@pytest.mark.parametrize("failure", [False, True])
+@pytest.mark.parametrize("provided", [False, True])
+def test_main_respects_protocol_descriptor_ownership(tmp_path, monkeypatch, provided, failure):
+    calls, captured = [], []
+    external = io.BytesIO()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "candidate-session",
+            "--profile",
+            '{"engine":"paddle"}',
+            "--preflight-report",
+            "fictional-preflight.json",
+            "--audit-output",
+            "fictional-output.json",
+        ],
+    )
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(buffer=io.BytesIO()))
+
+    def serve(profile, directory, reader, writer, **kwargs):
+        captured.append(writer)
+        session._send(writer, {"v": 1, "event": "fictional"})
+        if failure:
+            raise ValueError("FICTIONAL SECRET")
+        return 0
+
+    monkeypatch.setattr(session, "serve", serve)
+    real_dup = os.dup
+
+    def dup(fd):
+        assert not provided
+        calls.append("dup")
+        return real_dup(fd)
+
+    def dup2(source, destination):
+        assert not provided
+        calls.append("dup2")
+
+    monkeypatch.setattr(session, "os", SimpleNamespace(dup=dup, dup2=dup2, fdopen=os.fdopen))
+    with (tmp_path / "fictional-protocol").open("w+b") as output:
+        monkeypatch.setattr(sys, "stdout", output)
+        assert session.main(protocol_writer=external if provided else None) == int(failure)
+        assert captured[0].closed is not provided
+        assert calls == ([] if provided else ["dup", "dup2"])
+        assert not output.closed and not external.closed
+        output.seek(0)
+        data = external.getvalue() if provided else output.read()
+        assert json.loads(data) == {"v": 1, "event": "fictional"}
+        assert b"FICTIONAL SECRET" not in data

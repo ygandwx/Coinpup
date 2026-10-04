@@ -604,6 +604,82 @@ def test_existing_private_staging_is_never_reused_or_modified(dev_run):
     assert calls == [] and closed == []
 
 
+def test_measured_boot_first_sample_precedes_go_and_keeps_one_startup_deadline(monkeypatch):
+    from scripts.ocr_benchmark import resource_monitor
+
+    process, selector, events, commands, deadlines = Process(), Selector(), [], [], []
+    profile = runner.PROFILES[0]
+
+    class Monitor:
+        def __init__(self, name, cpus, output):
+            assert name.startswith("coinpup-dev-") and cpus == (2, 4)
+            assert output == Path("/fictional/resources.json")
+
+        def start(self):
+            assert process.stdin.getvalue() == b""
+            events.append("first_sample")
+
+        def stop(self):
+            events.append("stop")
+            return {"status": "complete"}
+
+    def frame(self, deadline):
+        deadlines.append(deadline)
+        if len(deadlines) == 1:
+            return {"v": 1, "event": "boot", "pid": 7}
+        assert events == ["first_sample"]
+        assert json.loads(process.stdin.getvalue()) == {"v": 1, "action": "go"}
+        return {
+            "v": 1,
+            "event": "ready",
+            "metadata": {"profile": profile},
+            "timings_ns": {"start": 10, "end": 20},
+        }
+
+    monkeypatch.setattr(runner.sys, "platform", "linux")
+    monkeypatch.setattr(runner.time, "monotonic", lambda: 7)
+    monkeypatch.setattr(runner.selectors, "DefaultSelector", lambda: selector)
+    monkeypatch.setattr(
+        runner.subprocess, "Popen", lambda args, **kw: commands.append(args) or process
+    )
+    monkeypatch.setattr(runner.ContainerSession, "_frame", frame)
+    monkeypatch.setattr(resource_monitor, "ResourceMonitor", Monitor)
+    value = runner.ContainerSession(
+        profile,
+        Path("/fictional/staging"),
+        Path("/fictional/assets"),
+        "2,4",
+        resource_output=Path("/fictional/resources.json"),
+    )
+    assert deadlines == [127, 127]
+    assert "scripts.ocr_benchmark.candidate_bootstrap" in commands[0]
+    assert value.initialization_timings == {"start": 10, "end": 20}
+    assert value.stop_measurement() == value.stop_measurement() == {"status": "complete"}
+    assert events == ["first_sample", "stop"]
+
+
+def test_measurement_failure_still_reaps_and_removes_candidate(monkeypatch):
+    value, events = session(), []
+    process, selector = value.process, value.selector
+
+    class Monitor:
+        def stop(self):
+            events.append("stop")
+            raise RuntimeError("fictional measurement failure")
+
+    def control(args, *, timeout):
+        events.append(args[1])
+        return SimpleNamespace(returncode=1 if args[1] == "inspect" else 0, stdout=b"[]")
+
+    value.monitor = Monitor()
+    monkeypatch.setattr(runner, "_command", control)
+    with pytest.raises(RuntimeError, match="fictional measurement failure"):
+        value.close()
+    assert events == ["stop", "rm", "inspect"]
+    assert value.monitor is None and value.process is None
+    assert process.stdout.closed and process.stderr.closed and selector.closed
+
+
 @pytest.mark.parametrize("fault", ["failed", "hash", "exit"])
 def test_failed_or_mismatched_postrecognition_audit_blocks_selection_and_closes_session(
     dev_run, fault
