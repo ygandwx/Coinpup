@@ -13,7 +13,9 @@ RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources /etc/apt/
     && apt-get -y --no-install-recommends --download-only install $(python ops/ocr-benchmark/build_inputs.py apt-specs)
 
 FROM system-download AS system
-RUN --network=none apt-get -y --no-install-recommends --no-download install $(python ops/ocr-benchmark/build_inputs.py apt-specs) \
+RUN --network=none --mount=type=bind,source=build/engine-build-inputs,target=/inputs/build,readonly \
+    apt-get -y --no-install-recommends --no-download install $(python ops/ocr-benchmark/build_inputs.py apt-specs) \
+    && python ops/ocr-benchmark/build_inputs.py python-notices --sources-dir /inputs/build --output-dir /opt/environment-python \
     && python ops/ocr-benchmark/build_inputs.py system --debs-dir /var/cache/apt/archives --output-dir /opt/environment-system \
     && rm -f /var/cache/apt/archives/*.deb
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/workspace/services/api/src:/workspace \

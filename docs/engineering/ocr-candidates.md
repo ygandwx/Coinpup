@@ -4,7 +4,7 @@
 
 ## 构建与来源
 
-[固定制品](ocr-engine-artifacts.md)保存模型、语言包和原始通知；[构建输入](../../ops/ocr-benchmark/build-inputs.json)绑定 Python 3.12.14 amd64 OCI 摘要、Debian 签名快照、直接系统包版本/摘要，以及 Tesseract 5.5.3、Leptonica 1.86 源码。快照按固定日期重放，签名仍校验；安装事实另保存所有实际包、版权原文、源码许可、CMake 参数和二进制摘要。
+[固定制品](ocr-engine-artifacts.md)保存模型、语言包和原始通知；[构建输入](../../ops/ocr-benchmark/build-inputs.json)绑定 Python 3.12.14 amd64 OCI 摘要、Debian 签名快照、直接系统包版本/摘要，以及 Tesseract 5.5.3、Leptonica 1.86 源码。Python 原始通知从与 OCI 构建摘要相同的官方源码包按冻结成员逐字节提取，已知嵌入组件另绑定完整原通知。快照按固定日期重放，签名仍校验；安装事实另保存所有实际包、版权原文、源码许可、CMake 参数和二进制摘要。
 
 [Paddle 输入](../../ops/ocr-benchmark/paddle.in)及[完整锁](../../ops/ocr-benchmark/paddle.lock)使用原 OCR 版本约束，实际 wheel 来源和全部通知见[依赖来源](../../ops/ocr-benchmark/paddle-provenance.json)。构建先获取固定来源及哈希 wheelhouse，再在断网阶段离线安装和编译。不能靠跳过依赖、替换 headless 包或升级默认 API 环境解决候选问题。
 

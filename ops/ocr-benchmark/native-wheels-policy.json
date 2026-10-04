@@ -146,15 +146,26 @@
     {
       "sha256": "9bc1d08072255a5ec2db10fc75df1dd9e73097a75cd9150cfe875ebd6712f17c",
       "byte_size": 348856,
-      "status": "pending",
-      "license_ids": [],
-      "evidence": [],
+      "status": "allowed",
+      "license_ids": [
+        "MIT-0"
+      ],
+      "evidence": [
+        {
+          "kind": "wheel",
+          "name": "cffi-2.1.1.dist-info/licenses/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+          "package": "cffi",
+          "version": "2.1.1"
+        }
+      ],
       "origin": {
         "wheel_filename": "cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
         "package": "cffi",
         "version": "2.1.1",
         "member": "_cffi_backend.cpython-312-x86_64-linux-gnu.so"
-      }
+      },
+      "notes": "Actual Linux offline candidate initialization loaded these exact native bytes. Complete original wheel project/component license notices are bound by package, version, member and SHA. This permits the identified component under the same scope as the other reviewed wheel components; it does not claim provenance for every statically embedded dependency. System native dependencies retain separate actual-byte policy bindings."
     },
     {
       "sha256": "4ce7aca76028e1e188e0786c2ea90ee5f6ad02486beb0280074dd8c9ecd96ce6",
@@ -613,15 +624,41 @@
     {
       "sha256": "1e5d23fa66915204b9b67202a46993844d81cda56f6ad52cead2def37617ee29",
       "byte_size": 14434376,
-      "status": "pending",
-      "license_ids": [],
-      "evidence": [],
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0",
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "wheel",
+          "name": "cryptography-50.0.2.dist-info/licenses/LICENSE",
+          "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
+          "package": "cryptography",
+          "version": "50.0.2"
+        },
+        {
+          "kind": "wheel",
+          "name": "cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
+          "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
+          "package": "cryptography",
+          "version": "50.0.2"
+        },
+        {
+          "kind": "wheel",
+          "name": "cryptography-50.0.2.dist-info/licenses/LICENSE.BSD",
+          "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
+          "package": "cryptography",
+          "version": "50.0.2"
+        }
+      ],
       "origin": {
         "wheel_filename": "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
         "package": "cryptography",
         "version": "50.0.2",
         "member": "cryptography/hazmat/bindings/_rust.abi3.so"
-      }
+      },
+      "notes": "Actual Linux offline candidate initialization loaded these exact native bytes. Complete original wheel project/component license notices are bound by package, version, member and SHA. This permits the identified component under the same scope as the other reviewed wheel components; it does not claim provenance for every statically embedded dependency. System native dependencies retain separate actual-byte policy bindings. The project explicitly offers Apache-2.0 OR BSD-3-Clause; both complete original license texts and the choice declaration are preserved."
     },
     {
       "sha256": "533163376b8ddb84f3f3a49d12ba74eda261e0b3a9f00d30f448719033f88b71",
@@ -5964,15 +6001,26 @@
     {
       "sha256": "4ac1622d643ff188f4f355cc89a439f6881c397d766911e1246f9f4a215d051d",
       "byte_size": 421992,
-      "status": "pending",
-      "license_ids": [],
-      "evidence": [],
+      "status": "allowed",
+      "license_ids": [
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "wheel",
+          "name": "protobuf-7.36.2.dist-info/LICENSE",
+          "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d",
+          "package": "protobuf",
+          "version": "7.36.2"
+        }
+      ],
       "origin": {
         "wheel_filename": "protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl",
         "package": "protobuf",
         "version": "7.36.2",
         "member": "google/_upb/_message.abi3.so"
-      }
+      },
+      "notes": "Actual Linux offline candidate initialization loaded these exact native bytes. Complete original wheel project/component license notices are bound by package, version, member and SHA. This permits the identified component under the same scope as the other reviewed wheel components; it does not claim provenance for every statically embedded dependency. System native dependencies retain separate actual-byte policy bindings. The original notice explicitly covers the linked Protocol Buffers support library; generated code ownership remains with its input owner."
     },
     {
       "sha256": "8085c743a77f6059be6d18d54317ccce2e715425bb5f15aa8835770463d6b9fd",
@@ -7590,15 +7638,26 @@
     {
       "sha256": "95f68ef2535a5102a03442e073d4906c01211b208902f56e24ec23cea402b5a0",
       "byte_size": 4692312,
-      "status": "pending",
-      "license_ids": [],
-      "evidence": [],
+      "status": "allowed",
+      "license_ids": [
+        "MIT"
+      ],
+      "evidence": [
+        {
+          "kind": "wheel",
+          "name": "pydantic_core-2.46.5.dist-info/licenses/LICENSE",
+          "sha256": "2afdd30d54b4d62b6f488a6bcc1546e84ec5061f13f4209c03d012348783795a",
+          "package": "pydantic_core",
+          "version": "2.46.5"
+        }
+      ],
       "origin": {
         "wheel_filename": "pydantic_core-2.46.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
         "package": "pydantic-core",
         "version": "2.46.5",
         "member": "pydantic_core/_pydantic_core.cpython-312-x86_64-linux-gnu.so"
-      }
+      },
+      "notes": "Actual Linux offline candidate initialization loaded these exact native bytes. Complete original wheel project/component license notices are bound by package, version, member and SHA. This permits the identified component under the same scope as the other reviewed wheel components; it does not claim provenance for every statically embedded dependency. System native dependencies retain separate actual-byte policy bindings."
     },
     {
       "sha256": "224f8ece41f7e35891f11c10073b7b7062d7a18e9ef870586162a85c46130f7d",
@@ -7836,15 +7895,26 @@
     {
       "sha256": "e6f17a9e9846bc2bc4ad94cc5431746b59785de3d2681ef2666e8890ae192dfb",
       "byte_size": 1223000,
-      "status": "pending",
-      "license_ids": [],
-      "evidence": [],
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0"
+      ],
+      "evidence": [
+        {
+          "kind": "wheel",
+          "name": "safetensors-0.8.0.dist-info/licenses/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "package": "safetensors",
+          "version": "0.8.0"
+        }
+      ],
       "origin": {
         "wheel_filename": "safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
         "package": "safetensors",
         "version": "0.8.0",
         "member": "safetensors/_safetensors_rust.abi3.so"
-      }
+      },
+      "notes": "Actual Linux offline candidate initialization loaded these exact native bytes. Complete original wheel project/component license notices are bound by package, version, member and SHA. This permits the identified component under the same scope as the other reviewed wheel components; it does not claim provenance for every statically embedded dependency. System native dependencies retain separate actual-byte policy bindings."
     },
     {
       "sha256": "232171a48964aff506977a426a1dd7ed36d539df288493050b5379c5243ae62a",

@@ -114,6 +114,26 @@ def test_actual_models_and_installed_notices_match_frozen_sources(report):
                 and hashlib.sha256(data).hexdigest() == item["sha256"]
             )
         assert distribution["reviewed_license_policy"]["status"] == "allowed"
+    frozen = json.loads((ROOT / "ops/ocr-benchmark/build-inputs.json").read_text(encoding="utf8"))[
+        "python_source"
+    ]
+    assert report["system"]["python_source"] == frozen
+    notices = report["system"]["python_embedded_notices"]
+    expected = {
+        item["output_name"]: item
+        for item in [*frozen["members"], *frozen.get("external_notices", [])]
+    }
+    assert notices and {item["output_name"] for item in notices} == set(expected)
+    for notice in notices:
+        assert {key: notice[key] for key in expected[notice["output_name"]]} == expected[
+            notice["output_name"]
+        ]
+        assert Path(notice["path"]).name == notice["output_name"]
+        data = notice["text"].encode(notice["encoding"])
+        assert (
+            len(data) == notice["byte_size"]
+            and hashlib.sha256(data).hexdigest() == notice["sha256"]
+        )
 
 
 def test_actual_loaded_and_ldd_closure_has_no_missing_or_unreviewed_native(report):

@@ -7,6 +7,7 @@ import os
 import shutil
 import stat
 import subprocess
+import tarfile
 import tempfile
 import time
 import urllib.request
@@ -50,16 +51,22 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def source_cache(directory, *, fetch=False):
     safe(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    for item in manifest()["sources"]:
-        if item["cache"] != "build":
-            continue
+    definitions = manifest()
+    inputs = [item for item in definitions["sources"] if item["cache"] == "build"]
+    inputs.append(definitions["python_source"])
+    inputs.extend(definitions["python_source"].get("external_notices", []))
+    for item in inputs:
         target = directory / item["name"]
         if not target.exists() and fetch:
             temporary = None
             try:
-                if item["url"] != (
+                if item["url"] not in (
                     "https://codeload.github.com/DanBloomberg/leptonica/zip/"
-                    "dbb48b0fd0e10e943ecd9bab7439701842894733"
+                    "dbb48b0fd0e10e943ecd9bab7439701842894733",
+                    "https://www.python.org/ftp/python/3.12.14/Python-3.12.14.tar.xz",
+                    "https://www.unicode.org/Public/15.0.0/ucd/ReadMe.txt",
+                    "https://raw.githubusercontent.com/unicode-org/icu/"
+                    "ff3514f257ea10afe7e710e9f946f68d256704b1/icu4c/LICENSE",
                 ):
                     raise ValueError("build_input_invalid")
                 fd, temporary = tempfile.mkstemp(prefix=".source-", dir=directory)
@@ -89,6 +96,96 @@ def source_cache(directory, *, fetch=False):
                 if temporary is not None:
                     Path(temporary).unlink(missing_ok=True)
         verify(target, item)
+
+
+def python_notices(sources, output):
+    """Copy only frozen regular members, retaining original bytes rather than extracted snippets."""
+    definition = manifest()["python_source"]
+    archive_path = sources / definition["name"]
+    verify(archive_path, definition)
+    expected = {}
+    outputs = set()
+    for item in definition["members"]:
+        member, name = item["member"], item["output_name"]
+        if (
+            member in expected
+            or name in outputs
+            or PurePosixPath(member).is_absolute()
+            or ".." in PurePosixPath(member).parts
+            or not member.startswith("Python-3.12.14/")
+            or any(c in member + name for c in ("\\", ":", "\x00"))
+            or "/" in name
+            or name in ("", ".", "..", "manifest.json")
+            or type(item["byte_size"]) is not int
+            or not 0 < item["byte_size"] <= 1024**2
+            or item["encoding"] not in ("utf-8", "latin-1")
+        ):
+            raise ValueError("python_notice_invalid")
+        expected[member] = item
+        outputs.add(name)
+    external = definition.get("external_notices", [])
+    for item in external:
+        name = item["output_name"]
+        if (
+            name in outputs
+            or any(c in name + item["name"] for c in ("/", "\\", ":", "\x00"))
+            or name in ("", ".", "..", "manifest.json")
+            or item["name"] in ("", ".", "..")
+            or type(item["byte_size"]) is not int
+            or not 0 < item["byte_size"] <= 1024**2
+            or item["encoding"] not in ("utf-8", "latin-1")
+        ):
+            raise ValueError("python_notice_invalid")
+        verify(sources / item["name"], item)
+        outputs.add(name)
+    if (
+        not 0 < len(expected) <= 64
+        or len(outputs) > 64
+        or sum(i["byte_size"] for i in [*expected.values(), *external]) > 4 * 1024**2
+    ):
+        raise ValueError("python_notice_limit")
+    safe(output).mkdir(parents=True, exist_ok=False)
+    seen, notices = set(), []
+    with tarfile.open(archive_path, mode="r|xz") as archive:
+        for number, member in enumerate(archive):
+            parts = PurePosixPath(member.name).parts
+            if (
+                number >= 30000
+                or not parts
+                or parts[0] != "Python-3.12.14"
+                or ".." in parts
+                or any(c in member.name for c in ("\\", ":", "\x00"))
+                or not (member.isfile() or member.isdir())
+            ):
+                raise ValueError("python_notice_invalid")
+            if member.name not in expected:
+                continue
+            item = expected[member.name]
+            if member.name in seen or not member.isfile() or member.size != item["byte_size"]:
+                raise ValueError("python_notice_invalid")
+            with archive.extractfile(member) as stream:
+                data = stream.read(item["byte_size"] + 1)
+            if len(data) != item["byte_size"] or hashlib.sha256(data).hexdigest() != item["sha256"]:
+                raise ValueError("python_notice_invalid")
+            data.decode(item["encoding"])
+            target = output / item["output_name"]
+            with target.open("xb") as destination:
+                destination.write(data)
+            notices.append(dict(item, **record(target)))
+            seen.add(member.name)
+    if seen != expected.keys():
+        raise ValueError("python_notice_missing")
+    for item in external:
+        data = (sources / item["name"]).read_bytes()
+        data.decode(item["encoding"])
+        target = output / item["output_name"]
+        with target.open("xb") as destination:
+            destination.write(data)
+        verify(target, item)
+        notices.append(dict(item, **record(target)))
+    result = {"version": 1, "python_source": definition, "notices": notices}
+    save(output / "manifest.json", result)
+    return result
 
 
 def unpack(assets, sources, output):
@@ -177,6 +274,21 @@ def system_inventory(debs, output):
             raise ValueError("downloaded_package_mismatch")
     shutil.copytree("/usr/share/common-licenses", output / "common-licenses", symlinks=False)
     python_license = Path("/usr/local/lib/python3.12/LICENSE.txt")
+    python_evidence = json.loads(
+        Path("/opt/environment-python/manifest.json").read_text(encoding="utf8")
+    )
+    if python_evidence["python_source"] != definitions["python_source"]:
+        raise ValueError("python_notice_invalid")
+    for item in python_evidence["notices"]:
+        verify(Path(item["path"]), item)
+    verify(
+        python_license,
+        next(
+            item
+            for item in definitions["python_source"]["members"]
+            if item["member"] == "Python-3.12.14/LICENSE"
+        ),
+    )
     shutil.copyfile(python_license, output / "python-LICENSE.txt")
     save(
         output / "packages.json",
@@ -186,6 +298,8 @@ def system_inventory(debs, output):
             "debs": archives,
             "snapshot": definitions["apt"]["snapshot"],
             "python_license": record(python_license),
+            "python_source": definitions["python_source"],
+            "python_embedded_notices": python_evidence["notices"],
             "base_image": definitions["base_image"],
             "common_licenses": [
                 record(p) for p in sorted((output / "common-licenses").iterdir()) if p.is_file()
@@ -224,7 +338,8 @@ def build_record(source, lept_build, tess_build, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "command", choices=("fetch", "verify", "unpack", "system", "record", "apt-specs")
+        "command",
+        choices=("fetch", "verify", "unpack", "python-notices", "system", "record", "apt-specs"),
     )
     for option in (
         "output-dir",
@@ -244,6 +359,8 @@ def main():
             source_cache(args.output_dir, fetch=args.command == "fetch")
         elif args.command == "unpack":
             unpack(args.assets_dir, args.sources_dir, args.output_dir)
+        elif args.command == "python-notices":
+            python_notices(args.sources_dir, args.output_dir)
         elif args.command == "system":
             system_inventory(args.debs_dir, args.output_dir)
         else:
@@ -255,6 +372,7 @@ def main():
         TypeError,
         subprocess.SubprocessError,
         zipfile.BadZipFile,
+        tarfile.TarError,
     ):
         parser.exit(1, "candidate_build_input_failed\n")
     print(json.dumps({"version": 1, "command": args.command, "verified": True}))

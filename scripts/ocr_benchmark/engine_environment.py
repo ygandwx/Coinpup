@@ -253,18 +253,30 @@ def _loaded_native():
 
 def _system_inventory():
     inventory = _json(SYSTEM_PATH)
-    for package in inventory["packages"]:
-        notice = package.get("copyright")
-        if notice:
+    try:
+        notices = [
+            package["copyright"] for package in inventory["packages"] if package.get("copyright")
+        ]
+        notices.extend(
+            [
+                inventory["python_license"],
+                *inventory["common_licenses"],
+                *inventory.get("python_embedded_notices", []),
+            ]
+        )
+        for notice in notices:
+            if (
+                type(notice["byte_size"]) is not int
+                or notice["byte_size"] < 1
+                or not re.fullmatch(r"[0-9a-f]{64}", notice["sha256"])
+            ):
+                _fail("candidate_inventory_invalid")
             path = Path(notice["path"])
             if _identity(path) != {key: notice[key] for key in ("sha256", "byte_size")}:
                 _fail("candidate_inventory_invalid")
             notice.update(_notice_text(path))
-    for notice in [inventory["python_license"], *inventory["common_licenses"]]:
-        path = Path(notice["path"])
-        if _identity(path) != {key: notice[key] for key in ("sha256", "byte_size")}:
-            _fail("candidate_inventory_invalid")
-        notice.update(_notice_text(path))
+    except (OSError, KeyError, TypeError, ValueError):
+        _fail("candidate_inventory_invalid")
     return inventory
 
 
@@ -290,6 +302,7 @@ def _evidence(report):
     for notice in [
         report["system"]["python_license"],
         *report["system"]["common_licenses"],
+        *report["system"].get("python_embedded_notices", []),
         *report.get("build_notices", []),
     ]:
         observed.add(("source", None, None, Path(notice["path"]).name, notice["sha256"]))
@@ -378,7 +391,7 @@ def _tesseract(directory):
         r"leptonica-1\.86\.0\b", output
     ):
         _fail("candidate_version_invalid")
-    library = ctypes.CDLL("/opt/tesseract/lib/libtesseract.so.5")
+    library = ctypes.CDLL("/opt/tesseract/lib/libtesseract.so.5.5.3")
     library.TessBaseAPICreate.restype = ctypes.c_void_p
     library.TessBaseAPIInit3.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
     library.TessBaseAPIInit3.restype = ctypes.c_int
@@ -466,7 +479,10 @@ def audit_environment(engine, assets_dir, output_dir):
         roots = [Path(sys.executable), *_loaded_native()]
         if engine == "tesseract":
             roots.extend(
-                [Path("/opt/tesseract/bin/tesseract"), Path("/opt/tesseract/lib/libtesseract.so.5")]
+                [
+                    Path("/opt/tesseract/bin/tesseract"),
+                    Path("/opt/tesseract/lib/libtesseract.so.5.5.3"),
+                ]
             )
         report["native"] = _native_inventory(roots)
         _save(output, report)

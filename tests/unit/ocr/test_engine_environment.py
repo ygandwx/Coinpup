@@ -250,7 +250,12 @@ def test_tesseract_capi_contract_initializes_both_sets_and_always_disposes(
         TessBaseAPIEnd=lambda handle: calls.append("end"),
         TessBaseAPIDelete=lambda handle: calls.append("delete"),
     )
-    monkeypatch.setattr(environment.ctypes, "CDLL", lambda path: library)
+
+    def load_library(path):
+        assert path == "/opt/tesseract/lib/libtesseract.so.5.5.3"
+        return library
+
+    monkeypatch.setattr(environment.ctypes, "CDLL", load_library)
     monkeypatch.setattr(environment, "_command", lambda args: "tesseract 5.5.3\nleptonica-1.86.0\n")
     monkeypatch.setattr(environment, "_loaded_native", lambda: [])
     if fail:
@@ -382,3 +387,57 @@ def test_audit_preserves_initialization_facts_and_gates_only_active_native_closu
     assert report["initialization"] and report["inference_performed"] is False
     assert inactive not in observed_roots
     assert report["status"] == ("failed" if active_pending else "initialized")
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        None,
+        "legacy",
+        "latin1",
+        "missing_hash",
+        "missing_size",
+        "missing_path",
+        "missing_file",
+        "corrupt",
+    ],
+)
+def test_embedded_python_source_notices_require_real_files_and_exact_original_bytes(
+    tmp_path, monkeypatch, defect
+):
+    main, embedded = tmp_path / "LICENSE.txt", tmp_path / "python-vendor-LICENSE"
+    main.write_bytes(b"Fictional main license\n")
+    embedded.write_bytes(b"Original notice\n" if defect != "latin1" else b"Original \xe9\n")
+    notice = {"path": str(embedded), **environment._identity(embedded)}
+    inventory = {
+        "version": 1,
+        "packages": [],
+        "common_licenses": [],
+        "python_license": {"path": str(main), **environment._identity(main)},
+        "python_embedded_notices": [notice],
+    }
+    if defect == "legacy":
+        del inventory["python_embedded_notices"]
+    elif defect in ("missing_hash", "missing_size", "missing_path"):
+        del notice[
+            {"missing_hash": "sha256", "missing_size": "byte_size", "missing_path": "path"}[defect]
+        ]
+    elif defect == "missing_file":
+        embedded.unlink()
+    elif defect == "corrupt":
+        embedded.write_bytes(b"Tampered bytes\n")
+    path = tmp_path / "inventory.json"
+    path.write_text(json.dumps(inventory), encoding="utf8")
+    monkeypatch.setattr(environment, "SYSTEM_PATH", path)
+    if defect in (None, "legacy", "latin1"):
+        verified = environment._system_inventory()
+        if defect != "legacy":
+            observed = verified["python_embedded_notices"][0]
+            assert observed["text"].encode(observed["encoding"]) == embedded.read_bytes()
+            report = {"system": verified, "installed": [], "source_assets": {"files": []}}
+            assert ("source", None, None, embedded.name, notice["sha256"]) in environment._evidence(
+                report
+            )
+    else:
+        with rejected("candidate_inventory_invalid"):
+            environment._system_inventory()

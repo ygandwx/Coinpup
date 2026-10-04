@@ -239,7 +239,11 @@ jobs:
               directory = pathlib.Path("build/candidate-reports") / engine
               report = directory / "report.json"
               if report.is_file():
-                  print("CANDIDATE_REPORT_V1=" + json.dumps(json.loads(report.read_text()), ensure_ascii=False, separators=(",", ":")))
+                  full = json.loads(report.read_text())
+                  review = {key: full.get(key) for key in ("version", "engine", "status", "reason", "initialization_attempted", "initialization", "inference_performed", "runtime", "thread_environment", "pip_check", "license_unresolved", "distribution_unresolved", "native_policy_identities", "native_build")}
+                  review["native"] = [{key: item.get(key) for key in ("path", "sha256", "byte_size", "missing", "dependencies", "reviewed_license_policy")} for item in full.get("native", [])]
+                  print("CANDIDATE_REVIEW_V1=" + json.dumps(review, ensure_ascii=False, separators=(",", ":")))
+                  print("Full original notices and installed inventories are retained in the uploaded report.json artifact")
               log = directory / "initialization.log"
               if log.is_file():
                   print("CANDIDATE_INIT_LOG " + engine)

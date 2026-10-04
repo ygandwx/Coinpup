@@ -197,5 +197,274 @@
       "archive_root": "tesseract-db0ec62f81b0737fbbe184d8fea40af5738f8eef",
       "cache": "assets"
     }
-  ]
+  ],
+  "python_source": {
+    "name": "Python-3.12.14.tar.xz",
+    "version": "3.12.14",
+    "url": "https://www.python.org/ftp/python/3.12.14/Python-3.12.14.tar.xz",
+    "byte_size": 20820300,
+    "sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+    "oci_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+    "scope": "Original notices and selected complete files containing embedded attribution; not a complete static source closure.",
+    "members": [
+      {
+        "member": "Python-3.12.14/LICENSE",
+        "output_name": "python-LICENSE",
+        "byte_size": 13936,
+        "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Doc/license.rst",
+        "output_name": "python-Doc-license.rst",
+        "byte_size": 54130,
+        "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_decimal/libmpdec/mpdecimal.h",
+        "output_name": "python-Modules-_decimal-libmpdec-mpdecimal.h",
+        "byte_size": 41684,
+        "sha256": "ea0b9c6b296c13aed6ecaa50b463e39a9c1bdc059b84f50507fd8247b2e660f9",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_decimal/libmpdec/README.txt",
+        "output_name": "python-Modules-_decimal-libmpdec-README.txt",
+        "byte_size": 3642,
+        "sha256": "89926cd0fe6cfb33a2b5b7416c101e9b5d42b0d639d348e0871acf6ffc8258a3",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/expat/COPYING",
+        "output_name": "python-Modules-expat-COPYING",
+        "byte_size": 1144,
+        "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_blake2/impl/blake2.h",
+        "output_name": "python-Modules-_blake2-impl-blake2.h",
+        "byte_size": 5793,
+        "sha256": "2f6c9d0ecf70be474f2853b52394993625a32960e0a64eae147ef97a3a5c1460",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_blake2/impl/blake2b.c",
+        "output_name": "python-Modules-_blake2-impl-blake2b.c",
+        "byte_size": 11772,
+        "sha256": "b932aa273b2504606a48895a50ff08c883f7a68a7e4aced5daa909c43348605a",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_blake2/impl/blake2s.c",
+        "output_name": "python-Modules-_blake2-impl-blake2s.c",
+        "byte_size": 11036,
+        "sha256": "25ec5dd5c79f916307358059fe9f633781f27df1c0e0962c4fcccdda1feb93a7",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_hacl/README.md",
+        "output_name": "python-Modules-_hacl-README.md",
+        "byte_size": 1000,
+        "sha256": "ff4b18ba17546558b51aced06b4a36d99abbf35831c24d3be14925f319cb4cb4",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_hacl/Hacl_Hash_MD5.h",
+        "output_name": "python-Modules-_hacl-Hacl_Hash_MD5.h",
+        "byte_size": 2223,
+        "sha256": "9a02e2a6e163515ea0228a859d5e55c1f57b11fae5908c42f9f9814ce9bca230",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_hacl/Hacl_Hash_SHA1.h",
+        "output_name": "python-Modules-_hacl-Hacl_Hash_SHA1.h",
+        "byte_size": 2234,
+        "sha256": "5640295c790d56b1b4df147d6a6c58803b1845cd7d93365bf7cc7b75ba3cacd5",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_hacl/Hacl_Hash_SHA2.h",
+        "output_name": "python-Modules-_hacl-Hacl_Hash_SHA2.h",
+        "byte_size": 6903,
+        "sha256": "093d7693084af0999d2a13d207311d74b5bdfdc9c08447ed4a979e3f7505ae6b",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_hacl/Hacl_Hash_SHA3.h",
+        "output_name": "python-Modules-_hacl-Hacl_Hash_SHA3.h",
+        "byte_size": 3700,
+        "sha256": "d8d4d14bbc3a561a4e590d9b18b326e6a8095efb12423edbd949cf3c00953621",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/mathmodule.c",
+        "output_name": "python-Modules-mathmodule.c",
+        "byte_size": 132777,
+        "sha256": "436a01da195e3c2b9576a4b9188d5d62e9883e62e74f2d60bc55194bfce98281",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cmathmodule.c",
+        "output_name": "python-Modules-cmathmodule.c",
+        "byte_size": 42688,
+        "sha256": "f4812c56a45f3aadc1a76e37ef5bf9fd17174293273e4251f33f7c145c7ef7b2",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_math.h",
+        "output_name": "python-Modules-_math.h",
+        "byte_size": 760,
+        "sha256": "1a1b63183a8a7ab6f8f1cbb5faf5d1914c029ca7fd1089f52776a2a23b9d0e12",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/README",
+        "output_name": "python-Modules-cjkcodecs-README",
+        "byte_size": 2618,
+        "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/multibytecodec.c",
+        "output_name": "python-Modules-cjkcodecs-multibytecodec.c",
+        "byte_size": 60645,
+        "sha256": "a9c7f911452929fc6991ffbbeff1993a6755e37238d90ee73b8bbdbfbeec1754",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_cn.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_cn.c",
+        "byte_size": 11256,
+        "sha256": "8b28def11821d71acb90ef3e74d7d6d597246daf4c196415107d19ebeeb73e55",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_hk.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_hk.c",
+        "byte_size": 5103,
+        "sha256": "2b1c4a0516cc930c58bf885baae06e7b7b676b5dc1713c0653bba1fc39c4e12d",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_iso2022.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_iso2022.c",
+        "byte_size": 35522,
+        "sha256": "f495710505aa93c5610d8c38c543b057416e5508b9fb6337bbae6d2a4b85c707",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_jp.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_jp.c",
+        "byte_size": 20619,
+        "sha256": "e41484049adac46605165e00d5ea22b7ff9eac76519331913526f228b3112696",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_kr.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_kr.c",
+        "byte_size": 12954,
+        "sha256": "c6b24c685f64f6b7d67a0c50068cc7ba7a3ebf2ddfa2ebbb3f0a7faed90c217a",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/cjkcodecs/_codecs_tw.c",
+        "output_name": "python-Modules-cjkcodecs-_codecs_tw.c",
+        "byte_size": 2365,
+        "sha256": "bd156987b58714a877453fcc67f81cc569e46a2c29a33caebbd6aaa71ad10ede",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Python/pyhash.c",
+        "output_name": "python-Python-pyhash.c",
+        "byte_size": 15480,
+        "sha256": "7f18429290df0726669cbd6d8b5a8b48b843efff648fe8863d48da5db4745628",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Python/dtoa.c",
+        "output_name": "python-Python-dtoa.c",
+        "byte_size": 79610,
+        "sha256": "4c55833dc0ea9eb7c396ed6da0c6a21406f6b4fa2d0c631c5f10c60f0f835e2e",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Python/hashtable.c",
+        "output_name": "python-Python-hashtable.c",
+        "byte_size": 11523,
+        "sha256": "7fa6457b5a314727a5a3fad3b958c874fdbd10a71c51f932376391efc266dcc4",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_randommodule.c",
+        "output_name": "python-Modules-_randommodule.c",
+        "byte_size": 18451,
+        "sha256": "ee5359339fe002582315d4c65e7c8e442903c4295d608d17aec0ad27f2224b83",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_elementtree.c",
+        "output_name": "python-Modules-_elementtree.c",
+        "byte_size": 126636,
+        "sha256": "63cd614f8edb692aecbb3322c632bfbe3fd9587d3e7dab0aa7c5f8ddef24a7c9",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/_sre/sre.c",
+        "output_name": "python-Modules-_sre-sre.c",
+        "byte_size": 93011,
+        "sha256": "06310987facf48c7dbeddf80b70265ecf386868acc01066e50ae699f51d0f9ff",
+        "encoding": "utf-8"
+      },
+      {
+        "member": "Python-3.12.14/Modules/unicodedata.c",
+        "output_name": "python-Modules-unicodedata.c",
+        "byte_size": 48524,
+        "sha256": "a40b4820ef1bcc6c45899f5da1c8063610bbba2341a6129a4d5f646316ebf11e",
+        "encoding": "utf-8"
+      }
+    ],
+    "external_notices": [
+      {
+        "name": "Unicode-15.0.0-ReadMe.txt",
+        "url": "https://www.unicode.org/Public/15.0.0/ucd/ReadMe.txt",
+        "output_name": "python-Unicode-15.0.0-ReadMe.txt",
+        "byte_size": 635,
+        "sha256": "53672c0d0b5185e3cf04c8e970d544c3af81ae7c8eeba0b9cf6d355aa954ae1f",
+        "encoding": "utf-8",
+        "role": "unicode_version_readme"
+      },
+      {
+        "name": "Unicode-1991-2022-LICENSE.txt",
+        "url": "https://raw.githubusercontent.com/unicode-org/icu/ff3514f257ea10afe7e710e9f946f68d256704b1/icu4c/LICENSE",
+        "output_name": "python-Unicode-1991-2022-LICENSE.txt",
+        "byte_size": 25505,
+        "sha256": "af3e84c401f1a35e8d32d6eb1a33fe587c3981aa5cd206033d9527c1855b57a2",
+        "encoding": "utf-8",
+        "role": "unicode_data_permission_notice"
+      }
+    ],
+    "unicode_data": {
+      "version": "15.0.0",
+      "source_evidence": [
+        {
+          "member": "Python-3.12.14/Tools/unicode/makeunicodedata.py",
+          "byte_size": 49703,
+          "sha256": "0f660ad3fbc2331a9eab84aa5f105e92ab498dd442ac93b2cd4d133821928c00",
+          "declaration": "UNIDATA_VERSION = \"15.0.0\""
+        },
+        {
+          "member": "Python-3.12.14/Modules/unicodedata_db.h",
+          "byte_size": 546338,
+          "sha256": "f029c909cbb1714dea177fe80662a35d1f8e21a2c505060e8d8674b0bbed8e57",
+          "declaration": "#define UNIDATA_VERSION \"15.0.0\""
+        }
+      ],
+      "notice_context": "The complete official ICU 72.1 LICENSE supplies its 1991-2022 Unicode data/software permission notice. Its additional ICU-specific notices are retained unaltered, without asserting that ICU is linked.",
+      "notice_source_revision": "ff3514f257ea10afe7e710e9f946f68d256704b1",
+      "notice_release_version_evidence": "https://raw.githubusercontent.com/unicode-org/icu/ff3514f257ea10afe7e710e9f946f68d256704b1/icu4c/source/common/unicode/uchar.h",
+      "notice_release_version_declaration": "#define U_UNICODE_VERSION \"15.0\""
+    }
+  }
 }
