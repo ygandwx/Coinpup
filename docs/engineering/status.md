@@ -15,7 +15,7 @@
 
 ## 正在进行
 
-- 任务：OPT-08 收尾。分支：`refactor/opt-08-followup`；移除 reader 门面回写及解释四处 Hook 触发键，验收与 CI 全部通过后合入。
+- 任务：OPT-08 收尾，等待 CI/合入。分支：`refactor/opt-08-followup`，[PR #36](https://github.com/ygandwx/Coinpup/pull/36)；移除 reader 回写、解释四处 Hook 触发键并启用零警告 lint。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库保持私有，未选定开源许可证。
 
