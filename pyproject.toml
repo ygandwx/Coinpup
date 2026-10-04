@@ -30,6 +30,7 @@ markers = [
   "ocr: requires the separately locked optional OCR dependencies",
   "benchmark: requires the separately locked fictional-corpus build dependencies and fonts",
   "engine_assets: requires the explicitly fetched and hash-verified fixed OCR engine inputs",
+  "engine_candidates: requires reports from the real isolated Linux candidate containers",
 ]
 
 [tool.ruff]

@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "base_image": {
+    "reference": "python:3.12.14-slim-bookworm@sha256:1aaa65a85fda306ffb8b910824d4e93bdce61e212c7e87168123ea3073b41a1a",
+    "platform": "linux/amd64",
+    "python_version": "3.12.14",
+    "index_digest": "sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e",
+    "config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0"
+  },
+  "apt": {
+    "snapshot": "20261004T000000Z",
+    "indexes": [
+      {
+        "suite": "bookworm",
+        "url": "https://snapshot.debian.org/archive/debian/20261004T000000Z/",
+        "index_sha256": "9e0b5aabb2465b3d2e7a7fe27f9913846277833f7a2826e7767acccff5b588c5"
+      },
+      {
+        "suite": "bookworm-updates",
+        "url": "https://snapshot.debian.org/archive/debian/20261004T000000Z/",
+        "index_sha256": "87e7e94047fb7fb6f4ceecc7022d4bee55b66031cc2a7666d3196f3e0aabb846"
+      },
+      {
+        "suite": "bookworm-security",
+        "url": "https://snapshot.debian.org/archive/debian-security/20261004T000000Z/",
+        "index_sha256": "b98429c9f7852bc91265d346d97722b999e0938e2c76318d5b1aa639a2d2936d"
+      }
+    ],
+    "packages": [
+      {
+        "name": "build-essential",
+        "version": "12.9",
+        "architecture": "amd64",
+        "sha256": "bbfd38de41898a06326f2a6ce4cc43e8e399f5566381231065b01d70499d5ba5",
+        "byte_size": 7704,
+        "filename": "pool/main/b/build-essential/build-essential_12.9_amd64.deb",
+        "source": "build-essential"
+      },
+      {
+        "name": "cmake",
+        "version": "3.25.1-1",
+        "architecture": "amd64",
+        "sha256": "257a11063855f09e48696057fdb1ba2bcf1069502e0302576831dc2fb1571d7f",
+        "byte_size": 8692248,
+        "filename": "pool/main/c/cmake/cmake_3.25.1-1_amd64.deb",
+        "source": "cmake"
+      },
+      {
+        "name": "libgl1",
+        "version": "1.6.0-1",
+        "architecture": "amd64",
+        "sha256": "6f89b1702c48e9a2437bb3c1ffac8e1ab2d828fc28b3d14b2eecd4cc19b2c790",
+        "byte_size": 88448,
+        "filename": "pool/main/libg/libglvnd/libgl1_1.6.0-1_amd64.deb",
+        "source": "libglvnd"
+      },
+      {
+        "name": "libglib2.0-0",
+        "version": "2.74.6-2+deb12u9",
+        "architecture": "amd64",
+        "sha256": "7ff85197685d89e150e342b29a59aab1beee400050ba7da73de81cd999ffee5a",
+        "byte_size": 1403216,
+        "filename": "pool/main/g/glib2.0/libglib2.0-0_2.74.6-2+deb12u9_amd64.deb",
+        "source": "glib2.0"
+      },
+      {
+        "name": "libgomp1",
+        "version": "12.2.0-14+deb12u1",
+        "architecture": "amd64",
+        "sha256": "48fec46bda7f5b1638b9e959889bfbc20491247d402d120bb152687eb48143d7",
+        "byte_size": 115772,
+        "filename": "pool/main/g/gcc-12/libgomp1_12.2.0-14+deb12u1_amd64.deb",
+        "source": "gcc-12"
+      },
+      {
+        "name": "libjpeg62-turbo-dev",
+        "version": "1:2.1.5-2",
+        "architecture": "amd64",
+        "sha256": "10485411f751c24472c43b28fe24ab6389fedb027d496bbc2c831496f750ab01",
+        "byte_size": 289644,
+        "filename": "pool/main/libj/libjpeg-turbo/libjpeg62-turbo-dev_2.1.5-2_amd64.deb",
+        "source": "libjpeg-turbo"
+      },
+      {
+        "name": "libpng-dev",
+        "version": "1.6.39-2+deb12u5",
+        "architecture": "amd64",
+        "sha256": "25649c413d02092ae7b1093a3c3ee54cbd2d4fdb0a0494787e434ccf0905903f",
+        "byte_size": 360472,
+        "filename": "pool/main/libp/libpng1.6/libpng-dev_1.6.39-2+deb12u5_amd64.deb",
+        "source": "libpng1.6"
+      },
+      {
+        "name": "libsm6",
+        "version": "2:1.2.3-1",
+        "architecture": "amd64",
+        "sha256": "22a420890489023346f30fecef14ea900a0788e7bf959ef826aabb83944fccfb",
+        "byte_size": 35108,
+        "filename": "pool/main/libs/libsm/libsm6_1.2.3-1_amd64.deb",
+        "source": "libsm"
+      },
+      {
+        "name": "libx11-6",
+        "version": "2:1.8.4-2+deb12u2",
+        "architecture": "amd64",
+        "sha256": "d88c973e79fd9b65838d77624142952757e47a6eb1a58602acf0911cf35989f4",
+        "byte_size": 759544,
+        "filename": "pool/main/libx/libx11/libx11-6_1.8.4-2+deb12u2_amd64.deb",
+        "source": "libx11"
+      },
+      {
+        "name": "libx11-xcb1",
+        "version": "2:1.8.4-2+deb12u2",
+        "architecture": "amd64",
+        "sha256": "f5da45e1d881a793250a96613f28c471a248877f1a0f18a5c90e2a620a76c898",
+        "byte_size": 192356,
+        "filename": "pool/main/libx/libx11/libx11-xcb1_1.8.4-2+deb12u2_amd64.deb",
+        "source": "libx11"
+      },
+      {
+        "name": "libxcb1",
+        "version": "1.15-1",
+        "architecture": "amd64",
+        "sha256": "fdc61332a3892168f3cc9cfa1fe9cf11a91dc3e0acacbc47cbc50ebaa234cc71",
+        "byte_size": 144052,
+        "filename": "pool/main/libx/libxcb/libxcb1_1.15-1_amd64.deb",
+        "source": "libxcb"
+      },
+      {
+        "name": "libxext6",
+        "version": "2:1.3.4-1+b1",
+        "architecture": "amd64",
+        "sha256": "504b7be9d7df4f6f4519e8dd4d6f9d03a9fb911a78530fa23a692fba3058cba6",
+        "byte_size": 52932,
+        "filename": "pool/main/libx/libxext/libxext6_1.3.4-1+b1_amd64.deb",
+        "source": "libxext (2:1.3.4-1)"
+      },
+      {
+        "name": "libxrender1",
+        "version": "1:0.9.10-1.1",
+        "architecture": "amd64",
+        "sha256": "b2a6d160578f359220101947c8d67059b44704a251e688de1d0b744fefedfd1a",
+        "byte_size": 33228,
+        "filename": "pool/main/libx/libxrender/libxrender1_0.9.10-1.1_amd64.deb",
+        "source": "libxrender"
+      },
+      {
+        "name": "ninja-build",
+        "version": "1.11.1-2~deb12u1",
+        "architecture": "amd64",
+        "sha256": "e75fe14ee81334f52efe955aaaddac07d26f117bac60488ea19ea7a8b564e62c",
+        "byte_size": 134996,
+        "filename": "pool/main/n/ninja-build/ninja-build_1.11.1-2~deb12u1_amd64.deb",
+        "source": "ninja-build"
+      },
+      {
+        "name": "pkg-config",
+        "version": "1.8.1-1",
+        "architecture": "amd64",
+        "sha256": "312b2bdeff4671f8e0d589c124554890e944dd083061e9ad6f129bc76a970765",
+        "byte_size": 13688,
+        "filename": "pool/main/p/pkgconf/pkg-config_1.8.1-1_amd64.deb",
+        "source": "pkgconf"
+      },
+      {
+        "name": "zlib1g-dev",
+        "version": "1:1.2.13.dfsg-1",
+        "architecture": "amd64",
+        "sha256": "f9ce531f60cbd5df37996af9370e0171be96902a17ec2bdbd8d62038c354094f",
+        "byte_size": 916272,
+        "filename": "pool/main/z/zlib/zlib1g-dev_1.2.13.dfsg-1_amd64.deb",
+        "source": "zlib"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "name": "leptonica-dbb48b0fd0e10e943ecd9bab7439701842894733.zip",
+      "product": "leptonica",
+      "version": "1.86.0",
+      "revision": "dbb48b0fd0e10e943ecd9bab7439701842894733",
+      "url": "https://codeload.github.com/DanBloomberg/leptonica/zip/dbb48b0fd0e10e943ecd9bab7439701842894733",
+      "byte_size": 14348193,
+      "sha256": "ed41d8f95175d0112025720ebaff9e011d66689485d8315a1cff7f4e0e2d8a96",
+      "archive_root": "leptonica-dbb48b0fd0e10e943ecd9bab7439701842894733",
+      "cache": "build"
+    },
+    {
+      "name": "tesseract/source/tesseract-5.5.3-db0ec62f81b0737fbbe184d8fea40af5738f8eef.zip",
+      "role": "source_archive",
+      "url": "https://codeload.github.com/tesseract-ocr/tesseract/zip/db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+      "byte_size": 2533335,
+      "sha256": "d2470cc33ee34deeae6fc47809d0b33a3623a4343d92ff317ac3b9903c507bad",
+      "revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+      "product": "tesseract",
+      "version": "5.5.3",
+      "archive_root": "tesseract-db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+      "cache": "assets"
+    }
+  ]
+}
