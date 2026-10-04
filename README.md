@@ -79,6 +79,7 @@ python -m piptools compile pyproject.toml --extra dev --output-file requirements
 | 产品需求与业务验收 | [requirements.md](docs/product/requirements.md)、[acceptance.md](docs/product/acceptance.md) |
 | 稳定架构与业务不变量 | [overview.md](docs/architecture/overview.md) |
 | 跨接口通用约定 | [api-conventions.md](docs/architecture/api-conventions.md) |
+| OCR 内部处理边界 | [ocr-processing.md](docs/architecture/ocr-processing.md) |
 | 设计决定 | [ADR 索引](docs/architecture/decisions/README.md) |
 | 单个接口字段 | [OpenAPI 契约](contracts/openapi.json)，由 `python scripts/export_openapi.py` 生成；开发环境 `/docs` 可浏览 |
 | 配置、备份、恢复和部署 | [operations.md](docs/engineering/operations.md) |
