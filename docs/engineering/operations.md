@@ -8,6 +8,8 @@
 
 ## 备份范围
 
+财务回执的 `hash_version` 随数据库一起备份。升级到摘要 v2 后，存在任何 v2 回执就拒绝降级到无版本字段的结构；不得改写或删除回执来规避保护。旧 v1 回执升级后保持原响应与重放规则，见 [ADR 0014](../architecture/decisions/0014-versioned-command-hashes.md)。
+
 **`backup_database.py` 始终只备份数据库；有原件时使用 `backup_bundle.py`。** 两者都不包含配置、密钥、PostgreSQL 角色或整个服务器；自动定时、异地副本、保留策略与生产演练属于 T10。
 
 ## 包含票据与证件的 bundle

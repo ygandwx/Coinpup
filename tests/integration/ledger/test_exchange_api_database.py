@@ -19,7 +19,9 @@ pytestmark = [
 ]
 
 
-def test_http_exchange_and_crypto_payment_keep_fees_separate(authenticated_client):
+def test_http_exchange_and_crypto_payment_keep_fees_separate(
+    authenticated_client, legacy_v1_receipts
+):
     client, engine, owner = authenticated_client
     structure = LedgerService(engine)
     entity = structure.create_entity(
@@ -135,15 +137,14 @@ def test_http_exchange_and_crypto_payment_keep_fees_separate(authenticated_clien
             )
 
     # Adding an explicit empty fee list remains compatible with the original fee-free command.
-    no_fee = purchase | {
-        "amount": "0.01000000",
-        "splits": [{"category_id": str(categories[1].id), "amount": "0.01000000"}],
-    }
+    legacy = legacy_v1_receipts["cases"]["expense"]
+    path = f"/api/v1/ledgers/{legacy_v1_receipts['ledger']}"
+    no_fee = legacy["body"] | {"fees": []}
     no_fee.pop("fees")
-    original = post("/expenses", no_fee, "legacy-fee-free")
+    original = post("/expenses", no_fee, legacy["key"])
     assert original.status_code == 201, original.text
     assert "fees" not in original.json()
-    assert post("/expenses", no_fee | {"fees": []}, "legacy-fee-free").json() == original.json()
+    assert post("/expenses", no_fee | {"fees": []}, legacy["key"]).json() == original.json()
     assert (
         client.get(path + f"/operations/{original.json()['id']}").json()["latest_posting"]
         == original.json()

@@ -18,17 +18,51 @@ from coinpup_api.ledger.service import LedgerError
 
 
 class ClassifiedCommands:
-    def post_opening(self, owner_id, ledger_id, payload: OpeningCreate, idempotency_key: str):
-        return self._post(owner_id, ledger_id, "opening", payload, idempotency_key)
+    def post_opening(
+        self,
+        owner_id,
+        ledger_id,
+        payload: OpeningCreate,
+        idempotency_key: str,
+        *,
+        raw_body: bytes | None = None,
+    ):
+        return self._post(
+            owner_id, ledger_id, "opening", payload, idempotency_key, raw_body=raw_body
+        )
 
-    def post_income(self, owner_id, ledger_id, payload: IncomeCreate, idempotency_key: str):
-        return self._post(owner_id, ledger_id, "income", payload, idempotency_key)
+    def post_income(
+        self,
+        owner_id,
+        ledger_id,
+        payload: IncomeCreate,
+        idempotency_key: str,
+        *,
+        raw_body: bytes | None = None,
+    ):
+        return self._post(
+            owner_id, ledger_id, "income", payload, idempotency_key, raw_body=raw_body
+        )
 
-    def post_expense(self, owner_id, ledger_id, payload: ExpenseCreate, idempotency_key: str):
-        return self._post(owner_id, ledger_id, "expense", payload, idempotency_key)
+    def post_expense(
+        self,
+        owner_id,
+        ledger_id,
+        payload: ExpenseCreate,
+        idempotency_key: str,
+        *,
+        raw_body: bytes | None = None,
+    ):
+        return self._post(
+            owner_id, ledger_id, "expense", payload, idempotency_key, raw_body=raw_body
+        )
 
-    def _post(self, owner_id, ledger_id, kind, payload, key):
-        with self._command(owner_id, ledger_id, kind, payload, key) as (session, digest, replay):
+    def _post(self, owner_id, ledger_id, kind, payload, key, *, raw_body=None):
+        with self._command(owner_id, ledger_id, kind, payload, key, raw_body=raw_body) as (
+            session,
+            digest,
+            replay,
+        ):
             if replay is not None:
                 return replay
             fees = getattr(payload, "fees", [])

@@ -12,7 +12,12 @@ from coinpup_api.ledger.commands.fees import FeeCommands
 from coinpup_api.ledger.commands.transfer import TransferCommands
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
 from coinpup_api.ledger.errors import MoneyError
-from coinpup_api.ledger.idempotency import _IDEMPOTENCY_KEY, CommandIdempotency
+from coinpup_api.ledger.idempotency import (
+    _IDEMPOTENCY_KEY,
+    CommandIdempotency,
+    receipt_hash_version,
+    revision_hash_v2,
+)
 from coinpup_api.ledger.idempotency import revision_hash as revision_hash
 from coinpup_api.ledger.models import (
     AssetRecord,
@@ -154,23 +159,32 @@ class RevisionService(
     BalanceQueries,
     PostingCore,
 ):
-    def correct(self, owner_id, ledger_id, operation_id, payload, key):
-        return self._revise(owner_id, ledger_id, operation_id, "correct", payload, key)
+    def correct(self, owner_id, ledger_id, operation_id, payload, key, *, raw_body=None):
+        return self._revise(
+            owner_id, ledger_id, operation_id, "correct", payload, key, raw_body=raw_body
+        )
 
-    def cancel(self, owner_id, ledger_id, operation_id, payload, key):
-        return self._revise(owner_id, ledger_id, operation_id, "cancel", payload, key)
+    def cancel(self, owner_id, ledger_id, operation_id, payload, key, *, raw_body=None):
+        return self._revise(
+            owner_id, ledger_id, operation_id, "cancel", payload, key, raw_body=raw_body
+        )
 
-    def _revise(self, owner_id, ledger_id, operation_id, action, payload, key):
+    def _revise(self, owner_id, ledger_id, operation_id, action, payload, key, *, raw_body=None):
         if not isinstance(key, str) or _IDEMPOTENCY_KEY.fullmatch(key) is None:
             raise LedgerError(
                 "invalid_idempotency_key",
                 422,
                 "Use 1–128 visible ASCII characters for the command key.",
             )
-        digest = revision_hash(action, ledger_id, operation_id, payload)
         with self._transaction(owner_id) as session:
             _, entity = self._locked_ledger(session, owner_id, ledger_id)
             receipt = session.get(CommandReceipt, (ledger_id, key))
+            hash_version = receipt_hash_version(receipt)
+            digest = (
+                revision_hash(action, ledger_id, operation_id, payload)
+                if hash_version == 1
+                else revision_hash_v2(action, ledger_id, operation_id, payload, raw_body=raw_body)
+            )
             if receipt is not None:
                 if receipt.request_hash != digest:
                     raise LedgerError(
@@ -319,6 +333,7 @@ class RevisionService(
                     ledger_id=ledger_id,
                     key=key,
                     request_hash=digest,
+                    hash_version=2,
                     response=response.model_dump(mode="json"),
                     response_status=200,
                     operation_id=operation.id,
@@ -413,14 +428,32 @@ class RevisionService(
                 )
             return result
 
-    def correct_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+    def correct_operation(
+        self,
+        owner_id,
+        ledger_id,
+        operation_id,
+        payload,
+        idempotency_key,
+        *,
+        raw_body: bytes | None = None,
+    ):
         return RevisionService(self.engine).correct(
-            owner_id, ledger_id, operation_id, payload, idempotency_key
+            owner_id, ledger_id, operation_id, payload, idempotency_key, raw_body=raw_body
         )
 
-    def cancel_operation(self, owner_id, ledger_id, operation_id, payload, idempotency_key):
+    def cancel_operation(
+        self,
+        owner_id,
+        ledger_id,
+        operation_id,
+        payload,
+        idempotency_key,
+        *,
+        raw_body: bytes | None = None,
+    ):
         return RevisionService(self.engine).cancel(
-            owner_id, ledger_id, operation_id, payload, idempotency_key
+            owner_id, ledger_id, operation_id, payload, idempotency_key, raw_body=raw_body
         )
 
     def history(self, owner_id, ledger_id, operation_id, limit=100, offset=0):

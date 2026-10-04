@@ -1,7 +1,9 @@
 """Shared structure tests require a separately migrated disposable PostgreSQL database."""
 
 import os
+import runpy
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from coinpup_api.admin import create_admin
@@ -62,6 +64,14 @@ def structure_database():
     finally:
         cleanup()
         database.close()
+
+
+@pytest.fixture
+def legacy_v1_receipts(structure_database):
+    """Seed immutable v1 receipts before the real hash-version schema upgrade."""
+    engine, owner = structure_database
+    helper = runpy.run_path(str(Path(__file__).parent / "ledger/legacy_v1_receipts.py"))
+    return helper["create_legacy_v1_receipts"](engine, owner)
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 
@@ -29,12 +29,18 @@ from coinpup_api.ledger.posting_schemas import (
 from coinpup_api.ledger.service import LedgerError
 
 
+async def raw_command_body(request: Request) -> bytes:
+    """Starlette caches the original bytes separately from Pydantic's validated model."""
+    return await request.body()
+
+
 def create_posting_router(settings: Settings, engine: Engine | None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["financial operations"])
     service = PostingService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
+    original_body = Annotated[bytes, Depends(raw_command_body)]
     command_key = Annotated[
         str,
         Header(
@@ -43,9 +49,11 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
             max_length=128,
             pattern=r"^[!-~]{1,128}$",
             description=(
-                "Unique command key within this ledger. Retry with the same validated body. "
+                "Unique command key within this ledger. Retry with the same original JSON body. "
                 "The original receipt is replayed; a changed body returns 409. "
-                "Amount spellings such as 1.0 and 1.00 are different request bodies."
+                "Amount spellings such as 1.0 and 1.00 are different request bodies. "
+                "For new v2 receipts, omission, null and empty arrays are distinct; "
+                "legacy v1 receipts retain their original rules."
             ),
         ),
     ]
@@ -64,36 +72,68 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
 
     @router.post("/opening-balances", response_model=OperationResponse, status_code=201)
     def opening_balance(
-        ledger_id: UUID, body: OpeningCreate, identity: writer, idempotency_key: command_key
+        ledger_id: UUID,
+        body: OpeningCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Set one initial position per account/asset without treating it as income."""
-        return execute(service.post_opening, identity.id, ledger_id, body, idempotency_key)
+        return execute(
+            service.post_opening, identity.id, ledger_id, body, idempotency_key, raw_body=raw_body
+        )
 
     @router.post("/income", response_model=OperationResponse, status_code=201)
-    def income(ledger_id: UUID, body: IncomeCreate, identity: writer, idempotency_key: command_key):
+    def income(
+        ledger_id: UUID,
+        body: IncomeCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
         """Post a receipt and its income-category splits in one transaction."""
-        return execute(service.post_income, identity.id, ledger_id, body, idempotency_key)
+        return execute(
+            service.post_income, identity.id, ledger_id, body, idempotency_key, raw_body=raw_body
+        )
 
     @router.post("/expenses", response_model=OperationResponse, status_code=201)
     def expense(
-        ledger_id: UUID, body: ExpenseCreate, identity: writer, idempotency_key: command_key
+        ledger_id: UUID,
+        body: ExpenseCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Post a payment and its expense-category splits in one transaction."""
-        return execute(service.post_expense, identity.id, ledger_id, body, idempotency_key)
+        return execute(
+            service.post_expense, identity.id, ledger_id, body, idempotency_key, raw_body=raw_body
+        )
 
     @router.post("/transfers", response_model=TransferResponse, status_code=201)
     def transfer(
-        ledger_id: UUID, body: TransferCreate, identity: writer, idempotency_key: command_key
+        ledger_id: UUID,
+        body: TransferCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Move one asset between two accounts, including credit-card repayments."""
-        return execute(service.post_transfer, identity.id, ledger_id, body, idempotency_key)
+        return execute(
+            service.post_transfer, identity.id, ledger_id, body, idempotency_key, raw_body=raw_body
+        )
 
     @router.post("/exchanges", response_model=ExchangeResponse, status_code=201)
     def exchange(
-        ledger_id: UUID, body: ExchangeCreate, identity: writer, idempotency_key: command_key
+        ledger_id: UUID,
+        body: ExchangeCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Record actual exchanged quantities and explicit fees atomically."""
-        return execute(service.post_exchange, identity.id, ledger_id, body, idempotency_key)
+        return execute(
+            service.post_exchange, identity.id, ledger_id, body, idempotency_key, raw_body=raw_body
+        )
 
     @router.post("/operations/{operation_id}/corrections", response_model=OperationState)
     def correct_operation(
@@ -102,10 +142,17 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
         body: CorrectionCreate,
         identity: writer,
         idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Reverse the prior posting and replace it atomically at the expected version."""
         return execute(
-            service.correct_operation, identity.id, ledger_id, operation_id, body, idempotency_key
+            service.correct_operation,
+            identity.id,
+            ledger_id,
+            operation_id,
+            body,
+            idempotency_key,
+            raw_body=raw_body,
         )
 
     @router.post("/operations/{operation_id}/cancellations", response_model=OperationState)
@@ -115,10 +162,17 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
         body: CancellationCreate,
         identity: writer,
         idempotency_key: command_key,
+        raw_body: original_body,
     ):
         """Reverse the latest posting and retain a terminal cancellation record."""
         return execute(
-            service.cancel_operation, identity.id, ledger_id, operation_id, body, idempotency_key
+            service.cancel_operation,
+            identity.id,
+            ledger_id,
+            operation_id,
+            body,
+            idempotency_key,
+            raw_body=raw_body,
         )
 
     @router.get("/operations", response_model=list[OperationState])

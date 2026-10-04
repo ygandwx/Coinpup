@@ -2658,7 +2658,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -2697,7 +2697,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -2876,7 +2876,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -2915,7 +2915,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -3021,7 +3021,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -3061,7 +3061,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };
@@ -3246,7 +3246,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique command key within this ledger. Retry with the same validated body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. */
+                /** @description Unique command key within this ledger. Retry with the same original JSON body. The original receipt is replayed; a changed body returns 409. Amount spellings such as 1.0 and 1.00 are different request bodies. For new v2 receipts, omission, null and empty arrays are distinct; legacy v1 receipts retain their original rules. */
                 "Idempotency-Key": string;
                 "X-CSRF-Token"?: string | null;
             };

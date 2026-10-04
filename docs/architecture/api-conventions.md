@@ -29,8 +29,8 @@
 ## 幂等与回执
 
 - 财务写命令必须带 `Idempotency-Key`：1–128 个不含空格的可见 ASCII 字符，作用域为账本。同键同请求返回永久保存的原回执；同键不同请求返回 409，失败事务不保存成功回执。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
-- 摘要基于命令类型、账本和验证后请求，修订还包含动作、路径中的业务 ID、版本、原因与替代内容。JSON 键顺序不影响摘要；金额字符串拼写与分类顺序保留，`"1.0"` 与 `"1.00"` 不同。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0007](decisions/0007-exchanges-and-explicit-fees.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
-- 重试使用原完整正文与原键，不从可变表单重建，也不把服务端生成的 ID 补进原先省略 ID 的请求。省略可选 ID 与显式 null 使用相同默认表示；旧收支/转账省略费用或 `fees: []` 保持旧摘要，无费用回执不补写 `fees`。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0007](decisions/0007-exchanges-and-explicit-fees.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
+- 旧回执按其 v1 版本使用冻结的验证后字段和默认值；新回执一律使用 v2，摘要包含收到的原始 JSON、动作、固定路由模板及账本 ID，更正/取消还包含路径中的业务 ID。JSON 键顺序和空白不影响摘要；金额字符串拼写与数组顺序保留，`"1.0"` 与 `"1.00"` 不同。来源：[ADR 0014](decisions/0014-versioned-command-hashes.md)。
+- 重试使用原完整正文与原键，不从可变表单重建，也不把服务端生成的 ID 补进原先省略 ID 的请求。v2 中省略字段、显式 null 或空数组属于不同正文；v1 继续保留省略可选 ID 与 null 等价、原收支/转账省略费用与 `fees: []` 等价的历史规则。无费用回执不补写 `fees`。来源：[ADR 0014](decisions/0014-versioned-command-hashes.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
 - 新增及其重放返回原 201 回执，更正/取消及其重放返回原 200 状态回执。读取接口返回当前状态，可能已比回执更新；收到回执后另读当前状态，不用旧回执覆盖新版本。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
 
 ## 读取与分页
