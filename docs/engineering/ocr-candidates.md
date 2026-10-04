@@ -1,6 +1,6 @@
 # OCR 候选隔离环境
 
-本环境只验证依赖、原生加载和离线初始化，不识别票据，也不代表 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md) 达标。正式选型遵守[冻结协议](ocr-benchmark.md)，进度只见 [status.md](status.md)。构建入口是独立 [Dockerfile](../../ops/ocr-benchmark/Dockerfile)，默认 API 镜像和四份原有依赖锁保持独立。
+本环境提供依赖/原生加载审计、离线初始化及独立开发样本识别；这些步骤不代表 [ADR 0019](../architecture/decisions/0019-local-ocr-worker.md) 达标。正式选型遵守[冻结协议](ocr-benchmark.md)，进度只见 [status.md](status.md)。构建入口是独立 [Dockerfile](../../ops/ocr-benchmark/Dockerfile)，默认 API 镜像和四份原有依赖锁保持独立。
 
 ## 构建与来源
 
@@ -27,3 +27,21 @@ COINPUP_ENGINE_ASSETS=build/engine-assets COINPUP_CANDIDATE_REPORTS=build/candid
 ```
 
 真实 profile 校验由上述容器实际生成的报告，不在宿主机重新加载引擎；没有明确报告目录或缺项时失败，不 skip。普通测试使用虚构记录和 mock，不在 API 环境安装重型依赖。成功初始化仍须完成独立开发配置、冻结正式输入与同机质量／资源验收，才能接入生产 worker。
+
+## 真实识别与开发配置
+
+[适配器](../../services/api/src/coinpup_api/ocr/engine_adapters.py)只接收 RGB 字节及真实尺寸，返回 SDK 实际整行文字/框；Tesseract 使用 C API，Paddle 使用本地 small 的 BGR 数组入口。固定 CPU 单线程、FP32，关闭 HPI、MKLDNN、CINN、TensorRT 及辅助方向/展开模型；检测上限与分数参数均写入实际配置元数据。保留内部空格和标点，不推造细框或补字段。
+
+[共享准备与识别](../../services/api/src/coinpup_api/ocr/recognize.py)在原 bitmap/image 上下文内转换 RGB 并计算摘要，消费结束后释放资源；文字层使用真实几何和原词框，已存在的坏层只进人工路径。每页保留物理序号，坏页不能把后页移位。纯准备默认路径和响应保持原样，回调仅供内部识别使用。
+
+[开发运行器](../../scripts/ocr_benchmark/development_run.py)在宿主评分，每个容器只绑定经核验的模型与随机名称私有原件，不绑定真值/模板/来源映射。固定 profile 的持久 [NDJSON 进程](../../scripts/ocr_benchmark/candidate_session.py)每次读取有界请求并释放当页数据；启动 120 秒、每页 60 秒，只有唯一真实页完成才能推进期限，输出/诊断均有限额。容器删除与本地进程回收未确认时失败，不能继续下一候选。
+
+```sh
+python -m scripts.ocr_benchmark.development_run --corpus-dir build/fictional-corpus --assets-dir build/engine-assets --output-dir build/development-reports
+```
+
+输出目录及其同级 `<output-name>-staging` 都必须不存在；仅新建的虚构原件 staging 子树和该组公开制品审计目录交给容器用户。私有 staging 不在公开报告目录内，上传报告不会遍历原件或放宽原件权限。每组保留两次完整实际响应、真实 raster 摘要、单调纳秒时间与开发选择。原件准备及批量文字提取计入首个页面期限；完成次序可不同于物理页序，结果按实际物理序号保存。
+
+进程在 bitmap/image 仍存活时收集实际原生映射；显式 `finish` 后才做完整加载/动态依赖审计并释放模型。它复用同一环境初始化报告中的实际原通知证据，重新核验现行来源/政策摘要与识别后文件的原字节，缺库、未知来源或通知不匹配必须失败。父进程须取得审计通过及报告摘要、确认正常退出和容器删除后才允许开发选型；初始化报告不能授权跳过识别后新增库。
+
+准备时间是总处理墙钟减识别与解析后的残差，包含协调开销；此步骤没有正式 RSS/冷热性能测量，不能当作正式对比数据。非默认 CropBox 的文字页在识别路径保守交给人工，不改变纯准备的既有响应，也不能转去 OCR。
