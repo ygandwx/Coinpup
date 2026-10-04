@@ -25,7 +25,7 @@
 7. **同一时间只允许一个含数据库迁移的 PR 处于打开状态**。合并前先 rebase 到最新的 `main`，并确认 `python -m alembic heads` 只输出一个 head。
 8. **发现计划与代码不符，或某一步会破坏现有测试时，停在这一步**。在 PR 中说明情况，并提出修订后的步骤。不要为了“完成计划”而绕过、跳过或删除测试。
 9. 测试和示例只使用明确虚构的数据，不提交任何密钥。
-10. ADR 编号使用下一个可用编号，不要预先占用。当前最后一个是 0013。
+10. ADR 编号使用下一个可用编号，不要预先占用。以 ADR 索引和开放的 ADR 草稿 PR 为准，避免沿用本计划编写时的旧编号。
 
 ---
 
@@ -82,10 +82,11 @@
 | OPT-20 | 幂等摘要 v2 | C 结构性改进 | OPT-08 | 已完成 | #38 |
 | OPT-21 | 数据库形状校验按业务类型分发 | C | OPT-08 | 已完成 | [#41](https://github.com/ygandwx/Coinpup/pull/41) |
 | OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
-| OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 待开始 | |
+| OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 已完成（仅 ADR，未实现） | [#43](https://github.com/ygandwx/Coinpup/pull/43) |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
-| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 待开始 | |
-| OPT-30 🛑 | 登录防护与暴露面 | D 部署前 | 无 | 待开始 | |
+| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 已完成（仅 ADR，未实现） | [#44](https://github.com/ygandwx/Coinpup/pull/44) |
+| OPT-30 🛑 | 登录防护与暴露面 | D 部署前 | 无 | 待确认 | [#45](https://github.com/ygandwx/Coinpup/pull/45) |
+| T05-3 🛑 | 本地 OCR 方案（仅 ADR） | 方案 | OPT-01 至 OPT-08 | 待确认 | [#46](https://github.com/ygandwx/Coinpup/pull/46) |
 
 ---
 
