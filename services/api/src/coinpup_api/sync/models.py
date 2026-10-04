@@ -37,7 +37,7 @@ class ChangeLog(Base):
         CheckConstraint(
             "entity_type IN ('entities', 'ledgers', 'accounts', 'account_assets', "
             "'categories', 'assets', 'financial_operations', 'stored_files', "
-            "'operation_file_links')",
+            "'operation_file_links', 'ocr_jobs', 'ocr_drafts')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

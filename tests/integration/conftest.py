@@ -6,6 +6,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 from coinpup_api.admin import create_admin
 from coinpup_api.config import Settings
 from coinpup_api.database import Database
@@ -15,6 +17,25 @@ from coinpup_api.models import Administrator, AuthSession, LoginGuard
 from coinpup_api.security import csrf_token_for, token_digest
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
+
+
+def ocr_schema_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261004_0013_ocr_jobs_and_drafts.py"
+        )
+    )
+
+
+def isolated_ocr_schema(engine, action):
+    """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
+    with engine.begin() as connection:
+        context = MigrationContext.configure(connection)
+        assert context.get_current_heads() == ("20261004_0013",)
+        with Operations.context(context):
+            ocr_schema_migration()[action]()
+        assert context.get_current_heads() == ("20261004_0013",)
 
 
 def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
@@ -28,7 +49,9 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
                 / "services/api/migrations/versions/20261004_0012_ordered_change_log.py"
             )
         )
-        definitions = migration["_CHANGE_TRIGGER_SQL"]
+        definitions = (
+            migration["_CHANGE_TRIGGER_SQL"] | ocr_schema_migration()["_CHANGE_TRIGGER_SQL"]
+        )
         registered = dict(
             connection.exec_driver_sql(
                 "SELECT trigger.tgname, relation.relname FROM pg_trigger trigger "
@@ -63,7 +86,8 @@ def structure_database(request):
             # Only this explicitly opted-in disposable fixture may truncate immutable journals.
             # RESTRICT rejects unexpected dependants; production utilities never do this.
             connection.exec_driver_sql(
-                "TRUNCATE TABLE change_log, file_uploads, operation_file_links, stored_files, "
+                "TRUNCATE TABLE change_log, ocr_drafts, ocr_jobs, file_uploads, "
+                "operation_file_links, stored_files, "
                 "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations RESTRICT"
             )
@@ -90,18 +114,26 @@ def structure_database(request):
                 )
             )
 
+    file_round_trip = (
+        request.node.name == "test_empty_documents_migration_round_trip"
+        and request.node.path == Path(__file__).parent / "files/test_files_schema.py"
+    )
+    ocr_detached = False
     try:
         change_trigger_registration(database.engine)
         cleanup()
         owner = create_admin(
             database.engine, "structure-test-admin", "fictional-structure-password-2026"
         )
+        if file_round_trip:
+            # Real FKs prevent independently dropping 0008's files even with empty OCR tables.
+            # The frozen downgrade refuses OCR rows/history; no CASCADE or guard bypass occurs.
+            isolated_ocr_schema(database.engine, "downgrade")
+            ocr_detached = True
         yield database.engine, owner
     finally:
-        file_round_trip = (
-            request.node.name == "test_empty_documents_migration_round_trip"
-            and request.node.path == Path(__file__).parent / "files/test_files_schema.py"
-        )
+        if ocr_detached:
+            isolated_ocr_schema(database.engine, "upgrade")
         change_trigger_registration(database.engine, repair_recreated_file_tables=file_round_trip)
         cleanup()
         database.close()

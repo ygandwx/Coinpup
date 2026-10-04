@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import hashlib
 import json
 import os
 import tempfile
@@ -71,6 +72,68 @@ def upload_fixture(service, store, owner, ledger, content, filename, operation=N
     finally:
         store.discard(staged)
     return {"ledger": ledger, "request": request, "receipt": receipt, "content": content}
+
+
+def fictional_ocr_metadata(engine, owner, ledger_id, file_id):
+    """Seed explicit synthetic metadata; this schema exercise performs no recognition."""
+    from coinpup_api.ledger.service import LedgerService, _touch
+    from coinpup_api.ocr.models import OcrDraft, OcrJob
+
+    intent = uuid4()
+    configuration = {"profile": "fictional-bundle-metadata-v1"}
+    config_hash = hashlib.sha256(json.dumps(configuration, sort_keys=True).encode()).hexdigest()
+    manifest_hash = hashlib.sha256(f"{intent}:{file_id}:{ledger_id}".encode()).hexdigest()
+    scope = LedgerService(engine)
+    with scope._transaction(owner, write=True) as session:
+        scope._ledger(session, owner, ledger_id, write=True)
+        job = OcrJob(
+            ledger_id=ledger_id,
+            created_by=owner,
+            file_id=file_id,
+            intent_id=intent,
+            manifest_hash=manifest_hash,
+            configuration=configuration,
+            config_hash=config_hash,
+        )
+        session.add(job)
+        session.flush()
+        draft = OcrDraft(
+            ledger_id=ledger_id,
+            created_by=owner,
+            job_id=job.id,
+            source_key="fixture:1",
+            recognized={"amount": "100.00", "note": "Fictional metadata, no OCR ran"},
+            evidence={"page": 1, "route": "manual_fixture"},
+            fields={"amount": "100.00"},
+        )
+        session.add(draft)
+        session.flush()
+        draft.fields = {"amount": "99.00"}
+        _touch(draft)
+        session.flush()
+        return job.id, draft.id
+
+
+def verify_fictional_ocr_metadata(engine, ids):
+    from coinpup_api.ocr.models import OcrDraft, OcrJob
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        job, draft = session.get(OcrJob, ids[0]), session.get(OcrDraft, ids[1])
+        if (
+            job is None
+            or draft is None
+            or job.state != "pending"
+            or job.attempts != 0
+            or job.generation != 0
+            or job.lease_token is not None
+            or job.lease_until is not None
+            or draft.job_id != job.id
+            or draft.recognized["amount"] != "100.00"
+            or draft.fields != {"amount": "99.00"}
+            or draft.version != 2
+        ):
+            raise ArchiveError("Restored OCR metadata or independent human edits changed.")
 
 
 def check_bundle_restore(source_url):
@@ -175,6 +238,7 @@ def check_bundle_restore(source_url):
                 service, store, owner, ledger_b, pdf, "Fictional company certificate.pdf"
             )
             picture = upload_fixture(service, store, owner, ledger_b, PNG, "Fictional receipt.png")
+            ocr_ids = fictional_ocr_metadata(engine, owner, ledger_b, second["receipt"].file_id)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -263,6 +327,7 @@ def check_bundle_restore(source_url):
                 raise ArchiveError(
                     "Bundle restore differs from its exact snapshot or changed the source."
                 )
+            verify_fictional_ocr_metadata(restored_engine, ocr_ids)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
@@ -335,6 +400,7 @@ def check_bundle_restore(source_url):
                 "archived reads and replay verified."
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
+            print("OCR job, candidate provenance and independent human edit restored exactly.")
             print(
                 "Restored change cursor continues above visible rows and captured identity state."
             )

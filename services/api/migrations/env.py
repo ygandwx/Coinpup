@@ -5,6 +5,7 @@ from coinpup_api.config import Settings
 from coinpup_api.files import models as document_models  # noqa: F401
 from coinpup_api.ledger import models as ledger_models  # noqa: F401
 from coinpup_api.models import Base
+from coinpup_api.ocr import models as ocr_models  # noqa: F401
 from coinpup_api.sync import models as sync_models  # noqa: F401
 from sqlalchemy import create_engine, pool
 
