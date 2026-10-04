@@ -81,7 +81,7 @@
 | OPT-12 | 流水列表批量读取与按日期浏览 | B | OPT-07、OPT-11 | 已完成 | [#40](https://github.com/ygandwx/Coinpup/pull/40) |
 | OPT-20 | 幂等摘要 v2 | C 结构性改进 | OPT-08 | 已完成 | #38 |
 | OPT-21 | 数据库形状校验按业务类型分发 | C | OPT-08 | 已完成 | [#41](https://github.com/ygandwx/Coinpup/pull/41) |
-| OPT-22 | 变更日志与同步游标 | C | OPT-08 | 待开始 | |
+| OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
 | OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 待开始 | |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
 | OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 待开始 | |
