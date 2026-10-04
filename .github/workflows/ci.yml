@@ -62,6 +62,32 @@ jobs:
       - name: Check real optional libraries
         run: python scripts/check.py ocr
 
+  corpus:
+    name: Fictional OCR corpus toolchain
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.lock
+            requirements-benchmark.lock
+      - name: Install locked corpus builder
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install --require-hashes -r requirements-benchmark.lock
+      - name: Fetch and verify fixed public fonts
+        run: python scripts/ocr_benchmark/fonts.py fetch --source-dir build/corpus-sources
+      - name: Check real CJK fonts and PDF toolchain
+        env:
+          COINPUP_CORPUS_SOURCES: build/corpus-sources
+        run: python scripts/check.py corpus
+
   web:
     name: Web type check and build
     runs-on: ubuntu-latest

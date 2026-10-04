@@ -19,7 +19,7 @@ EXCLUDED = {"pymupdf", "fitz", "ocrmypdf"}
 AGPL = re.compile(r"\b(?:Affero|AGPL)\b", re.IGNORECASE)
 
 
-def audit():
+def audit(expected=None, *, additional_notices=()):
     installed = {
         re.sub(r"[-_.]+", "-", dist.metadata.get("Name", "").lower())
         for dist in metadata.distributions()
@@ -27,7 +27,7 @@ def audit():
     if installed & EXCLUDED:
         raise ValueError("Excluded PDF dependency is installed.")
     packages = []
-    for name, expected_version in EXPECTED.items():
+    for name, expected_version in (EXPECTED if expected is None else expected).items():
         dist = metadata.distribution(name)
         if dist.version != expected_version:
             raise ValueError("An OCR dependency differs from its locked version.")
@@ -41,6 +41,7 @@ def audit():
         for path in dist.files or ():
             if not (
                 path.name.upper().startswith(("LICENSE", "COPYING", "NOTICE", "COPYRIGHT"))
+                or path.as_posix() in additional_notices
                 or any(part.lower() == "licenses" for part in path.parts)
             ):
                 continue
