@@ -51,6 +51,10 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -v "$PWD/recover
 
 CI 的 `check_compose_backup.py` 先验证旧数据库单独恢复，再执行 `check_bundle_restore.py`：两个账本同内容独立、同账本去重、PDF/PNG、归档文件/关联、取消流水、未完成上传、完整表与原件字节一致、恢复后原回执重放。演练在导出快照后、pg_dump 前提交一次新上传，确认晚到记录与 staging/孤立 blob 都不进入备份。
 
+OCR 任务、冻结配置、候选证据、人工编辑和提交有序日志与其他业务表一起进入数据库快照；备份不执行识别，也不会把任务改成成功。引擎、模型和语言制品不属于原件卷，应另存固定版本、许可证及摘要，恢复后必须匹配任务的冻结处理配置，不能套用新默认值。
+
+恢复核对期间停止 worker，旧实例及其租约不能连接新目标。核对全部行及原件后启动新实例：已完成任务只读，原完成重放不产生新行；过期 running 经数据库时钟重新领取，增加 generation 并换 token，旧 token 的续租、失败及完成均被拒绝。识别计算与原件读取始终在领取事务提交之后，不持有数据库业务锁；只有短状态/草稿事务按咨询锁→账本→主体的顺序写入。
+
 ## 运行环境与凭据
 
 - 使用 Linux/POSIX 主机或 Linux 容器、项目 Python 依赖和 PostgreSQL 17 的 `pg_dump`、`pg_restore`。与当前 PostgreSQL 17 服务使用相同主版本工具；旧版工具或失败退出都不能作为成功备份。
