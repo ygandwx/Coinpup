@@ -2,7 +2,6 @@
 
 import asyncio
 import base64
-import hashlib
 import json
 import os
 import tempfile
@@ -75,57 +74,82 @@ def upload_fixture(service, store, owner, ledger, content, filename, operation=N
 
 
 def fictional_ocr_metadata(engine, owner, ledger_id, file_id):
-    """Seed explicit synthetic metadata; this schema exercise performs no recognition."""
+    """Exercise real queue services with explicit fictional candidates, not recognition."""
     from coinpup_api.ledger.service import LedgerService, _touch
+    from coinpup_api.ocr.contracts import Candidate, Completion, JobCreate
     from coinpup_api.ocr.models import OcrDraft, OcrJob
+    from coinpup_api.ocr.queue import OcrQueueService
+    from sqlalchemy import func, select, text
 
-    intent = uuid4()
-    configuration = {"profile": "fictional-bundle-metadata-v1"}
-    config_hash = hashlib.sha256(json.dumps(configuration, sort_keys=True).encode()).hexdigest()
-    manifest_hash = hashlib.sha256(f"{intent}:{file_id}:{ledger_id}".encode()).hexdigest()
+    configuration = {
+        "lease_seconds": 300,
+        "retry_seconds": 0,
+        "processing": {"profile": "fictional-bundle-service-v1"},
+    }
+    request = JobCreate(intent_id=uuid4(), file_id=file_id)
+    completion = Completion(
+        summary={"pages": 1, "manual_pages": 1},
+        candidates=(
+            Candidate(
+                source_key="fixture:1",
+                recognized={"amount": "100.00", "note": "Fictional candidate; no OCR ran"},
+                evidence={"page": 1, "route": "manual_fixture"},
+                fields={"amount": "100.00"},
+            ),
+        ),
+    )
+    queue = OcrQueueService(engine)
+    created = queue.create_job(owner, ledger_id, request, configuration=configuration)
+    lease = queue.claim(owner)
+    if lease is None or lease.job_id != created.id:
+        raise ArchiveError("Fictional queue fixture did not claim its expected task.")
+    completed = queue.finish(lease, completion)
+    draft_id = completed.result.draft_ids[0]
     scope = LedgerService(engine)
     with scope._transaction(owner, write=True) as session:
         scope._ledger(session, owner, ledger_id, write=True)
-        job = OcrJob(
-            ledger_id=ledger_id,
-            created_by=owner,
-            file_id=file_id,
-            intent_id=intent,
-            manifest_hash=manifest_hash,
-            configuration=configuration,
-            config_hash=config_hash,
-        )
-        session.add(job)
-        session.flush()
-        draft = OcrDraft(
-            ledger_id=ledger_id,
-            created_by=owner,
-            job_id=job.id,
-            source_key="fixture:1",
-            recognized={"amount": "100.00", "note": "Fictional metadata, no OCR ran"},
-            evidence={"page": 1, "route": "manual_fixture"},
-            fields={"amount": "100.00"},
-        )
-        session.add(draft)
-        session.flush()
+        draft = session.get(OcrDraft, draft_id)
         draft.fields = {"amount": "99.00"}
         _touch(draft)
         session.flush()
-        return job.id, draft.id
+    interrupted = queue.create_job(
+        owner,
+        ledger_id,
+        JobCreate(intent_id=uuid4(), file_id=file_id),
+        configuration=configuration,
+    )
+    old_lease = queue.claim(owner)
+    if old_lease is None or old_lease.job_id != interrupted.id:
+        raise ArchiveError("Fictional interruption fixture did not claim its expected task.")
+    with scope._transaction(owner, write=True) as session:
+        scope._ledger(session, owner, ledger_id, write=True)
+        job = session.scalar(select(OcrJob).where(OcrJob.id == interrupted.id).with_for_update())
+        job.lease_until = func.clock_timestamp() - text("INTERVAL '1 second'")
+        _touch(job)
+    return {
+        "job": completed,
+        "draft_id": draft_id,
+        "request": request,
+        "lease": lease,
+        "completion": completion,
+        "interrupted": old_lease,
+    }
 
 
 def verify_fictional_ocr_metadata(engine, ids):
     from coinpup_api.ocr.models import OcrDraft, OcrJob
+    from coinpup_api.ocr.queue import OcrQueueService
     from sqlalchemy.orm import Session
 
     with Session(engine) as session:
-        job, draft = session.get(OcrJob, ids[0]), session.get(OcrDraft, ids[1])
+        job = session.get(OcrJob, ids["job"].id)
+        draft = session.get(OcrDraft, ids["draft_id"])
         if (
             job is None
             or draft is None
-            or job.state != "pending"
-            or job.attempts != 0
-            or job.generation != 0
+            or job.state != "succeeded"
+            or job.attempts != 1
+            or job.generation != 1
             or job.lease_token is not None
             or job.lease_until is not None
             or draft.job_id != job.id
@@ -134,6 +158,52 @@ def verify_fictional_ocr_metadata(engine, ids):
             or draft.version != 2
         ):
             raise ArchiveError("Restored OCR metadata or independent human edits changed.")
+    queue, lease = OcrQueueService(engine), ids["lease"]
+    if (
+        queue.create_job(lease.owner_id, lease.ledger_id, ids["request"], configuration=None)
+        != ids["job"]
+        or queue.finish(lease, ids["completion"]) != ids["job"]
+    ):
+        raise ArchiveError("Restored original queue intent or completion replay changed.")
+
+
+def verify_restored_queue_continuation(engine, target, ids):
+    from coinpup_api.ledger.service import LedgerError
+    from coinpup_api.ocr.queue import OcrQueueService
+
+    queue, old = OcrQueueService(engine), ids["interrupted"]
+    fresh = queue.claim(old.owner_id)
+    if (
+        fresh is None
+        or fresh.job_id != old.job_id
+        or fresh.generation != old.generation + 1
+        or fresh.token == old.token
+    ):
+        raise ArchiveError("Restored expired task did not acquire a fresh fenced lease.")
+    before = snapshot(target)
+    try:
+        queue.finish(old, ids["completion"])
+    except LedgerError as error:
+        if error.code != "ocr_lease_lost":
+            raise ArchiveError("Restored stale worker failed with an unexpected error.") from None
+    else:
+        raise ArchiveError("Restored stale worker was allowed to write candidates.")
+    if snapshot(target) != before:
+        raise ArchiveError("Restored stale worker rejection changed persisted rows.")
+    completed = queue.finish(fresh, ids["completion"])
+    after = snapshot(target)
+    if (
+        completed.result is None
+        or len(completed.result.draft_ids) != 1
+        or completed.result.draft_ids[0] == ids["draft_id"]
+        or any(
+            before[name] != rows
+            for name, rows in after.items()
+            if name not in {"ocr_jobs", "ocr_drafts", "change_log"}
+        )
+    ):
+        raise ArchiveError("Restored queue completion changed non-OCR business rows.")
+    verify_fictional_ocr_metadata(engine, ids)
 
 
 def check_bundle_restore(source_url):
@@ -389,6 +459,7 @@ def check_bundle_restore(source_url):
                 raise ArchiveError("Bundle restore accepted a nonempty target database.")
             # Late writes can advance non-MVCC identity state beyond the exported snapshot.
             verify_change_continuation(restored_engine, target, owner, ledger_b, expected_changes)
+            verify_restored_queue_continuation(restored_engine, target, ocr_ids)
             if snapshot(source) != after:
                 raise ArchiveError("Restored cursor continuation changed the bundle source.")
             print(
@@ -400,7 +471,10 @@ def check_bundle_restore(source_url):
                 "archived reads and replay verified."
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
-            print("OCR job, candidate provenance and independent human edit restored exactly.")
+            print("OCR queue intent/completion replay and independent human edit restored exactly.")
+            print(
+                "Expired OCR task reclaimed with a fresh generation/token; stale worker rejected."
+            )
             print(
                 "Restored change cursor continues above visible rows and captured identity state."
             )
