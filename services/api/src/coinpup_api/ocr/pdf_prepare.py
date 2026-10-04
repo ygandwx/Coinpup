@@ -250,11 +250,21 @@ def _extract(page, limits, totals):
 
 
 def prepare_pdf(
-    data: bytes, limits: PrepareLimits = _DEFAULT, probe_limits: ProbeLimits = _PROBE_DEFAULT
+    data: bytes,
+    limits: PrepareLimits = _DEFAULT,
+    probe_limits: ProbeLimits = _PROBE_DEFAULT,
+    *,
+    _page_consumer=None,
+    _page_done=None,
 ) -> dict:
     if not isinstance(limits, PrepareLimits):
         return manual_result("request_invalid")
-    totals, plans = {}, {}
+    totals, plans, completed = {}, {}, set()
+
+    def done(index):
+        if _page_done is not None and index not in completed:
+            _page_done(index)
+            completed.add(index)
 
     def admission(page, index, images, probe):
         plans[index] = _geometry(page, probe)
@@ -267,7 +277,12 @@ def prepare_pdf(
     text_pages = [page for page in result["pages"] if page["route"] == "extract"]
     render_pages = [page for page in result["pages"] if page["route"] == "render"]
     if text_pages:
-        _extract_pages(data, text_pages, limits, totals)
+        if _page_consumer is None:
+            _extract_pages(data, text_pages, limits, totals)
+        else:
+            _extract_pages(data, text_pages, limits, totals, _page_consumer=_page_consumer)
+        for page in text_pages:
+            done(page["page_index"])
     if render_pages:
         import pypdfium2 as pdfium
 
@@ -291,15 +306,21 @@ def prepare_pdf(
                                 "format": "RGBX",
                                 "dpi": limits.dpi,
                             }
+                            if _page_consumer is not None:
+                                _page_consumer(page["page_index"], bitmap)
                     except MemoryError:
                         raise
                     except Exception as error:
                         _manual(page, error)
+                    finally:
+                        done(page["page_index"])
         except MemoryError:
             raise
         except Exception as error:
             for page in render_pages:
                 _manual(page, error)
+    for page in result["pages"]:
+        done(page["page_index"])
     if len(_json_bytes(result)) > limits.output_bytes:
         return manual_result("prepare_limit")
     return result
@@ -315,10 +336,10 @@ def _manual(page, error):
     )
 
 
-def _extract_pages(data, pages, limits, totals):
+def _extract_pages(data, pages, limits, totals, *, _page_consumer=None):
     import pdfplumber
 
-    warning = _Warnings()
+    warning, prepared = _Warnings(), {}
     logger = logging.getLogger("pdfminer")
     handlers, propagate, level = logger.handlers, logger.propagate, logger.level
     logger.handlers, logger.propagate, logger.level = [warning], False, logging.WARNING
@@ -339,7 +360,22 @@ def _extract_pages(data, pages, limits, totals):
                 try:
                     if current is None:
                         raise _Uncertain("preparation_failed")
+                    if _page_consumer is not None and current.cropbox != current.mediabox:
+                        # Existing extraction keeps its MediaBox semantics. Recognition
+                        # cannot determine fields from text outside the visible crop.
+                        raise _Uncertain("invalid_geometry")
                     page["text"], page["words"] = _extract(current, limits, totals)
+                    if _page_consumer is not None:
+                        from .parser_types import TextPage, Word
+
+                        prepared[page["page_index"]] = TextPage(
+                            current.width,
+                            current.height,
+                            tuple(
+                                Word(item["text"], tuple(item["bbox"])) for item in page["words"]
+                            ),
+                            page["text"],
+                        )
                 except MemoryError:
                     raise
                 except Exception as error:
@@ -357,3 +393,12 @@ def _extract_pages(data, pages, limits, totals):
     if warning.seen:
         for page in pages:
             _manual(page, _Uncertain("unusable_text"))
+    if _page_consumer is not None:
+        for page in pages:
+            if page["route"] == "extract":
+                try:
+                    _page_consumer(page["page_index"], prepared[page["page_index"]])
+                except MemoryError:
+                    raise
+                except Exception as error:
+                    _manual(page, error)
