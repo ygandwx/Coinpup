@@ -45,3 +45,15 @@ python -m scripts.ocr_benchmark.development_run --corpus-dir build/fictional-cor
 进程在 bitmap/image 仍存活时收集实际原生映射；显式 `finish` 后才做完整加载/动态依赖审计并释放模型。它复用同一环境初始化报告中的实际原通知证据，重新核验现行来源/政策摘要与识别后文件的原字节，缺库、未知来源或通知不匹配必须失败。父进程须取得审计通过及报告摘要、确认正常退出和容器删除后才允许开发选型；初始化报告不能授权跳过识别后新增库。
 
 准备时间是总处理墙钟减识别与解析后的残差，包含协调开销；此步骤没有正式 RSS/冷热性能测量，不能当作正式对比数据。非默认 CropBox 的文字页在识别路径保守交给人工，不改变纯准备的既有响应，也不能转去 OCR。
+
+## 初始化前的资源采集
+
+[测量 bootstrap](../../scripts/ocr_benchmark/candidate_bootstrap.py)先发送 boot，收到严格 go 后才导入候选模块、核验模型并初始化引擎。宿主[采样器](../../scripts/ocr_benchmark/resource_monitor.py)先核对真实容器的 cgroup v2、两个固定 CPU、4 GiB/禁 swap/pids 128 与共同时间命名空间，取得首次有效样本后才放行。时间命名空间只读检查若因跨用户权限拒绝，可用有界 `sudo -n readlink` 读取已校验的宿主 PID；其它读取失败明确保留为不完整。
+
+采样以 10 ms 为目标间隔，保存实际每轮开始/结束、间隔、PID 与启动时刻。RSS 峰是同一采样窗口内进程 RSS 之和的最大值，仍是采样值；短暂进程与读取期间的退出会单列，不能把各自 HWM 相加。cgroup `memory.peak` 保留生命周期计数（含 boot、文件缓存和内核），CPU 计数与内存事件另列。初始化与原件验证保存原始单调时钟区间；测量在完整识别返回后、昂贵许可审计前停止。
+
+```sh
+python -m scripts.ocr_benchmark.resource_smoke --corpus-dir build/fictional-corpus --assets-dir build/engine-assets --output-dir build/resource-smoke --selection-path build/development-reports/selection.json
+```
+
+此验证只消费 D01 开发原件，分别启动两个候选，核验实际 raster、资源、初始化时序及识别后审计；JSON 保留原始采样，私有原件仍在输出目录之外。它只验证采集能力，不是五次冷启动/五轮正式热运行，不能作为正式性能或达标结果。

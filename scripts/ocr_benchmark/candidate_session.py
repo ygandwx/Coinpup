@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 import sys
+import time
+from contextlib import nullcontext
 from pathlib import Path
 
 from coinpup_api.ocr.engine_adapters import EngineError, create_adapter
@@ -58,6 +60,7 @@ def _source(request):
 
 def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_output=None):
     """One immutable profile and adapter; every complete input receives one terminal frame."""
+    initialization = {"start": time.monotonic_ns()}
     adapter = None
     ready = False
     observed = set()
@@ -77,11 +80,20 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
     try:
         if type(profile) is not dict or profile.get("engine") not in ("paddle", "tesseract"):
             raise EngineError("engine_profile_invalid")
+        initialization["model_verification_start"] = time.monotonic_ns()
         _models(Path(assets_dir), profile["engine"])
+        initialization["model_verification_end"] = time.monotonic_ns()
+        initialization["adapter_init_start"] = time.monotonic_ns()
         adapter = create_adapter(profile, Path(assets_dir))
+        initialization["adapter_init_end"] = time.monotonic_ns()
         if preflight_report is not None and audit_output is not None:
             observe()
-        _send(writer, {"v": 1, "event": "ready", "metadata": adapter.metadata})
+        metadata = adapter.metadata
+        initialization["end"] = time.monotonic_ns()
+        _send(
+            writer,
+            {"v": 1, "event": "ready", "metadata": metadata, "timings_ns": initialization},
+        )
         ready = True
     except (EngineError, CandidateEnvironmentError) as error:
         reason = (
@@ -152,8 +164,12 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
                     return 1
                 _send(writer, {"v": 1, "id": identifier, "event": "audit_done", "summary": summary})
                 return 0
+            source_start = time.monotonic_ns()
             try:
-                original = _source(request)
+                try:
+                    original = _source(request)
+                finally:
+                    source_end = time.monotonic_ns()
             except (ValueError, TypeError, OSError, RuntimeError, RecursionError, OverflowError):
                 result = failed_result("source_invalid")
             else:
@@ -182,13 +198,14 @@ def serve(profile, assets_dir, reader, writer, *, preflight_report=None, audit_o
                     result = failed_result("resource_limit", page_indices=completed)
                 except Exception:
                     result = failed_result("processing_failed", page_indices=completed)
+            result["timings_ns"]["source"] = {"start": source_start, "end": source_end}
             _send(writer, {"v": 1, "id": identifier, "event": "result", "result": result})
         return int(preflight_report is not None or audit_output is not None)
     finally:
         adapter.close()
 
 
-def main():
+def main(*, protocol_writer=None):
     parser = argparse.ArgumentParser(description=__doc__)
     profile = parser.add_mutually_exclusive_group(required=True)
     profile.add_argument("--profile")
@@ -197,10 +214,15 @@ def main():
     parser.add_argument("--preflight-report", type=Path, required=True)
     parser.add_argument("--audit-output", type=Path, required=True)
     arguments = parser.parse_args()
-    # Preserve a protocol-only descriptor before SDK imports can write native stdout.
-    sys.stdout.flush()
-    with os.fdopen(os.dup(sys.stdout.fileno()), "wb", buffering=0) as writer:
-        os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+    # A bootstrap owns its supplied descriptor and has already redirected native stdout.
+    if protocol_writer is None:
+        sys.stdout.flush()
+        writer_context = os.fdopen(os.dup(sys.stdout.fileno()), "wb", buffering=0)
+    else:
+        writer_context = nullcontext(protocol_writer)
+    with writer_context as writer:
+        if protocol_writer is None:
+            os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
         try:
             if arguments.profile_path:
                 with arguments.profile_path.open("rb") as stream:

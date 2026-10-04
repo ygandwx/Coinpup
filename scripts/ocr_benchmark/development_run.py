@@ -154,7 +154,7 @@ def _command(arguments, *, timeout=30):
 class ContainerSession:
     """Bounded serial NDJSON; sources are private random names, never template identities."""
 
-    def __init__(self, profile, staging, assets, cpus, *, audit_output=None):
+    def __init__(self, profile, staging, assets, cpus, *, audit_output=None, resource_output=None):
         if sys.platform != "linux" or profile not in PROFILES:
             _fail("candidate_platform_invalid")
         self.name = "coinpup-dev-" + uuid.uuid4().hex
@@ -162,6 +162,7 @@ class ContainerSession:
         self.stderr_bytes, self.request_id, self.audit_finished = 0, 0, False
         self.selector = selectors.DefaultSelector()
         self.process = None
+        self.monitor, self.measurement = None, None
         self.started_ns = time.monotonic_ns()
         preflight = assets.parent / "candidate-reports" / profile["engine"] / "report.json"
         audit_output = audit_output or staging.parent / "native-audit"
@@ -205,7 +206,9 @@ class ContainerSession:
             f"coinpup-ocr-{profile['engine']}:ci",
             "python",
             "-m",
-            "scripts.ocr_benchmark.candidate_session",
+            "scripts.ocr_benchmark.candidate_bootstrap"
+            if resource_output is not None
+            else "scripts.ocr_benchmark.candidate_session",
             "--assets-dir",
             "/opt/assets",
             "--profile",
@@ -226,10 +229,30 @@ class ContainerSession:
             )
             for stream in (self.process.stdout, self.process.stderr):
                 self.selector.register(stream, selectors.EVENT_READ)
-            frame = self._frame(time.monotonic() + 120)
+            deadline = time.monotonic() + 120
+            frame = self._frame(deadline)
+            if resource_output is not None:
+                if (
+                    frame.get("event") != "boot"
+                    or type(frame.get("pid")) is not int
+                    or frame["pid"] <= 0
+                ):
+                    _fail("candidate_startup_failed")
+                from .resource_monitor import ResourceMonitor
+
+                self.boot, self.boot_received_ns = frame, time.monotonic_ns()
+                self.monitor = ResourceMonitor(
+                    self.name, tuple(int(cpu) for cpu in cpus.split(",")), resource_output
+                )
+                self.monitor.start()
+                self.gate_sent_ns = time.monotonic_ns()
+                self.process.stdin.write(b'{"v":1,"action":"go"}\n')
+                self.process.stdin.flush()
+                frame = self._frame(deadline)
             if frame.get("event") != "ready" or frame.get("metadata", {}).get("profile") != profile:
                 _fail("candidate_startup_failed")
             self.metadata, self.ready_ns = frame["metadata"], time.monotonic_ns()
+            self.initialization_timings = frame.get("timings_ns")
         except BaseException:
             self.close()
             raise
@@ -326,9 +349,26 @@ class ContainerSession:
         self.audit_finished = True
         return summary
 
+    def stop_measurement(self):
+        """End the measured interval before expensive license auditing and cleanup."""
+        monitor = getattr(self, "monitor", None)
+        if monitor is not None:
+            try:
+                self.measurement = monitor.stop()
+            finally:
+                self.monitor = None
+        return getattr(self, "measurement", None)
+
     def close(self):
+        measurement_error = None
+        try:
+            self.stop_measurement()
+        except Exception as error:
+            measurement_error = error
         if self.process is None:
             self.selector.close()
+            if measurement_error is not None:
+                raise measurement_error
             return
         if self.process.stdin and not self.process.stdin.closed:
             self.process.stdin.close()
@@ -355,6 +395,8 @@ class ContainerSession:
                 self.process = None
         if self.audit_finished and exit_code != 0:
             _fail("candidate_process_failed")
+        if measurement_error is not None:
+            raise measurement_error
 
 
 def _save(path, value):
