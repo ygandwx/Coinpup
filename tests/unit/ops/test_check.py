@@ -28,7 +28,7 @@ def test_default_fast_covers_python_contracts_and_offline_migration(monkeypatch,
     assert [command[1:] for command, _ in commands] == [
         ["-m", "ruff", "check", "."],
         ["-m", "ruff", "format", "--check", "."],
-        ["-m", "pytest", "-m", "not integration"],
+        ["-m", "pytest", "-m", "not integration and not ocr"],
         ["scripts/check_docs.py"],
         ["scripts/export_openapi.py", "--check"],
         ["-m", "alembic", "upgrade", "head", "--sql"],
@@ -47,6 +47,17 @@ def test_fast_runs_web_checks_when_dependencies_exist(monkeypatch, tmp_path):
     assert [step.command for step in steps[-2:]] == [
         ["fictional-npm.cmd", "--prefix", "apps/web", "run", "typecheck"],
         ["fictional-npm.cmd", "--prefix", "apps/web", "run", "test:unit"],
+    ]
+
+
+def test_ocr_checks_require_installed_dependencies_without_npm(monkeypatch, tmp_path):
+    monkeypatch.setattr(checks.shutil, "which", lambda name: pytest.fail("ocr must not need npm"))
+    steps, skipped = checks.build_steps("ocr", False, tmp_path)
+    assert skipped == []
+    assert [step.command for step in steps] == [
+        [sys.executable, "-m", "pip", "check"],
+        [sys.executable, "scripts/check_ocr_dependencies.py"],
+        [sys.executable, "-m", "pytest", "tests/ocr", "-m", "ocr"],
     ]
 
 
