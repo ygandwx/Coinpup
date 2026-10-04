@@ -1,0 +1,348 @@
+{
+  "version": 1,
+  "platform": "linux-x86_64",
+  "manifest_sha256": "f7d88e49740c8eda1d0af9127b44b5d0c0205d42b905b83fdb137d262b9149e4",
+  "seed": 20261004,
+  "toolchain": {
+    "fonttools": "4.66.1",
+    "pillow": "12.3.0",
+    "pypdf": "6.19.0",
+    "pypdfium2": "5.13.0",
+    "python": "3.12.14",
+    "reportlab": "5.0.1"
+  },
+  "source_inputs": {
+    "truth_sha256": "c049f25124b1e344bd3fb7ec17603e5c806176edbbbc3df058af1c108181854c",
+    "configuration_sha256": "8b24f66daf70c6b249fbc294bee33c145635083b3b91927c84e45c55812a5090",
+    "development_sha256": "aaf63e7e5b08ec2f953706b9f7b0efc52722afcdb310e5c89c4ce4281ca420e5",
+    "fonts_sha256": "e265a12a85e21599bd38bbda9cebb3a01821a9fc960a9c1d2ad37af80dd4bb66",
+    "dependency_lock": {
+      "relative_path": "requirements-benchmark.lock",
+      "sha256": "588b3ae4a12f152952d044f5ac323c8136687791c8b1a44d06c30f2ca4a62754"
+    },
+    "generator_sources": [
+      {
+        "byte_size": 23924,
+        "relative_path": "scripts/ocr_benchmark/corpus.py",
+        "sha256": "d000c39a3b7eab2273792ac97fc333b9e4fb743c81d4e66e609633b4bb984dd0"
+      },
+      {
+        "byte_size": 12429,
+        "relative_path": "scripts/ocr_benchmark/fonts.py",
+        "sha256": "952b2dce5aa0a4a6faad31ee182f25d3d2cd4e9b1ec0dd646093f0b784906332"
+      }
+    ]
+  },
+  "assets": [
+    {
+      "byte_size": 181825,
+      "relative_path": "D01-scan.pdf",
+      "sha256": "79fc7a230568b7f3d340a89bf9202b520670289c263bfc1156ccf18e36996bd0"
+    },
+    {
+      "byte_size": 184535,
+      "relative_path": "D02-scan.pdf",
+      "sha256": "ebce75e72db41528c9e3d4b64386f724a9fcb6a87e7578aacb5fd8b5d241f817"
+    },
+    {
+      "byte_size": 263054,
+      "relative_path": "D03-scan.pdf",
+      "sha256": "47105b69dad4117eed0c8929f213e69d7d702cc0a7235f89757d01aaa16222e2"
+    },
+    {
+      "byte_size": 285216,
+      "relative_path": "D04-scan.pdf",
+      "sha256": "af38ac00d0044dcbfcb49429212e86548c1176f09aae20e1b0df73abcc75ee6d"
+    },
+    {
+      "byte_size": 213989,
+      "relative_path": "E01-photo.jpg",
+      "sha256": "c87dcb9c5801fd1a05c4ab0dadbd5a35b194e84824060e2d618c5aea2b3b2679"
+    },
+    {
+      "byte_size": 242770,
+      "relative_path": "E01-rotate.jpg",
+      "sha256": "42f52b4b1d632b620b683ea52f50b7ee211d67ce7ef6737e623474c3efe3de6b"
+    },
+    {
+      "byte_size": 214791,
+      "relative_path": "E01-scan.pdf",
+      "sha256": "7155d4e1f2b052ff1281122199ac4c530ee1b615dc324dc75318c1c5675cf505"
+    },
+    {
+      "byte_size": 12296,
+      "relative_path": "E01-text.pdf",
+      "sha256": "7a96449d48f0cc79795a2dd0bc4f2a2775b206ecb03f0427af9c274644314521"
+    },
+    {
+      "byte_size": 189803,
+      "relative_path": "E02-blur.jpg",
+      "sha256": "746dadb03c7961b255532f8acd8dff4f9d421efe79c6efd91e448f5079abb27d"
+    },
+    {
+      "byte_size": 213790,
+      "relative_path": "E02-photo.jpg",
+      "sha256": "559adcbe0e3f594b235a4dae9bbde4445c5d51679cacb8c4f5e70ddb590252e2"
+    },
+    {
+      "byte_size": 214592,
+      "relative_path": "E02-scan.pdf",
+      "sha256": "d875c0aead2abaedb8d5c9038c0f06524bf99b0ad18cd84fd2c3c6fec829ce13"
+    },
+    {
+      "byte_size": 12305,
+      "relative_path": "E02-text.pdf",
+      "sha256": "0f6aa424ce9b1e7bd1accac45e341745eef79c84cd7bd32620a630e159da5655"
+    },
+    {
+      "byte_size": 441632,
+      "relative_path": "E03-perspective.jpg",
+      "sha256": "73195828afb2532ff09cadded6d25ec9ebfb836a5e7696ca66f7e3413d919e11"
+    },
+    {
+      "byte_size": 431298,
+      "relative_path": "E03-photo.jpg",
+      "sha256": "a987731cd8d843456b13abb282706117fc471466f61004dac29d17dee9949666"
+    },
+    {
+      "byte_size": 432100,
+      "relative_path": "E03-scan.pdf",
+      "sha256": "f4b50b7d57b171e110271f958dd27bcca4dd47fb091f4f5fb0f1b9304c34e84e"
+    },
+    {
+      "byte_size": 12867,
+      "relative_path": "E03-text.pdf",
+      "sha256": "d07b0af8f5bd7d595cbea97a142d2fd026e443696774d1e402f528ba77a57f59"
+    },
+    {
+      "byte_size": 200159,
+      "relative_path": "M01-contrast.jpg",
+      "sha256": "9f4f55924835df3b837d8e941debde4bdafc0ed6521f9ca6e582d37bde936d5e"
+    },
+    {
+      "byte_size": 240045,
+      "relative_path": "M01-photo.jpg",
+      "sha256": "016ee1621dfb2ea8a3ae09c97f8d2a9baef17cdb3fb3806eb195f4a03acaf52c"
+    },
+    {
+      "byte_size": 240847,
+      "relative_path": "M01-scan.pdf",
+      "sha256": "1dff4efd36157e8751128f89176b4eb0877307a42491c5429f73645c121ad6b0"
+    },
+    {
+      "byte_size": 14542,
+      "relative_path": "M01-text.pdf",
+      "sha256": "509d2f9606cc06736ffa030178dfe947e9fe9d6afdfcd2a38f926020d11f5545"
+    },
+    {
+      "byte_size": 209045,
+      "relative_path": "M02-blur.jpg",
+      "sha256": "ffde4f08c8da14e847d0447073a125f1ea254bb8235c55e88ef3d827c6eadb76"
+    },
+    {
+      "byte_size": 233891,
+      "relative_path": "M02-photo.jpg",
+      "sha256": "dadcace99a7d47bc24bacbeb8970e8ff92284f6f954711db7e60f7f3a1b58c99"
+    },
+    {
+      "byte_size": 234693,
+      "relative_path": "M02-scan.pdf",
+      "sha256": "28fe2fb334b63d54262e9fc501804e52f5e05ee1f0e1d84f2551968511e4920c"
+    },
+    {
+      "byte_size": 14261,
+      "relative_path": "M02-text.pdf",
+      "sha256": "598ed7a37b1ee7b8ac65f492a68e9d5d42af01d2ffa460d65c25419207543e89"
+    },
+    {
+      "byte_size": 689752,
+      "relative_path": "M03-perspective.jpg",
+      "sha256": "e533ab3924990e0673258647a00216a8931ed1faa6348c3f55d51a73694cc83f"
+    },
+    {
+      "byte_size": 666850,
+      "relative_path": "M03-photo.jpg",
+      "sha256": "cfcbd8c61c5bd6a58295069f3737543d803584d833ee8e8331ed5d7750d4502c"
+    },
+    {
+      "byte_size": 668736,
+      "relative_path": "M03-scan.pdf",
+      "sha256": "7e088aa83e0ff55e75640201155694729fa4704bb5a97da8c1dba13d6093442e"
+    },
+    {
+      "byte_size": 18464,
+      "relative_path": "M03-text.pdf",
+      "sha256": "e18edaa366f7aa2e44adc6bc93c1207a0877406f906619dfee91209d2045aae4"
+    },
+    {
+      "byte_size": 200617,
+      "relative_path": "S01-photo.jpg",
+      "sha256": "3723052b93a921e1edb959df6ee9f7b1eccc225389f0c0bdbb519a093fe2d671"
+    },
+    {
+      "byte_size": 216615,
+      "relative_path": "S01-rotate.jpg",
+      "sha256": "37df61e4c238f00061818b63b2b967fb3ffdcf0adc2f1f6962c5142058c0bb85"
+    },
+    {
+      "byte_size": 201419,
+      "relative_path": "S01-scan.pdf",
+      "sha256": "36f8488811a45a7782d9c99eed3bd4e963a1b0a4dbe77eac9ce68e5118e14ee5"
+    },
+    {
+      "byte_size": 15109,
+      "relative_path": "S01-text.pdf",
+      "sha256": "e20e0e3e82c1868d07cd8645aebe934ad36b8d8266d40f366e10438b5ae07ade"
+    },
+    {
+      "byte_size": 176576,
+      "relative_path": "S02-contrast.jpg",
+      "sha256": "bb92c6636a585b302a4f4b6394ea37d0ea4e55ea464e93cf115fd3cc5ddcc061"
+    },
+    {
+      "byte_size": 205172,
+      "relative_path": "S02-photo.jpg",
+      "sha256": "81dc931a4c690156d35003200eb89e9571107a4d4cac2cc246c9e4b88fcda78b"
+    },
+    {
+      "byte_size": 205974,
+      "relative_path": "S02-scan.pdf",
+      "sha256": "5fb6415105b87efaa2e77e7d59118de60ecce37dbec83276e5ed2ca7693d6537"
+    },
+    {
+      "byte_size": 15494,
+      "relative_path": "S02-text.pdf",
+      "sha256": "21ddbbf9abc12f86c0912a341e88b84216deca896a199e3739a0641b65c64534"
+    },
+    {
+      "byte_size": 264108,
+      "relative_path": "S03-blur.jpg",
+      "sha256": "1f08079d7e94c012bf5c425a66c3dea9b2ac37067bc190b308247cd2c63f476c"
+    },
+    {
+      "byte_size": 318591,
+      "relative_path": "S03-photo.jpg",
+      "sha256": "9c405094e90bcb594d4a95ec4c9aa534e84c4019a455ce981a0b2eda5259163a"
+    },
+    {
+      "byte_size": 319393,
+      "relative_path": "S03-scan.pdf",
+      "sha256": "fe6c26ee62f44ff42b7cc8f84b5c31698ab40bb2d3147bf42b953242ace60738"
+    },
+    {
+      "byte_size": 17934,
+      "relative_path": "S03-text.pdf",
+      "sha256": "da52ada3cb75d26df85929e5c3d5d7c87983a12871d5007b8030e77b9ab2ff51"
+    },
+    {
+      "byte_size": 202931,
+      "relative_path": "T01-photo.jpg",
+      "sha256": "eac0bd586aa81c6729ba6bd743131499d90c5c7ada79d99b27191d5f0d827cb3"
+    },
+    {
+      "byte_size": 218964,
+      "relative_path": "T01-rotate.jpg",
+      "sha256": "4b178246cb7af2548b27330af060a09421cd3980ff8a8149c0bde40a26a3622d"
+    },
+    {
+      "byte_size": 203733,
+      "relative_path": "T01-scan.pdf",
+      "sha256": "036e5638c91e58bfb34623db54a549daf481c6b2cd1983a47264d312218fa978"
+    },
+    {
+      "byte_size": 25933,
+      "relative_path": "T01-text.pdf",
+      "sha256": "5b1cf20feb3a5094ab3095f50ce2f1c4ebdf5385127e67f2303455726dd3aeb0"
+    },
+    {
+      "byte_size": 175421,
+      "relative_path": "T02-contrast.jpg",
+      "sha256": "6bbd21fa6d2ededbd6040dc553993bf6bb9b49cf496c5cc948531bf43c57a818"
+    },
+    {
+      "byte_size": 204722,
+      "relative_path": "T02-photo.jpg",
+      "sha256": "76dc6f591e16a21d846b0efa1822b4b85a055c04a54ff47ab9cc9d32a5c0efd9"
+    },
+    {
+      "byte_size": 205524,
+      "relative_path": "T02-scan.pdf",
+      "sha256": "93078be7b00e927790a158751e8312ef9a393ebcb87f070de74bda9a2f41864b"
+    },
+    {
+      "byte_size": 26707,
+      "relative_path": "T02-text.pdf",
+      "sha256": "1291dc15101f3e09eaad5749998c15e323a3fa501ec4051e9552272afaa131a7"
+    },
+    {
+      "byte_size": 572465,
+      "relative_path": "T03-perspective.jpg",
+      "sha256": "1ca940fd5a7e8c4f3e14e24add3aa79f8cf6fedc60f0833e79e81ec8960b8b5d"
+    },
+    {
+      "byte_size": 543725,
+      "relative_path": "T03-photo.jpg",
+      "sha256": "64411a74a6f73195b51345119ea63c4093d71127aa7a1168dc1dd34e64eb319e"
+    },
+    {
+      "byte_size": 545572,
+      "relative_path": "T03-scan.pdf",
+      "sha256": "e8fdc702320a464295debb64452e3779e014ba6b63ad9acf283f59661a34430c"
+    },
+    {
+      "byte_size": 29783,
+      "relative_path": "T03-text.pdf",
+      "sha256": "cbbf0c5445273090b34ec818a232a5f4bad2d759d0507f771363f606fd58ae41"
+    },
+    {
+      "byte_size": 43,
+      "relative_path": "error-damaged.pdf",
+      "sha256": "03c78a26d34528598755cc4695ae60f369d503a6e00ccef1cb70b1b48fdb2684"
+    },
+    {
+      "byte_size": 201908,
+      "relative_path": "error-encrypted.pdf",
+      "sha256": "75d5695fd1480f31c0bf0fe01f812a2bb0ff26315a901c1a877154c0ebbb49fc"
+    },
+    {
+      "byte_size": 664,
+      "relative_path": "error-garbled_layer.pdf",
+      "sha256": "ca6e68b9440dc5f60cbc332781dc23fd7fb2c5e1c78d40f6af9d1edb1b688fe6"
+    },
+    {
+      "byte_size": 17442,
+      "relative_path": "error-page_limit.pdf",
+      "sha256": "8e39ebaf846294b15b0cc26f4955b4db34eb2bbfb7e81333c3d06bbfbb08ccb3"
+    },
+    {
+      "byte_size": 201484,
+      "relative_path": "error-pixel_limit.pdf",
+      "sha256": "1b81ef36db737cf80b2a6d54e46fedd83b76da14314dad018cba79f0b366138b"
+    },
+    {
+      "byte_size": 8744,
+      "relative_path": "error-stream_limit.pdf",
+      "sha256": "70f214537e1e5c7031d2518a905d5272ac28c1baa1987ef57bb3ada2d854fc61"
+    },
+    {
+      "byte_size": 37920,
+      "relative_path": "fonts/CoinpupCorpusSC.ttf",
+      "sha256": "96c3d79aa25e90f6775c0edeea8c35257ab307f77e45c05a09ddd83e6b56be85"
+    },
+    {
+      "byte_size": 33888,
+      "relative_path": "fonts/CoinpupCorpusTC.ttf",
+      "sha256": "f0d4bc4ad18f0929581c159361ede0161ed8fb5a0d88248cedbb56fbada3a2b1"
+    },
+    {
+      "byte_size": 4301,
+      "relative_path": "fonts/LICENSE",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "byte_size": 6148,
+      "relative_path": "fonts/fonts.json",
+      "sha256": "e265a12a85e21599bd38bbda9cebb3a01821a9fc960a9c1d2ad37af80dd4bb66"
+    }
+  ]
+}

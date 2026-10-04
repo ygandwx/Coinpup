@@ -32,6 +32,8 @@ python -m scripts.ocr_benchmark.corpus verify --output-dir build/fictional-corpu
 
 输出目录必须是新目录，字体来源须先经摘要验证，生成不联网。字号、字宽、完整边界和页码逐项检查，超界失败，不缩字或裁剪。固定 ReportLab 的环境时间、PDF 标识、JPEG 参数及全部扰动参数；在同一 Linux 环境的独立进程、不同目录验证所有输出字节相同。清晰文字 PDF 经现有准备流程与共享解析器检验，计分仍使用独立真值。
 
+Linux 实际制品由 [corpus-frozen.json](../../tests/fixtures/ocr/corpus-frozen.json) 锚定完整 manifest 摘要与全部资产摘要，CI 必须重建并逐字节摘要比对。字体、字面真值、配置、开发样本、生成代码和构建锁一并绑定；Windows 检查不冒充 Linux 制品。后续正式引擎验收先验证这个外部冻结清单，不能只接受可随输入重写的自包含 manifest。
+
 扫描 PDF 只有 JPEG/DCT 图像，不含隐藏文字；照片保留完整跨页正文。JPEG 有损，因此不同载体的像素可以不同：每个载体分别核对真实准备后的尺寸与像素，两引擎随后消费该载体相同的准备结果。不能把源文字 PDF 的像素摘要冒充扫描 PDF 或照片的摘要。
 
 初版约数 1750 宽与 SDK 的浮点乘法顺序不一致；预算预检使用与 PDFium 相同的 `scale=dpi/72` 后 `ceil(width*scale)`。新增的一列计入既有像素/字节上限，并在原生分配前拒绝超预算；不改 DPI、纸张、真值或门槛。表格最后分隔符与说明文字保留真实间距，避免提取器把两者粘成跨列词框。
