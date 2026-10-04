@@ -193,7 +193,16 @@ jobs:
               echo "Missing models unexpectedly initialized $engine"
               exit 1
             fi
-            rg -x candidate_models_invalid "build/missing-models-$engine.stderr"
+            python - "$engine" <<'PY'
+          import json, pathlib, sys
+          engine = sys.argv[1]
+          assert "candidate_models_invalid" in pathlib.Path(f"build/missing-models-{engine}.stderr").read_text().splitlines()
+          report = json.loads(pathlib.Path(f"build/candidate-reports/missing-models-{engine}/report.json").read_text())
+          assert report["status"] == "failed" and report["reason"] == "candidate_models_invalid"
+          assert report["initialization_attempted"] is False and report["initialization"] is None
+          assert report["inference_performed"] is False
+          print(f"{engine}: missing models rejected before initialization")
+          PY
           done
       - name: Audit and initialize both candidates without network or recognition
         run: |

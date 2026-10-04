@@ -137,3 +137,14 @@ def test_actual_loaded_and_ldd_closure_has_no_missing_or_unreviewed_native(repor
         assert item["missing"] is False and "not found" not in item["ldd"]
         assert set(item["dependencies"]).issubset(paths)
         assert item["reviewed_license_policy"]["status"] == "allowed"
+
+
+def test_real_missing_models_fail_before_candidate_initialization(report):
+    directory = Path(os.environ["COINPUP_CANDIDATE_REPORTS"])
+    path = directory / f"missing-models-{report['engine']}" / "report.json"
+    assert path.is_file(), "The real missing-model container must retain its rejection report."
+    negative = json.loads(path.read_text(encoding="utf8"))
+    assert negative["version"] == 1 and negative["engine"] == report["engine"]
+    assert negative["status"] == "failed" and negative["reason"] == "candidate_models_invalid"
+    assert negative["initialization_attempted"] is False
+    assert negative["initialization"] is None and negative["inference_performed"] is False
