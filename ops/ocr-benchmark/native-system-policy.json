@@ -1,0 +1,2485 @@
+{
+  "version": 1,
+  "scope": "Only observed Debian, CPython and local Tesseract/Leptonica native bytes from the reviewed frozen Linux candidate image. SHA-256 plus byte size and complete original notice evidence bind every allowed record; pending and changed bytes remain unauthorized. This review does not claim a complete static source-code closure.",
+  "records": [
+    {
+      "sha256": "b2d3b5fd0e61609e3dede613ab26535f59f9aa59f019602b34b5840511846591",
+      "byte_size": 63344,
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "tesseract-LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/opt/tesseract/bin/tesseract",
+        "product": "tesseract",
+        "version": "5.5.3",
+        "source_sha256": "d2470cc33ee34deeae6fc47809d0b33a3623a4343d92ff317ac3b9903c507bad",
+        "source_revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+      },
+      "notes": "Exact local build ELF bytes and complete source license from the pinned source archive. Separately loaded native libraries are independently reviewed; rebuilding does not authorize changed bytes."
+    },
+    {
+      "sha256": "2db33278e1afabbbc792a66cd9933ad10e3797dc7975ff8833838cbd8b2f4c84",
+      "byte_size": 2914912,
+      "status": "allowed",
+      "license_ids": [
+        "BSD-2-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "leptonica-LICENSE",
+          "sha256": "87829abb5bbb00b55a107365da89e9a33f86c4250169e5a1e5588505be7d5806"
+        }
+      ],
+      "origin": {
+        "path": "/opt/tesseract/lib/libleptonica.so.6.0.0",
+        "product": "leptonica",
+        "version": "1.86.0",
+        "source_sha256": "ed41d8f95175d0112025720ebaff9e011d66689485d8315a1cff7f4e0e2d8a96",
+        "source_revision": "dbb48b0fd0e10e943ecd9bab7439701842894733"
+      },
+      "notes": "Exact local build ELF bytes and complete source license from the pinned source archive. Separately loaded native libraries are independently reviewed; rebuilding does not authorize changed bytes."
+    },
+    {
+      "sha256": "a056386a8b52de1d0ff792a1b47e6bbaf311e0093b8ea3dd2eca0c197f7b2e71",
+      "byte_size": 3252856,
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "tesseract-LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/opt/tesseract/lib/libtesseract.so.5.5.3",
+        "product": "tesseract",
+        "version": "5.5.3",
+        "source_sha256": "d2470cc33ee34deeae6fc47809d0b33a3623a4343d92ff317ac3b9903c507bad",
+        "source_revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef"
+      },
+      "notes": "Exact local build ELF bytes and complete source license from the pinned source archive. Separately loaded native libraries are independently reviewed; rebuilding does not authorize changed bytes."
+    },
+    {
+      "sha256": "02bcda52c1a5dfc236f94d9e5255b4a0e26347d8a372a5223b650e31f291ce3c",
+      "byte_size": 215000,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "b278058f0d4148e312a56f06b4632a7d7a67dacb150a0dde34601c579d2f894b",
+      "byte_size": 542880,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "Apache-2.0",
+        "BSD-1-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libgl1:amd64",
+          "version": "1.6.0-1",
+          "name": "/usr/share/doc/libgl1/copyright",
+          "sha256": "cf246da9d8979f9be80e5b9c3ce0010c09786f11a55637ff3d09f1a36d269b25"
+        },
+        {
+          "kind": "source",
+          "name": "Apache-2.0",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libGL.so.1.7.0",
+        "package": "libgl1:amd64",
+        "version": "1.6.0-1",
+        "source_package": "libglvnd",
+        "source_version": "1.6.0-1"
+      },
+      "notes": "The full libglvnd notice covers library code under MIT, generated Khronos interface data under Apache-2.0, and uthash under BSD-1-Clause. GPL build macros and uthash documentation are outside this loaded runtime grant."
+    },
+    {
+      "sha256": "b702c46681f3d2fc6b95aaacc289dbe6b1bc1271cee3d51c5ab9ff1a812c6705",
+      "byte_size": 141736,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "Apache-2.0",
+        "BSD-1-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libglx0:amd64",
+          "version": "1.6.0-1",
+          "name": "/usr/share/doc/libglx0/copyright",
+          "sha256": "cf246da9d8979f9be80e5b9c3ce0010c09786f11a55637ff3d09f1a36d269b25"
+        },
+        {
+          "kind": "source",
+          "name": "Apache-2.0",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0",
+        "package": "libglx0:amd64",
+        "version": "1.6.0-1",
+        "source_package": "libglvnd",
+        "source_version": "1.6.0-1"
+      },
+      "notes": "The full libglvnd notice covers library code under MIT, generated Khronos interface data under Apache-2.0, and uthash under BSD-1-Clause. GPL build macros and uthash documentation are outside this loaded runtime grant."
+    },
+    {
+      "sha256": "53c73f15a1cbd61649ab26e03246f14fcea94f81686cff79dc79361c328c5190",
+      "byte_size": 719144,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "Apache-2.0",
+        "BSD-1-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libglvnd0:amd64",
+          "version": "1.6.0-1",
+          "name": "/usr/share/doc/libglvnd0/copyright",
+          "sha256": "cf246da9d8979f9be80e5b9c3ce0010c09786f11a55637ff3d09f1a36d269b25"
+        },
+        {
+          "kind": "source",
+          "name": "Apache-2.0",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0",
+        "package": "libglvnd0:amd64",
+        "version": "1.6.0-1",
+        "source_package": "libglvnd",
+        "source_version": "1.6.0-1"
+      },
+      "notes": "The full libglvnd notice covers library code under MIT, generated Khronos interface data under Apache-2.0, and uthash under BSD-1-Clause. GPL build macros and uthash documentation are outside this loaded runtime grant."
+    },
+    {
+      "sha256": "688d7edc1a02a0e7993722d57a42821b22435e249071554625a5ec4784787d3d",
+      "byte_size": 1318408,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "X11",
+        "BSD-1-Clause",
+        "LicenseRef-Tektronix-Xcms"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libx11-6:amd64",
+          "version": "2:1.8.4-2+deb12u2",
+          "name": "/usr/share/doc/libx11-6/copyright",
+          "sha256": "0b380a7fd5b2228f26e9585e56f14812efd3350f3df307507d2bc055dfd8de3e"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libX11.so.6.4.0",
+        "package": "libx11-6:amd64",
+        "version": "2:1.8.4-2+deb12u2",
+        "source_package": "libx11",
+        "source_version": "2:1.8.4-2+deb12u2"
+      },
+      "notes": "The full libX11 notice retains MIT/X11 variants with copyright/documentation and nonendorsement conditions, the uthash BSD-1-Clause grant, and the Tektronix Xcms/TekHVC naming conditions. No blanket MIT-only grant is substituted for those complete notices."
+    },
+    {
+      "sha256": "833aa73cf8f645330907d5923fcbf380e0895ab2551d522b41b0308747a51e27",
+      "byte_size": 14496,
+      "status": "allowed",
+      "license_ids": [
+        "X11"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libxau6:amd64",
+          "version": "1:1.0.9-1",
+          "name": "/usr/share/doc/libxau6/copyright",
+          "sha256": "118dd263a7b91c8f21c489f949bf13281dff9e766deea92b829dac4dce66601a"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXau.so.6.0.0",
+        "package": "libxau6:amd64",
+        "version": "1:1.0.9-1",
+        "source_package": "libxau",
+        "source_version": "1:1.0.9-1"
+      },
+      "notes": "The complete Open Group X11-style permission retains notices in copies/supporting documentation and bars unauthorized endorsement."
+    },
+    {
+      "sha256": "911ecd1cf42f310e788652f2719803bb4632e077b6e292af31b876c836bba264",
+      "byte_size": 22728,
+      "status": "allowed",
+      "license_ids": [
+        "X11"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libxdmcp6:amd64",
+          "version": "1:1.1.2-3",
+          "name": "/usr/share/doc/libxdmcp6/copyright",
+          "sha256": "1bcbb50f8603fe8b86d330bfa460b772ea04fbd3c70e4499f0768b5340b9fd6e"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libXdmcp.so.6.0.0",
+        "package": "libxdmcp6:amd64",
+        "version": "1:1.1.2-3",
+        "source_package": "libxdmcp",
+        "source_version": "1:1.1.2-3"
+      },
+      "notes": "The complete Open Group X11-style permission retains notices in copies/supporting documentation and bars unauthorized endorsement."
+    },
+    {
+      "sha256": "c34693b27401e6e74d7ac32184c79bfb0cca936d3b1be990d435124a6a5686f5",
+      "byte_size": 84840,
+      "status": "allowed",
+      "license_ids": [
+        "BSD-3-Clause",
+        "BSD-2-Clause",
+        "ISC",
+        "MIT",
+        "LicenseRef-Public-Domain",
+        "LicenseRef-BSD-2-Clause-Verbatim"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libbsd0:amd64",
+          "version": "0.11.7-2",
+          "name": "/usr/share/doc/libbsd0/copyright",
+          "sha256": "00fd7be5d907a6bcc409a80f2d565f508673db4761d54623691f89ae3aa20fc7"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.11.7",
+        "package": "libbsd0:amd64",
+        "version": "0.11.7-2",
+        "source_package": "libbsd",
+        "source_version": "0.11.7-2"
+      },
+      "notes": "Library src/include permissions are BSD, ISC, Expat/MIT and public domain; source flopen.c additionally requires verbatim notice placement. The BSD-4-Clause and libutil-David-Nugent grants apply to manual pages, not the loaded library."
+    },
+    {
+      "sha256": "e4f501c8bd22390e42422691093d8af4e744a3e854809b809948055e8b08bda5",
+      "byte_size": 74688,
+      "status": "allowed",
+      "license_ids": [
+        "bzip2-1.0.6"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libbz2-1.0:amd64",
+          "version": "1.0.8-5+b1",
+          "name": "/usr/share/doc/libbz2-1.0/copyright",
+          "sha256": "832ed535ff3c3d025a8d2348eb1b697b89addcf2eaadbc17650262040b9145e2"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libbz2.so.1.0.4",
+        "package": "libbz2-1.0:amd64",
+        "version": "1.0.8-5+b1",
+        "source_package": "bzip2",
+        "source_version": "1.0.8-5"
+      },
+      "notes": "The Files: * BSD-variant grant is the bzip2 family with origin, alteration and endorsement conditions. Debian packaging GPL does not relicense the separately loaded libbz2 library."
+    },
+    {
+      "sha256": "6b4a45352fd0c540a9c7c718f35ce8c8e46a4e482f9d3885a910c32d1a0e1421",
+      "byte_size": 1926232,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "72db1b3de8b7dfbaba4c056135f408da555f9d5e137c82129478e07e769f8070",
+      "byte_size": 4734232,
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libssl3:amd64",
+          "version": "3.0.20-1~deb12u2",
+          "name": "/usr/share/doc/libssl3/copyright",
+          "sha256": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35"
+        },
+        {
+          "kind": "source",
+          "name": "Apache-2.0",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libcrypto.so.3",
+        "package": "libssl3:amd64",
+        "version": "3.0.20-1~deb12u2",
+        "source_package": "openssl",
+        "source_version": "3.0.20-1~deb12u2"
+      },
+      "notes": "The complete OpenSSL 3 library notice is Apache-2.0. External Perl build tooling has separate Artistic/GPL notices and is not used to authorize runtime OpenSSL bytes."
+    },
+    {
+      "sha256": "95d521b2c39fd0333271b6fdcdddff878ae82001a304313a837b8e728ebe3cb1",
+      "byte_size": 14480,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "983e72b7e964f3db43fe8a3dc8b338e731fade6ca38df6867aebb58186aaeb68",
+      "byte_size": 43480,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libffi8:amd64",
+          "version": "3.4.4-1",
+          "name": "/usr/share/doc/libffi8/copyright",
+          "sha256": "f83d2ecba1ea4d99957e81c50bebbd076a128194288a3ec22cc8ccdb77c43087"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libffi.so.8.1.2",
+        "package": "libffi8:amd64",
+        "version": "3.4.4-1",
+        "source_package": "libffi",
+        "source_version": "3.4.4-1"
+      },
+      "notes": "The Files: * Expat/MIT grant covers libffi; src/dlmalloc.c is public domain. The notice explicitly distinguishes compiler wrappers, build tools and tests from library code."
+    },
+    {
+      "sha256": "2bd1552c47799ef67e701e81d4383061fd76059868e446e63560f0dd0d5ec14e",
+      "byte_size": 125312,
+      "status": "allowed",
+      "license_ids": [
+        "GPL-3.0-or-later WITH GCC-exception-3.1"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libgcc-s1:amd64",
+          "version": "12.2.0-14+deb12u1",
+          "name": "/usr/share/doc/libgcc-s1/copyright",
+          "sha256": "da8191658b3452ce9caf31638ba61dab31a38c619fa39df119812e050f592fd3"
+        },
+        {
+          "kind": "source",
+          "name": "GPL-3",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+        "package": "libgcc-s1:amd64",
+        "version": "12.2.0-14+deb12u1",
+        "source_package": "gcc-12",
+        "source_version": "12.2.0-14+deb12u1"
+      },
+      "notes": "The full gcc-12 notice explicitly applies GPLv3-or-later with the complete GCC Runtime Library Exception 3.1 to libgcc. GPLv3 section 13 describes optional combination with an Affero-licensed work; this runtime has not adopted that license."
+    },
+    {
+      "sha256": "1708487c60fb32855e9d4aec503f0c32dcb74c6834a839e015ccbd27a606a879",
+      "byte_size": 1273360,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.0-or-later",
+        "LGPL-2.1-or-later",
+        "CC0-1.0",
+        "FSFULLR",
+        "Unicode-DFS-2016",
+        "bzip2-1.0.6",
+        "LicenseRef-GLib-Permissive-Notices",
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libglib2.0-0:amd64",
+          "version": "2.74.6-2+deb12u9",
+          "name": "/usr/share/doc/libglib2.0-0/copyright",
+          "sha256": "03cbcd6142c92bb14c997af557b8c73b1534710c34fe7f69788f8e8fc5fd941d"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2",
+          "sha256": "681e386e44a19d7d0674b4320272c90e66b6610b741e7e6305f8219c42e85366"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        },
+        {
+          "kind": "source",
+          "name": "CC0-1.0",
+          "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.7400.6",
+        "package": "libglib2.0-0:amd64",
+        "version": "2.74.6-2+deb12u9",
+        "source_package": "glib2.0",
+        "source_version": "2.74.6-2+deb12u9"
+      },
+      "notes": "The library Files: * grant and glib/gchecksum.c, Unicode data and valgrind.h notices include the listed LGPL and permissive families. The complete notice retains Janik, Kuchling, Plumb and public-domain terms. GIO, build, fuzz, test and documentation-specific licenses are not used to authorize unknown runtime files."
+    },
+    {
+      "sha256": "f9a9ad78a8dc39c0e90a265ffa551fae6c92a40f360889b44a7e141f9a2adfb1",
+      "byte_size": 290392,
+      "status": "allowed",
+      "license_ids": [
+        "GPL-3.0-or-later WITH GCC-exception-3.1"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libgomp1:amd64",
+          "version": "12.2.0-14+deb12u1",
+          "name": "/usr/share/doc/libgomp1/copyright",
+          "sha256": "da8191658b3452ce9caf31638ba61dab31a38c619fa39df119812e050f592fd3"
+        },
+        {
+          "kind": "source",
+          "name": "GPL-3",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0",
+        "package": "libgomp1:amd64",
+        "version": "12.2.0-14+deb12u1",
+        "source_package": "gcc-12",
+        "source_version": "12.2.0-14+deb12u1"
+      },
+      "notes": "The full gcc-12 notice explicitly applies GPLv3-or-later with the complete GCC Runtime Library Exception 3.1 to libgomp. GPLv3 section 13 describes optional combination with an Affero-licensed work; this runtime has not adopted that license."
+    },
+    {
+      "sha256": "ae1fb3c2f6582d63b9e0059ff7f40869030185ee73f8d2e94f83f15cc678dd4f",
+      "byte_size": 14328,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.0-or-later",
+        "LGPL-2.1-or-later",
+        "CC0-1.0",
+        "FSFULLR",
+        "Unicode-DFS-2016",
+        "bzip2-1.0.6",
+        "LicenseRef-GLib-Permissive-Notices",
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libglib2.0-0:amd64",
+          "version": "2.74.6-2+deb12u9",
+          "name": "/usr/share/doc/libglib2.0-0/copyright",
+          "sha256": "03cbcd6142c92bb14c997af557b8c73b1534710c34fe7f69788f8e8fc5fd941d"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2",
+          "sha256": "681e386e44a19d7d0674b4320272c90e66b6610b741e7e6305f8219c42e85366"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        },
+        {
+          "kind": "source",
+          "name": "CC0-1.0",
+          "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0.7400.6",
+        "package": "libglib2.0-0:amd64",
+        "version": "2.74.6-2+deb12u9",
+        "source_package": "glib2.0",
+        "source_version": "2.74.6-2+deb12u9"
+      },
+      "notes": "The library Files: * grant and glib/gchecksum.c, Unicode data and valgrind.h notices include the listed LGPL and permissive families. The complete notice retains Janik, Kuchling, Plumb and public-domain terms. GIO, build, fuzz, test and documentation-specific licenses are not used to authorize unknown runtime files."
+    },
+    {
+      "sha256": "dad87949ccad2be7e40a02986306087fdcfb35ccaadd59aea923a3f96d290eec",
+      "byte_size": 600128,
+      "status": "allowed",
+      "license_ids": [
+        "IJG",
+        "BSD-3-Clause",
+        "Zlib"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libjpeg62-turbo:amd64",
+          "version": "1:2.1.5-2",
+          "name": "/usr/share/doc/libjpeg62-turbo/copyright",
+          "sha256": "3821184e23385bf2cdc01f56bd999b34036fc3aa03d5135d41680374eb81bf8a"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libjpeg.so.62.3.0",
+        "package": "libjpeg62-turbo:amd64",
+        "version": "1:2.1.5-2",
+        "source_package": "libjpeg-turbo",
+        "source_version": "1:2.1.5-2"
+      },
+      "notes": "The complete source notice maps JPEG library files to the IJG grant and SIMD code to Zlib; it retains the BSD wrapper grant and required Independent JPEG Group acknowledgement. Separate tools, tests and documentation have their own entries."
+    },
+    {
+      "sha256": "5de60ec1bf90cd3d699188eb9ebb333c22b531394e0b030b55048edbd729ed17",
+      "byte_size": 190456,
+      "status": "allowed",
+      "license_ids": [
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "liblzma5:amd64",
+          "version": "5.4.1-1+deb12u2",
+          "name": "/usr/share/doc/liblzma5/copyright",
+          "sha256": "a2dc8fac0f496e1c58aff67018cf0c6b88336316afa5642f9335b71642e28aa8"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/liblzma.so.5.4.1",
+        "package": "liblzma5:amd64",
+        "version": "5.4.1-1+deb12u2",
+        "source_package": "xz-utils",
+        "source_version": "5.4.1-1+deb12u2"
+      },
+      "notes": "The complete XZ notice expressly places liblzma source in the public domain, distinguishes GPL scripts/build files and LGPL getopt tooling, and cautions that toolchain-added code may have separate terms; separately loaded GCC runtime bytes are independently bound."
+    },
+    {
+      "sha256": "7f2ca87f652f56b094462474b076749e90e689d0ecb9cb63c7679820b271b4e7",
+      "byte_size": 911904,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "9e8462f7650da0b39ecfe1680fa87fe393f0710b324250931ab36fa0135b14cc",
+      "byte_size": 47312,
+      "status": "allowed",
+      "license_ids": [
+        "BSD-3-Clause",
+        "BSD-2-Clause",
+        "Beerware",
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libmd0:amd64",
+          "version": "1.0.4-2",
+          "name": "/usr/share/doc/libmd0/copyright",
+          "sha256": "4365ef6255ad553fce69dd4bc0e093472c5d0e41b8ea493a545cc926ce171aa6"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libmd.so.0.0.5",
+        "package": "libmd0:amd64",
+        "version": "1.0.4-2",
+        "source_package": "libmd",
+        "source_version": "1.0.4-2"
+      },
+      "notes": "Library src permissions include BSD grants, Beerware for src/helper.c, and public-domain MD4/MD5/SHA1. ISC manual-page notices are retained but do not authorize an unknown library."
+    },
+    {
+      "sha256": "44fcc2a56ee6e4aeb76f7cc46ba711555e15aef5fef86de00d3bf8b0c4d83c9c",
+      "byte_size": 629384,
+      "status": "allowed",
+      "license_ids": [
+        "BSD-3-Clause WITH PCRE2-exception",
+        "BSD-2-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-1+deb12u1",
+          "name": "/usr/share/doc/libpcre2-8-0/copyright",
+          "sha256": "030511beb4d9d620ad09914c369c36ec0528dcf301d1923cc643c948ee7c6a38"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.11.2",
+        "package": "libpcre2-8-0:amd64",
+        "version": "10.42-1+deb12u1",
+        "source_package": "pcre2",
+        "source_version": "10.42-1+deb12u1"
+      },
+      "notes": "The complete notice retains the Cambridge BSD grant and its binary-library-like-package exemption, plus BSD-2-Clause for src/sljit; the exemption is not treated as a deletion of the direct binary redistribution notice condition."
+    },
+    {
+      "sha256": "5518ea5152046061f30bc1b49598e393acc7c0799dcb216b6703a6d27597deab",
+      "byte_size": 219056,
+      "status": "allowed",
+      "license_ids": [
+        "Libpng"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libpng16-16:amd64",
+          "version": "1.6.39-2+deb12u5",
+          "name": "/usr/share/doc/libpng16-16/copyright",
+          "sha256": "68bd3997355bc44ccb97ff5e2bb146360e762c7d9c721945a4fabf77d1349e4a"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpng16.so.16.39.0",
+        "package": "libpng16-16:amd64",
+        "version": "1.6.39-2+deb12u5",
+        "source_package": "libpng1.6",
+        "source_version": "1.6.39-2+deb12u5"
+      },
+      "notes": "The complete notice maps png library files to the full libpng grant, preserving origin, alteration and source-notice conditions. Separate contrib examples, fuzzing and Debian tooling licenses are not used to authorize unknown library code."
+    },
+    {
+      "sha256": "b93a680da8a05b939b235c1533572e7a2f6d3d8808bf70209997edc64ea5fedc",
+      "byte_size": 14480,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "41c72def458b8cfb6aab96a7dbada7454dd216d89aac65fb085eb52bead51def",
+      "byte_size": 14640,
+      "status": "allowed",
+      "license_ids": [
+        "LGPL-2.1-or-later",
+        "BSD-3-Clause",
+        "ISC",
+        "Inner-Net-2.0",
+        "SunPro",
+        "LicenseRef-glibc-Permissive-Notices"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libc6:amd64",
+          "version": "2.36-9+deb12u14",
+          "name": "/usr/share/doc/libc6/copyright",
+          "sha256": "40c7e1f2118531f038ca22999bd976901254e1bc5cd1b0f0211bdd064c599987"
+        },
+        {
+          "kind": "source",
+          "name": "LGPL-2.1",
+          "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+        "package": "libc6:amd64",
+        "version": "2.36-9+deb12u14",
+        "source_package": "glibc",
+        "source_version": "2.36-9+deb12u14"
+      },
+      "notes": "The complete Debian glibc notice grants LGPL-2.1-or-later for the library and retains its BSD, ISC, DEC resolver, Inner Net, libidn/punycode and Sun fdlibm permissions. Utility and test notices do not relicense the loaded runtime. These reviewed notice families do not claim every source fragment is present in each ELF."
+    },
+    {
+      "sha256": "2e6eef9a727f081f0d453b4e5e6cbd8b9ef8b6f86cbf7681cbad444d3b0b55c8",
+      "byte_size": 1437848,
+      "status": "allowed",
+      "license_ids": [
+        "LicenseRef-Public-Domain"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libsqlite3-0:amd64",
+          "version": "3.40.1-2+deb12u2",
+          "name": "/usr/share/doc/libsqlite3-0/copyright",
+          "sha256": "78e9df8f8153c91c762ec970b82d224ac4d30f05aa7773e7e17e268141e53873"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6",
+        "package": "libsqlite3-0:amd64",
+        "version": "3.40.1-2+deb12u2",
+        "source_package": "sqlite3",
+        "source_version": "3.40.1-2+deb12u2"
+      },
+      "notes": "The Files: * grant and listed amalgamation patches are public domain. Debian packaging GPL does not relicense the separately loaded SQLite library."
+    },
+    {
+      "sha256": "9aec161fdbc82d3e4280f5084843118939f1f4acc53c98ec963de03cfe812fad",
+      "byte_size": 688160,
+      "status": "allowed",
+      "license_ids": [
+        "Apache-2.0"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libssl3:amd64",
+          "version": "3.0.20-1~deb12u2",
+          "name": "/usr/share/doc/libssl3/copyright",
+          "sha256": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35"
+        },
+        {
+          "kind": "source",
+          "name": "Apache-2.0",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libssl.so.3",
+        "package": "libssl3:amd64",
+        "version": "3.0.20-1~deb12u2",
+        "source_package": "openssl",
+        "source_version": "3.0.20-1~deb12u2"
+      },
+      "notes": "The complete OpenSSL 3 library notice is Apache-2.0. External Perl build tooling has separate Artistic/GPL notices and is not used to authorize runtime OpenSSL bytes."
+    },
+    {
+      "sha256": "e7848e32af4932840ba775169041759a2a8dd5a008af360e5c55bce506eebcf4",
+      "byte_size": 2190440,
+      "status": "allowed",
+      "license_ids": [
+        "GPL-3.0-or-later WITH GCC-exception-3.1"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libstdc++6:amd64",
+          "version": "12.2.0-14+deb12u1",
+          "name": "/usr/share/doc/libstdc++6/copyright",
+          "sha256": "da8191658b3452ce9caf31638ba61dab31a38c619fa39df119812e050f592fd3"
+        },
+        {
+          "kind": "source",
+          "name": "GPL-3",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30",
+        "package": "libstdc++6:amd64",
+        "version": "12.2.0-14+deb12u1",
+        "source_package": "gcc-12",
+        "source_version": "12.2.0-14+deb12u1"
+      },
+      "notes": "The full gcc-12 notice explicitly applies GPLv3-or-later with the complete GCC Runtime Library Exception 3.1 to libstdc++-v3. GPLv3 section 13 describes optional combination with an Affero-licensed work; this runtime has not adopted that license."
+    },
+    {
+      "sha256": "94176513740e4b8d24a68e6c37a43986b488f2910c9eaa34f69bd7ba8c49307d",
+      "byte_size": 34872,
+      "status": "allowed",
+      "license_ids": [
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libuuid1:amd64",
+          "version": "2.38.1-5+deb12u3",
+          "name": "/usr/share/doc/libuuid1/copyright",
+          "sha256": "30539a2df6a89d844f43c727505a3193a60515f8ec6cdede8cc515ed22941d1c"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0",
+        "package": "libuuid1:amd64",
+        "version": "2.38.1-5+deb12u3",
+        "source_package": "util-linux",
+        "source_version": "2.38.1-5+deb12u3"
+      },
+      "notes": "The complete util-linux notice specifically maps libuuid/*, libuuid/src/* and libuuid/man/* to BSD-3-Clause; the package-wide GPL grant is not used as the runtime library license."
+    },
+    {
+      "sha256": "35e218293d7c1f65b765337b92c6425f3495e80f5973058d8847fa08258cb97e",
+      "byte_size": 166824,
+      "status": "allowed",
+      "license_ids": [
+        "MIT",
+        "X11"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "libxcb1:amd64",
+          "version": "1.15-1",
+          "name": "/usr/share/doc/libxcb1/copyright",
+          "sha256": "4f7cb9db6bf6542f5417e3d674c780d3a5fd12291a54d63054fb576ee0cfae80"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0",
+        "package": "libxcb1:amd64",
+        "version": "1.15-1",
+        "source_package": "libxcb",
+        "source_version": "1.15-1"
+      },
+      "notes": "The complete libxcb grant permits copying, modification and redistribution with retained notices and its author/institution nonendorsement condition."
+    },
+    {
+      "sha256": "7e2a72b4c4b38c61e6962de6e3f4a5e9ae692e732c68deead10a7ce2135a7f68",
+      "byte_size": 121280,
+      "status": "allowed",
+      "license_ids": [
+        "Zlib"
+      ],
+      "evidence": [
+        {
+          "kind": "system",
+          "package": "zlib1g:amd64",
+          "version": "1:1.2.13.dfsg-1",
+          "name": "/usr/share/doc/zlib1g/copyright",
+          "sha256": "9e5b96d63773a5d177ba264254390f792be07e41748ebd94730981c6cac31cc6"
+        }
+      ],
+      "origin": {
+        "path": "/usr/lib/x86_64-linux-gnu/libz.so.1.2.13",
+        "package": "zlib1g:amd64",
+        "version": "1:1.2.13.dfsg-1",
+        "source_package": "zlib",
+        "source_version": "1:1.2.13.dfsg-1"
+      },
+      "notes": "The complete Zlib notice preserves origin, altered-version and source-notice conditions; it explicitly states that the library has no third-party code from the zlib source package."
+    },
+    {
+      "sha256": "4dbf3143240288fb2170257ffaa7bd030cdda5d2703d1f5f30b627042267e2e3",
+      "byte_size": 14480,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/bin/python3.12",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "d07a7e8baf1f63443d490760e488619b735fdedcaf2dc8423a767c0999b9cd82",
+      "byte_size": 6642968,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "MIT",
+        "dtoa",
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Python-pyhash.c",
+          "sha256": "7f18429290df0726669cbd6d8b5a8b48b843efff648fe8863d48da5db4745628"
+        },
+        {
+          "kind": "source",
+          "name": "python-Python-dtoa.c",
+          "sha256": "4c55833dc0ea9eb7c396ed6da0c6a21406f6b4fa2d0c631c5f10c60f0f835e2e"
+        },
+        {
+          "kind": "source",
+          "name": "python-Python-hashtable.c",
+          "sha256": "7fa6457b5a314727a5a3fad3b958c874fdbd10a71c51f932376391efc266dcc4"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_sre-sre.c",
+          "sha256": "06310987facf48c7dbeddf80b70265ecf386868acc01066e50ae699f51d0f9ff"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/libpython3.12.so.1.0",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact frozen CPython library bytes. Original same-archive pyhash, dtoa and hashtable files retain the full MIT, Lucent dtoa and BSD grants; SRE expressly names the historical CNRI Python license retained in the complete Python notice. The complete source documentation preserves these attributions. This review does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "92aa9f79f2990bf46534ea22f7c41013e7928eb996ebc64c70dfe04f8de1783a",
+      "byte_size": 65816,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "MIT"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_asyncio.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _asyncio extension bytes. The original same-archive documentation explicitly retains the complete MIT grant for incorporated uvloop contributions and MagicStack attribution. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "a74bf985af196d789cfec66a6e651455ae8f581432b4623a3f0f8ada0acbade0",
+      "byte_size": 23424,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_bisect.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "8f3a158bc092fcea1528dae16d257c7375e211a3cad29adcff5cb071b5dd686d",
+      "byte_size": 48640,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "CC0-1.0"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_blake2-impl-blake2.h",
+          "sha256": "2f6c9d0ecf70be474f2853b52394993625a32960e0a64eae147ef97a3a5c1460"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_blake2-impl-blake2b.c",
+          "sha256": "b932aa273b2504606a48895a50ff08c883f7a68a7e4aced5daa909c43348605a"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_blake2-impl-blake2s.c",
+          "sha256": "25ec5dd5c79f916307358059fe9f633781f27df1c0e0962c4fcccdda1feb93a7"
+        },
+        {
+          "kind": "source",
+          "name": "CC0-1.0",
+          "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_blake2.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _blake2 extension bytes. The original same-archive BLAKE2 implementation files carry Samuel Neves public-domain dedication and explicitly reference CC0; the complete CC0 text is separately bound. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "6005672e56c07e84e48e0fb0282de93589263cbc6167050769c4868d46b002b2",
+      "byte_size": 27896,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_bz2.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "7e148da9140f4f739562662934edb25f7848fea8971d99b2ac615f0beff7322b",
+      "byte_size": 158080,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_cn.c",
+          "sha256": "8b28def11821d71acb90ef3e74d7d6d597246daf4c196415107d19ebeeb73e55"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_cn.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "ca46b3129d2daa48b4b903ab9543afd7f3a36461c59ba657c676581549ca1c35",
+      "byte_size": 162208,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_hk.c",
+          "sha256": "2b1c4a0516cc930c58bf885baae06e7b7b676b5dc1713c0653bba1fc39c4e12d"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_hk.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "a62b333975e0660146cd286ad89c61ea24c05f7c2f086486f9acb6aa612c5604",
+      "byte_size": 31136,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_iso2022.c",
+          "sha256": "f495710505aa93c5610d8c38c543b057416e5508b9fb6337bbae6d2a4b85c707"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_iso2022.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "6a9b6cda4bb8c4110f3d50d4bb393f72183ce6e48de30fd90236f7b66051b864",
+      "byte_size": 272768,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_jp.c",
+          "sha256": "e41484049adac46605165e00d5ea22b7ff9eac76519331913526f228b3112696"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_jp.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "0fdcea63bb30b299a9079b1be126fbca8dea125b128fbe5895cd9d8452593c36",
+      "byte_size": 141696,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_kr.c",
+          "sha256": "c6b24c685f64f6b7d67a0c50068cc7ba7a3ebf2ddfa2ebbb3f0a7faed90c217a"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_kr.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "773115912d0873bbd6fc282dd78df628e0b0363e093a26ea23d6703dab964b39",
+      "byte_size": 117120,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-_codecs_tw.c",
+          "sha256": "bd156987b58714a877453fcc67f81cc569e46a2c29a33caebbd6aaa71ad10ede"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_codecs_tw.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "b6ec3142afe1de818b277c8307b9258d5d60032f07c097343de61e40f4d172a1",
+      "byte_size": 14360,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_contextvars.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "27505d594a2b6da218c3066ce1c9a88f91f5e6e09694abcd79f0c7c907b3e3df",
+      "byte_size": 37480,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_csv.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "08239c4829e4419520de8937b5baaeff9568ae52f51656f823e744be30521172",
+      "byte_size": 125448,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_ctypes.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "ab4e5ea789407e48415b8b720f47357b231409e91ed97534c548ba310da3fafa",
+      "byte_size": 108920,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_datetime.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "58a0a57ff2172660f2e8a531f60a66da62e6211ecf168b2ef225ad6b67fccbd8",
+      "byte_size": 290456,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "BSD-2-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_decimal-libmpdec-mpdecimal.h",
+          "sha256": "ea0b9c6b296c13aed6ecaa50b463e39a9c1bdc059b84f50507fd8247b2e660f9"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_decimal-libmpdec-README.txt",
+          "sha256": "89926cd0fe6cfb33a2b5b7416c101e9b5d42b0d639d348e0871acf6ffc8258a3"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_decimal.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _decimal extension bytes. The original same-archive libmpdec header retains the full Stefan Krah BSD-2-Clause grant; README identifies the _decimal implementation files and original documentation reproduces the grant. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "4b5c42e414ec63e1dcff3d29ceabc33898cbe7c49e49f54ea2d89b473ecc809a",
+      "byte_size": 80632,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_elementtree.c",
+          "sha256": "63cd614f8edb692aecbb3322c632bfbe3fd9587d3e7dab0aa7c5f8ddef24a7c9"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_elementtree.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _elementtree extension bytes. The original same-archive source explicitly records the Secret Labs/Fredrik Lundh attribution and licensing to PSF under a Contributor Agreement. Its loaded pyexpat dependency and bundled Expat bytes are independently reviewed. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "62f8313c0801ae9ea9093280e76f85366e8e630b8988dda136585d8b666c36f6",
+      "byte_size": 64192,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_hashlib.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "9fb4d274201fcff0e72463994a2837aed1dd8d2e3186122fa18f562f0997f82e",
+      "byte_size": 26936,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_heapq.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "27a9e4dfd56a203797611b0e0d722278d7a4c296bf8c5296ad786fe5f37daadf",
+      "byte_size": 44792,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_json.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "bbd42782f8e244052da21c0eb59037978b74513e939c6d5c0da19df54b7629bd",
+      "byte_size": 45008,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_lzma.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "3f20a0a5b502467cb5c615969c6423825d70cdfb9899fe478a0c230b5b0ef716",
+      "byte_size": 46280,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-multibytecodec.c",
+          "sha256": "a9c7f911452929fc6991ffbbeff1993a6755e37238d90ee73b8bbdbfbeec1754"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cjkcodecs-README",
+          "sha256": "77d5bd1c550573ae9cd318f321e92a5b0f1dd70944371a1186555ea66453eb1b"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_multibytecodec.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CJK codec extension bytes with original same-archive Hye-Shik Chang implementation attribution and default Python source license. README describes generated mapping tables. This binding does not certify every upstream mapping-data source or a complete static source-code closure."
+    },
+    {
+      "sha256": "13a7073cd880503117ba0e4dc1a990e06fcc0b5f5ba67b75fd5f94b898fb9c05",
+      "byte_size": 14752,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_opcode.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "e5b2163f53a2e0d08661326991a5166da51f37f46150d8379ffb23ff92e2ad0b",
+      "byte_size": 124712,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_pickle.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "62bc85d8e631dc74d323517cfa787ad06fd472c1d78a706c2ffd671ffeb32c1f",
+      "byte_size": 27248,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_posixsubprocess.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "91afbee0f4f0ca54f39f54cb65b8cbfdc793496f2e3cfd39889b7cd85af838dc",
+      "byte_size": 19704,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_queue.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "980e29192c872257c5243c0556306f36f36dba8031b3ac94828aa06c5e796662",
+      "byte_size": 23240,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_randommodule.c",
+          "sha256": "ee5359339fe002582315d4c65e7c8e442903c4295d608d17aec0ad27f2224b83"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_random.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _random extension bytes. The original same-archive implementation retains the complete MT19937 BSD-3-Clause grant, Nishimura/Matsumoto attribution and Python modification description. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "5b70322f13d9f114eba4a3ee66dc01af3dbbc153dcd4c6e657d25d3f7a3ce159",
+      "byte_size": 61336,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "MIT"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_hacl-Hacl_Hash_SHA2.h",
+          "sha256": "093d7693084af0999d2a13d207311d74b5bdfdc9c08447ed4a979e3f7505ae6b"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_hacl-README.md",
+          "sha256": "ff4b18ba17546558b51aced06b4a36d99abbf35831c24d3be14925f319cb4cb4"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_sha2.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _sha2 extension bytes. The original same-archive HACL SHA2 header contains the complete MIT grant and upstream copyright attribution; the accompanying README identifies HACL as the algorithm implementation. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "a2df6d45aa7494f79c70a57fd09c3a8a5fdebc9d3b383166d2dc88179850e210",
+      "byte_size": 104160,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "BSD-3-Clause"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_socket.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact _socket extension bytes. The original same-archive documentation retains the WIDE resolver BSD grant as well as the full Python notice. Separately loaded glibc resolver bytes are independently bound; retaining the fallback notice does not assert that it was compiled on this Linux image."
+    },
+    {
+      "sha256": "3c685f4b095aa43fe2f1e704f3a777419bb077fa824704dafa9f7d7798927eb0",
+      "byte_size": 128248,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_sqlite3.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "f0a7fc4badb2778319bfbed0c5be20a80734a39d0a1787ed6427bbc15980847a",
+      "byte_size": 213000,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_ssl.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "1ba177e758260f7539a0926cd851674d9704e64b72bd8c4ec610a5b9d3d69ce8",
+      "byte_size": 55000,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_struct.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "261774fdb063769bc8351c4545266a188f6f487f243746cb6b93ca24df201d1f",
+      "byte_size": 14544,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_uuid.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "a9ffd52874199815315d1522435ef444862b9c00981847fdf3f02b78aa6cb378",
+      "byte_size": 36792,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/_zoneinfo.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "b882e118f37f58230b27eca65e737314402ceca62a30bfbbd61d1d5f384940cd",
+      "byte_size": 70568,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/array.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "497f59b9d65c1689a5091c74b8ea0d45bd5ff9ea38d851098678c6f5335b2e50",
+      "byte_size": 32224,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/binascii.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "c38b09a066673fec6259c9aa1c3008885b14fd19ac18f679bafdcd2c0fe8c49c",
+      "byte_size": 40224,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-mathmodule.c",
+          "sha256": "436a01da195e3c2b9576a4b9188d5d62e9883e62e74f2d60bc55194bfce98281"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cmathmodule.c",
+          "sha256": "f4812c56a45f3aadc1a76e37ef5bf9fd17174293273e4251f33f7c145c7ef7b2"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_math.h",
+          "sha256": "1a1b63183a8a7ab6f8f1cbb5faf5d1914c029ca7fd1089f52776a2a23b9d0e12"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/cmath.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact math/cmath extension bytes. Original same-archive implementation files are retained with the Python grant; their Boost references describe algorithm comparison and independently computed coefficients, without a separate imported-code grant. No fdlibm grant is invented for these Python source files. Separately loaded libm bytes have their own complete system notice. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "ea644f73ea71eb24ded065447ac4b62c7ac84c18947c471a52aeedfffe399a98",
+      "byte_size": 22992,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/fcntl.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "707dca24ce3ffd92858afe610331225259a87fe245608fffcb5404750ccee8e4",
+      "byte_size": 15224,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/grp.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "d5406db6489a39858c75359888e42a60411d4dd2761369a3787795a2eb80ff17",
+      "byte_size": 70432,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-mathmodule.c",
+          "sha256": "436a01da195e3c2b9576a4b9188d5d62e9883e62e74f2d60bc55194bfce98281"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-cmathmodule.c",
+          "sha256": "f4812c56a45f3aadc1a76e37ef5bf9fd17174293273e4251f33f7c145c7ef7b2"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-_math.h",
+          "sha256": "1a1b63183a8a7ab6f8f1cbb5faf5d1914c029ca7fd1089f52776a2a23b9d0e12"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/math.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact math/cmath extension bytes. Original same-archive implementation files are retained with the Python grant; their Boost references describe algorithm comparison and independently computed coefficients, without a separate imported-code grant. No fdlibm grant is invented for these Python source files. Separately loaded libm bytes have their own complete system notice. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "23a99a9658dc2c45c3868037416b0c6abec964b3b62022767aa489f222234985",
+      "byte_size": 32424,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/mmap.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "734c35135d237e6ea609efc6c1c29edc02bad3b4947ec6efddae496c0cd8c98b",
+      "byte_size": 234576,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "MIT"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-expat-COPYING",
+          "sha256": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87"
+        },
+        {
+          "kind": "source",
+          "name": "python-Doc-license.rst",
+          "sha256": "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/pyexpat.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact pyexpat extension bytes with bundled Expat observed in the frozen build. The original same-archive Expat COPYING retains the complete MIT grant and maintainer copyrights. This does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "88333109ff96d77bd620bb9d540540fbdc7af33300d06cab3d6522d6464efd4d",
+      "byte_size": 19272,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/resource.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "1fffe09cfc4cee81b507241522e0f517a2b6e306d3d85828f9387c25de5c24ec",
+      "byte_size": 32776,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/select.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    },
+    {
+      "sha256": "a55355fa4aed3b789b9ded790d439989fef022c6b4479e6515dee5301c0c58b6",
+      "byte_size": 1131672,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python",
+        "Unicode-DFS-2016"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        },
+        {
+          "kind": "source",
+          "name": "python-Modules-unicodedata.c",
+          "sha256": "a40b4820ef1bcc6c45899f5da1c8063610bbba2341a6129a4d5f646316ebf11e"
+        },
+        {
+          "kind": "source",
+          "name": "python-Unicode-15.0.0-ReadMe.txt",
+          "sha256": "53672c0d0b5185e3cf04c8e970d544c3af81ae7c8eeba0b9cf6d355aa954ae1f"
+        },
+        {
+          "kind": "source",
+          "name": "python-Unicode-1991-2022-LICENSE.txt",
+          "sha256": "af3e84c401f1a35e8d32d6eb1a33fe587c3981aa5cd206033d9527c1855b57a2"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/unicodedata.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
+        "unicode_data_version": "15.0.0",
+        "unicode_notice_source_revision": "ff3514f257ea10afe7e710e9f946f68d256704b1",
+        "unicode_data_source_evidence": [
+          {
+            "byte_size": 49703,
+            "declaration": "UNIDATA_VERSION = \"15.0.0\"",
+            "member": "Python-3.12.14/Tools/unicode/makeunicodedata.py",
+            "sha256": "0f660ad3fbc2331a9eab84aa5f105e92ab498dd442ac93b2cd4d133821928c00"
+          },
+          {
+            "byte_size": 546338,
+            "declaration": "#define UNIDATA_VERSION \"15.0.0\"",
+            "member": "Python-3.12.14/Modules/unicodedata_db.h",
+            "sha256": "f029c909cbb1714dea177fe80662a35d1f8e21a2c505060e8d8674b0bbed8e57"
+          }
+        ]
+      },
+      "notes": "Exact unicodedata extension bytes. The original same-archive implementation retains CNRI attribution and the complete Python grant. Both the original generator and generated database header declare Unicode 15.0.0; the complete official version ReadMe and fixed ICU 72.1 LICENSE retain the 1991-2022 Unicode data/software grant (Unicode-DFS-2016 family). Only that Unicode grant is applied here: all ICU-specific third-party notices are preserved in the original file, and this does not assert that ICU is linked or certify a complete static source-code closure."
+    },
+    {
+      "sha256": "9ba8006577c4fb6e6f164581ea6e472381450bed2591391ba3b910acd2993d8d",
+      "byte_size": 50200,
+      "status": "allowed",
+      "license_ids": [
+        "PSF-2.0",
+        "BeOpen",
+        "CNRI-Python",
+        "LicenseRef-CWI-Python"
+      ],
+      "evidence": [
+        {
+          "kind": "source",
+          "name": "LICENSE.txt",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+        }
+      ],
+      "origin": {
+        "path": "/usr/local/lib/python3.12/lib-dynload/zlib.cpython-312-x86_64-linux-gnu.so",
+        "product": "CPython",
+        "version": "3.12.14",
+        "base_image_config_digest": "sha256:febd0be41adb897a0ab8f1f1c693d8912669ea60c4940e076e9946b60e210ef0",
+        "source_sha256": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a"
+      },
+      "notes": "Exact CPython program/extension bytes from the frozen OCI image, bound to the complete PSF, BeOpen, CNRI and CWI notice. Separately loaded libraries are checked independently; this binding does not certify a complete static source-code closure."
+    }
+  ]
+}
