@@ -36,6 +36,28 @@ _DOWNLOAD_PREFIXES = (
     "https://cdn-lfs-us-1.hf.co/",
     "https://cdn-lfs-eu-1.hf.co/",
 )
+_HF_CACHE_URLS = frozenset(
+    f"https://huggingface.co/api/resolve-cache/models/PaddlePaddle/{model}/{revision}/{name}"
+    for model, revision in (
+        ("PP-OCRv6_small_det", "106c97591b235f607453300d9fc8c1cad1b25488"),
+        ("PP-OCRv6_small_rec", "bd619643acac4b9650c040234da8d944476ee3f1"),
+    )
+    for name in (
+        ".gitattributes",
+        "README.md",
+        "inference.json",
+        "inference.pdiparams",
+        "inference.yml",
+    )
+)
+_HF_CDN_URLS = frozenset(
+    (
+        "https://us.aws.cdn.hf.co/xet-bridge-us/6a29673f890cc5b4ac2276f0/"
+        "c1d98d9d3c252e4dc2364121cf3dc72a3046fc89972720b552abc63d4aee20f6",
+        "https://us.aws.cdn.hf.co/xet-bridge-us/6a2968ffed46d6ba5865f035/"
+        "ef6c59ee2260a8afa040dddca8428332b9af8a43bcf7af6e4b807c847d7bacdc",
+    )
+)
 _NATIVE = re.compile(r"\.(?:so(?:\.[A-Za-z0-9_.-]+)?|dll|dylib|pyd)$")
 _NOTICE = re.compile(r"^(?:license|licence|notice|copying)(?:$|[._-])", re.I)
 
@@ -76,7 +98,10 @@ def _url(value, *, redirect=False):
         or parsed.password
         or parsed.fragment
         or parsed.scheme != "https"
-        or not value.startswith(_DOWNLOAD_PREFIXES if redirect else _SOURCE_PREFIXES)
+        or not (
+            value.startswith(_DOWNLOAD_PREFIXES if redirect else _SOURCE_PREFIXES)
+            or (redirect and parsed._replace(query="").geturl() in _HF_CACHE_URLS | _HF_CDN_URLS)
+        )
     ):
         _fail("engine_manifest_invalid")
     return value

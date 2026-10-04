@@ -333,6 +333,131 @@ def test_real_redirect_handler_closes_response_without_draining_unbounded_body(c
     assert events == ["closed"]
 
 
+HF_REVISIONS = {
+    "det": "106c97591b235f607453300d9fc8c1cad1b25488",
+    "rec": "bd619643acac4b9650c040234da8d944476ee3f1",
+}
+HF_FILES = (".gitattributes", "README.md", "inference.json", "inference.yml", "inference.pdiparams")
+
+
+@pytest.mark.parametrize("role", ["det", "rec"])
+@pytest.mark.parametrize("filename", HF_FILES)
+def test_pinned_hf_relative_cache_redirect_and_final_url_are_accepted(
+    manifest, tmp_path, monkeypatch, role, filename
+):
+    revision = HF_REVISIONS[role]
+    original = (
+        f"https://huggingface.co/PaddlePaddle/PP-OCRv6_small_{role}/resolve/{revision}/{filename}"
+    )
+    relative = f"/api/resolve-cache/models/PaddlePaddle/PP-OCRv6_small_{role}/{revision}/{filename}"
+    final = "https://huggingface.co" + relative + "?download=true"
+    req = assets.urllib.request.Request(original)
+    req.timeout = 60
+    handler = assets._Redirect()
+
+    def open_request(new_request, *, timeout):
+        assert new_request.full_url == final and timeout == 60
+        return "fictional response"
+
+    handler.parent = SimpleNamespace(open=open_request)
+    assert (
+        handler.http_error_307(
+            req,
+            io.BytesIO(b"unused redirect body"),
+            307,
+            "Moved",
+            {"location": relative + "?download=true"},
+        )
+        == "fictional response"
+    )
+
+    class CacheResponse(Response):
+        def geturl(self):
+            return final
+
+    value = manifest(url=original)
+    network(monkeypatch, b"fictional input", response_factory=CacheResponse)
+    assert assets.fetch_assets(tmp_path / "cache") == value
+    with error("engine_manifest_invalid"):
+        assets._url(final)  # The cache route is a redirect, never a new pinned source.
+
+
+HF_CACHE = (
+    "https://huggingface.co/api/resolve-cache/models/PaddlePaddle/"
+    "PP-OCRv6_small_det/106c97591b235f607453300d9fc8c1cad1b25488/README.md"
+)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        HF_CACHE.replace("huggingface.co/", "huggingface.co.evil.example/"),
+        HF_CACHE.replace("huggingface.co/", "huggingface.co:444/"),
+        HF_CACHE.replace("models/PaddlePaddle/", "models/OtherOwner/"),
+        HF_CACHE.replace("small_det/", "small_det_extra/"),
+        HF_CACHE.replace(HF_REVISIONS["det"], "0" * 40),
+        HF_CACHE.replace("README.md", "unknown.bin"),
+        HF_CACHE.replace("README.md", "../README.md"),
+        HF_CACHE.replace("README.md", "%2e%2e/README.md"),
+        HF_CACHE.replace("README.md", "README.md/extra"),
+        HF_CACHE.replace("https:", "http:"),
+        HF_CACHE.replace("https://", "https://fictional:secret@"),
+        HF_CACHE + "#fragment",
+    ],
+)
+def test_similar_unpinned_hf_cache_paths_never_reach_redirect_transport(url):
+    handler = assets._Redirect()
+    req = assets.urllib.request.Request(URL)
+    with error("engine_manifest_invalid"):
+        handler.redirect_request(req, None, 307, "Moved", {}, url)
+
+
+HF_CDN = (
+    "https://us.aws.cdn.hf.co/xet-bridge-us/6a29673f890cc5b4ac2276f0/"
+    "c1d98d9d3c252e4dc2364121cf3dc72a3046fc89972720b552abc63d4aee20f6",
+    "https://us.aws.cdn.hf.co/xet-bridge-us/6a2968ffed46d6ba5865f035/"
+    "ef6c59ee2260a8afa040dddca8428332b9af8a43bcf7af6e4b807c847d7bacdc",
+)
+
+
+@pytest.mark.parametrize("url", HF_CDN)
+def test_exact_pinned_cdn_object_accepts_query_only_as_a_redirect(
+    manifest, tmp_path, monkeypatch, url
+):
+    final = url + "?fictional_signature=not-a-secret"
+    req = assets.urllib.request.Request(URL)
+    redirected = assets._Redirect().redirect_request(req, None, 302, "Moved", {}, final)
+    assert redirected.full_url == final
+
+    class CdnResponse(Response):
+        def geturl(self):
+            return final
+
+    value = manifest()
+    network(monkeypatch, b"fictional input", response_factory=CdnResponse)
+    assert assets.fetch_assets(tmp_path / "cache") == value
+    with error("engine_manifest_invalid"):
+        assets._url(final)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        HF_CDN[0].replace("us.aws.cdn.hf.co/", "us.aws.cdn.hf.co.evil.example/"),
+        HF_CDN[0].replace("us.aws.cdn.hf.co/", "us.aws.cdn.hf.co:444/"),
+        HF_CDN[0].rsplit("/", 1)[0] + "/" + "0" * 64,
+        HF_CDN[0].replace("6a29673f890cc5b4ac2276f0", "6a2968ffed46d6ba5865f035"),
+        HF_CDN[0].replace("xet-bridge-us/", "xet-bridge-us/%2e%2e/"),
+        HF_CDN[0].replace("https://", "https://fictional:secret@"),
+        HF_CDN[0] + "#fragment",
+    ],
+)
+def test_cdn_allowance_does_not_accept_unpinned_objects_or_nearby_paths(url):
+    req = assets.urllib.request.Request(URL)
+    with error("engine_manifest_invalid"):
+        assets._Redirect().redirect_request(req, None, 302, "Moved", {}, url)
+
+
 def fictional_wheel(tmp_path, manifest, *, missing_notice=False, duplicate=False):
     path = tmp_path / "fixture.whl"
     base = "fictional-1.0.dist-info/"
