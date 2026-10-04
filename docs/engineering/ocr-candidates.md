@@ -40,7 +40,7 @@ COINPUP_ENGINE_ASSETS=build/engine-assets COINPUP_CANDIDATE_REPORTS=build/candid
 python -m scripts.ocr_benchmark.development_run --corpus-dir build/fictional-corpus --assets-dir build/engine-assets --output-dir build/development-reports
 ```
 
-输出目录必须不存在；仅新建的虚构原件 staging 子树和该组公开制品审计目录交给容器用户。每组保留两次完整实际响应、真实 raster 摘要、单调纳秒时间与开发选择。原件准备及批量文字提取计入首个页面期限；完成次序可不同于物理页序，结果按实际物理序号保存。
+输出目录及其同级 `<output-name>-staging` 都必须不存在；仅新建的虚构原件 staging 子树和该组公开制品审计目录交给容器用户。私有 staging 不在公开报告目录内，上传报告不会遍历原件或放宽原件权限。每组保留两次完整实际响应、真实 raster 摘要、单调纳秒时间与开发选择。原件准备及批量文字提取计入首个页面期限；完成次序可不同于物理页序，结果按实际物理序号保存。
 
 进程在 bitmap/image 仍存活时收集实际原生映射；显式 `finish` 后才做完整加载/动态依赖审计并释放模型。它复用同一环境初始化报告中的实际原通知证据，重新核验现行来源/政策摘要与识别后文件的原字节，缺库、未知来源或通知不匹配必须失败。父进程须取得审计通过及报告摘要、确认正常退出和容器删除后才允许开发选型；初始化报告不能授权跳过识别后新增库。
 

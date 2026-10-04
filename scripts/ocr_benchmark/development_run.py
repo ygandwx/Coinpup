@@ -375,7 +375,8 @@ def run_development(corpus_dir, assets_dir, output_dir):
         _fail("frozen_corpus_drift")
     cases = development_cases(manifest)
     output_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
-    staging = output_dir / "staging"
+    # Private source permissions must not obstruct traversal of public report artifacts.
+    staging = output_dir.with_name(output_dir.name + "-staging")
     staging.mkdir(mode=0o700)
     sources = []
     for case in cases:

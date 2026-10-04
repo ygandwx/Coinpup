@@ -577,12 +577,31 @@ def test_dev_orchestration_never_reads_or_submits_formal_carriers(dev_run):
         source["byte_size"] == dev[index % 4]["byte_size"]
         for index, (_, source, _) in enumerate(calls)
     )
-    assert len(list((output_dir / "staging").iterdir())) == 4
+    staging = output_dir.with_name(output_dir.name + "-staging")
+    assert len(list(staging.iterdir())) == 4
+    assert staging.parent == output_dir.parent and not staging.is_relative_to(output_dir)
+    assert all(path.suffix == ".json" for path in output_dir.rglob("*") if path.is_file())
+    if runner.os.name != "nt":
+        assert staging.stat().st_mode & 0o777 == 0o700
+        assert all(path.stat().st_mode & 0o777 == 0o600 for path in staging.iterdir())
     assert all(
         "D0" not in source["path"] and "dev-" not in source["path"] for _, source, _ in calls
     )
     assert selection["formal_inference_performed"] is False
     assert selection["tesseract"] == {"engine": "tesseract", "model_set": "fast", "psm": 6}
+
+
+def test_existing_private_staging_is_never_reused_or_modified(dev_run):
+    corpus, output_dir, assets, _, calls, closed, _ = dev_run
+    staging = output_dir.with_name(output_dir.name + "-staging")
+    staging.mkdir(mode=0o700)
+    sentinel = staging / "preserved.txt"
+    sentinel.write_bytes(b"fictional preserved source")
+    with pytest.raises(FileExistsError):
+        runner.run_development(corpus, assets, output_dir)
+    assert sentinel.read_bytes() == b"fictional preserved source"
+    assert list(staging.iterdir()) == [sentinel]
+    assert calls == [] and closed == []
 
 
 @pytest.mark.parametrize("fault", ["failed", "hash", "exit"])
