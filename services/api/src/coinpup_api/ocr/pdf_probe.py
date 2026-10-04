@@ -75,11 +75,12 @@ _FILTERS = {
 
 
 class _Probe:
-    def __init__(self, reader, limits, warning):
+    def __init__(self, reader, limits, warning, visitor=None):
         from pypdf import generic
 
         self.g = generic
         self.reader, self.limits, self.warning = reader, limits, warning
+        self.visitor, self.images = visitor, []
         self.references = set()
         self.total_bytes = 0
         self.present = False
@@ -255,6 +256,8 @@ class _Probe:
                     raise _Uncertain("invalid_pdf")
                 subtype = self.resolve(target.get("/Subtype"))
                 if subtype == "/Image":
+                    if self.visitor is not None:
+                        self.images.append((target, resources))
                     continue  # Raster samples cannot contain PDF text operators.
                 if subtype != "/Form" or self.resolve(target.get("/FormType", 1)) != 1:
                     raise _Uncertain()
@@ -270,12 +273,15 @@ class _Probe:
 
     def page(self, page, index):
         self.present = False
+        self.images = []
         self.op_count = self.operand_count = self.calls = 0
         reason = None
         try:
             self.features(page)
             resources = self.resources(page.get("/Resources"))
             self.walk(page.get("/Contents"), resources)
+            if self.visitor is not None and not self.present and not self.warning.seen:
+                self.visitor(page, index, self.images, self)
         except _Uncertain as error:
             reason = error.reason
         except self.limit_error:
@@ -298,7 +304,7 @@ class _Probe:
 _DEFAULT_LIMITS = ProbeLimits()
 
 
-def probe_pdf(data: bytes, limits: ProbeLimits = _DEFAULT_LIMITS) -> dict:
+def probe_pdf(data: bytes, limits: ProbeLimits = _DEFAULT_LIMITS, *, _visitor=None) -> dict:
     """Only a complete supported traversal can certify absence; never use extracted text."""
     from pypdf import Configuration, PdfReader, apply_configuration
     from pypdf.errors import FileNotDecryptedError, LimitReachedError
@@ -332,7 +338,7 @@ def probe_pdf(data: bytes, limits: ProbeLimits = _DEFAULT_LIMITS) -> dict:
             reader = PdfReader(stream, strict=True, root_object_recovery_limit=0)
             if reader.is_encrypted:
                 return manual_result("encrypted_pdf")
-            probe = _Probe(reader, limits, warning)
+            probe = _Probe(reader, limits, warning, _visitor)
             probe.limit_error = LimitReachedError
             probe.features(probe.dictionary(reader.trailer.get("/Root")))
             pages = reader.pages

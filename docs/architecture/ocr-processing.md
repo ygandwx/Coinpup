@@ -4,7 +4,7 @@
 
 ## 固定入口与原件
 
-`run_isolated` 启动包内固定 bootstrap，先安装资源限制，再加载固定 `processor.process`。请求为 version=1、action=`inspect_pdf`、source 和可选 limits；未知字段/动作/版本、布尔冒充整数或超硬上限均拒绝，不提供客户端可选择的命令、模块或解释器。
+`run_isolated` 启动包内固定 bootstrap，先安装资源限制，再加载固定 `processor.process`。请求为 version=1、action=`inspect_pdf` 或 `prepare_pdf`、source 和可选 limits；只有 prepare_pdf 接受额外 prepare_limits。未知字段/动作/版本、布尔冒充整数或超硬上限均拒绝，不提供客户端可选择的命令、模块或解释器。inspect_pdf 的响应保持原样。
 
 source 仅包含 `path`、`sha256`、`byte_size`：可信 worker 准备的随机私有 staging 绝对路径、小写 SHA-256 和严格正整数大小，至多 20 MiB。随机文件名为 32 位小写十六进制加 `.pdf`，不得用上传名称。Linux 检查私有父目录/文件、当前 UID、常规文件及 no-follow 边界；读到的实际长度和摘要必须匹配。Windows 可直接验证纯解析函数，不能由此声称具备 Linux 隔离或 ACL 保证。
 
@@ -31,6 +31,12 @@ ProbeLimits 固定页数、页树深度/项数、流与文档解码字节、内�
 
 Configuration 包住 Reader 全生命周期，限制已声明/解码流及页树，禁用外部 jbig2 命令。ContentStream.operations 仍会完整分配操作列表，pdfminer 的部分解压也没有可靠硬输出上限；应用预检不能替代子进程 AS/CPU/墙钟限制或后续容器内存边界。
 
-后续仅 present 页进入 pdfplumber，逐页关闭并限制文字/字符/证据总量；仅 absent 页进入 pypdfium2，分配前检查有限正尺寸、边长、像素和保守字节预算，逐页释放原生对象。unknown、已有层不可读及不支持几何转人工。临时图像在同一受限进程内消费，不向父进程返回 helper 退出后已删除的临时路径，也不把像素塞进有界 JSON。
+prepare_pdf 仅将 present/extract 页交给 pdfplumber，保留原始文字和词框，不解析金额。空文字、明确解码缺损或超预算时整页转人工，不截断后冒充完整结果；unknown 页不调用提取或渲染库。字符、文字 UTF-8 字节、词数、词框 JSON 均有页/文档上限，完整响应默认至多 768 KiB；可下调至 128 字节，给固定失败 envelope 保留空间。
+
+只有已证明 absent 的页才进一步检查几何和实际调用的 Image。初版支持有限 DeviceGray/RGB/CMYK、裸样本/Flate/JPEG 子集；复杂颜色、预测器和不支持过滤链转人工。JPEG 在像素解码前核对 SOF 尺寸和分量；裸样本/Flate 在既有流预算内核对解码样本长度。该检查仍不能替代 OS 对解压和原生库的限制。已有文字页不会因为附带图像不在这个子集而改走 OCR。
+
+pypdf 先检查继承 MediaBox/CropBox、Rotate 和 UserUnit；非默认 UserUnit 暂转人工。PDFium 的实际有效尺寸必须一致，原生 bitmap maker 在分配前检查边长、页/文档像素和 RGBX 四字节预算。Rotate 只由页面自身应用一次；不额外旋转或再次裁剪。默认 200 DPI，允许 72–300；正式同机比较和 worker 配置须明确冻结 300 DPI，不从默认值推断实验配置。
+
+prepare_pdf 每页额外含 text、words 和 raster，后者只含尺寸、stride、RGBX 和 DPI。位图在 rendered_page 上下文中供后续引擎消费，消费结束或异常均依次释放位图和页，文档由外层关闭；图像视图不得越过上下文生命周期。当前步骤不返回像素、base64、临时路径或识别字段，也不产生草稿或费用。
 
 预算、失败路由和锁规则由虚构 PDF/图片、真实 Linux 子进程及后续恢复检查验证；依赖冒烟、探测结果和设计本身不能代替 OCR 准确率、部署或人工确认验收。

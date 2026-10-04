@@ -90,3 +90,53 @@ def stream_bytes(content, extra=b""):
     return (
         f"<< /Length {len(content)} ".encode() + extra + b">>\nstream\n" + content + b"\nendstream"
     )
+
+
+def image_document(*, encoding="flate", mode="RGB", declared_size=None, mutate=None):
+    """A real 4x3 fictional image, with optional deliberately inconsistent metadata."""
+    from PIL import Image
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject, NumberObject
+
+    with Image.new(mode, (4, 3), (220, 40, 60) if mode == "RGB" else 140) as image:
+        with BytesIO() as output:
+            image.save(output, format="JPEG")
+            jpeg = output.getvalue()
+        pixels = image.tobytes()
+    stream = DecodedStreamObject()
+    stream.set_data(jpeg if encoding == "jpeg" else pixels)
+    width, height = declared_size or (4, 3)
+    stream.update(
+        {
+            NameObject("/Type"): NameObject("/XObject"),
+            NameObject("/Subtype"): NameObject("/Image"),
+            NameObject("/Width"): NumberObject(width),
+            NameObject("/Height"): NumberObject(height),
+            NameObject("/BitsPerComponent"): NumberObject(8),
+            NameObject("/ColorSpace"): NameObject("/DeviceRGB" if mode == "RGB" else "/DeviceGray"),
+        }
+    )
+    if encoding == "jpeg":
+        stream[NameObject("/Filter")] = NameObject("/DCTDecode")
+    elif encoding == "flate":
+        stream = stream.flate_encode()
+    else:
+        raise ValueError("Unsupported fictional image encoding")
+
+    def install(page, writer):
+        page["/Resources"][NameObject("/XObject")] = DictionaryObject({NameObject("/I"): stream})
+        if mutate is not None:
+            mutate(page, writer)
+
+    return document(b"q 60 0 0 40 10 10 cm /I Do Q", mutate=install)
+
+
+def geometry_document(*, inherited=b"", page_attributes=b""):
+    return raw_document(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 " + inherited + b">>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 240 100] /Resources <<>> "
+            b"/Contents 4 0 R " + page_attributes + b">>",
+            stream_bytes(b"q Q"),
+        ]
+    )
