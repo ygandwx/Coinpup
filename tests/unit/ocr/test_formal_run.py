@@ -177,6 +177,105 @@ def invoke(matrix):
     return run.run_formal(matrix.corpus, matrix.assets, matrix.output, matrix.selection)
 
 
+def clear_invoke(matrix, monkeypatch):
+    matrix.manifest["cases"] = [c for c in matrix.cases if c["group"] in ("text", "ocr")]
+    frozen = matrix.output.with_name("fictional-clear-frozen.json")
+
+    def verified(root, corpus, assets, selection, snapshot):
+        assert snapshot == frozen
+        assert (corpus, assets, selection) == (matrix.corpus, matrix.assets, matrix.selection)
+        return {"profiles": matrix.profiles, "version": 2}
+
+    monkeypatch.setattr(run, "load_clear", verified)
+    monkeypatch.setattr(run, "load_and_verify", lambda *_: pytest.fail("Old formal gate called"))
+    return run.run_formal(
+        matrix.corpus, matrix.assets, matrix.output, matrix.selection, clear_frozen=frozen
+    )
+
+
+def test_clear_exact_three_paired_rounds_no_aux_and_unchanged_prediction_scoring(
+    matrix, monkeypatch, capsys
+):
+    result = clear_invoke(matrix, monkeypatch)
+    calls = matrix.calls[1:]
+    expected = ["text-tesseract", "text-paddle"]
+    for prefix in ("cold", "hot"):
+        for number in range(3):
+            order = ("tesseract", "paddle") if number % 2 == 0 else ("paddle", "tesseract")
+            expected.extend(f"{prefix}-{number}-{engine}" for engine in order)
+    assert [c[0] for c in calls] == expected
+    saved = json.loads((matrix.output / "experiment.json").read_text())
+    assert saved["version"] == result["version"] == 2 and saved["status"] == "complete"
+    assert result["decision"] == {
+        "selected": "tesseract",
+        "stop": False,
+        "reason": "within_two_points",
+        "qualified": True,
+        "review_all_ocr_fields": False,
+    }
+    for engine in matrix.profiles:
+        assert len(saved["records"][engine]) == 84 and len(saved["cold"][engine]) == 3
+        assert len(saved["resources"][engine]) == 7
+        summary = result["candidates"][engine]
+        assert (summary["groups"]["ocr"]["C"], summary["groups"]["ocr"]["T"]) == (24, 24)
+        assert summary["hot_latencies"]["all"]["N"] == 72
+        assert summary["cold"]["startup"]["N"] == 3
+        assert summary["groups"]["error"]["T"] == summary["groups"]["degraded"]["T"] == 0
+    assert "OCR_FORMAL_SUMMARY_V2=" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("failed", [("paddle", "tesseract"), ("paddle",), ("tesseract",)])
+def test_clear_gate_controls_prefill_without_erasing_below_gate_fields(matrix, monkeypatch, failed):
+    original = run.episode
+
+    def below(profile, *args, **kwargs):
+        report = original(profile, *args, **kwargs)
+        if kwargs["label"].startswith("hot-") and profile["engine"] in failed:
+            for row in report["records"][:2]:
+                row["output"]["parsed"]["fields"][0]["value"] = "2.00"
+        return report
+
+    monkeypatch.setattr(run, "episode", below)
+    result = clear_invoke(matrix, monkeypatch)
+    decision = result["decision"]
+    assert decision["stop"] is False
+    assert decision["qualified"] is (len(failed) == 1)
+    assert decision["review_all_ocr_fields"] is (len(failed) == 2)
+    assert decision["selected"] == ("paddle" if failed == ("tesseract",) else "tesseract")
+    if len(failed) == 2:
+        assert decision["reason"] == "neither_qualified_manual_review"
+    saved = json.loads((matrix.output / "experiment.json").read_text())
+    for engine in failed:
+        assert result["candidates"][engine]["groups"]["ocr"]["C"] == 22
+        hot = next(row for row in saved["records"][engine] if row["case_id"].startswith("ocr"))
+        assert hot["output"]["parsed"]["fields"][0]["status"] == "certain"
+
+
+@pytest.mark.parametrize(
+    "fault,reason", [("text", "text_gate_failed"), ("unstable", "candidate_output_unstable")]
+)
+def test_clear_engineering_failure_cannot_become_quality_degradation(
+    matrix, monkeypatch, fault, reason
+):
+    original = run.episode
+
+    def broken(*args, **kwargs):
+        report = original(*args, **kwargs)
+        if (fault == "text" and kwargs["label"].startswith("text-")) or (
+            fault == "unstable" and kwargs["label"] == "hot-2-paddle"
+        ):
+            report["records"][0]["output"]["parsed"]["fields"][0]["value"] = "2.00"
+        return report
+
+    monkeypatch.setattr(run, "episode", broken)
+    with pytest.raises(DevelopmentError) as caught:
+        clear_invoke(matrix, monkeypatch)
+    assert caught.value.reason == reason
+    saved = json.loads((matrix.output / "experiment.json").read_text())
+    assert saved["status"] == "partial" and saved["decision"]["stop"] is True
+    assert not (matrix.output / "summary.json").exists()
+
+
 def test_exact_matrix_paired_orders_fixed_warming_and_only_round_zero_quality(matrix, capsys):
     result = invoke(matrix)
     calls = matrix.calls[1:]

@@ -2,6 +2,11 @@ name: OCR
 
 on:
   workflow_dispatch:
+    inputs:
+      clear_acceptance:
+        description: "Run the once-only new seeded clear acceptance after freezing (main only)"
+        type: boolean
+        default: false
   pull_request:
     paths:
       - "services/api/src/coinpup_api/ocr/**"
@@ -96,6 +101,20 @@ jobs:
         with:
           name: fictional-ocr-corpus
           path: build/fictional-corpus
+          if-no-files-found: error
+      - name: Prepare new seeded clear inputs without recognition
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        run: >-
+          python -m scripts.ocr_benchmark.formal_freeze prepare-clear
+          --source-dir build/corpus-sources --corpus-dir build/clear-corpus
+      - name: Preserve new clear inputs before any formal recognition
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clear-acceptance-inputs
+          path: |
+            build/clear-corpus
+            build/clear-corpus-inputs
           if-no-files-found: error
 
   engine_assets:
@@ -251,6 +270,39 @@ jobs:
         with:
           name: ocr-resource-smoke-evidence
           path: build/resource-smoke/**/*.json
+          if-no-files-found: warn
+      - name: Obtain new clear inputs without rebuilding or refreshing them
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        uses: actions/download-artifact@v4
+        with:
+          name: clear-acceptance-inputs
+          path: build
+      - name: Freeze source, answers, models and current DEV evidence before formal recognition
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        run: >-
+          python -m scripts.ocr_benchmark.formal_freeze freeze-clear
+          --corpus-dir build/clear-corpus --assets-dir build/engine-assets
+          --selection build/development-reports/selection.json --output build/clear-frozen.json
+      - name: Publish the write-once manifest before recognizing formal inputs
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clear-acceptance-frozen
+          path: build/clear-frozen.json
+          if-no-files-found: error
+      - name: Run only clear text and OCR, paired cold three and hot three, without retuning
+        if: github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        run: >-
+          python -m scripts.ocr_benchmark.formal_run
+          --corpus-dir build/clear-corpus --assets-dir build/engine-assets
+          --output-dir build/clear-formal --selection-path build/development-reports/selection.json
+          --clear-frozen build/clear-frozen.json
+      - name: Preserve actual new acceptance responses, timings and resource samples
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.clear_acceptance && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clear-acceptance-evidence
+          path: build/clear-formal
           if-no-files-found: warn
       - name: Print actual public provenance for review
         if: always()
