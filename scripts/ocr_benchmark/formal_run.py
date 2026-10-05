@@ -13,7 +13,7 @@ from coinpup_api.ocr.recognize import failed_result
 
 from .corpus import verify_corpus
 from .development_run import ROOT, ContainerSession, DevelopmentError, _command, _fail, _save
-from .formal_freeze import host_facts, load_and_verify
+from .formal_freeze import host_facts, load_and_verify, load_clear
 from .formal_report import summarize_candidate
 from .scoring import FieldScore, select_engine
 
@@ -419,10 +419,16 @@ def _compact(report):
     }
 
 
-def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
+def run_formal(corpus_dir, assets_dir, output_dir, selection_path, *, clear_frozen=None):
     if sys.platform != "linux":
         _fail("candidate_platform_invalid")
-    config = load_and_verify(ROOT, corpus_dir, assets_dir, selection_path)
+    clear = clear_frozen is not None
+    config = (
+        load_clear(ROOT, corpus_dir, assets_dir, selection_path, clear_frozen)
+        if clear
+        else load_and_verify(ROOT, corpus_dir, assets_dir, selection_path)
+    )
+    repeats, version = (3, 2) if clear else (5, 1)
     manifest = verify_corpus(corpus_dir)
     cases = sorted(manifest["cases"], key=lambda case: case["id"])
     development = sorted(manifest["development"], key=lambda case: case["template_id"])
@@ -430,7 +436,7 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
         name: [case for case in cases if case["group"] == name]
         for name in ("text", "ocr", "degraded", "error")
     }
-    if [len(groups[name]) for name in groups] != [12, 24, 12, 8]:
+    if [len(groups[name]) for name in groups] != ([12, 24, 0, 0] if clear else [12, 24, 12, 8]):
         _fail("frozen_corpus_shape_invalid")
     if [case["template_id"] for case in development] != ["D01", "D02", "D03", "D04"]:
         _fail("development_inputs_invalid")
@@ -444,7 +450,7 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
     cold, resources = ({engine: [] for engine in records} for _ in range(2))
     facts = host_facts()
     experiment = {
-        "version": 1,
+        "version": version,
         "status": "running",
         "host": facts,
         "config": config,
@@ -485,7 +491,7 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
                 ),
                 flush=True,
             )
-        for round_number in range(5):
+        for round_number in range(repeats):
             order = ("tesseract", "paddle") if round_number % 2 == 0 else ("paddle", "tesseract")
             for engine in order:
                 report = episode(
@@ -506,7 +512,7 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
                 )
                 resources[engine].append(report["resources"])
         # Each hot round is a fresh process, using only fixed D01/D02 to prewarm.
-        for round_number in range(5):
+        for round_number in range(repeats):
             order = ("tesseract", "paddle") if round_number % 2 == 0 else ("paddle", "tesseract")
             for engine in order:
                 report = episode(
@@ -532,6 +538,8 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
                 )
         ordinary_errors = [case for case in groups["error"] if not case.get("runtime_scenario")]
         for engine in records:
+            if clear:
+                break  # Auxiliary groups remain covered by tests; no new expensive measurement.
             report = episode(
                 config["profiles"][engine],
                 [*groups["degraded"], *ordinary_errors],
@@ -563,6 +571,7 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
                 records[engine],
                 cold_records=cold[engine],
                 resource_reports=resources[engine],
+                hot_repeats=repeats,
             )
             for engine in records
         }
@@ -579,18 +588,24 @@ def run_formal(corpus_dir, assets_dir, output_dir, selection_path):
             _score(summaries["tesseract"]["groups"]["ocr"]),
         )
         decision = {"selected": selected.selected, "stop": selected.stop, "reason": selected.reason}
+        if clear:
+            decision.update(qualified=not selected.stop, review_all_ocr_fields=selected.stop)
+            if selected.reason == "neither_qualified":
+                decision.update(
+                    selected="tesseract", stop=False, reason="neither_qualified_manual_review"
+                )
         experiment.update(
             status="complete", ended_ns=time.monotonic_ns(), decision=decision, candidates=summaries
         )
         _save(output_dir / "experiment.json", experiment)
         compact = {
-            "version": 1,
+            "version": version,
             "host": facts,
             "decision": decision,
             "candidates": {engine: _compact(report) for engine, report in summaries.items()},
         }
         _save(output_dir / "summary.json", compact)
-        print("OCR_FORMAL_SUMMARY_V1=" + json.dumps(compact), flush=True)
+        print(f"OCR_FORMAL_SUMMARY_V{version}=" + json.dumps(compact), flush=True)
         for engine, report in summaries.items():
             for group in report["groups"].values():
                 for document in group["documents"]:
@@ -632,6 +647,7 @@ def main():
     for name in ("corpus", "assets", "output"):
         parser.add_argument("--" + name + "-dir", type=Path, required=True)
     parser.add_argument("--selection-path", type=Path, required=True)
+    parser.add_argument("--clear-frozen", type=Path)
     options = parser.parse_args()
     try:
         report = run_formal(
@@ -639,6 +655,7 @@ def main():
             options.assets_dir.resolve(),
             options.output_dir.resolve(),
             options.selection_path.resolve(),
+            clear_frozen=options.clear_frozen.resolve() if options.clear_frozen else None,
         )
     except Exception as error:
         print(getattr(error, "reason", "formal_benchmark_failed"), file=sys.stderr)

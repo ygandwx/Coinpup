@@ -323,14 +323,15 @@ def summarize_document(case, record):
     }
 
 
-def _matrix(cases, records):
+def _matrix(cases, records, hot_repeats=5):
+    _require(type(hot_repeats) is int and hot_repeats in (3, 5))
     identifiers = [case["id"] for case in cases]
     _require(len(set(identifiers)) == len(identifiers))
     _require(all(case["group"] in _GROUPS for case in cases))
     required = {
         (case["id"], repeat)
         for case in cases
-        for repeat in (range(5) if case["group"] == "ocr" else (0,))
+        for repeat in (range(hot_repeats) if case["group"] == "ocr" else (0,))
     }
     slots = {}
     for record in records:
@@ -342,8 +343,8 @@ def _matrix(cases, records):
     return slots
 
 
-def validate_repeats(cases, records):
-    slots, different = _matrix(cases, records), []
+def validate_repeats(cases, records, *, hot_repeats=5):
+    slots, different = _matrix(cases, records, hot_repeats), []
 
     def semantic(output):
         return json.dumps(
@@ -357,7 +358,7 @@ def validate_repeats(cases, records):
         if case["group"] != "ocr":
             continue
         first = semantic(slots[(case["id"], 0)]["output"])
-        for repeat in range(1, 5):
+        for repeat in range(1, hot_repeats):
             current = semantic(slots[(case["id"], repeat)]["output"])
             if current != first:
                 different.append(
@@ -366,8 +367,8 @@ def validate_repeats(cases, records):
     return {"stable": not different, "reasons": different}
 
 
-def summarize_candidate(cases, records, *, cold_records=(), resource_reports=()):
-    slots = _matrix(cases, records)
+def summarize_candidate(cases, records, *, cold_records=(), resource_reports=(), hot_repeats=5):
+    slots = _matrix(cases, records, hot_repeats)
     groups = {}
     for group in _GROUPS:
         documents = [
@@ -398,7 +399,7 @@ def summarize_candidate(cases, records, *, cold_records=(), resource_reports=())
         "version": 1,
         "quality_round": 0,
         "groups": groups,
-        "stability": validate_repeats(cases, records),
+        "stability": validate_repeats(cases, records, hot_repeats=hot_repeats),
         "hot_latencies": summarize_latencies(
             [record for record in records if record["case_id"] in ocr_ids]
         ),

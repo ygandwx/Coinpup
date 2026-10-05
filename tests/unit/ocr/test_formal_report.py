@@ -59,6 +59,25 @@ def record(identifier="fictional-a", repeat=0, fields=None, text="abc", status="
     }
 
 
+def test_three_rounds_require_every_slot_and_score_once():
+    cases, rows = [case()], [record(repeat=i) for i in range(3)]
+    summary = summarize_candidate(cases, rows, hot_repeats=3)
+    assert summary["stability"]["stable"] is True
+    assert (summary["groups"]["ocr"]["C"], summary["groups"]["ocr"]["T"]) == (1, 1)
+    assert summary["hot_latencies"]["all"]["N"] == 3
+    for wrong in (rows[:-1], rows + [record(repeat=3)], rows + [rows[0]]):
+        with pytest.raises(FormalReportError):
+            summarize_candidate(cases, wrong, hot_repeats=3)
+    rows[-1]["output"]["raw_text"] = "changed fictional text"
+    assert validate_repeats(cases, rows, hot_repeats=3)["stable"] is False
+
+
+@pytest.mark.parametrize("count", [True, 0, 1, 2, 4, 6, 3.0, "3"])
+def test_repeat_count_is_not_coerced_or_relaxed(count):
+    with pytest.raises(FormalReportError):
+        summarize_candidate([], [], hot_repeats=count)
+
+
 @pytest.mark.parametrize(
     "reason",
     [
