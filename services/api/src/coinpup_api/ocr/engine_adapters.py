@@ -42,6 +42,28 @@ def _cstring(address, limit):
         result.append(data[index])
 
 
+def _transcript(words):
+    """Readable source rows; original boxes remain the parser's only geometry."""
+    fallback = "\n".join(word.text for word in words)
+    rows = []
+    for word in words:
+        if rows:
+            anchor = rows[-1][0].bbox
+            overlap = min(anchor[3], word.bbox[3]) - max(anchor[1], word.bbox[1])
+            height = min(anchor[3] - anchor[1], word.bbox[3] - word.bbox[1])
+            if overlap >= height / 2:
+                rows[-1].append(word)
+                continue
+            if overlap > 0:
+                return fallback
+        rows.append([word])
+    for row in rows:
+        row.sort(key=lambda word: (word.bbox[0], word.bbox[2]))
+        if any(left.bbox[2] > right.bbox[0] for left, right in zip(row, row[1:], strict=False)):
+            return fallback
+    return "\n".join(" ".join(word.text for word in row) for row in rows)
+
+
 def _page(lines, width, height):
     words, size = [], 0
     for index, (text, box) in enumerate(lines):
@@ -62,7 +84,7 @@ def _page(lines, width, height):
         _require(0 <= x0 < x1 <= width and 0 <= y0 < y1 <= height)
         words.append(Word(text, tuple(box)))
     words.sort(key=lambda word: (word.bbox[1], word.bbox[0], word.bbox[3], word.bbox[2]))
-    return TextPage(width, height, tuple(words), "\n".join(word.text for word in words))
+    return TextPage(width, height, tuple(words), _transcript(words))
 
 
 class Adapter:

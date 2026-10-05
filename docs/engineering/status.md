@@ -13,7 +13,7 @@
 
 ## 正在进行
 
-- 当前：清理与OCR CI拆分（#65）、像素测量修复（#64）已合入；旧正式输出的只读诊断已写入[字段归因](ocr-formal-diagnosis.md)。下一步在DEV做单轮有界改进及新冻结验收；继续T05和OPT-23/25，旧正式集不重跑。
+- 当前：清理/CI拆分（#65）、测量修复（#64）、只读诊断（#66）及已确认的[预填策略ADR 0020](../architecture/decisions/0020-ocr-prefill-and-review.md)（#67）已合入。进行有界DEV改进：原框组装可读行，保持严格字段校验；随后新冻结清晰验收。继续T05和OPT-23/25，旧正式集不重跑。
 - 四份 ADR #43–#46 已依次合入，决定见 [ADR 索引](../architecture/decisions/README.md)；本轮实现账户与结账设计，登录防护实现不开始。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库保持私有，未选定开源许可证。
