@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "profile": {
+    "engine": "tesseract",
+    "model_set": "fast",
+    "psm": 6
+  },
+  "ocr_prefill": false,
+  "review_all_ocr_fields": true,
+  "text_certain_prefill": true,
+  "gate_percent": 95,
+  "sampling_seed": 2026100501,
+  "quality": {
+    "C": 272,
+    "T": 306,
+    "E": 12
+  },
+  "evidence": {
+    "run_id": 37249989685,
+    "head_sha": "1375dcf4f2b80a501bdae1e8ccd0e62f48583f57",
+    "artifact_id": 11321725183,
+    "artifact_zip_sha256": "8e972298fe52226a8a0a381db2e4db2188fac89fa62c0843053691a571173ee8",
+    "frozen_json_sha256": "f29f53269b28e585f36c107ec3657e446faf4564c599d12aa73cedd22ca0d64d"
+  },
+  "model_manifest_sha256": "c20bc24c61e1446c2cebb502ebc0a3d66e32d04847a73228390111bcdd95a13f"
+}
