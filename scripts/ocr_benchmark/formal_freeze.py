@@ -5,12 +5,15 @@ import hashlib
 import json
 import os
 import platform
+import random
 import re
 import subprocess
+from copy import deepcopy
 from pathlib import Path, PurePosixPath
 
 from . import engine_assets
-from .corpus import verify_corpus
+from .corpus import CONFIG_PATH as RENDER_CONFIG_PATH
+from .corpus import TRUTH_PATH, _reference, generate_corpus, verify_corpus
 from .development_run import PROFILES, development_cases, select_tesseract, summarize_profile
 
 CONFIG_PATH = "tests/fixtures/ocr/formal-config.json"
@@ -47,6 +50,184 @@ SELECTION = {
     "formal_inference_performed": False,
 }
 COUNTERS = ("C", "T", "E", "edits", "reference_chars", "stable_passes")
+CLEAR_SEED = 2026100501
+CLEAR_CASES = {"text": 12, "ocr": 24, "degraded": 0, "error": 0}
+
+
+def _sample_truth(truth, seed):
+    if type(seed) is not int or seed != CLEAR_SEED:
+        _fail("clear_seed_invalid")
+    result, rng = deepcopy(truth), random.Random(seed)
+
+    def money(raw, factor):
+        if not re.fullmatch(r"[+-]?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)\.[0-9]{2}", raw):
+            _fail("clear_truth_invalid")
+        units = int(raw.replace(",", "").replace(".", "")) * factor
+        whole, cents = divmod(abs(units), 100)
+        width = len(raw.lstrip("+-").split(".")[0].replace(",", ""))
+        digits = str(whole).zfill(width)
+        whole = digits
+        if "," in raw:
+            groups = [digits[max(0, i - 3) : i] for i in range(len(digits), 0, -3)]
+            whole = ",".join(reversed(groups))
+        sign = "-" if raw.startswith("-") else "+" if raw.startswith("+") else ""
+        return f"{sign}{whole}.{cents:02d}"
+
+    for template in result["templates"]:
+        factor, year, month = (
+            rng.randrange(2, 5),
+            rng.randrange(2035, 2045),
+            rng.choice((1, 3, 5, 7)),
+        )
+
+        def dates(text, year=year, month=month):
+            return re.sub(r"2026-09-([0-9]{2})", lambda m: f"{year}-{month:02d}-{m[1]}", text)
+
+        for key, value in template["header"].items():
+            template["header"][key] = (
+                dates(value)
+                if key == "document_date"
+                else value
+                if key == "currency"
+                else money(value, factor)
+            )
+        for page in template["pages"]:
+            page["lines"] = [
+                re.sub(
+                    r"[+-]?(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)\.[0-9]{2}",
+                    lambda m, factor=factor: money(m[0], factor),
+                    dates(line),
+                )
+                for line in page["lines"]
+            ]
+            for row in page["rows"]:
+                row.update(
+                    date=dates(row["date"]),
+                    amount=money(row["amount"], factor),
+                    raw_amount=money(row["raw_amount"], factor),
+                )
+        template["pages"][0]["lines"][0] += f" / {seed}"
+    result["sampling_seed"] = seed
+    return result
+
+
+def _clear_inputs(corpus_dir):
+    return Path(corpus_dir).with_name(Path(corpus_dir).name + "-inputs")
+
+
+def prepare_clear(source_dir, corpus_dir, *, seed=CLEAR_SEED):
+    """Sample new truth before rendering; reuse the unchanged, deterministic v1 renderer."""
+    inputs = _clear_inputs(corpus_dir)
+    truth = _sample_truth(_json(TRUTH_PATH), seed)
+    config = {**_json(RENDER_CONFIG_PATH), "degraded": [], "errors": []}
+    inputs.mkdir(parents=True, exist_ok=False)
+    for name, value in (("truth.json", truth), ("configuration.json", config)):
+        with (inputs / name).open("x", encoding="utf8", newline="\n") as stream:
+            stream.write(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+    return generate_corpus(
+        source_dir,
+        corpus_dir,
+        truth_path=inputs / "truth.json",
+        config_path=inputs / "configuration.json",
+    )
+
+
+def _clear_snapshot(root, corpus_dir, assets_dir, selection_path):
+    root, corpus_dir, selection_path = Path(root), Path(corpus_dir), Path(selection_path)
+    inputs = _clear_inputs(corpus_dir)
+    truth, config = _json(inputs / "truth.json"), _json(inputs / "configuration.json")
+    if truth != _sample_truth(_json(TRUTH_PATH), CLEAR_SEED) or config != {
+        **_json(RENDER_CONFIG_PATH),
+        "degraded": [],
+        "errors": [],
+    }:
+        _fail("clear_truth_drift")
+    engine_assets.verify_assets(assets_dir)
+    manifest = verify_corpus(corpus_dir)
+    groups = {
+        group: sorted(case["id"] for case in manifest["cases"] if case["group"] == group)
+        for group in CLEAR_CASES
+    }
+    if (
+        len(manifest["cases"]) != 36
+        or any(
+            len(ids) != CLEAR_CASES[group] or len(set(ids)) != len(ids)
+            for group, ids in groups.items()
+        )
+        or manifest["truth_sha256"] != _identity(inputs / "truth.json")["sha256"]
+        or manifest["configuration_sha256"] != _identity(inputs / "configuration.json")["sha256"]
+    ):
+        _fail("formal_corpus_drift")
+    templates = {template["id"]: template for template in truth["templates"]}
+    expected_ids = {
+        f"{name}-{carrier}" for name in templates for carrier in ("text", "scan", "photo")
+    }
+    if {case["id"] for case in manifest["cases"]} != expected_ids:
+        _fail("formal_corpus_drift")
+    for case in manifest["cases"]:
+        template = templates[case["template_id"]]
+        carrier = "photo" if case["carrier"] == "photo" else "scan"
+        expected = _reference(template, template, carrier)
+        if any(case.get(key) != value for key, value in expected.items()):
+            _fail("formal_corpus_drift")
+    evidence, report_files = [], []
+    for profile in PROFILES:
+        name = (
+            "paddle"
+            if profile["engine"] == "paddle"
+            else f"tesseract-{profile['model_set']}-psm{profile['psm']}"
+        )
+        path = selection_path.parent / (name + ".json")
+        report = _json(path)
+        _metadata(report["metadata"], profile)
+        evidence.append({"profile": profile, **{key: report[key] for key in COUNTERS}})
+        report_files.append({"name": path.name, **_identity(path)})
+    if (
+        any(r["stable_passes"] != 2 for r in evidence)
+        or select_tesseract(evidence) != SELECTION["tesseract"]
+    ):
+        _fail("formal_development_invalid")
+    _verify_development(selection_path, {"reports": evidence}, manifest)
+    return {
+        "version": 2,
+        "sampling_seed": CLEAR_SEED,
+        "render_seed": manifest["seed"],
+        "profiles": {engine: SELECTION[engine] for engine in ("tesseract", "paddle")},
+        "resources": RESOURCES,
+        "schedule": {
+            **SCHEDULE,
+            "cold_repeats": 3,
+            "hot_repeats": 3,
+            "paired_orders": ["AB", "BA", "AB"],
+        },
+        "cases": CLEAR_CASES,
+        "case_ids": groups,
+        "corpus_manifest_sha256": _identity(corpus_dir / "manifest.json")["sha256"],
+        "generated_inputs": {
+            name: _identity(inputs / name) for name in ("truth.json", "configuration.json")
+        },
+        "development_inputs": [
+            *report_files,
+            {"name": selection_path.name, **_identity(selection_path)},
+        ],
+        **_inventory(root),
+    }
+
+
+def freeze_clear(root, corpus_dir, assets_dir, selection_path, output_path):
+    snapshot = _clear_snapshot(root, corpus_dir, assets_dir, selection_path)
+    with Path(output_path).open("x", encoding="utf8", newline="\n") as stream:
+        stream.write(json.dumps(snapshot, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+    return snapshot
+
+
+def load_clear(root, corpus_dir, assets_dir, selection_path, frozen_path):
+    snapshot = _json(frozen_path)
+    if _canonical(snapshot) != _canonical(
+        _clear_snapshot(root, corpus_dir, assets_dir, selection_path)
+    ):
+        _fail("formal_configuration_drift")
+    return snapshot
 
 
 class FormalFreezeError(Exception):
@@ -380,15 +561,59 @@ def host_facts():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("freeze", "verify"))
+    parser.add_argument("command", choices=("freeze", "verify", "prepare-clear", "freeze-clear"))
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--development-evidence", type=Path)
     parser.add_argument("--tesseract-profile", dest="selected_profile")
     parser.add_argument("--corpus-dir", type=Path)
     parser.add_argument("--assets-dir", type=Path)
     parser.add_argument("--selection", type=Path)
+    parser.add_argument("--source-dir", type=Path)
+    parser.add_argument("--output", type=Path)
     options = parser.parse_args()
     try:
+        if options.command == "prepare-clear":
+            if options.source_dir is None or options.corpus_dir is None:
+                _fail("formal_configuration_invalid")
+            result = prepare_clear(options.source_dir, options.corpus_dir)
+            print(
+                json.dumps(
+                    {
+                        "sampling_seed": CLEAR_SEED,
+                        "render_seed": result["seed"],
+                        "cases": len(result["cases"]),
+                    }
+                )
+            )
+            return
+        if options.command == "freeze-clear":
+            if any(
+                value is None
+                for value in (
+                    options.corpus_dir,
+                    options.assets_dir,
+                    options.selection,
+                    options.output,
+                )
+            ):
+                _fail("formal_configuration_invalid")
+            result = freeze_clear(
+                options.root,
+                options.corpus_dir,
+                options.assets_dir,
+                options.selection,
+                options.output,
+            )
+            print(
+                json.dumps(
+                    {
+                        "sampling_seed": result["sampling_seed"],
+                        "config_sha256": _identity(options.output)["sha256"],
+                        "cases": result["cases"],
+                    }
+                )
+            )
+            return
         if options.command == "freeze":
             if options.development_evidence is None or options.selected_profile is None:
                 _fail("formal_configuration_invalid")
