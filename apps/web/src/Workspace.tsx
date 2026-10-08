@@ -9,6 +9,8 @@ import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
 import { FilesPanel } from "./FilesPanel";
+import { OcrPanel } from "./OcrPanel";
+import type { OcrJobIntents } from "./ocr-job-intents";
 import type { PendingUploadController } from "./pending-upload";
 import type { PendingCommandController } from "./pending-command";
 import { COMPANY_CONTACT_FIELDS, REGIONS } from "./regions";
@@ -43,6 +45,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "ocr"
     | "files"
     | "transactions"
     | "assets"
@@ -55,6 +58,7 @@ const views: View[] = [
     "overview",
     "transactions",
     "files",
+    "ocr",
     "accounts",
     "categories",
     "details",
@@ -282,17 +286,20 @@ export function BusinessWorkspace({
     locale,
     commands,
     uploads,
+    ocrJobs,
     onUnauthorized,
 }: {
     session: Session;
     locale: Locale;
     commands: PendingCommandController;
     uploads: PendingUploadController;
+    ocrJobs: OcrJobIntents;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
     const pending = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
     const upload = useSyncExternalStore(uploads.subscribe, uploads.getSnapshot);
+    const [ocrEditing, setOcrEditing] = useState(false);
     const [fileEditing, setFileEditing] = useState(false);
     const [fileOperation, setFileOperation] = useState<string | null>(() => {
         const value = new URLSearchParams(window.location.search).get("operation");
@@ -304,7 +311,8 @@ export function BusinessWorkspace({
     const uploadLocked = !["idle", "rejected", "confirmed"].includes(upload.status);
     const [financialEditing, setFinancialEditing] = useState(false);
     const financialLocked = !["idle", "rejected", "confirmed"].includes(pending.status);
-    const navigationLocked = financialEditing || financialLocked || fileEditing || uploadLocked;
+    const navigationLocked =
+        financialEditing || financialLocked || fileEditing || uploadLocked || ocrEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -334,6 +342,7 @@ export function BusinessWorkspace({
     const errorText = actionError ? businessError(actionError, locale) : null;
     const labels: Record<View, string> = {
         files: t("票据与证件", "Documents"),
+        ocr: t("识别与复核", "Recognition and review"),
         transactions: t("流水", "Transactions"),
         assets: t("资产", "Assets"),
         overview: t("总览", "Overview"),
@@ -675,6 +684,7 @@ export function BusinessWorkspace({
                                 {
                                     {
                                         files: "▧",
+                                        ocr: "▦",
                                         transactions: "⇄",
                                         assets: "◈",
                                         overview: "◫",
@@ -832,7 +842,7 @@ export function BusinessWorkspace({
                                 )}
                             </p>
                         )}
-                        {view !== "transactions" && view !== "files" && (
+                        {view !== "transactions" && view !== "files" && view !== "ocr" && (
                             <label className="archive-toggle">
                                 <input
                                     type="checkbox"
@@ -865,6 +875,17 @@ export function BusinessWorkspace({
                                 onChanged={reload}
                                 onUnauthorized={onUnauthorized}
                                 onEditingChange={setFinancialEditing}
+                            />
+                        )}
+                        {view === "ocr" && (
+                            <OcrPanel
+                                key={entity.ledger.id}
+                                session={session}
+                                locale={locale}
+                                entity={entity}
+                                jobs={ocrJobs}
+                                onUnauthorized={onUnauthorized}
+                                onEditingChange={setOcrEditing}
                             />
                         )}
                         {view === "files" && (

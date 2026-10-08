@@ -7,6 +7,7 @@ import type { Locale, Text } from "./i18n";
 import { BusinessWorkspace } from "./Workspace";
 import { PendingCommandController } from "./pending-command";
 import { PendingUploadController } from "./pending-upload";
+import { OcrJobIntents } from "./ocr-job-intents";
 
 type IconName =
     | "arrow"
@@ -315,6 +316,7 @@ type AuthState =
 export function App() {
     const [commands] = useState(() => new PendingCommandController());
     const [uploads] = useState(() => new PendingUploadController());
+    const [ocrJobs] = useState(() => new OcrJobIntents());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
     const [retryKey, setRetryKey] = useState(0);
@@ -339,6 +341,7 @@ export function App() {
                 if (!controller.signal.aborted) {
                     commands.setOwner(String(session.user.id));
                     uploads.setOwner(String(session.user.id));
+                    ocrJobs.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -347,6 +350,7 @@ export function App() {
                 if (problem instanceof ApiError && problem.kind === "unauthorized") {
                     commands.setOwner(null);
                     uploads.setOwner(null);
+                    ocrJobs.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -355,7 +359,7 @@ export function App() {
                     });
             });
         return () => controller.abort();
-    }, [retryKey, commands, uploads]);
+    }, [retryKey, commands, uploads, ocrJobs]);
 
     useEffect(() => {
         if (auth.status === "checking" || auth.status === "unavailable") return;
@@ -373,11 +377,13 @@ export function App() {
             await signOut(auth.session.csrf_token);
             commands.setOwner(null, true);
             uploads.setOwner(null, true);
+            ocrJobs.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
                 commands.setOwner(null, true);
                 uploads.setOwner(null, true);
+                ocrJobs.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -419,9 +425,11 @@ export function App() {
                     locale={locale}
                     commands={commands}
                     uploads={uploads}
+                    ocrJobs={ocrJobs}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
+                        ocrJobs.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -465,6 +473,7 @@ export function App() {
                                     onSuccess={(session) => {
                                         commands.setOwner(String(session.user.id));
                                         uploads.setOwner(String(session.user.id));
+                                        ocrJobs.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}

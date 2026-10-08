@@ -1,0 +1,66 @@
+.ocr-panel {
+    min-width: 0;
+}
+.ocr-panel button,
+.ocr-panel select {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.ocr-panel select {
+    width: 100%;
+}
+.ocr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0.75rem 0;
+}
+.ocr-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+.ocr-list li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.ocr-list button[aria-pressed="true"] {
+    outline: 2px solid #257365;
+}
+.ocr-columns {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) minmax(0, 3fr);
+    gap: 1.25rem;
+}
+.ocr-evidence {
+    min-width: 0;
+}
+.ocr-raw {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 22rem;
+    overflow: auto;
+    background: #f4f6f5;
+    padding: 1rem;
+}
+.ocr-field {
+    border-top: 1px solid #d9dfdb;
+    padding: 0.9rem 0;
+    overflow-wrap: anywhere;
+}
+.ocr-field > span {
+    margin-left: 0.75rem;
+}
+.ocr-field input {
+    margin-right: 0.5rem;
+}
+@media (max-width: 700px) {
+    .ocr-columns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

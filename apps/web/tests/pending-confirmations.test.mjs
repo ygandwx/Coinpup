@@ -16,6 +16,7 @@ registerHooks({
 const { ApiError } = await import("../src/api.ts");
 const { PendingConfirmationController } = await import("../src/pending-confirmations.ts");
 const api = await import("../src/ocr-api.ts");
+const { OcrJobIntents } = await import("../src/ocr-job-intents.ts");
 const session = {
     user: { id: "fictional-owner", username: "fictional" },
     csrf_token: "fictional-old",
@@ -77,6 +78,34 @@ function controller(io) {
     value.setOwner(session.user.id);
     return value;
 }
+
+test("job start retains unknown intent through login and clears it when the owner changes", async () => {
+    const original = globalThis.fetch,
+        calls = [],
+        state = new OcrJobIntents();
+    globalThis.fetch = async (_path, init) => {
+        calls.push(JSON.parse(init.body));
+        if (calls.length === 1) throw new TypeError("fictional lost response");
+        return new Response(JSON.stringify({ ...calls.at(-1), ledger_id: "ledger" }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+        });
+    };
+    try {
+        state.setOwner(session.user.id);
+        await assert.rejects(state.start(session, "ledger", "file"));
+        state.setOwner(null);
+        await assert.rejects(state.start(session, "ledger", "file"));
+        state.setOwner(session.user.id);
+        await state.start(fresh, "ledger", "file");
+        assert.deepEqual(calls[0], calls[1]);
+        state.setOwner(other.user.id);
+        await state.start(other, "ledger", "file");
+        assert.notEqual(calls[1].intent_id, calls[2].intent_id);
+    } finally {
+        globalThis.fetch = original;
+    }
+});
 
 test("unknown confirmation retries the frozen body and fresh CSRF, not edited form or ledger", async () => {
     const calls = [];
