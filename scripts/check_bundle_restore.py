@@ -15,6 +15,7 @@ from _bundle_archive import verified_bundle
 from _database_archive import ArchiveError, read_target, require_posix
 from backup_bundle import backup_bundle
 from check_backup_restore import change_state, snapshot, verify_change_continuation
+from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from restore_bundle import restore_bundle
 
 
@@ -322,6 +323,15 @@ def check_bundle_restore(source_url):
                 service, store, owner, ledger_b, pdf, "Fictional company certificate.pdf"
             )
             picture = upload_fixture(service, store, owner, ledger_b, PNG, "Fictional receipt.png")
+            confirmations = seed_confirmations(
+                engine,
+                owner,
+                ledger_a,
+                ledger_b,
+                first["receipt"].file_id,
+                second["receipt"].file_id,
+                operation,
+            )
             ocr_ids = fictional_ocr_metadata(engine, owner, ledger_b, second["receipt"].file_id)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
@@ -412,6 +422,7 @@ def check_bundle_restore(source_url):
                     "Bundle restore differs from its exact snapshot or changed the source."
                 )
             verify_fictional_ocr_metadata(restored_engine, ocr_ids)
+            verify_confirmations(restored_engine, owner, ledger_a, confirmations)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
@@ -486,6 +497,10 @@ def check_bundle_restore(source_url):
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
             print("OCR queue intent/completion replay and independent human edit restored exactly.")
+            print(
+                "OCR five financial kinds and existing-operation link restored; original v2 "
+                "intents/receipts replay after archive/cancellation without changing any table."
+            )
             print(
                 "Expired OCR task reclaimed with a fresh generation/token; stale worker rejected."
             )

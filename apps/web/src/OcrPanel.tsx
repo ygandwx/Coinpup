@@ -471,8 +471,8 @@ export function OcrPanel({
                     )}
                     {pager(page, drafts.length, setPage)}
                 </div>
-                {detail && review && (
-                    <article className="ocr-evidence">
+                {detail && review && detail.id === draftId && review.draft_id === draftId && (
+                    <article className="ocr-evidence" data-testid={`ocr-review-${draftId}`}>
                         <h3>
                             {t("原文与候选", "Source text and candidates")} ·{" "}
                             {stateName(review.status)}
