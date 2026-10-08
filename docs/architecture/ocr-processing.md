@@ -10,6 +10,8 @@ source 仅包含 `path`、`sha256`、`byte_size`：可信 worker 准备的随机
 
 领取事务必须先提交，随后才读原件和计算。后续 worker 从已有鉴权/descriptor 原件通道复制并验证 staging，禁止把数据库 URL、会话、租约 token 或原件全文传入处理环境。输入/输出 JSON 与管道总量有界，错误及 stderr 不显示原件、路径或 traceback。
 
+`run_isolated` 的可选 heartbeat 仅在父进程执行：启动前、管道等待循环及收集输出后检查，必须明确返回 true。worker 在回调内自行按租约周期节流，以有超时的短事务续租，不持事务等待识别；回调异常、失租或归档均取消计算。取消沿用完整进程组终止、等待与临时文件清理，返回稳定 processing_cancelled，不接受已收集的晚到结果；清理失败仍优先返回 processing_cleanup_failed。回调、租约凭据和数据库连接不传子进程，最终数据库写回仍必须校验 token/generation 和到期时间。
+
 ## 文字层三态
 
 响应始终含 `version`、`page_count`、`pages`、`reason_code`；每页含零基 `page_index`、`layer`、`route`、`reason_code`。整体不可读时 page_count=null、pages=[]，不从部分成功的页树推断其余页面无文字。

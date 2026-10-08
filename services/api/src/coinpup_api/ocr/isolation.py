@@ -20,6 +20,7 @@ _MESSAGES = {
     "resource_limit": "OCR processing exceeded its resource limits.",
     "processing_failed": "OCR processing failed.",
     "processing_cleanup_failed": "OCR process cleanup could not be confirmed.",
+    "processing_cancelled": "OCR processing was cancelled.",
 }
 
 
@@ -133,7 +134,19 @@ def _stop(process):
         raise IsolationError("processing_cleanup_failed") from None
 
 
-def _collect(process, budget, deadline, stop):
+def _heartbeat(callback):
+    """Only the parent may renew a lease; errors must not expose database details."""
+    if callback is None:
+        return
+    try:
+        active = callback()
+    except Exception:
+        raise IsolationError("processing_cancelled") from None
+    if active is not True:
+        raise IsolationError("processing_cancelled") from None
+
+
+def _collect(process, budget, deadline, stop, heartbeat=None):
     output = bytearray()
     stderr_bytes = total = 0
     with selectors.DefaultSelector() as selector:
@@ -141,6 +154,7 @@ def _collect(process, budget, deadline, stop):
             os.set_blocking(stream.fileno(), False)
             selector.register(stream, selectors.EVENT_READ)
         while selector.get_map() or process.poll() is None:
+            _heartbeat(heartbeat)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise IsolationError("processor_timeout") from None
@@ -164,7 +178,7 @@ def _collect(process, budget, deadline, stop):
     return bytes(output), stderr_bytes
 
 
-def run_isolated(request: dict, budget: ProcessBudget) -> ProcessResult:
+def run_isolated(request: dict, budget: ProcessBudget, *, heartbeat=None) -> ProcessResult:
     encoded = _request_bytes(request)
     if sys.platform != "linux":
         raise IsolationError("processor_unavailable") from None
@@ -179,6 +193,7 @@ def run_isolated(request: dict, budget: ProcessBudget) -> ProcessResult:
             stopped = True
 
     try:
+        _heartbeat(heartbeat)
         temporary = tempfile.TemporaryDirectory(prefix="coinpup-ocr-")
         directory = Path(temporary.name)
         os.chmod(directory, 0o700)
@@ -209,7 +224,10 @@ def run_isolated(request: dict, budget: ProcessBudget) -> ProcessResult:
             start_new_session=True,
             umask=0o077,
         )
-        output, stderr_bytes = _collect(process, budget, started + budget.wall_seconds, stop)
+        output, stderr_bytes = _collect(
+            process, budget, started + budget.wall_seconds, stop, heartbeat
+        )
+        _heartbeat(heartbeat)
         if process.returncode != 0:
             code = "processing_failed"
             if process.returncode == 70:
