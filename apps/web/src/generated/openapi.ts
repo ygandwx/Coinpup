@@ -327,6 +327,23 @@ export interface paths {
         patch: operations["update_category_api_v1_ledgers__ledger_id__categories__category_id__patch"];
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/control-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Balances */
+        get: operations["balances_api_v1_ledgers__ledger_id__control_balances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/exchanges": {
         parameters: {
             query?: never;
@@ -1180,6 +1197,42 @@ export interface components {
              * Format: uuid
              */
             target_ledger_id: string;
+        };
+        /** ControlBalance */
+        ControlBalance: {
+            /** Account Archived */
+            account_archived: boolean;
+            /**
+             * Account Class
+             * @enum {string}
+             */
+            account_class: "receivable" | "payable" | "intercompany" | "advance";
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Enabled */
+            asset_enabled: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /** Counterparty Entity Id */
+            counterparty_entity_id: string | null;
+            /** Document Id */
+            document_id: string | null;
+            /** Document Line Id */
+            document_line_id: string | null;
+            /** Link Enabled */
+            link_enabled: boolean;
+            /** Party Id */
+            party_id: string | null;
+            /**
+             * System Key
+             * @enum {string}
+             */
+            system_key: "receivable.customer" | "payable.supplier" | "intercompany.receivable" | "intercompany.payable" | "advance.received" | "advance.paid";
         };
         /** CorrectionCreate */
         CorrectionCreate: {
@@ -3312,6 +3365,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    balances_api_v1_ledgers__ledger_id__control_balances_get: {
+        parameters: {
+            query?: {
+                account_class?: ("receivable" | "payable" | "intercompany" | "advance") | null;
+                system_key?: ("receivable.customer" | "payable.supplier" | "intercompany.receivable" | "intercompany.payable" | "advance.received" | "advance.paid") | null;
+                party_id?: string | null;
+                counterparty_entity_id?: string | null;
+                document_id?: string | null;
+                document_line_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlBalance"][];
                 };
             };
             /** @description Validation Error */
