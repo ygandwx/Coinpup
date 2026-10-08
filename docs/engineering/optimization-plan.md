@@ -84,7 +84,7 @@
 | OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
 | OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 已完成（本轮基础范围；T06未实现） | [#43](https://github.com/ygandwx/Coinpup/pull/43)、[#97](https://github.com/ygandwx/Coinpup/pull/97)–[#101](https://github.com/ygandwx/Coinpup/pull/101) |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
-| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 已完成（仅 ADR，未实现） | [#44](https://github.com/ygandwx/Coinpup/pull/44) |
+| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 进行中（ADR0017已采纳，按0023拆包实现） | [#44](https://github.com/ygandwx/Coinpup/pull/44) |
 | OPT-30 🛑 | 登录防护与暴露面 | D 部署前 | 无 | 已完成（仅 ADR，未实现） | [#45](https://github.com/ygandwx/Coinpup/pull/45) |
 | T05-3 🛑 | 本地 OCR 方案（仅 ADR） | 方案 | OPT-01 至 OPT-08 | 已完成（仅 ADR，未实现） | [#46](https://github.com/ygandwx/Coinpup/pull/46) |
 

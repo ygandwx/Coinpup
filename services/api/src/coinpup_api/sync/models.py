@@ -38,7 +38,8 @@ class ChangeLog(Base):
             "entity_type IN ('entities', 'ledgers', 'accounts', 'account_assets', "
             "'categories', 'assets', 'financial_operations', 'stored_files', "
             "'operation_file_links', 'ocr_jobs', 'ocr_drafts', 'ocr_confirmations', "
-            "'business_parties', 'business_documents', 'business_document_lines')",
+            "'business_parties', 'business_documents', 'business_document_lines', "
+            "'ledger_periods', 'ledger_period_audits', 'ledger_period_receipts')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(
