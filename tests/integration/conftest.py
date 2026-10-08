@@ -55,6 +55,9 @@ def isolated_confirmation_schema(engine, action):
     with engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
             confirmation_schema_migration()[action]()
+    if action == "upgrade":
+        # An isolated frozen 0014 round trip must restore the current additive type list.
+        restore_current_change_types(engine)
 
 
 def business_reference_migration():
@@ -202,7 +205,7 @@ def structure_database(request):
             isolated_ocr_schema(database.engine, "upgrade")
         elif confirmation_detached:
             isolated_confirmation_schema(database.engine, "upgrade")
-        if ocr_detached or confirmation_detached:
+        if ocr_detached:
             restore_current_change_types(database.engine)
         change_trigger_registration(database.engine, repair_recreated_file_tables=file_round_trip)
         cleanup()
