@@ -68,3 +68,12 @@
 - 新增命令可按客户端 UUID 核对当前业务；404 不能证明原提交失败。修订针对既有 UUID，查询任何版本都不能单独确认本次修订，必须以原 POST/原键取得回执；只有明确 version_conflict 加随后更高当前版本的组合证据才可解除该旧修订意图。来源：[ADR 0010](decisions/0010-financial-web-and-retry.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 上传只有相同冻结预留、ready 状态和匹配回执能经查询确认；pending、404、身份不符或无效响应保留待确认。已知字节冲突跨重新登录保留，不能以同文件名/大小误认成功；停止只中断浏览器等待，不能表示服务端取消。来源：[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 未知财务结果保留原命令重试，未知上传结果保留原上传 ID 和完整 File 重试；401 仅隐藏内容，同用户登录后手动继续，异用户/明确退出释放。刷新或关闭丢失内存意图，不具有持久离线队列语义。来源：[ADR 0010](decisions/0010-financial-web-and-retry.md)、[ADR 0011](decisions/0011-financial-revision-web.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
+
+
+## 可选期间关闭
+
+`GET /ledgers/{ledger_id}/period` 默认开放、版本1；只有显式关闭才产生状态。可同时提供 `from_date`/`to_date` 与 `date_basis`（transaction/recognition），返回所选区间 open/closed/partial、生成时间及与区间相交的最近重开审计；未选区间时 `range_status` 为空。此为T08的状态基础，不生成或保存报表快照。
+
+`POST /ledgers/{ledger_id}/period-changes` 使用独立账本作用域 Idempotency-Key 和原JSON v2摘要，提交 action（close/reopen）、必填可空 closed_through、expected_version、非空 reason。重开必须显式缩小截止日或解除关闭；原键优先重放，版本过期为409 version_conflict。未知提交保留原键与原JSON，不能刷新版本后悄悄重试。`GET` 同路径按版本倒序分页读取不可变审计（limit 1–200，offset 0–100000）。详见ADR0017/0023。
+
+新财务命令任一日期在已关闭范围返回409 period_closed；更正检查原凭证与替代凭证，取消检查原凭证。旧成功回执仍永久重放。未启用结账的账本保持原行为。
