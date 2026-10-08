@@ -22,7 +22,7 @@ class DraftSummary(BaseModel):
     job_id: UUID
     file_id: UUID
     source_key: str
-    status: Literal["draft", "ignored"]
+    status: Literal["draft", "ignored", "confirmed"]
     version: int
     created_at: datetime
     updated_at: datetime
@@ -66,7 +66,7 @@ def _query(owner_id, ledger_id, *, detail=False):
 class DraftReadService(LedgerService):
     def list_drafts(self, owner_id, ledger_id, *, job_id=None, status=None, limit=100, offset=0):
         _page(limit, offset)
-        if status is not None and status not in ("draft", "ignored"):
+        if status is not None and status not in ("draft", "ignored", "confirmed"):
             raise LedgerError("ocr_invalid_filter", 422, "The draft filter is invalid.")
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
@@ -130,7 +130,7 @@ def create_draft_router(settings, engine):
         ledger_id: UUID,
         identity: reader,
         job_id: UUID | None = None,
-        status: Literal["draft", "ignored"] | None = None,
+        status: Literal["draft", "ignored", "confirmed"] | None = None,
         limit: page_size = 100,
         offset: page_offset = 0,
     ):

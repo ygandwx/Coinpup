@@ -36,7 +36,7 @@ def test_evidence_authentication_precedes_service(client, monkeypatch, suffix, m
 
 @pytest.mark.parametrize(
     "query",
-    ["limit=0", "limit=201", "offset=-1", "offset=100001", "status=confirmed", "job_id=not-a-uuid"],
+    ["limit=0", "limit=201", "offset=-1", "offset=100001", "status=unknown", "job_id=not-a-uuid"],
 )
 def test_pagination_and_filter_validation_precedes_storage(client, monkeypatch, query):
     client.cookies.set("coinpup_session", TOKEN)
@@ -46,7 +46,8 @@ def test_pagination_and_filter_validation_precedes_storage(client, monkeypatch, 
     assert client.get(PREFIX + "?" + query).status_code == 422
 
 
-def test_owner_from_session_and_explicit_paging_are_forwarded(client, monkeypatch):
+@pytest.mark.parametrize("status", ["ignored", "confirmed"])
+def test_owner_from_session_and_explicit_paging_are_forwarded(client, monkeypatch, status):
     client.cookies.set("coinpup_session", TOKEN)
     received = []
 
@@ -56,11 +57,11 @@ def test_owner_from_session_and_explicit_paging_are_forwarded(client, monkeypatc
 
     monkeypatch.setattr(DraftReadService, "list_drafts", listing)
     response = client.get(
-        PREFIX, params={"job_id": str(OTHER), "status": "ignored", "limit": 1, "offset": 2}
+        PREFIX, params={"job_id": str(OTHER), "status": status, "limit": 1, "offset": 2}
     )
     assert response.status_code == 200
     assert received == [
-        (OWNER, LEDGER, {"job_id": OTHER, "status": "ignored", "limit": 1, "offset": 2})
+        (OWNER, LEDGER, {"job_id": OTHER, "status": status, "limit": 1, "offset": 2})
     ]
     assert response.json() == [summary().model_dump(mode="json")]
     assert not {"fields", "recognition", "lease_token", "configuration"} & response.json()[0].keys()

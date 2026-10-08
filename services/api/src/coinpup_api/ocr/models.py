@@ -129,7 +129,7 @@ class OcrDraft(Versioned, Base):
             )
             for column in ("recognized", "evidence", "fields")
         ),
-        CheckConstraint("status IN ('draft', 'ignored')", name="ck_ocr_drafts_status"),
+        CheckConstraint("status IN ('draft', 'ignored', 'confirmed')", name="ck_ocr_drafts_status"),
         Index("ix_ocr_drafts_ledger_id", "ledger_id"),
     )
 
@@ -144,3 +144,76 @@ class OcrDraft(Versioned, Base):
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     fields: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="draft")
+
+
+class OcrConfirmation(Versioned, Base):
+    __tablename__ = "ocr_confirmations"
+    __table_args__ = (
+        *_scope("ocr_confirmations"),
+        ForeignKeyConstraint(
+            ["draft_id", "ledger_id", "created_by"],
+            ["ocr_drafts.id", "ocr_drafts.ledger_id", "ocr_drafts.created_by"],
+            name="fk_ocr_confirmations_draft_ledger_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["target_ledger_id", "created_by"],
+            ["ledgers.id", "ledgers.owner_id"],
+            name="fk_ocr_confirmations_target_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_file_id", "ledger_id"],
+            ["stored_files.id", "stored_files.ledger_id"],
+            name="fk_ocr_confirmations_source_file",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["target_file_id", "target_ledger_id"],
+            ["stored_files.id", "stored_files.ledger_id"],
+            name="fk_ocr_confirmations_target_file",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["operation_id", "target_ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_ocr_confirmations_operation",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("draft_id", name="uq_ocr_confirmations_draft"),
+        UniqueConstraint("ledger_id", "intent_id", name="uq_ocr_confirmations_ledger_intent"),
+        CheckConstraint("hash_version = 2", name="ck_ocr_confirmations_hash_version"),
+        CheckConstraint("request_hash ~ '^[0-9a-f]{64}$'", name="ck_ocr_confirmations_hash"),
+        CheckConstraint(
+            "draft_version > 0 AND operation_version > 0", name="ck_ocr_confirmations_versions"
+        ),
+        CheckConstraint("action IN ('create', 'link')", name="ck_ocr_confirmations_action"),
+        *(
+            CheckConstraint(
+                f"jsonb_typeof({column}) = 'object' AND octet_length({column}::text) <= 262144",
+                name=f"ck_ocr_confirmations_{column}",
+            )
+            for column in ("review", "response")
+        ),
+        Index("ix_ocr_confirmations_source", "ledger_id", "source_file_id", "source_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    draft_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    intent_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_file_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    target_ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    target_file_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    draft_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    operation_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    hash_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2")
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    review: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
