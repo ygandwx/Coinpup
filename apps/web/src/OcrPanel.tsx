@@ -16,6 +16,7 @@ import {
 import type { DraftDetail, OcrDraft, OcrJob, ReviewView } from "./ocr-api";
 import type { OcrJobIntents } from "./ocr-job-intents";
 import "./ocr.css";
+import { OriginalPreview } from "./OriginalPreview";
 
 export function ocrError(error: unknown, locale: Locale): string {
     const zh = locale === "zh";
@@ -391,6 +392,27 @@ export function OcrPanel({
                         <button disabled={busy} onClick={() => void original()}>
                             {t("下载原件对照", "Download original for comparison")}
                         </button>
+                        <OriginalPreview
+                            key={detail.file_id}
+                            ledger={ledger}
+                            file={detail.file_id}
+                            locale={locale}
+                            onUnauthorized={onUnauthorized}
+                        />
+                        {Array.isArray(detail.evidence.pages) && (
+                            <p>
+                                {t("来源页：", "Source pages: ")}
+                                {detail.evidence.pages
+                                    .filter(
+                                        (page) =>
+                                            typeof page === "number" &&
+                                            Number.isInteger(page) &&
+                                            page >= 0,
+                                    )
+                                    .map((page) => (page as number) + 1)
+                                    .join(", ")}
+                            </p>
+                        )}
                         <pre className="ocr-raw">
                             {typeof detail.recognition?.raw_text === "string"
                                 ? detail.recognition.raw_text
