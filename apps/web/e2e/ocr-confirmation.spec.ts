@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { api, expectNoOverflow, login, username } from "./helpers";
 import { seed } from "./ocr-helpers";
-import type { Account, Category } from "../src/ledger-api";
+import type { Account, Category, OperationState } from "../src/ledger-api";
 
 test("human correction posts once after lost reply, 401 and same-owner login", async ({
     page,
@@ -58,30 +58,37 @@ test("human correction posts once after lost reply, 401 and same-owner login", a
     await page.route("**/ocr-drafts/*/confirmations", async (route) => {
         originals.push(route.request().postData()!);
         if (originals.length === 1) {
-            expect((await route.fetch()).status()).toBe(201);
+            const committed = await route.fetch();
+            expect(committed.status(), await committed.text()).toBe(201);
             await route.abort("failed");
-        } else if (originals.length === 2)
-            await route.fulfill({
-                status: 401,
-                contentType: "application/json",
-                body: JSON.stringify({
-                    error: { code: "unauthorized", message: "Fictional expired browser session" },
-                }),
+        } else if (originals.length === 2) {
+            const auth = await (await page.request.get("/api/v1/auth/session")).json();
+            const revoked = await page.request.post("/api/v1/auth/logout", {
+                headers: { Origin: new URL(page.url()).origin, "X-CSRF-Token": auth.csrf_token },
             });
-        else await route.continue();
+            expect(revoked.status()).toBe(204);
+            await route.continue(); // Real revoked session: the API returns 401.
+        } else await route.continue();
     });
     await page.getByRole("button", { name: "Confirm and post", exact: true }).click();
     await page.getByRole("button", { name: "Retry original confirmation", exact: true }).click();
     await page.getByLabel("Username", { exact: true }).fill(username);
     await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_PASSWORD!);
+    const signedIn = page.waitForResponse((response) =>
+        response.url().endsWith("/api/v1/auth/login"),
+    );
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    expect((await signedIn).status()).toBe(200);
     await page.getByRole("button", { name: "Retry original confirmation", exact: true }).click();
     await expect(page.getByText(/Document confirmation completed/u)).toBeVisible();
     expect(originals).toHaveLength(3);
     expect(new Set(originals).size).toBe(1);
-    const operations = await (await page.request.get(`${base}/operations`)).json();
+    const operations = await api<OperationState[]>(page, "GET", `${base}/operations`);
     expect(operations).toHaveLength(1);
-    expect(operations[0].amount).toBe("12.50");
+    const posting = operations[0].latest_posting;
+    expect(posting.kind).toBe("expense");
+    if (posting.kind !== "expense") throw new Error("Expected the fictional expense");
+    expect(posting.amount).toBe("12.50");
     await page.goto(`/?entity=${fixture.entity}&view=ocr`);
     await page.getByRole("button", { name: /^Draft 1 · Confirmed$/u }).click();
     await expect(page.getByText(/Original confirmation receipt/u)).toContainText("12.50 USD");
