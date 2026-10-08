@@ -5,6 +5,7 @@ import type { Session } from "./api";
 import { businessError } from "./business-errors";
 import type { Locale } from "./i18n";
 import type { PendingPeriodController } from "./pending-period";
+import { periodReason } from "./pending-period";
 import { getPeriod, periodHistory } from "./periods-api";
 import type { PeriodChange, PeriodReceipt, PeriodState } from "./periods-api";
 
@@ -233,7 +234,7 @@ export function PeriodPanel({
                         disabled={
                             !current ||
                             conflict ||
-                            !reason.trim() ||
+                            !periodReason(reason) ||
                             (action === "close" && !cutoff)
                         }
                     >

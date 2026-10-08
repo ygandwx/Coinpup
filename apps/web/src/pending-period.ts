@@ -21,6 +21,16 @@ const transport: Transport = (session, plan) =>
     changePeriod(session.csrf_token, plan.ledgerId, JSON.parse(plan.bodyJson), plan.key);
 const idle = (): PeriodSnapshot =>
     Object.freeze({ status: "idle", plan: null, receipt: null, error: null });
+/** Match the API's Python str.strip, while preserving the raw reason in the frozen intent. */
+export function periodReason(value: string): string {
+    const blank = (char: string) =>
+        /^\p{White_Space}$/u.test(char) || (char >= "\u001c" && char <= "\u001f");
+    let start = 0,
+        end = value.length;
+    while (start < end && blank(value[start])) start += 1;
+    while (end > start && blank(value[end - 1])) end -= 1;
+    return value.slice(start, end);
+}
 function date(value: unknown): value is string {
     return (
         typeof value === "string" &&
@@ -38,7 +48,7 @@ function validInput(body: PeriodChange): boolean {
         body.expected_version <= 2147483646 &&
         (date(body.closed_through) || (body.action === "reopen" && body.closed_through === null)) &&
         typeof body.reason === "string" &&
-        body.reason.trim().length > 0 &&
+        periodReason(body.reason).length > 0 &&
         body.reason.length <= 1000 &&
         !body.reason.includes("\0")
     );
@@ -55,7 +65,7 @@ function valid(value: unknown, plan: FrozenPeriod): value is PeriodReceipt {
         receipt.version === body.expected_version + 1 &&
         receipt.action === body.action &&
         receipt.closed_through === body.closed_through &&
-        receipt.reason === body.reason.trim() &&
+        receipt.reason === periodReason(body.reason) &&
         (receipt.previous_closed_through === null || date(receipt.previous_closed_through)) &&
         typeof receipt.created_at === "string" &&
         Number.isFinite(Date.parse(receipt.created_at))
