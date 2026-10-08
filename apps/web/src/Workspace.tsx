@@ -10,6 +10,8 @@ import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
+import { OcrCopyStatus } from "./OcrCopyStatus";
+import type { OcrCopyController } from "./ocr-copy";
 import type { PendingConfirmationController } from "./pending-confirmations";
 import { OcrPanel } from "./OcrPanel";
 import type { OcrJobIntents } from "./ocr-job-intents";
@@ -290,6 +292,7 @@ export function BusinessWorkspace({
     uploads,
     ocrJobs,
     confirmations,
+    copies,
     onUnauthorized,
 }: {
     session: Session;
@@ -298,6 +301,7 @@ export function BusinessWorkspace({
     uploads: PendingUploadController;
     ocrJobs: OcrJobIntents;
     confirmations: PendingConfirmationController;
+    copies: OcrCopyController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -305,6 +309,8 @@ export function BusinessWorkspace({
     const confirmation = useSyncExternalStore(confirmations.subscribe, confirmations.getSnapshot);
     const confirmationLocked = !["idle", "rejected", "confirmed"].includes(confirmation.status);
     const upload = useSyncExternalStore(uploads.subscribe, uploads.getSnapshot);
+    const copy = useSyncExternalStore(copies.subscribe, copies.getSnapshot);
+    const copyLocked = copy.context !== null;
     const [ocrEditing, setOcrEditing] = useState(false);
     const [fileEditing, setFileEditing] = useState(false);
     const [fileOperation, setFileOperation] = useState<string | null>(() => {
@@ -323,7 +329,8 @@ export function BusinessWorkspace({
         fileEditing ||
         uploadLocked ||
         ocrEditing ||
-        confirmationLocked;
+        confirmationLocked ||
+        copyLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -373,14 +380,14 @@ export function BusinessWorkspace({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen command key or entity list changes; retries retain its ledger.
     }, [pending.command?.key, entities]);
     useEffect(() => {
-        if (!financialLocked && !uploadLocked && !confirmationLocked) return;
+        if (!financialLocked && !uploadLocked && !confirmationLocked && !copyLocked) return;
         const warn = (event: BeforeUnloadEvent) => {
             event.preventDefault();
             event.returnValue = "";
         };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [financialLocked, uploadLocked, confirmationLocked]);
+    }, [financialLocked, uploadLocked, confirmationLocked, copyLocked]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -715,6 +722,22 @@ export function BusinessWorkspace({
                 </p>
             </aside>
             <main id="main" className="business-main">
+                <OcrCopyStatus
+                    copies={copies}
+                    canResume={entities.some((item) => item.ledger.id === copy.context?.ledger)}
+                    session={session}
+                    locale={locale}
+                    onUnauthorized={onUnauthorized}
+                    onResume={() => {
+                        const source = entities.find(
+                            (item) => item.ledger.id === copy.context?.ledger,
+                        );
+                        if (source) {
+                            setSelectedId(source.id);
+                            setView("ocr");
+                        }
+                    }}
+                />
                 <ConfirmationStatus
                     controller={confirmations}
                     session={session}
@@ -902,6 +925,8 @@ export function BusinessWorkspace({
                                 entity={entity}
                                 jobs={ocrJobs}
                                 controller={confirmations}
+                                copies={copies}
+                                entities={entities}
                                 accounts={current?.accounts ?? []}
                                 assets={assets}
                                 categories={current?.categories ?? []}

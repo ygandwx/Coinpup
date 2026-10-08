@@ -8,6 +8,10 @@ function record(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 export function savedAction(value: unknown): Action | null {
+    if (record(value) && value.kind === "destination") {
+        if (!savedDestination(value)) return null;
+        value = value.action;
+    }
     if (record(value) && value.kind === "link") {
         return typeof value.operation_id === "string" &&
             Number.isSafeInteger(value.expected_version) &&
@@ -16,6 +20,31 @@ export function savedAction(value: unknown): Action | null {
             : null;
     }
     return savedEntry(value);
+}
+export function savedDestination(value: unknown): { ledger: string; file: string } | null {
+    const uuid = (id: unknown): id is string =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(id);
+    return record(value) &&
+        value.kind === "destination" &&
+        value.version === 1 &&
+        uuid(value.ledger_id) &&
+        uuid(value.file_id)
+        ? { ledger: value.ledger_id, file: value.file_id }
+        : null;
+}
+export function destinationEntry(target: { ledger: string; file: string }, action: Action | null) {
+    return {
+        kind: "destination",
+        version: 1,
+        ledger_id: target.ledger,
+        file_id: target.file,
+        action,
+    };
+}
+export function replaceAction(previous: unknown, action: Action) {
+    const target = savedDestination(previous);
+    return target ? destinationEntry(target, action) : action;
 }
 /** Review storage is deliberately untyped; reject malformed snapshots before opening the form. */
 export function savedEntry(value: unknown): Entry | null {
