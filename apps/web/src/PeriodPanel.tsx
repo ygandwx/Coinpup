@@ -220,6 +220,7 @@ export function PeriodPanel({
                     <label className="field">
                         {t("理由", "Reason")}
                         <textarea
+                            aria-label={t("理由", "Reason")}
                             required
                             maxLength={1000}
                             value={reason}
