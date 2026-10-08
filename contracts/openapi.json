@@ -941,6 +941,34 @@
         "title": "DraftDetail",
         "type": "object"
       },
+      "DraftReviewUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "review": {
+            "$ref": "#/components/schemas/HumanReview"
+          },
+          "status": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "ignored"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "review"
+        ],
+        "title": "DraftReviewUpdate",
+        "type": "object"
+      },
       "DraftSummary": {
         "properties": {
           "created_at": {
@@ -2110,6 +2138,28 @@
         "title": "HistoryEntry",
         "type": "object"
       },
+      "HumanReview": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Confirmed",
+            "type": "array"
+          },
+          "entry": {
+            "additionalProperties": true,
+            "title": "Entry",
+            "type": "object"
+          }
+        },
+        "title": "HumanReview",
+        "type": "object"
+      },
       "IncomeCreate": {
         "additionalProperties": false,
         "properties": {
@@ -3018,6 +3068,99 @@
           "amount"
         ],
         "title": "PostingSplit",
+        "type": "object"
+      },
+      "ReviewField": {
+        "properties": {
+          "candidate_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Value"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "requires_confirmation": {
+            "title": "Requires Confirmation",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "text",
+              "ocr",
+              "unknown"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "suggested_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Value"
+          }
+        },
+        "required": [
+          "path",
+          "source",
+          "candidate_value",
+          "suggested_value",
+          "requires_confirmation"
+        ],
+        "title": "ReviewField",
+        "type": "object"
+      },
+      "ReviewView": {
+        "properties": {
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "review": {
+            "$ref": "#/components/schemas/HumanReview"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "ignored",
+              "confirmed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "draft_id",
+          "version",
+          "status",
+          "fields",
+          "review"
+        ],
+        "title": "ReviewView",
         "type": "object"
       },
       "SessionResponse": {
@@ -5521,6 +5664,136 @@
           }
         },
         "summary": "Get Draft",
+        "tags": [
+          "OCR drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/review": {
+      "get": {
+        "operationId": "get_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Review",
+        "tags": [
+          "OCR drafts"
+        ]
+      },
+      "put": {
+        "operationId": "update_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftReviewUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Review",
         "tags": [
           "OCR drafts"
         ]

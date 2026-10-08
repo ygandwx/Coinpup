@@ -479,6 +479,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Review */
+        get: operations["get_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_get"];
+        /** Update Review */
+        put: operations["update_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/ocr-jobs": {
         parameters: {
             query?: never;
@@ -1108,6 +1126,18 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** DraftReviewUpdate */
+        DraftReviewUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            review: components["schemas"]["HumanReview"];
+            /**
+             * Status
+             * @default draft
+             * @enum {string}
+             */
+            status?: "draft" | "ignored";
+        };
         /** DraftSummary */
         DraftSummary: {
             /**
@@ -1597,6 +1627,15 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** HumanReview */
+        HumanReview: {
+            /** Confirmed */
+            confirmed?: string[];
+            /** Entry */
+            entry?: {
+                [key: string]: unknown;
+            };
+        };
         /** IncomeCreate */
         IncomeCreate: {
             /**
@@ -2039,6 +2078,40 @@ export interface components {
              * Format: uuid
              */
             category_id: string;
+        };
+        /** ReviewField */
+        ReviewField: {
+            /** Candidate Value */
+            candidate_value: string | null;
+            /** Path */
+            path: string;
+            /** Requires Confirmation */
+            requires_confirmation: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "text" | "ocr" | "unknown";
+            /** Suggested Value */
+            suggested_value: string | null;
+        };
+        /** ReviewView */
+        ReviewView: {
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /** Fields */
+            fields: components["schemas"]["ReviewField"][];
+            review: components["schemas"]["HumanReview"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "ignored" | "confirmed";
+            /** Version */
+            version: number;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -3342,6 +3415,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_review_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__review_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftReviewUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewView"];
                 };
             };
             /** @description Validation Error */
