@@ -31,11 +31,11 @@ from sqlalchemy import func, select
 
 def samples():
     from PIL import Image, ImageDraw, ImageFont
-    from pypdf import PdfWriter
+    from pypdf import PageObject, PdfWriter
     from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
     with PdfWriter() as writer, BytesIO() as output:
-        page = writer.add_blank_page(width=500, height=200)
+        page = PageObject.create_blank_page(width=500, height=200)
         page[NameObject("/Resources")] = DictionaryObject(
             {
                 NameObject("/Font"): DictionaryObject(
@@ -54,6 +54,7 @@ def samples():
         stream = DecodedStreamObject()
         stream.set_data(b"BT /F1 24 Tf 20 100 Td (Total: 12.00) Tj ET")
         page[NameObject("/Contents")] = stream
+        writer.add_page(page)
         writer.add_metadata({"/Title": "FICTIONAL WORKER SMOKE"})
         writer.write(output)
         pdf = output.getvalue()
@@ -71,7 +72,11 @@ def samples():
 
 
 def verify_result(result, *, image):
-    assert result["status"] == "processed", "Fictional recognition did not complete"
+    assert result["status"] == "processed", (
+        "Fictional recognition did not complete",
+        result["status"],
+        result.get("reason"),
+    )
     assert result["raw_text"].strip(), "Fictional source text missing"
     fields = result["field_review"]
     assert fields, "Fictional recognition did not produce review fields"
