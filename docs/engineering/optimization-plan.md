@@ -84,7 +84,7 @@
 | OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
 | OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 已完成（本轮基础范围；T06未实现） | [#43](https://github.com/ygandwx/Coinpup/pull/43)、[#97](https://github.com/ygandwx/Coinpup/pull/97)–[#101](https://github.com/ygandwx/Coinpup/pull/101) |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
-| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 进行中（ADR0017已采纳，按0023拆包实现） | [#44](https://github.com/ygandwx/Coinpup/pull/44) |
+| OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 已完成本轮基础（ADR0017/0023；报表快照留T08） | [#44](https://github.com/ygandwx/Coinpup/pull/44)、[#102](https://github.com/ygandwx/Coinpup/pull/102)–[#106](https://github.com/ygandwx/Coinpup/pull/106) |
 | OPT-30 🛑 | 登录防护与暴露面 | D 部署前 | 无 | 已完成（仅 ADR，未实现） | [#45](https://github.com/ygandwx/Coinpup/pull/45) |
 | T05-3 🛑 | 本地 OCR 方案（仅 ADR） | 方案 | OPT-01 至 OPT-08 | 已完成（仅 ADR，未实现） | [#46](https://github.com/ygandwx/Coinpup/pull/46) |
 
@@ -519,6 +519,8 @@ Coinpup/
 - 依赖 OPT-23 中往来账户的设计。
 
 ### OPT-25 🛑 结账与期间锁定（T08/T09 之前）
+
+- **本轮交付**：ADR0017已采纳，两项均拒绝并支持带理由重开；按ADR0023实现独立期间状态/不可变审计/v2回执、双日期财务保护、并发串行化、只读区间状态/重开元数据、完整恢复及双语网页。旧回执优先重放，不结账账本不受影响。原计划的报表标注/已发布快照接入留T08，不提前创建报表系统。
 
 - **问题**：按照 ADR 0008，更正时冲销凭证沿用原来的交易日和归属日。所以已经出过报表、甚至已经报过税的期间，数字可能被事后改掉，而系统不会给出任何提示或限制。
 - **ADR 草稿需要让用户选择**：

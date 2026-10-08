@@ -234,3 +234,20 @@ test("a 500 with a conflict code does not unlock an uncertain intent", async () 
     assert.equal(value.getSnapshot().status, "unknown");
     assert.equal(value.dismiss(), false);
 });
+
+test("Unicode reason receipts match Python stripping without changing the original intent", async () => {
+    for (const [raw, expected] of [
+        ["\u0085 Fictional \u0085", "Fictional"],
+        ["\u001c虚构理由\u001f", "虚构理由"],
+        ["\ufeffFictional\ufeff", "\ufeffFictional\ufeff"],
+    ]) {
+        const value = controller(async (session, plan) => ({ ...receipt(plan), reason: expected }));
+        await value.start(session, "fictional-ledger", { ...input(), reason: raw });
+        assert.equal(value.getSnapshot().status, "confirmed");
+        assert.equal(JSON.parse(value.getSnapshot().plan.bodyJson).reason, raw);
+    }
+    const value = controller(async () => assert.fail("An empty reason reached transport"));
+    await assert.rejects(
+        value.start(session, "fictional-ledger", { ...input(), reason: "\u0085\u001c" }),
+    );
+});

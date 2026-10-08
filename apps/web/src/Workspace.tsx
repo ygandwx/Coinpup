@@ -8,6 +8,8 @@ import { AccountForm } from "./AccountForm";
 import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
+import { PeriodPanel } from "./PeriodPanel";
+import type { PendingPeriodController } from "./pending-period";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
@@ -50,6 +52,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "periods"
     | "controls"
     | "ocr"
     | "files"
@@ -67,6 +70,7 @@ const views: View[] = [
     "ocr",
     "accounts",
     "controls",
+    "periods",
     "categories",
     "details",
     "assets",
@@ -296,6 +300,7 @@ export function BusinessWorkspace({
     ocrJobs,
     confirmations,
     copies,
+    periods,
     onUnauthorized,
 }: {
     session: Session;
@@ -305,6 +310,7 @@ export function BusinessWorkspace({
     ocrJobs: OcrJobIntents;
     confirmations: PendingConfirmationController;
     copies: OcrCopyController;
+    periods: PendingPeriodController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -314,6 +320,9 @@ export function BusinessWorkspace({
     const upload = useSyncExternalStore(uploads.subscribe, uploads.getSnapshot);
     const copy = useSyncExternalStore(copies.subscribe, copies.getSnapshot);
     const copyLocked = copy.context !== null;
+    const period = useSyncExternalStore(periods.subscribe, periods.getSnapshot);
+    const periodLocked = !["idle", "rejected", "confirmed"].includes(period.status);
+    const periodRecoveryLedger = periodLocked ? period.plan?.ledgerId : undefined;
     const [ocrEditing, setOcrEditing] = useState(false);
     const [fileEditing, setFileEditing] = useState(false);
     const [fileOperation, setFileOperation] = useState<string | null>(() => {
@@ -333,7 +342,8 @@ export function BusinessWorkspace({
         uploadLocked ||
         ocrEditing ||
         confirmationLocked ||
-        copyLocked;
+        copyLocked ||
+        periodLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -369,6 +379,7 @@ export function BusinessWorkspace({
         overview: t("总览", "Overview"),
         accounts: t("账户", "Accounts"),
         controls: t("往来余额", "Control balances"),
+        periods: t("结账与重开", "Period closing"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
         settings: t("设置", "Settings"),
@@ -384,14 +395,21 @@ export function BusinessWorkspace({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen command key or entity list changes; retries retain its ledger.
     }, [pending.command?.key, entities]);
     useEffect(() => {
-        if (!financialLocked && !uploadLocked && !confirmationLocked && !copyLocked) return;
+        if (
+            !financialLocked &&
+            !uploadLocked &&
+            !confirmationLocked &&
+            !copyLocked &&
+            !periodLocked
+        )
+            return;
         const warn = (event: BeforeUnloadEvent) => {
             event.preventDefault();
             event.returnValue = "";
         };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [financialLocked, uploadLocked, confirmationLocked, copyLocked]);
+    }, [financialLocked, uploadLocked, confirmationLocked, copyLocked, periodLocked]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -402,6 +420,15 @@ export function BusinessWorkspace({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen upload ID or entity list changes; retries retain its ledger and operation.
     }, [upload.command?.uploadId, entities]);
+
+    useEffect(() => {
+        if (!periodRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === periodRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("periods");
+        }
+    }, [periodRecoveryLedger, entities]);
 
     function failure(error: unknown) {
         if (error instanceof ApiError && error.kind === "unauthorized") onUnauthorizedRef.current();
@@ -712,6 +739,7 @@ export function BusinessWorkspace({
                                         overview: "◫",
                                         accounts: "▣",
                                         controls: "⇆",
+                                        periods: "▣",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -901,6 +929,16 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "periods" && (
+                            <PeriodPanel
+                                key={entity.ledger.id}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={periods}
+                                onUnauthorized={onUnauthorized}
+                            />
                         )}
                         {view === "controls" && (
                             <ControlBalancesPanel

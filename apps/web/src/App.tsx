@@ -9,6 +9,7 @@ import { PendingCommandController } from "./pending-command";
 import { PendingUploadController } from "./pending-upload";
 import { PendingConfirmationController } from "./pending-confirmations";
 import { OcrJobIntents } from "./ocr-job-intents";
+import { PendingPeriodController } from "./pending-period";
 import { OcrCopyController } from "./ocr-copy";
 
 type IconName =
@@ -321,6 +322,7 @@ export function App() {
     const [confirmations] = useState(() => new PendingConfirmationController());
     const [ocrJobs] = useState(() => new OcrJobIntents());
     const [copies] = useState(() => new OcrCopyController());
+    const [periods] = useState(() => new PendingPeriodController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
     const [retryKey, setRetryKey] = useState(0);
@@ -348,6 +350,7 @@ export function App() {
                     ocrJobs.setOwner(String(session.user.id));
                     confirmations.setOwner(String(session.user.id));
                     copies.setOwner(String(session.user.id));
+                    periods.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -359,6 +362,7 @@ export function App() {
                     ocrJobs.setOwner(null);
                     confirmations.setOwner(null);
                     copies.setOwner(null);
+                    periods.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -367,7 +371,7 @@ export function App() {
                     });
             });
         return () => controller.abort();
-    }, [retryKey, commands, uploads, ocrJobs, confirmations, copies]);
+    }, [retryKey, commands, uploads, ocrJobs, confirmations, copies, periods]);
 
     useEffect(() => {
         if (auth.status === "checking" || auth.status === "unavailable") return;
@@ -388,6 +392,7 @@ export function App() {
             ocrJobs.setOwner(null, true);
             confirmations.setOwner(null, true);
             copies.setOwner(null, true);
+            periods.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -396,6 +401,7 @@ export function App() {
                 ocrJobs.setOwner(null, true);
                 confirmations.setOwner(null, true);
                 copies.setOwner(null, true);
+                periods.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -440,12 +446,14 @@ export function App() {
                     ocrJobs={ocrJobs}
                     confirmations={confirmations}
                     copies={copies}
+                    periods={periods}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
                         ocrJobs.setOwner(null);
                         confirmations.setOwner(null);
                         copies.setOwner(null);
+                        periods.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -492,6 +500,7 @@ export function App() {
                                         ocrJobs.setOwner(String(session.user.id));
                                         confirmations.setOwner(String(session.user.id));
                                         copies.setOwner(String(session.user.id));
+                                        periods.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}
