@@ -347,6 +347,48 @@ class Journal(Base):
 class JournalLine(Base):
     __tablename__ = "journal_lines"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["party_id", "ledger_id"],
+            ["business_parties.id", "business_parties.ledger_id"],
+            name="fk_journal_lines_party_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["document_id", "ledger_id"],
+            ["business_documents.id", "business_documents.ledger_id"],
+            name="fk_journal_lines_document_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["document_line_id", "document_id", "ledger_id"],
+            [
+                "business_document_lines.id",
+                "business_document_lines.document_id",
+                "business_document_lines.ledger_id",
+            ],
+            name="fk_journal_lines_document_line",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["ledger_id", "dimension_owner_id"],
+            ["ledgers.id", "ledgers.owner_id"],
+            name="fk_journal_lines_dimension_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["counterparty_entity_id", "dimension_owner_id"],
+            ["entities.id", "entities.owner_id"],
+            name="fk_journal_lines_counterparty_owner",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "document_line_id IS NULL OR document_id IS NOT NULL",
+            name="ck_journal_lines_document_dimension",
+        ),
+        CheckConstraint(
+            "(counterparty_entity_id IS NULL) = (dimension_owner_id IS NULL)",
+            name="ck_journal_lines_owner_dimension",
+        ),
         Index(
             "ix_journal_lines_account_balance",
             "ledger_id",
@@ -404,6 +446,12 @@ class JournalLine(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(38, 18), nullable=False)
     account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     category_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+    party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    counterparty_entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    document_line_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    dimension_owner_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
 
 class OpeningPosition(Base):

@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261009_0016",)
+        assert context.get_current_heads() == ("20261009_0017",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261009_0016",)
+        assert context.get_current_heads() == ("20261009_0017",)
 
 
 def confirmation_schema_migration():

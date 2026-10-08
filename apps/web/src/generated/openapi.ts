@@ -2042,6 +2042,12 @@ export interface components {
             category_id: string | null;
             /** Component No */
             component_no: number;
+            /** Counterparty Entity Id */
+            counterparty_entity_id?: string | null;
+            /** Document Id */
+            document_id?: string | null;
+            /** Document Line Id */
+            document_line_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -2049,6 +2055,8 @@ export interface components {
             id: string;
             /** Line No */
             line_no: number;
+            /** Party Id */
+            party_id?: string | null;
             /** Role */
             role: string;
         };

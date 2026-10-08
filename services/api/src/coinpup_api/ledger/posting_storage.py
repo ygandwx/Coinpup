@@ -14,6 +14,14 @@ from coinpup_api.ledger.assets import AssetDefinition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.money import Amount
 
+DIMENSION_FIELDS = (
+    "party_id",
+    "counterparty_entity_id",
+    "document_id",
+    "document_line_id",
+    "dimension_owner_id",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class PostingLine:
@@ -27,6 +35,11 @@ class PostingLine:
     category_id: UUID | None = None
     id: UUID = field(default_factory=uuid4)
     component_no: int = 0
+    party_id: UUID | None = None
+    counterparty_entity_id: UUID | None = None
+    document_id: UUID | None = None
+    document_line_id: UUID | None = None
+    dimension_owner_id: UUID | None = None
 
 
 def prepare_journal_lines(
@@ -77,6 +90,13 @@ def prepare_journal_lines(
             valid = False
         if not valid:
             raise MoneyError("journal_role", "Journal references do not match the line role.")
+        dimensions = {name: getattr(line, name) for name in DIMENSION_FIELDS}
+        if (
+            any(value is not None and not isinstance(value, UUID) for value in dimensions.values())
+            or (line.document_line_id is not None and line.document_id is None)
+            or ((line.counterparty_entity_id is None) != (line.dimension_owner_id is None))
+        ):
+            raise MoneyError("journal_dimension", "Journal dimension references are invalid.")
         total_key = (line.component_no, line.asset_id)
         totals[total_key] = totals.get(total_key, 0) + quantity.minor_units
         result.append(
@@ -91,6 +111,7 @@ def prepare_journal_lines(
                 "amount": quantity.to_decimal(),
                 "account_id": line.account_id,
                 "category_id": line.category_id,
+                **dimensions,
             }
         )
     if any(totals.values()):
@@ -137,6 +158,7 @@ def prepare_reversal_lines(source_lines, reversal_journal_id, catalog):
             amount=Amount.from_decimal(line.amount, catalog[line.asset_id]),
             account_id=line.account_id,
             category_id=line.category_id,
+            **{name: getattr(line, name) for name in DIMENSION_FIELDS},
         )
         for line in source_lines
     ]
