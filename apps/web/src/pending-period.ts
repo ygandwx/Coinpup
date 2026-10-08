@@ -1,7 +1,7 @@
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import type { PendingStatus } from "./pending-command";
-import { changePeriod } from "./periods-api";
+import { changePeriod, getPeriod } from "./periods-api";
 import type { PeriodChange, PeriodReceipt } from "./periods-api";
 
 export type FrozenPeriod = Readonly<{
@@ -72,8 +72,13 @@ export class PendingPeriodController {
     private flight: Promise<void> | null = null;
     private listeners = new Set<() => void>();
     private io: Transport;
-    constructor(io: Transport = transport) {
+    private read: (ledgerId: string) => Promise<unknown>;
+    constructor(
+        io: Transport = transport,
+        read = getPeriod as (ledgerId: string) => Promise<unknown>,
+    ) {
         this.io = io;
+        this.read = read;
     }
     getSnapshot = (): PeriodSnapshot => this.visible;
     subscribe = (listener: () => void): (() => void) => {
@@ -187,10 +192,31 @@ export class PendingPeriodController {
                 let status: PendingStatus;
                 if (error.kind === "unauthorized") status = "auth-required";
                 else if (error.code === "idempotency_conflict") status = "idempotency-conflict";
-                else if (error.code === "version_conflict") {
-                    // Receipt lookup precedes this reply; monotonic versions fence every late copy.
-                    status = "rejected";
-                    this.uncertain = false;
+                else if (
+                    error.status === 409 &&
+                    error.code === "version_conflict" &&
+                    this.uncertain
+                ) {
+                    // A higher observed version plus receipt-first rejection fences every late copy.
+                    status = "unknown";
+                    try {
+                        const current = await this.read(plan.ledgerId);
+                        if (generation !== this.generation) return;
+                        const observed = current as Record<string, unknown> | null;
+                        if (
+                            observed?.ledger_id === plan.ledgerId &&
+                            Number.isInteger(observed.version) &&
+                            (observed.version as number) >
+                                JSON.parse(plan.bodyJson).expected_version
+                        ) {
+                            status = "rejected";
+                            this.uncertain = false;
+                        }
+                    } catch (readError) {
+                        if (generation !== this.generation) return;
+                        if (readError instanceof ApiError && readError.kind === "unauthorized")
+                            status = "auth-required";
+                    }
                 } else if (
                     !this.uncertain &&
                     error.status !== null &&

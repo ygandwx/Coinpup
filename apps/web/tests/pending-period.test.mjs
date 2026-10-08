@@ -39,8 +39,8 @@ function receipt(plan) {
         created_at: "2026-01-31T12:00:00Z",
     };
 }
-function controller(io) {
-    const value = new PendingPeriodController(io);
+function controller(io, read) {
+    const value = new PendingPeriodController(io, read);
     value.setOwner(session.user.id);
     return value;
 }
@@ -133,10 +133,13 @@ test("receipt mismatches and key conflicts never authorize a new key", async () 
 });
 test("monotonic version conflict fences an earlier uncertain request", async () => {
     let count = 0;
-    const value = controller(async () => {
-        if (++count === 1) throw new ApiError("network");
-        throw new ApiError("server", 409, "version_conflict");
-    });
+    const value = controller(
+        async () => {
+            if (++count === 1) throw new ApiError("network");
+            throw new ApiError("server", 409, "version_conflict");
+        },
+        async () => ({ ledger_id: "fictional-ledger", version: 2 }),
+    );
     await value.start(session, "fictional-ledger", input());
     await value.retry(session);
     assert.equal(value.getSnapshot().status, "rejected");
@@ -190,4 +193,44 @@ test("period transport preserves CSRF, key, body and encoded ledger while reads 
     } finally {
         globalThis.fetch = original;
     }
+});
+
+test("uncertain conflict stays locked without a higher same-ledger version", async () => {
+    for (const result of [
+        { ledger_id: "fictional-ledger", version: 1 },
+        { ledger_id: "other", version: 2 },
+        null,
+        new Error("offline"),
+        new ApiError("unauthorized", 401),
+    ]) {
+        let count = 0;
+        const value = controller(
+            async () => {
+                if (++count === 1) throw new ApiError("network");
+                throw new ApiError("server", 409, "version_conflict");
+            },
+            async () => {
+                if (result instanceof Error) throw result;
+                return result;
+            },
+        );
+        await value.start(session, "fictional-ledger", input());
+        await value.retry(session);
+        assert.equal(
+            value.getSnapshot().status,
+            result instanceof ApiError ? "auth-required" : "unknown",
+        );
+        assert.equal(value.dismiss(), false);
+    }
+});
+test("a 500 with a conflict code does not unlock an uncertain intent", async () => {
+    const value = controller(
+        async () => {
+            throw new ApiError("server", 500, "version_conflict");
+        },
+        async () => assert.fail("No valid conflict"),
+    );
+    await value.start(session, "fictional-ledger", input());
+    assert.equal(value.getSnapshot().status, "unknown");
+    assert.equal(value.dismiss(), false);
 });
