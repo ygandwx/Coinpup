@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     files_directory: Path = Path("data/files")
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
     upload_timeout_seconds: int = Field(default=120, ge=1, le=3600)
+    ocr_enabled: bool = False
 
     @field_validator("allowed_origins")
     @classmethod

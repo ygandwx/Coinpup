@@ -8,7 +8,7 @@
 
 ## 可选文字解析环境
 
-默认 API 使用 `requirements.lock`，开发检查使用 `requirements-dev.lock`；PDF 依赖另锁在 `requirements-ocr.lock`，受默认锁约束并包含安装哈希。安装可选组不会自动启用 OCR 任务；引擎、模型和实际处理配置仍按 ADR 0019 的同机验收推进。
+默认 API 使用 `requirements.lock`，开发检查使用 `requirements-dev.lock`；PDF 依赖另锁在 `requirements-ocr.lock`，受默认锁约束并包含安装哈希。安装可选组不会自动启用 OCR 任务；固定选型及人工复核策略见 [ADR 0020](../architecture/decisions/0020-ocr-prefill-and-review.md)。
 
 ```sh
 python -m pip install -r requirements-dev.lock
@@ -16,7 +16,28 @@ python -m pip install --require-hashes -r requirements-ocr.lock
 python scripts/check.py ocr
 ```
 
-默认 `fast` 保留全部普通测试；可选库测试由单独的必需 CI 作业实际安装并运行，不用 `importorskip` 冒充验收。依赖和许可证登记见[可选解析依赖](ocr-dependencies.md)。隔离 helper 仅在 Linux 执行，固定 Python/处理入口，先设资源限制再导入解析库；私有临时目录和请求文件分别为 0700/0600，不继承数据库、会话或代理环境，stderr 不进日志。地址空间限制不是 RSS 上限，单文件上限不是临时目录总量；禁网、只读原件卷、容器内存/PID 与临时总量限制由后续 worker 部署落实，不能把 helper 当作完整沙箱。API 镜像本步不改变。
+默认 `fast` 保留全部普通测试；可选库由独立 OCR CI 实际安装检查，不用 `importorskip` 冒充验收。依赖和许可证登记见[可选解析依赖](ocr-dependencies.md)。Linux helper 固定 Python/处理入口，先设资源限制再导入解析库；目录/文件分别0700/0600，不继承数据库、会话或代理环境，stderr 不进日志。地址空间不是 RSS 上限，单文件限制不是临时目录总量；容器约束如下，helper 本身不是网络/文件系统安全沙箱。
+
+## 显式启用 Linux OCR worker
+
+仅支持已验证的 Linux amd64 路径。原生引擎复用固定来源构建的 Tesseract 5.5.3/Leptonica，生产 worker 只复制原生安装目录，另安装带哈希的 OCR 锁；不含 Paddle 或编译工具，默认 API 构建不安装 OCR。准备构建输入须联网，运行时不下载模型。以下只构建，不运行质量基准或正式验收：
+
+```sh
+python -m scripts.ocr_benchmark.engine_assets fetch --output-dir build/engine-assets
+python ops/ocr-benchmark/build_inputs.py fetch --output-dir build/engine-build-inputs
+mkdir -p build/paddle-wheelhouse
+cp build/engine-assets/wheels/*.whl build/paddle-wheelhouse/
+python -m pip download --require-hashes --only-binary=:all: --find-links build/paddle-wheelhouse -r ops/ocr-benchmark/paddle.lock -r ops/ocr-benchmark/bootstrap.lock --dest build/paddle-wheelhouse
+chmod -R a+rX build/engine-assets build/engine-build-inputs build/paddle-wheelhouse
+docker build --target tesseract -f ops/ocr-benchmark/Dockerfile -t coinpup-ocr-tesseract:local .
+docker compose -f compose.yaml -f compose.ocr.yaml build
+```
+
+使用[OCR覆盖配置](../../compose.ocr.yaml)前先按既有流程启动数据库/API、迁移并创建管理员，随后 `docker compose -f compose.yaml -f compose.ocr.yaml up -d worker`。API 与 worker 必须构建自同一提交；同时以该覆盖配置重建 API，才会显式开启新任务。单独部署时设置 `COINPUP_OCR_ENABLED=true`，默认为 false；关闭只阻止新意图，既有意图仍可读取/重放，暂停计算还需停止 worker。
+
+worker 非root、根文件系统与原件卷只读、无 capabilities/新增权限；2 CPU、4 GiB、64进程及512 MiB私有 tmpfs。内部 Docker 网络只连 PostgreSQL，无公网出口和发布端口；父进程需要数据库连接，不能把整个 worker 称为完全禁网。实际引擎额外通过 network=none 容器验收。模型及 manifest 内置只读、逐字节校验，保留原许可；运行失败不在线补下载。长期恢复还需保存同一提交的 API/worker 镜像与原生构建来源。
+
+`python -m coinpup_api.ocr.worker --once` 只尝试领取一次；默认串行轮询。清理失败/数据库提交不确定时进程退出，容器重启后靠新租约恢复；归档、旧 token 和过期结果不能写回。升级及恢复核对时先停止 worker，确认原件/数据库一致后再启动。完整可执行例子与虚构容器验收见 [OCR工作流](../../.github/workflows/ocr.yml)，不会读取 GitHub secrets。
 
 ## 备份范围
 

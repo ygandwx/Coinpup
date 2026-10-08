@@ -39,6 +39,14 @@ def create_app(
     ocr_configuration: dict | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
+    if settings.ocr_enabled and ocr_configuration is None:
+        from coinpup_api.ocr.runtime import processing_configuration
+
+        ocr_configuration = {
+            "lease_seconds": 120,
+            "retry_seconds": 30,
+            "processing": processing_configuration(),
+        }
     probe = database if database is not None else Database(settings)
 
     @asynccontextmanager

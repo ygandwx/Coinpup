@@ -1,0 +1,36 @@
+# Opt in after building the native image, applying migrations and creating the administrator.
+services:
+  postgres:
+    networks: [default, ocr_internal]
+  api:
+    environment:
+      COINPUP_OCR_ENABLED: "true"
+  worker:
+    init: true
+    restart: unless-stopped
+    build:
+      context: .
+      target: worker
+      args:
+        OCR_NATIVE_IMAGE: coinpup-ocr-tesseract:local
+    environment:
+      COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:${POSTGRES_PASSWORD:?Initialize the local environment}@postgres:5432/coinpup
+      COINPUP_FILES_DIRECTORY: /app/data/files
+    volumes:
+      - files_data:/app/data/files:ro
+    networks: [ocr_internal]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m,mode=0700,uid=10001,gid=10001
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 4g
+    memswap_limit: 4g
+    cpus: 2.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+networks:
+  ocr_internal:
+    internal: true
