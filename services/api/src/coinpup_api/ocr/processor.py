@@ -100,7 +100,11 @@ def _read_source(source, path):
 
 
 def process(request: dict, workdir: Path) -> dict:
-    """No database, OCR engine, subprocess command or external entry selection."""
+    """No database, subprocess command or externally selected entry point."""
+    if type(request) is dict and request.get("action") == "recognize_document":
+        from .runtime import recognize_request
+
+        return recognize_request(request)
     try:
         source, path, limits, preparation, image_limits = _request(request)
     except (ValueError, TypeError, OSError, OverflowError):
