@@ -401,6 +401,10 @@ class RevisionService(
                                 amount=amount,
                                 account_id=line.account_id,
                                 category_id=line.category_id,
+                                party_id=line.party_id,
+                                counterparty_entity_id=line.counterparty_entity_id,
+                                document_id=line.document_id,
+                                document_line_id=line.document_line_id,
                             )
                         )
                     audits.append(

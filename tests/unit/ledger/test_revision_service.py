@@ -182,6 +182,11 @@ def source_row(
         amount=Decimal(amount),
         account_id=account,
         category_id=category,
+        party_id=None,
+        counterparty_entity_id=None,
+        document_id=None,
+        document_line_id=None,
+        dimension_owner_id=None,
     )
 
 

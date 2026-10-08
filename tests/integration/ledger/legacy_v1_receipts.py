@@ -9,13 +9,18 @@ from uuid import uuid4
 
 from alembic import command
 from alembic.config import Config
-from coinpup_api.ledger.models import FinancialOperation, JournalLine, OpeningPosition
+from coinpup_api.ledger.models import FinancialOperation, OpeningPosition
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.readers import PostingReaders, operation_state
 from coinpup_api.ledger.schemas import CategoryCreate, EntityCreate
 from coinpup_api.ledger.service import LedgerService
 from sqlalchemy import MetaData, Table, insert, inspect, select, text
-from sqlalchemy.orm import Session
+
+from tests.integration.ledger.legacy_v1_views import (
+    DIMENSIONS,
+    historical_line_model,
+    historical_reader_session,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 FINANCIAL_TABLES = (
@@ -34,9 +39,17 @@ def financial_snapshot(engine):
         for name in FINANCIAL_TABLES:
             table = Table(name, MetaData(), autoload_with=connection)
             rows = connection.execute(select(table).order_by(*table.primary_key.columns)).mappings()
-            result[name] = [
-                {key: value for key, value in row.items() if key != "hash_version"} for row in rows
-            ]
+            result[name] = []
+            for row in rows:
+                if name == "journal_lines":
+                    assert all(row.get(key) is None for key in DIMENSIONS)
+                result[name].append(
+                    {
+                        key: value
+                        for key, value in row.items()
+                        if key != "hash_version" and key not in DIMENSIONS
+                    }
+                )
         return result
 
 
@@ -162,6 +175,10 @@ def create_legacy_v1_receipts(engine, owner):
         }
         exchange = runpy.run_path(str(Path(__file__).with_name("test_exchange_constraints.py")))
         revisions = runpy.run_path(str(Path(__file__).with_name("test_revision_constraints.py")))
+        old_line = historical_line_model(engine)
+        # Scope the old schema to this runpy fixture namespace, never the application mapper.
+        revisions["_initial"].__globals__["JournalLine"] = old_line
+        revisions["_revise"].__globals__["JournalLine"] = old_line
         fee = {
             "account_id": str(accounts[0].id),
             "asset_id": "USD",
@@ -170,7 +187,7 @@ def create_legacy_v1_receipts(engine, owner):
         }
 
         def remember(name, action, operation, body, suffix, *, status=201):
-            with Session(engine) as session:
+            with historical_reader_session(engine) as session:
                 record = session.get(FinancialOperation, operation)
                 response = (
                     PostingReaders._read_operation(session, record)
@@ -249,7 +266,7 @@ def create_legacy_v1_receipts(engine, owner):
                 )
                 if body.get("fees"):
                     rows += exchange["_fee"](fixture, journal, start=len(rows) + 1)
-                connection.execute(insert(JournalLine), rows)
+                connection.execute(insert(old_line), rows)
                 if kind == "opening":
                     connection.execute(
                         insert(OpeningPosition).values(

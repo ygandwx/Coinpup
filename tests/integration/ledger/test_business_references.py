@@ -142,8 +142,11 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
             if history == "rows":
                 connection.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             else:
+                assert (
+                    connection.exec_driver_sql("SELECT count(*) FROM journal_lines").scalar() == 0
+                )
                 connection.exec_driver_sql(
-                    "TRUNCATE TABLE business_document_lines, business_documents, "
+                    "TRUNCATE TABLE journal_lines, business_document_lines, business_documents, "
                     "business_parties RESTRICT"
                 )
         before = snapshot(s)
@@ -155,10 +158,18 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         assert snapshot(s) == before
     else:
         before = snapshot(s)
+        dimensions = runpy.run_path(
+            str(
+                Path(__file__).resolve().parents[3]
+                / "services/api/migrations/versions/20261009_0017_journal_dimensions.py"
+            )
+        )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                dimensions["downgrade"]()
                 migration["downgrade"]()
                 migration["upgrade"]()
+                dimensions["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:

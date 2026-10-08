@@ -339,6 +339,18 @@ class LineAudit(BaseModel):
     amount: str
     account_id: UUID | None
     category_id: UUID | None
+    party_id: UUID | None = None
+    counterparty_entity_id: UUID | None = None
+    document_id: UUID | None = None
+    document_line_id: UUID | None = None
+
+    @model_serializer(mode="wrap")
+    def omit_absent_dimensions(self, handler):
+        data = handler(self)
+        for name in ("party_id", "counterparty_entity_id", "document_id", "document_line_id"):
+            if getattr(self, name) is None:
+                data.pop(name, None)
+        return data
 
 
 class JournalAudit(BaseModel):
