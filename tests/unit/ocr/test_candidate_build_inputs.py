@@ -4,7 +4,9 @@ import hashlib
 import importlib.util
 import io
 import json
+import sys
 import tarfile
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -20,6 +22,29 @@ DATA = [
     (PREFIX + "LICENSE", b"Fictional source notice.\n", "utf-8"),
     (PREFIX + "Modules/vendor/LICENSE", b"Fictional original \xe9 notice.\n", "latin-1"),
 ]
+
+
+@pytest.mark.parametrize(
+    ("error", "reason"),
+    [
+        (ValueError("fictional-private-detail"), "ValueError"),
+        (urllib.error.URLError("fictional-private-detail"), "URLError"),
+        (
+            urllib.error.HTTPError("https://fictional.invalid/private", 503, "private", {}, None),
+            "HTTPError status=503",
+        ),
+    ],
+)
+def test_cli_failure_reports_only_class_and_http_status(error, reason, monkeypatch, capsys):
+    def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(sys, "argv", ["build_inputs", "fetch", "--output-dir", "fictional"])
+    monkeypatch.setattr(build_inputs, "source_cache", fail)
+    with pytest.raises(SystemExit) as result:
+        build_inputs.main()
+    assert result.value.code == 1
+    assert capsys.readouterr().err == f"candidate_build_input_failed: {reason}\n"
 
 
 @pytest.fixture

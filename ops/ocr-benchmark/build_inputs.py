@@ -10,6 +10,7 @@ import subprocess
 import tarfile
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -373,8 +374,12 @@ def main():
         subprocess.SubprocessError,
         zipfile.BadZipFile,
         tarfile.TarError,
-    ):
-        parser.exit(1, "candidate_build_input_failed\n")
+    ) as error:
+        # Fixed public inputs only: expose the failure class, never response bodies or URLs.
+        reason = type(error).__name__
+        if isinstance(error, urllib.error.HTTPError):
+            reason += f" status={error.code}"
+        parser.exit(1, f"candidate_build_input_failed: {reason}\n")
     print(json.dumps({"version": 1, "command": args.command, "verified": True}))
 
 
