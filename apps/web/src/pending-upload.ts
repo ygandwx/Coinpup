@@ -53,7 +53,7 @@ export type UploadTransport = {
         signal: AbortSignal,
     ): Promise<UploadReservation>;
 };
-const transport: UploadTransport = {
+export const uploadTransport: UploadTransport = {
     reserve(session, command, signal) {
         return reserveUpload(
             session.csrf_token,
@@ -141,7 +141,7 @@ export class PendingUploadController {
     private abort: AbortController | null = null;
     private io: UploadTransport;
 
-    constructor(io: UploadTransport = transport) {
+    constructor(io: UploadTransport = uploadTransport) {
         this.io = io;
     }
     getSnapshot = (): PendingUploadSnapshot => this.visible;
