@@ -1,5 +1,6 @@
 .ocr-panel {
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .ocr-panel button,
 .ocr-panel select {

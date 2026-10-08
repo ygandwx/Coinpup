@@ -87,7 +87,9 @@ def main():
             ledger,
             PHOTO
             if photo
-            else fictional_pdf("Fictional browser receipt - Total USD 10.00", pages=2),
+            else fictional_pdf(
+                "Fictional total USD 10.00", pages=2, identity=f"Fictional {entity.id}"
+            ),
             "fictional-browser.png" if photo else "fictional-browser.pdf",
         )
         file_id = uploaded["receipt"].file_id
