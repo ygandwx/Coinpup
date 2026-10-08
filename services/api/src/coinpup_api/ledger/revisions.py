@@ -27,6 +27,7 @@ from coinpup_api.ledger.models import (
     JournalLine,
 )
 from coinpup_api.ledger.money import Amount
+from coinpup_api.ledger.period_checks import require_open_period
 from coinpup_api.ledger.posting_schemas import HistoryEntry, JournalAudit, LineAudit, OperationState
 from coinpup_api.ledger.posting_storage import (
     PostingLine,
@@ -231,6 +232,9 @@ class RevisionService(
                 .order_by(JournalLine.line_no)
             ).all()
             replacement = payload.replacement if action == "correct" else None
+            require_open_period(
+                session, ledger_id, original, *([replacement] if replacement else [])
+            )
             new_assets = set()
             if replacement is not None:
                 if replacement.kind != operation.kind:

@@ -261,3 +261,36 @@ def test_cross_ledger_requires_a_separately_uploaded_identical_original(confirm_
             "ocr_source_mismatch" if copy_kind == "different" else "not_found"
         )
         assert snapshot(s) == before
+
+
+def test_closed_period_rolls_back_human_confirmation_then_reopen_allows_it(confirm_setup):
+    from coinpup_api.ledger.period_schemas import PeriodChange
+    from coinpup_api.ledger.period_service import PeriodService
+
+    s = confirm_setup
+    periods = PeriodService(s["engine"])
+
+    def change(version, action, cutoff):
+        return periods.change(
+            s["owner"],
+            s["ledger"],
+            PeriodChange(
+                expected_version=version,
+                action=action,
+                closed_through=cutoff,
+                reason="Fictional OCR period protection",
+            ),
+            str(uuid4()),
+        )
+
+    body = request(s)
+    change(1, "close", "2099-12-31")
+    before = snapshot(s)
+    with pytest.raises(LedgerError) as failure:
+        confirm(s, body)
+    assert failure.value.code == "period_closed" and snapshot(s) == before
+    change(2, "reopen", None)
+    receipt = confirm(s, body)
+    change(3, "close", "2099-12-31")
+    before = snapshot(s)
+    assert confirm(s, body) == receipt and snapshot(s) == before

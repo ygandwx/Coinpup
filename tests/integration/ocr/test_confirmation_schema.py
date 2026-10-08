@@ -258,4 +258,18 @@ def test_empty_migration_round_trip_preserves_existing_drafts(confirmation_setup
     isolated_confirmation_schema(s["engine"], "downgrade")
     isolated_confirmation_schema(s["engine"], "upgrade")
     assert state(s) == before
+    with s["engine"].connect() as connection:
+        definition = connection.exec_driver_sql(
+            "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+            "WHERE conname = 'ck_change_log_entity_type'"
+        ).scalar_one()
+        for entity_type in (
+            "business_parties",
+            "business_documents",
+            "business_document_lines",
+            "ledger_periods",
+            "ledger_period_audits",
+            "ledger_period_receipts",
+        ):
+            assert entity_type in definition
     write(s)  # Recreated deferred guards accept the same valid atomic confirmation.

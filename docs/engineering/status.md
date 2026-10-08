@@ -12,7 +12,7 @@
 
 ## 正在进行
 
-- 当前：#71–#101已合入；T05-3/4已完成，五类财务确认与关联回执完整恢复及中英桌面手机浏览器验收通过。OPT-23本轮基础已完成（#97–#101）；当前按[ADR0023](../architecture/decisions/0023-period-implementation.md)开始OPT-25，先建独立期间状态/审计/回执与数据库保护。清晰OCR未达95%，仍按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填；不重跑正式验收。
+- 当前：#71–#102已合入；T05-3/4已完成，五类财务确认与关联回执完整恢复及中英桌面手机浏览器验收通过。OPT-23本轮基础已完成（#97–#101）；当前按[ADR0023](../architecture/decisions/0023-period-implementation.md)开始OPT-25，独立模型与数据库保护已合入，当前接入关闭/重开事务、财务期间检查与并发/旧回执验证。清晰OCR未达95%，仍按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填；不重跑正式验收。
 - 四份 ADR #43–#46 已依次合入，决定见 [ADR 索引](../architecture/decisions/README.md)；本轮实现账户与结账设计，登录防护实现不开始。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。
@@ -46,7 +46,7 @@
 
 ## 下一步
 
-1. 当前feat/opt-25-period-schema：独立期间模型、不可变审计/回执及变更日志，四项CI全绿后合入。
+1. 当前feat/opt-25-period-transactions：关闭/重开事务与财务保护，四项CI全绿后合入；之后接只读/API、网页与完整恢复。
 2. OPT-23仅交付账户/维度基础、内部管理、只读查询与展示；经营单据、Invoice及结算命令仍留T06。
 3. 接续ADR0017的OPT-25：可选结账，拒绝关闭期间新写/更正/取消，带理由重开，原回执优先重放。
 4. 保留OCR临时全字段需确认，不重跑正式验收；不进入T06及以后或OPT-24/30/09。
