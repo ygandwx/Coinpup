@@ -3,8 +3,19 @@ import type { ConfirmationCreate, ReviewView } from "./ocr-api";
 import type { PostingInput } from "./pending-command";
 
 export type Entry = Exclude<ConfirmationCreate["entry"], { kind: "link" }>;
+export type Action = ConfirmationCreate["entry"];
 function record(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+export function savedAction(value: unknown): Action | null {
+    if (record(value) && value.kind === "link") {
+        return typeof value.operation_id === "string" &&
+            Number.isSafeInteger(value.expected_version) &&
+            (value.expected_version as number) > 0
+            ? (value as Action)
+            : null;
+    }
+    return savedEntry(value);
 }
 /** Review storage is deliberately untyped; reject malformed snapshots before opening the form. */
 export function savedEntry(value: unknown): Entry | null {
