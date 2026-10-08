@@ -20,15 +20,19 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 
-def main():
-    settings = Settings()
-    url = make_url(settings.database_url)
+def require_fixture_target(settings):
+    url = make_url(settings.database_url.get_secret_value())
     if (
         os.environ.get("COINPUP_CREATE_OCR_BROWSER_FIXTURE") != "1"
         or settings.environment != "test"
         or (url.host, url.database) != ("postgres", "coinpup")
     ):
         raise SystemExit("Requires explicit disposable Compose OCR browser opt-in")
+
+
+def main():
+    settings = Settings()
+    require_fixture_target(settings)
     database = Database(settings)
     try:
         with Session(database.engine) as session:
