@@ -19,6 +19,9 @@ on:
       - "tests/engine_assets/**"
       - "tests/fixtures/ocr/**"
       - "requirements-ocr.lock"
+      - "Dockerfile"
+      - "compose.ocr.yaml"
+      - "scripts/check_ocr_worker.py"
       - "requirements-benchmark.lock"
       - ".github/workflows/ocr.yml"
 
@@ -189,6 +192,46 @@ jobs:
         run: |
           docker build --progress=plain --target tesseract -f ops/ocr-benchmark/Dockerfile -t coinpup-ocr-tesseract:ci .
           docker build --progress=plain --target paddle -f ops/ocr-benchmark/Dockerfile -t coinpup-ocr-paddle:ci .
+      - name: Build production worker and verify fixed offline recognition
+        run: |
+          POSTGRES_PASSWORD=fictional-compose-check docker compose -f compose.yaml -f compose.ocr.yaml config --quiet
+          docker build --progress=plain --target worker --build-arg OCR_NATIVE_IMAGE=coinpup-ocr-tesseract:ci -t coinpup-ocr-worker:ci .
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --cpus 2 --memory 4g --memory-swap 4g --pids-limit 64 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=512m,mode=0700,uid=10001,gid=10001 \
+            coinpup-ocr-worker:ci python scripts/check_ocr_worker.py offline
+      - name: Verify real worker queue on an isolated disposable database
+        run: |
+          docker network create --internal coinpup-worker-check
+          docker volume create coinpup-worker-files
+          docker run -d --name coinpup-worker-db --network coinpup-worker-check --network-alias worker-db \
+            --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_DB=coinpup_test_worker -e POSTGRES_USER=coinpup -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17
+          for attempt in $(seq 1 30); do
+            if docker exec coinpup-worker-db pg_isready -U coinpup -d coinpup_test_worker; then break; fi
+            sleep 1
+          done
+          docker exec coinpup-worker-db pg_isready -U coinpup -d coinpup_test_worker
+          worker_run() {
+            mode="$1"; shift
+            docker run --rm --network coinpup-worker-check --read-only --cap-drop ALL --security-opt no-new-privileges \
+              --cpus 2 --memory 4g --memory-swap 4g --pids-limit 64 \
+              --tmpfs /tmp:rw,noexec,nosuid,size=512m,mode=0700,uid=10001,gid=10001 \
+              -e COINPUP_RUN_WORKER_SMOKE=1 -e COINPUP_DATABASE_URL=postgresql+psycopg://coinpup@worker-db:5432/coinpup_test_worker \
+              -e COINPUP_FILES_DIRECTORY=/app/data/files \
+              -v "coinpup-worker-files:/app/data/files:$mode" coinpup-ocr-worker:ci "$@"
+          }
+          worker_run rw python -m alembic upgrade head
+          worker_run rw python scripts/check_ocr_worker.py seed
+          worker_run ro python -m coinpup_api.ocr.worker --once
+          worker_run ro python -m coinpup_api.ocr.worker --once
+          worker_run ro python scripts/check_ocr_worker.py verify
+      - name: Remove disposable worker containers and volumes
+        if: always()
+        run: |
+          docker rm -f coinpup-worker-db 2>/dev/null || true
+          docker volume rm coinpup-worker-files 2>/dev/null || true
+          docker network rm coinpup-worker-check 2>/dev/null || true
       - name: Reject missing local models before engine initialization
         run: |
           mkdir -p build/empty-assets build/candidate-reports/missing-models-paddle build/candidate-reports/missing-models-tesseract

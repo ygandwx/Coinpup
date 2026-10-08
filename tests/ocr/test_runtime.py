@@ -53,6 +53,17 @@ def test_real_text_dispatch_never_opens_models(tmp_path, monkeypatch):
     assert_text(processor.process(request(tmp_path, document(TEXT)), tmp_path))
 
 
+def test_container_smoke_pdf_has_valid_stream_references(tmp_path, monkeypatch):
+    from scripts.check_ocr_worker import samples, verify_result
+
+    monkeypatch.setattr(runtime, "_verify_models", lambda: pytest.fail("Text loaded models"))
+    suffix, media, data = samples()[0]
+    assert (suffix, media) == ("pdf", "application/pdf")
+    result = processor.process(request(tmp_path, data), tmp_path)
+    assert result["raw_text"] == "Total: 12.00"
+    verify_result(result, image=False)
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Real Linux process limits required")
 def test_real_isolated_text_dispatch_without_models(tmp_path):
     value = request(tmp_path, document(TEXT))
