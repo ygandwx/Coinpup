@@ -26,10 +26,36 @@ async function prepare(page: Page, checkUnready = false) {
         expect(await api(page, "GET", `${base}/operations`)).toEqual([]);
         await page.getByTestId(`select-draft-${fixture.drafts[0]}`).uncheck();
     }
-    for (const id of fixture.drafts) {
+    for (const [index, id] of fixture.drafts.entries()) {
+        let release = () => {};
+        const pattern = `**/ocr-drafts/${id}/review`;
+        if (checkUnready && index === 1) {
+            const gate = new Promise<void>((resolve) => {
+                release = resolve;
+            });
+            await page.route(
+                pattern,
+                async (route) => {
+                    await gate;
+                    await route.continue();
+                },
+                { times: 1 },
+            );
+        }
         await page.getByTestId(`ocr-draft-${id}`).click();
+        if (checkUnready && index === 1) {
+            try {
+                await expect(page.getByLabel("Amount · Reviewed", { exact: true })).toHaveCount(0);
+            } finally {
+                release();
+            }
+        }
+        // A previously checked row must never authorize the newly selected row.
+        await expect(page.getByTestId(`ocr-review-${id}`)).toBeVisible();
         for (const field of ["Amount", "Currency", "Date"])
             await page.getByLabel(`${field} · Reviewed`, { exact: true }).check();
+        for (const field of ["Amount", "Currency", "Date"])
+            await expect(page.getByLabel(`${field} · Reviewed`, { exact: true })).toBeChecked();
         await page.getByLabel("Choose entry type", { exact: true }).selectOption("expense");
         await page.getByRole("button", { name: "Use reviewed candidates", exact: true }).click();
         const amount = await page.getByLabel("Amount", { exact: true }).inputValue();
@@ -38,6 +64,9 @@ async function prepare(page: Page, checkUnready = false) {
         await page.getByLabel("Category", { exact: true }).selectOption(category.id);
         await page.getByLabel("Split amount", { exact: true }).fill(amount);
         await page.getByRole("button", { name: "Save prepared entry", exact: true }).click();
+        await expect(
+            page.getByRole("button", { name: "Edit prepared entry", exact: true }),
+        ).toBeVisible();
     }
     return { ...fixture, base, drafts: fixture.drafts as string[] };
 }
