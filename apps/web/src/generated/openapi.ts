@@ -784,6 +784,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/period": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** State */
+        get: operations["state_api_v1_ledgers__ledger_id__period_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/period-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_v1_ledgers__ledger_id__period_changes_get"];
+        put?: never;
+        /** Change */
+        post: operations["change_api_v1_ledgers__ledger_id__period_changes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/transfers": {
         parameters: {
             query?: never;
@@ -2332,6 +2367,85 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** PeriodChange */
+        PeriodChange: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "close" | "reopen";
+            /** Closed Through */
+            closed_through: string | null;
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
+        /** PeriodChangeResponse */
+        PeriodChangeResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "close" | "reopen";
+            /**
+             * Actor Id
+             * Format: uuid
+             */
+            actor_id: string;
+            /** Closed Through */
+            closed_through: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Previous Closed Through */
+            previous_closed_through: string | null;
+            /** Reason */
+            reason: string;
+            /** Version */
+            version: number;
+        };
+        /** PeriodState */
+        PeriodState: {
+            /** Closed Through */
+            closed_through: string | null;
+            /**
+             * Date Basis
+             * @enum {string}
+             */
+            date_basis: "transaction" | "recognition";
+            /** From Date */
+            from_date: string | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            last_reopened: components["schemas"]["PeriodChangeResponse"] | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Range Status */
+            range_status: ("open" | "closed" | "partial") | null;
+            /** To Date */
+            to_date: string | null;
             /** Version */
             version: number;
         };
@@ -4379,6 +4493,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    state_api_v1_ledgers__ledger_id__period_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+                date_basis?: "transaction" | "recognition";
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_v1_ledgers__ledger_id__period_changes_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodChangeResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_api_v1_ledgers__ledger_id__period_changes_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PeriodChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodChangeResponse"];
                 };
             };
             /** @description Validation Error */

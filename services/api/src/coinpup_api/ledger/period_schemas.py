@@ -35,3 +35,15 @@ class PeriodChangeResponse(BaseModel):
     previous_closed_through: date | None
     closed_through: date | None
     created_at: datetime
+
+
+class PeriodState(BaseModel):
+    ledger_id: UUID
+    version: Annotated[StrictInt, Field(ge=1)]
+    closed_through: date | None
+    from_date: date | None
+    to_date: date | None
+    date_basis: Literal["transaction", "recognition"]
+    range_status: Literal["open", "closed", "partial"] | None
+    generated_at: datetime
+    last_reopened: PeriodChangeResponse | None
