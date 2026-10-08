@@ -186,7 +186,7 @@ def test_period_receipt_scope_and_v2_shape(ledger_setup, changes):
 @pytest.mark.parametrize("day", [date(2026, 1, 30), CUTOFF])
 def test_direct_journal_guard_covers_either_inclusive_date(ledger_setup, which, day):
     s = ledger_setup
-    receipt = s["posting"].expense(s["owner"], s["ledger"], classified(s), "before-close")
+    receipt = s["posting"].post_expense(s["owner"], s["ledger"], classified(s), "before-close")
     with s["engine"].begin() as c:
         original = dict(c.execute(select(Journal)).mappings().one())
         write_period(c, s)
@@ -205,7 +205,9 @@ def test_direct_journal_guard_covers_either_inclusive_date(ledger_setup, which, 
                 )
             )
     assert failure.value.orig.diag.constraint_name == "ck_journal_period_closed"
-    assert s["posting"].expense(s["owner"], s["ledger"], classified(s), "before-close") == receipt
+    assert (
+        s["posting"].post_expense(s["owner"], s["ledger"], classified(s), "before-close") == receipt
+    )
     assert snapshot(s) == before
 
 
