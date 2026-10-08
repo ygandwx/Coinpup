@@ -52,7 +52,9 @@ class BalanceQueries:
                 account_id is not None
                 and session.scalar(
                     select(Account.id).where(
-                        Account.id == account_id, Account.ledger_id == ledger_id
+                        Account.id == account_id,
+                        Account.ledger_id == ledger_id,
+                        Account.account_class == "money",
                     )
                 )
                 is None
@@ -62,7 +64,11 @@ class BalanceQueries:
                 select(AccountAsset, Account, AssetRecord)
                 .join(Account, Account.id == AccountAsset.account_id)
                 .join(AssetRecord, AssetRecord.asset_id == AccountAsset.asset_id)
-                .where(AccountAsset.ledger_id == ledger_id, Account.ledger_id == ledger_id)
+                .where(
+                    AccountAsset.ledger_id == ledger_id,
+                    Account.ledger_id == ledger_id,
+                    Account.account_class == "money",
+                )
             )
             if account_id is not None:
                 statement = statement.where(Account.id == account_id)

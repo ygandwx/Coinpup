@@ -301,7 +301,9 @@ class LedgerService:
         _page(limit, offset)
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
-            statement = select(Account).where(Account.ledger_id == ledger_id)
+            statement = select(Account).where(
+                Account.ledger_id == ledger_id, Account.account_class == "money"
+            )
             if not include_archived:
                 statement = statement.where(Account.archived.is_(False))
             return [
@@ -347,7 +349,11 @@ class LedgerService:
         with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             account = session.scalar(
-                select(Account).where(Account.id == account_id, Account.ledger_id == ledger_id)
+                select(Account).where(
+                    Account.id == account_id,
+                    Account.ledger_id == ledger_id,
+                    Account.account_class == "money",
+                )
             )
             if account is None:
                 raise _not_found()
