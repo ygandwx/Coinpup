@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261009_0015",)
+        assert context.get_current_heads() == ("20261009_0016",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261009_0015",)
+        assert context.get_current_heads() == ("20261009_0016",)
 
 
 def confirmation_schema_migration():
@@ -57,6 +57,28 @@ def isolated_confirmation_schema(engine, action):
             confirmation_schema_migration()[action]()
 
 
+def business_reference_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261009_0016_business_references.py"
+        )
+    )
+
+
+def restore_current_change_types(engine):
+    # Isolated frozen OCR migrations replace the check with their historical type list.
+    # Reinstate the current additive list only after the original probe completes.
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
+            f"(entity_type IN ({business_reference_migration()['_ENTITY_TYPES']}))"
+        )
+
+
 def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
     """Assert current registration; repair only the known isolated 0008 table round trip."""
     with engine.begin() as connection:
@@ -72,6 +94,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             migration["_CHANGE_TRIGGER_SQL"]
             | ocr_schema_migration()["_CHANGE_TRIGGER_SQL"]
             | confirmation_schema_migration()["_CHANGE_TRIGGER_SQL"]
+            | business_reference_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -110,7 +133,8 @@ def structure_database(request):
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, "
                 "command_receipts, opening_positions, journal_lines, journals, "
-                "financial_operations, account_assets, accounts RESTRICT"
+                "financial_operations, account_assets, accounts, business_document_lines, "
+                "business_documents, business_parties RESTRICT"
             )
             connection.execute(delete(AccountAsset))
             connection.execute(delete(Account))
@@ -167,6 +191,8 @@ def structure_database(request):
             isolated_ocr_schema(database.engine, "upgrade")
         elif confirmation_detached:
             isolated_confirmation_schema(database.engine, "upgrade")
+        if ocr_detached or confirmation_detached:
+            restore_current_change_types(database.engine)
         change_trigger_registration(database.engine, repair_recreated_file_tables=file_round_trip)
         cleanup()
         database.close()

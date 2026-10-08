@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from coinpup_api.business import models as business_models  # noqa: F401
 from coinpup_api.models import Base
 
 

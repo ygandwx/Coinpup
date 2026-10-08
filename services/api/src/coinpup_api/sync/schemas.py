@@ -45,6 +45,9 @@ EntityType = Literal[
     "ocr_jobs",
     "ocr_drafts",
     "ocr_confirmations",
+    "business_parties",
+    "business_documents",
+    "business_document_lines",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 
