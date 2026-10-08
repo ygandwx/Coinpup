@@ -119,7 +119,10 @@ const quantity = (value: unknown) =>
     typeof value === "string" &&
     value.length <= 40 &&
     /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/u.test(value);
-function validReceipt(value: unknown, command: PendingCommand): value is FinancialResponse {
+export function validReceipt(
+    value: unknown,
+    command: Pick<PendingCommand, "operationId" | "ledgerId" | "kind">,
+): value is FinancialResponse {
     if (
         !record(value) ||
         value.id !== command.operationId ||
