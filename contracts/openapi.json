@@ -733,7 +733,8 @@
               "stored_files",
               "operation_file_links",
               "ocr_jobs",
-              "ocr_drafts"
+              "ocr_drafts",
+              "ocr_confirmations"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -905,7 +906,8 @@
           "status": {
             "enum": [
               "draft",
-              "ignored"
+              "ignored",
+              "confirmed"
             ],
             "title": "Status",
             "type": "string"
@@ -973,7 +975,8 @@
           "status": {
             "enum": [
               "draft",
-              "ignored"
+              "ignored",
+              "confirmed"
             ],
             "title": "Status",
             "type": "string"
@@ -5400,7 +5403,8 @@
                 {
                   "enum": [
                     "draft",
-                    "ignored"
+                    "ignored",
+                    "confirmed"
                   ],
                   "type": "string"
                 },

@@ -1024,7 +1024,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -1099,7 +1099,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "draft" | "ignored";
+            status: "draft" | "ignored" | "confirmed";
             /**
              * Updated At
              * Format: date-time
@@ -1141,7 +1141,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "draft" | "ignored";
+            status: "draft" | "ignored" | "confirmed";
             /**
              * Updated At
              * Format: date-time
@@ -3291,7 +3291,7 @@ export interface operations {
         parameters: {
             query?: {
                 job_id?: string | null;
-                status?: ("draft" | "ignored") | null;
+                status?: ("draft" | "ignored" | "confirmed") | null;
                 limit?: number;
                 offset?: number;
             };

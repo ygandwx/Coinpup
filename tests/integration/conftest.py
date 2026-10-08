@@ -32,10 +32,29 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261004_0013",)
+        assert context.get_current_heads() == ("20261008_0014",)
         with Operations.context(context):
+            if action == "downgrade":
+                confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261004_0013",)
+            if action == "upgrade":
+                confirmation_schema_migration()[action]()
+        assert context.get_current_heads() == ("20261008_0014",)
+
+
+def confirmation_schema_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261008_0014_ocr_confirmations.py"
+        )
+    )
+
+
+def isolated_confirmation_schema(engine, action):
+    with engine.begin() as connection:
+        with Operations.context(MigrationContext.configure(connection)):
+            confirmation_schema_migration()[action]()
 
 
 def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
@@ -50,7 +69,9 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             )
         )
         definitions = (
-            migration["_CHANGE_TRIGGER_SQL"] | ocr_schema_migration()["_CHANGE_TRIGGER_SQL"]
+            migration["_CHANGE_TRIGGER_SQL"]
+            | ocr_schema_migration()["_CHANGE_TRIGGER_SQL"]
+            | confirmation_schema_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -86,7 +107,7 @@ def structure_database(request):
             # Only this explicitly opted-in disposable fixture may truncate immutable journals.
             # RESTRICT rejects unexpected dependants; production utilities never do this.
             connection.exec_driver_sql(
-                "TRUNCATE TABLE change_log, ocr_drafts, ocr_jobs, file_uploads, "
+                "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, "
                 "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations RESTRICT"
@@ -119,6 +140,12 @@ def structure_database(request):
         and request.node.path == Path(__file__).parent / "files/test_files_schema.py"
     )
     ocr_detached = False
+    confirmation_detached = False
+    confirmation_probe = (
+        request.node.originalname
+        == "test_scoped_migration_guards_data_logs_and_restores_empty_schema"
+        and request.node.path == Path(__file__).parent / "ocr/test_ocr_schema.py"
+    )
     try:
         change_trigger_registration(database.engine)
         cleanup()
@@ -130,10 +157,16 @@ def structure_database(request):
             # The frozen downgrade refuses OCR rows/history; no CASCADE or guard bypass occurs.
             isolated_ocr_schema(database.engine, "downgrade")
             ocr_detached = True
+        elif confirmation_probe:
+            # Preserve the exact frozen 0013 probe, including its RESTRICT and trigger-count checks.
+            isolated_confirmation_schema(database.engine, "downgrade")
+            confirmation_detached = True
         yield database.engine, owner
     finally:
         if ocr_detached:
             isolated_ocr_schema(database.engine, "upgrade")
+        elif confirmation_detached:
+            isolated_confirmation_schema(database.engine, "upgrade")
         change_trigger_registration(database.engine, repair_recreated_file_tables=file_round_trip)
         cleanup()
         database.close()
