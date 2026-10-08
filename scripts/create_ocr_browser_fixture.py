@@ -78,6 +78,10 @@ def main():
         )
         ledger = entity.ledger.id
         photo = os.environ.get("COINPUP_BROWSER_FIXTURE_IMAGE") == "1"
+        row_count = os.environ.get("COINPUP_BROWSER_FIXTURE_ROWS", "1")
+        if row_count not in {"1", "3"}:
+            raise SystemExit("Fictional browser fixture supports one or three rows")
+        amounts = ["10.00"] if row_count == "1" else ["10.00", "20.00", "30.00"]
         identity = UUID(os.environ.get("COINPUP_BROWSER_FIXTURE_IDENTITY", str(entity.id)))
         uploaded = upload_fixture(
             DocumentService(database.engine),
@@ -89,27 +93,33 @@ def main():
             PHOTO
             if photo
             else fictional_pdf(
-                "Fictional total USD 10.00", pages=2, identity=f"Fictional {identity}"
+                "Fictional total USD " + ", ".join(amounts),
+                pages=2,
+                identity=f"Fictional {identity}",
             ),
             "fictional-browser.png" if photo else "fictional-browser.pdf",
         )
         file_id = uploaded["receipt"].file_id
-        fields = [
-            {
-                "path": f"header.{role}",
-                "role": role,
-                "value": value,
-                "status": "certain",
-                "evidence": [{"page": 0, "raw": value}],
-            }
-            for role, value in [
-                ("total", "10.00"),
-                ("currency", "USD"),
-                ("document_date", "2031-07-18"),
+        rows = [
+            [
+                {
+                    "path": f"header.{role}" if row_count == "1" else f"rows.0.0.{index}.{role}",
+                    "role": role,
+                    "value": value,
+                    "status": "certain",
+                    "evidence": [{"page": 0, "raw": value}],
+                }
+                for role, value in [
+                    ("total" if row_count == "1" else "amount", amount),
+                    ("currency", "USD"),
+                    ("document_date" if row_count == "1" else "date", "2031-07-18"),
+                ]
             ]
+            for index, amount in enumerate(amounts)
         ]
+        fields = [field for row in rows for field in row]
         recognition = {
-            "raw_text": "Fictional seeded browser candidate: Total USD 10.00",
+            "raw_text": "Fictional seeded browser candidate: Total USD " + ", ".join(amounts),
             "pages": [{"page_index": 0, "layer": "absent", "route": "render"}],
             "parsed": {"fields": fields},
         }
@@ -133,11 +143,18 @@ def main():
                 summary={"pages": 1, "recognition": recognition},
                 candidates=[
                     Candidate(
-                        source_key="document:0",
-                        recognized={"version": 1, "kind": "document", "fields": fields},
+                        source_key="document:0"
+                        if row_count == "1"
+                        else f"page:0/table:0/row:{index}",
+                        recognized={
+                            "version": 1,
+                            "kind": "document" if row_count == "1" else "statement_row",
+                            "fields": row,
+                        },
                         evidence={"pages": [0]},
                         fields={"review": field_review(recognition), "confirmed": []},
                     )
+                    for index, row in enumerate(rows)
                 ],
             ),
         )
@@ -148,6 +165,7 @@ def main():
                     "ledger": str(ledger),
                     "job": str(job.id),
                     "draft": str(done.result.draft_ids[0]),
+                    "drafts": [str(value) for value in done.result.draft_ids],
                 }
             )
         )
