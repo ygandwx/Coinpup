@@ -9,6 +9,8 @@ import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
 import { FilesPanel } from "./FilesPanel";
+import { ConfirmationStatus } from "./ConfirmationStatus";
+import type { PendingConfirmationController } from "./pending-confirmations";
 import { OcrPanel } from "./OcrPanel";
 import type { OcrJobIntents } from "./ocr-job-intents";
 import type { PendingUploadController } from "./pending-upload";
@@ -287,6 +289,7 @@ export function BusinessWorkspace({
     commands,
     uploads,
     ocrJobs,
+    confirmations,
     onUnauthorized,
 }: {
     session: Session;
@@ -294,10 +297,13 @@ export function BusinessWorkspace({
     commands: PendingCommandController;
     uploads: PendingUploadController;
     ocrJobs: OcrJobIntents;
+    confirmations: PendingConfirmationController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
     const pending = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
+    const confirmation = useSyncExternalStore(confirmations.subscribe, confirmations.getSnapshot);
+    const confirmationLocked = !["idle", "rejected", "confirmed"].includes(confirmation.status);
     const upload = useSyncExternalStore(uploads.subscribe, uploads.getSnapshot);
     const [ocrEditing, setOcrEditing] = useState(false);
     const [fileEditing, setFileEditing] = useState(false);
@@ -312,7 +318,12 @@ export function BusinessWorkspace({
     const [financialEditing, setFinancialEditing] = useState(false);
     const financialLocked = !["idle", "rejected", "confirmed"].includes(pending.status);
     const navigationLocked =
-        financialEditing || financialLocked || fileEditing || uploadLocked || ocrEditing;
+        financialEditing ||
+        financialLocked ||
+        fileEditing ||
+        uploadLocked ||
+        ocrEditing ||
+        confirmationLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -362,14 +373,14 @@ export function BusinessWorkspace({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen command key or entity list changes; retries retain its ledger.
     }, [pending.command?.key, entities]);
     useEffect(() => {
-        if (!financialLocked && !uploadLocked) return;
+        if (!financialLocked && !uploadLocked && !confirmationLocked) return;
         const warn = (event: BeforeUnloadEvent) => {
             event.preventDefault();
             event.returnValue = "";
         };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [financialLocked, uploadLocked]);
+    }, [financialLocked, uploadLocked, confirmationLocked]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -704,6 +715,12 @@ export function BusinessWorkspace({
                 </p>
             </aside>
             <main id="main" className="business-main">
+                <ConfirmationStatus
+                    controller={confirmations}
+                    session={session}
+                    locale={locale}
+                    onUnauthorized={onUnauthorized}
+                />
                 <header className="business-heading">
                     <div>
                         <p className="eyebrow">
@@ -884,6 +901,11 @@ export function BusinessWorkspace({
                                 locale={locale}
                                 entity={entity}
                                 jobs={ocrJobs}
+                                controller={confirmations}
+                                accounts={current?.accounts ?? []}
+                                assets={assets}
+                                categories={current?.categories ?? []}
+                                dataLoading={loading || ledgerLoading || !current}
                                 onUnauthorized={onUnauthorized}
                                 onEditingChange={setOcrEditing}
                             />

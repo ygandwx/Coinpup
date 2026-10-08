@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { downloadFile, listFiles } from "./files-api";
 import type { StoredFile } from "./files-api";
 import type { Locale } from "./i18n";
-import type { Entity } from "./ledger-api";
+import { ocrError } from "./ocr-errors";
+import { OcrEntryForm } from "./OcrEntryForm";
+import type { PendingConfirmationController } from "./pending-confirmations";
+import type { Entity, Account, Asset, Category } from "./ledger-api";
 import {
     getDraftReview,
+    getConfirmation,
     getOcrDraft,
     listOcrDrafts,
     listOcrJobs,
@@ -14,31 +18,11 @@ import {
     saveDraftReview,
 } from "./ocr-api";
 import type { DraftDetail, OcrDraft, OcrJob, ReviewView } from "./ocr-api";
+import type { ConfirmationReceipt } from "./ocr-api";
 import type { OcrJobIntents } from "./ocr-job-intents";
 import "./ocr.css";
 import { OriginalPreview } from "./OriginalPreview";
 
-export function ocrError(error: unknown, locale: Locale): string {
-    const zh = locale === "zh";
-    const code = error instanceof ApiError ? error.code : null;
-    if (code === "ocr_unavailable")
-        return zh
-            ? "识别服务暂不可用。可稍后重试或手动记账。"
-            : "Recognition is unavailable. Retry later or post manually.";
-    if (code === "version_conflict")
-        return zh
-            ? "草稿已被修改。请核对服务器版本后重新编辑。"
-            : "This draft changed. Review the server version before editing again.";
-    if (code === "ocr_duplicate_confirmation")
-        return zh
-            ? "此原件行已有确认记录，请先核对重复提示。"
-            : "This source row was confirmed before. Review the duplicate warning.";
-    if (code === "ocr_review_required")
-        return zh ? "请逐项核对所有待确认字段。" : "Review every required field individually.";
-    return zh
-        ? "暂时无法完成操作。输入已保留，请核对状态后重试。"
-        : "The action could not be completed. Your input is retained; check the state and retry.";
-}
 function fieldName(path: string, locale: Locale): string {
     const role = path.split(".").at(-1) ?? "";
     const names: Record<string, [string, string]> = {
@@ -61,6 +45,11 @@ type Props = {
     locale: Locale;
     entity: Entity;
     jobs: OcrJobIntents;
+    controller: PendingConfirmationController;
+    accounts: Account[];
+    assets: Asset[];
+    categories: Category[];
+    dataLoading: boolean;
     onUnauthorized: () => void;
     onEditingChange: (editing: boolean) => void;
 };
@@ -69,11 +58,19 @@ export function OcrPanel({
     locale,
     entity,
     jobs: intents,
+    controller,
+    accounts,
+    assets,
+    categories,
+    dataLoading,
     onUnauthorized,
     onEditingChange,
 }: Props) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const ledger = entity.ledger.id;
+    const confirmation = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
+    const confirmationLocked = !["idle", "rejected", "confirmed"].includes(confirmation.status);
+    const [formEditing, setFormEditing] = useState(false);
     const active = useRef(true);
     const unauthorized = useRef(onUnauthorized);
     useEffect(() => {
@@ -101,6 +98,7 @@ export function OcrPanel({
     const [confirmed, setConfirmed] = useState<string[]>([]),
         [dirty, setDirty] = useState(false);
     const [error, setError] = useState<unknown>(null);
+    const [receipt, setReceipt] = useState<ConfirmationReceipt | null>(null);
     const [detailRefresh, setDetailRefresh] = useState(0);
     function selectJob(id: string) {
         setJobId(id);
@@ -115,9 +113,9 @@ export function OcrPanel({
         else setError(problem);
     }
     useEffect(() => {
-        onEditingChange(dirty || busy);
+        onEditingChange(dirty || busy || formEditing);
         return () => onEditingChange(false);
-    }, [dirty, busy, onEditingChange]);
+    }, [dirty, busy, formEditing, onEditingChange]);
     useEffect(() => {
         const abort = new AbortController();
         void Promise.all([
@@ -155,6 +153,7 @@ export function OcrPanel({
     useEffect(() => {
         setDetail(null);
         setReview(null);
+        setReceipt(null);
         setConfirmed([]);
         setDirty(false);
         if (!draftId) return;
@@ -163,8 +162,13 @@ export function OcrPanel({
             getOcrDraft(ledger, draftId, abort.signal),
             getDraftReview(ledger, draftId, abort.signal),
         ])
-            .then(([nextDetail, nextReview]) => {
+            .then(async ([nextDetail, nextReview]) => {
+                const stored =
+                    nextReview.status === "confirmed"
+                        ? await getConfirmation(ledger, draftId, abort.signal)
+                        : null;
                 if (abort.signal.aborted) return;
+                setReceipt(stored);
                 setDetail(nextDetail);
                 setReview(nextReview);
                 setConfirmed(nextReview.review.confirmed ?? []);
@@ -177,6 +181,17 @@ export function OcrPanel({
             });
         return () => abort.abort();
     }, [ledger, draftId, detailRefresh]);
+    useEffect(() => {
+        if (
+            review &&
+            confirmation.receipts.some(
+                (r) => r.draft_id === draftId && r.draft_version > review.version,
+            )
+        ) {
+            setDetailRefresh((v) => v + 1);
+            setRefresh((v) => v + 1);
+        }
+    }, [confirmation.receipts, draftId, review]);
     async function start() {
         setBusy(true);
         setError(null);
@@ -242,7 +257,7 @@ export function OcrPanel({
             if (active.current) setBusy(false);
         }
     }
-    const locked = busy || dirty;
+    const locked = busy || dirty || formEditing || confirmationLocked;
     const stateName = (state: string) =>
         ({
             pending: t("排队中", "Queued"),
@@ -445,7 +460,11 @@ export function OcrPanel({
                                         type="checkbox"
                                         checked={confirmed.includes(field.path)}
                                         disabled={
-                                            busy || entity.archived || review.status === "confirmed"
+                                            busy ||
+                                            formEditing ||
+                                            confirmationLocked ||
+                                            entity.archived ||
+                                            review.status === "confirmed"
                                         }
                                         onChange={(event) => {
                                             setConfirmed((value) =>
@@ -462,13 +481,25 @@ export function OcrPanel({
                         ))}
                         <div className="ocr-actions">
                             <button
-                                disabled={busy || entity.archived || review.status === "confirmed"}
+                                disabled={
+                                    busy ||
+                                    formEditing ||
+                                    confirmationLocked ||
+                                    entity.archived ||
+                                    review.status === "confirmed"
+                                }
                                 onClick={() => void save("draft")}
                             >
                                 {t("保存复核", "Save review")}
                             </button>
                             <button
-                                disabled={busy || entity.archived || review.status === "confirmed"}
+                                disabled={
+                                    busy ||
+                                    formEditing ||
+                                    confirmationLocked ||
+                                    entity.archived ||
+                                    review.status === "confirmed"
+                                }
                                 onClick={() =>
                                     void save(review.status === "ignored" ? "draft" : "ignored")
                                 }
@@ -478,7 +509,7 @@ export function OcrPanel({
                                     : t("忽略草稿", "Ignore draft")}
                             </button>
                             <button
-                                disabled={busy}
+                                disabled={busy || formEditing || confirmationLocked}
                                 onClick={() => {
                                     setError(null);
                                     setDetailRefresh((v) => v + 1);
@@ -487,6 +518,39 @@ export function OcrPanel({
                                 {t("放弃修改并重新加载", "Discard edits and reload")}
                             </button>
                         </div>
+                        {receipt && (
+                            <p>
+                                {t("确认时的入账回执", "Original confirmation receipt")}:{" "}
+                                {receipt.operation.id} ·{" "}
+                                {"amount" in receipt.operation
+                                    ? receipt.operation.amount
+                                    : receipt.operation.source_amount}{" "}
+                                {"asset_id" in receipt.operation
+                                    ? receipt.operation.asset_id
+                                    : receipt.operation.source_asset_id}
+                            </p>
+                        )}
+                        <OcrEntryForm
+                            session={session}
+                            locale={locale}
+                            ledger={ledger}
+                            file={detail.file_id}
+                            review={review}
+                            confirmed={confirmed}
+                            accounts={accounts}
+                            assets={assets}
+                            categories={categories}
+                            controller={controller}
+                            locked={busy || confirmationLocked || dataLoading || entity.archived}
+                            dirty={dirty}
+                            onEditing={setFormEditing}
+                            onSaved={(next) => {
+                                setReview(next);
+                                setDirty(false);
+                                setRefresh((v) => v + 1);
+                            }}
+                            onError={failed}
+                        />
                     </article>
                 )}
             </div>

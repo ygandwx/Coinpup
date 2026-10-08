@@ -1,29 +1,6 @@
-import { execFileSync } from "node:child_process";
+import { seed } from "./ocr-helpers";
 import { expect, test } from "@playwright/test";
 import { expectNoOverflow, login } from "./helpers";
-
-function seed(photo = false) {
-    return JSON.parse(
-        execFileSync(
-            "docker",
-            [
-                "compose",
-                "exec",
-                "-T",
-                "-e",
-                "COINPUP_ENVIRONMENT=test",
-                "-e",
-                "COINPUP_CREATE_OCR_BROWSER_FIXTURE=1",
-                "-e",
-                `COINPUP_BROWSER_FIXTURE_IMAGE=${photo ? "1" : "0"}`,
-                "api",
-                "python",
-                "scripts/create_ocr_browser_fixture.py",
-            ],
-            { encoding: "utf8" },
-        ),
-    );
-}
 
 test("fictional seeded OCR review uses real API and keeps selections across languages and widths", async ({
     page,

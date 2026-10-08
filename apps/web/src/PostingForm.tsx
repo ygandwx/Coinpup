@@ -331,6 +331,7 @@ export type PostingFormProps = {
     submitting?: boolean;
     error?: string | null;
     initialInput?: PostingInput;
+    showRetainedHelp?: boolean;
     lockKind?: boolean;
     lockOpeningTarget?: boolean;
     submitLabel?: string;
@@ -346,6 +347,7 @@ export function PostingForm({
     categories,
     initialKind = "expense",
     initialInput,
+    showRetainedHelp = true,
     lockKind = false,
     lockOpeningTarget = false,
     submitLabel,
@@ -386,7 +388,7 @@ export function PostingForm({
                     ? body.splits.map((split) => ({
                           id: crypto.randomUUID(),
                           categoryId: split.category_id,
-                          amount: split.amount,
+                          amount: split.amount || null,
                       }))
                     : null,
             fees:
@@ -662,7 +664,9 @@ export function PostingForm({
                 choose={t.choose}
                 disabled={busy || lockKind}
             />
-            {initial && <p className="help-text posting-intro">{t.retainedHelp}</p>}
+            {initial && showRetainedHelp && (
+                <p className="help-text posting-intro">{t.retainedHelp}</p>
+            )}
             {!activeAccounts.length && (
                 <p className="inline-error" role="status">
                     {t.noAccounts}
