@@ -1109,3 +1109,38 @@
         min-height: 42px;
     }
 }
+
+.period-panel fieldset {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin: 20px 0;
+    padding: 16px;
+    min-width: 0;
+}
+.period-panel input,
+.period-panel select,
+.period-panel textarea {
+    min-width: 0;
+    max-width: 100%;
+}
+.period-panel p,
+.period-panel time,
+.period-panel strong {
+    overflow-wrap: anywhere;
+}
+.period-audit {
+    padding: 16px 0;
+    border-top: 1px solid var(--line);
+}
+.period-audit p {
+    white-space: pre-wrap;
+}
+.period-audit time,
+.period-audit details {
+    font-size: 12px;
+    color: var(--muted);
+}
+.period-panel .section-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+}
