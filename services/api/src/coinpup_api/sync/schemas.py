@@ -48,6 +48,9 @@ EntityType = Literal[
     "business_parties",
     "business_documents",
     "business_document_lines",
+    "ledger_periods",
+    "ledger_period_audits",
+    "ledger_period_receipts",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 

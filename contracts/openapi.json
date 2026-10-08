@@ -737,7 +737,10 @@
               "ocr_confirmations",
               "business_parties",
               "business_documents",
-              "business_document_lines"
+              "business_document_lines",
+              "ledger_periods",
+              "ledger_period_audits",
+              "ledger_period_receipts"
             ],
             "title": "Entity Type",
             "type": "string"
