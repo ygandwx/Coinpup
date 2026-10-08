@@ -8,6 +8,7 @@ import { AccountForm } from "./AccountForm";
 import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
+import { ControlBalancesPanel } from "./ControlBalancesPanel";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
 import { OcrCopyStatus } from "./OcrCopyStatus";
@@ -49,6 +50,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "controls"
     | "ocr"
     | "files"
     | "transactions"
@@ -64,6 +66,7 @@ const views: View[] = [
     "files",
     "ocr",
     "accounts",
+    "controls",
     "categories",
     "details",
     "assets",
@@ -365,6 +368,7 @@ export function BusinessWorkspace({
         assets: t("资产", "Assets"),
         overview: t("总览", "Overview"),
         accounts: t("账户", "Accounts"),
+        controls: t("往来余额", "Control balances"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
         settings: t("设置", "Settings"),
@@ -707,6 +711,7 @@ export function BusinessWorkspace({
                                         assets: "◈",
                                         overview: "◫",
                                         accounts: "▣",
+                                        controls: "⇆",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -896,6 +901,15 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "controls" && (
+                            <ControlBalancesPanel
+                                key={entity.ledger.id}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                assets={assets}
+                                onUnauthorized={onUnauthorized}
+                            />
                         )}
                         {view === "transactions" && (
                             <TransactionsPanel

@@ -275,6 +275,20 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
 }
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 16px;
+}
+.control-balances dl {
+    overflow-wrap: anywhere;
+}
+.control-balances dd {
+    margin: 0 0 12px;
+}
+.control-balances .money-quantity {
+    overflow-wrap: anywhere;
+}
 .account-card {
     border: 1px solid var(--line);
     border-radius: 12px;
