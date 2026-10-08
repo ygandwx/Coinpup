@@ -15,6 +15,7 @@ from _bundle_archive import verified_bundle
 from _database_archive import ArchiveError, read_target, require_posix
 from backup_bundle import backup_bundle
 from check_backup_restore import change_state, snapshot, verify_change_continuation
+from check_control_restore import seed_controls, verify_controls
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from restore_bundle import restore_bundle
 
@@ -333,6 +334,7 @@ def check_bundle_restore(source_url):
                 operation,
             )
             ocr_ids = fictional_ocr_metadata(engine, owner, ledger_b, second["receipt"].file_id)
+            controls = seed_controls(engine, owner)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -423,6 +425,7 @@ def check_bundle_restore(source_url):
                 )
             verify_fictional_ocr_metadata(restored_engine, ocr_ids)
             verify_confirmations(restored_engine, owner, ledger_a, confirmations)
+            verify_controls(restored_engine, owner, controls)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())

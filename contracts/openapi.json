@@ -944,6 +944,121 @@
         "title": "ConfirmationResponse",
         "type": "object"
       },
+      "ControlBalance": {
+        "properties": {
+          "account_archived": {
+            "title": "Account Archived",
+            "type": "boolean"
+          },
+          "account_class": {
+            "enum": [
+              "receivable",
+              "payable",
+              "intercompany",
+              "advance"
+            ],
+            "title": "Account Class",
+            "type": "string"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_enabled": {
+            "title": "Asset Enabled",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "counterparty_entity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterparty Entity Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_line_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Line Id"
+          },
+          "link_enabled": {
+            "title": "Link Enabled",
+            "type": "boolean"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "system_key": {
+            "enum": [
+              "receivable.customer",
+              "payable.supplier",
+              "intercompany.receivable",
+              "intercompany.payable",
+              "advance.received",
+              "advance.paid"
+            ],
+            "title": "System Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_class",
+          "system_key",
+          "asset_id",
+          "amount",
+          "account_archived",
+          "asset_enabled",
+          "link_enabled",
+          "party_id",
+          "counterparty_entity_id",
+          "document_id",
+          "document_line_id"
+        ],
+        "title": "ControlBalance",
+        "type": "object"
+      },
       "CorrectionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -5359,6 +5474,191 @@
         "summary": "Update Category",
         "tags": [
           "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/control-balances": {
+      "get": {
+        "operationId": "balances_api_v1_ledgers__ledger_id__control_balances_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "receivable",
+                    "payable",
+                    "intercompany",
+                    "advance"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "system_key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "receivable.customer",
+                    "payable.supplier",
+                    "intercompany.receivable",
+                    "intercompany.payable",
+                    "advance.received",
+                    "advance.paid"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "System Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "party_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Party Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "counterparty_entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Counterparty Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_line_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Line Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ControlBalance"
+                  },
+                  "title": "Response Balances Api V1 Ledgers  Ledger Id  Control Balances Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Balances",
+        "tags": [
+          "control balances"
         ]
       }
     },

@@ -20,6 +20,8 @@
 
 ## 修改、归档与版本
 
+资金入口只包含 money 账户；往来余额使用独立只读入口，按控制身份、原资产及全部维度分组，保持有符号数量，不跨方向、对手方或单据抵销。内部命令按固定身份自动管理控制账户/资产关联，禁止通用表单创建、改类或直接调余额；归档/停用只读保留，不自动恢复。来源：[ADR 0016](decisions/0016-account-classes-and-dimensions.md)、[ADR 0022](decisions/0022-control-account-implementation.md)。
+
 - 版本更新必须携带冻结的 `expected_version`；成功后版本递增，过期版本返回 409 `version_conflict`。客户端保留草稿和原版本，只有明确重新载入才替换；语言切换不改变业务值或草稿。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0009](decisions/0009-business-web-workspace.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 归档保留记录、原币数量和历史引用；主体归档后允许读取，暂停新的账本写入。已经成功的财务命令和已完成上传可以重放，不能因后续归档或停用丢失回执。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
 - 主体/账本、账户和分类创建支持稳定客户端 UUID，重复 ID 是冲突，不覆盖已有数据，也不等同财务命令重放；未知创建结果先读取核对。分类模板复制为各主体独立分类，界面语言不自动翻译已保存名称，公司资料与账户资料按各自归属保存。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0009](decisions/0009-business-web-workspace.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
