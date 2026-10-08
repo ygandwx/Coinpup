@@ -12,7 +12,7 @@
 
 ## 正在进行
 
-- 当前：#71–#79已合入，公开扫描未发现真实密钥，误报告警见#72。T05-3的隔离续租、worker、草稿读取、生产容器和完整恢复已完成；开始T05-4确认事务设计。清晰OCR未达95%，按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填，见[验收报告](ocr-clear-results.md)；不重跑正式验收。
+- 当前：#71–#80已合入，公开扫描未发现真实密钥，误报告警见#72。T05-3已完成；T05-4按ADR0021实现私有事务适配器，确认模型/API/网页尚未接入。清晰OCR未达95%，按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填，见[验收报告](ocr-clear-results.md)；不重跑正式验收。
 - 四份 ADR #43–#46 已依次合入，决定见 [ADR 索引](../architecture/decisions/README.md)；本轮实现账户与结账设计，登录防护实现不开始。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。
@@ -46,7 +46,7 @@
 
 ## 下一步
 
-1. 当前分支feat/t05-4-confirmation-design：[ADR0021](../architecture/decisions/0021-ocr-confirmation-transactions.md)定义同事务确认与原意图重放，合入后按单目标小包实现。
+1. 当前分支feat/t05-4-bound-transactions：按[ADR0021](../architecture/decisions/0021-ocr-confirmation-transactions.md)验证私有事务复用、锁序、原回执和整体回滚。
 2. 先做事务适配器及确认模型/约束，再做复核/确认API；保留旧财务行为、v1/v2回执、变更日志与锁序。
 3. 接入逐项复核、分类拆分、归属调整、重复提示及未知提交恢复，完成中英桌面手机真实浏览器验收。
 4. 完成OPT-23数据模型/约束/往来余额查询，再完成OPT-25结账与带理由重开；不进入T06。
