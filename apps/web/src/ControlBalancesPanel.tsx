@@ -73,6 +73,7 @@ export function ControlBalancesPanel({
             <label className="field">
                 {t("往来方向", "Control direction")}
                 <select
+                    aria-label={t("往来方向", "Control direction")}
                     value={kind}
                     onChange={(event) => {
                         setKind(event.target.value as typeof kind);
