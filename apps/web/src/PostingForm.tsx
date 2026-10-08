@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import type { Locale } from "./i18n";
 import type { Account, Asset, Category, FeeCreate } from "./ledger-api";
 import type { PostingInput } from "./pending-command";
-import { AmountError, parseAmount } from "./money";
+import { AmountError, amountFromMinorUnits, parseAmount } from "./money";
 import "./posting-form.css";
 
 type Kind = PostingInput["kind"];
@@ -31,7 +31,13 @@ type Problem =
     | "transfer"
     | "exchange"
     | "fees";
-type Issue = { code: Problem; asset?: string; scale?: number };
+type Issue = {
+    code: Problem;
+    asset?: string;
+    scale?: number;
+    difference?: string;
+    differenceAsset?: string;
+};
 
 const copy = {
     zh: {
@@ -84,6 +90,7 @@ const copy = {
         noAccounts: "暂无支持可用资产的账户，请先添加账户或启用账户资产。",
         noCategories: "暂无可用分类，请先为当前账本添加相应的收入或支出分类。",
         precisionHelp: "最多小数位数",
+        difference: "拆分合计减本金",
         unavailable: "当前不可用",
         retainedHelp:
             "原记录中的归档或停用项目会保留显示。保存更正前须选择有效项目；期初更正需要先恢复原账户及其资产。",
@@ -160,6 +167,7 @@ const copy = {
         noCategories:
             "No matching categories are available. Add income or expense categories to this ledger first.",
         precisionHelp: "Maximum decimal places",
+        difference: "Split total minus principal",
         unavailable: "Unavailable",
         retainedHelp:
             "Archived or disabled references remain visible. A correction requires active references; for an opening correction, restore the original account and asset first.",
@@ -564,7 +572,20 @@ export function PostingForm({
                         throw { code: "reference" } satisfies Issue;
                     total += validateQuantity(split.amount, sourceAsset);
                 }
-                if (total !== units) throw { code: "total" } satisfies Issue;
+                if (total !== units) {
+                    let difference: string | undefined;
+                    try {
+                        difference = amountFromMinorUnits(total - units, sourceAsset!.scale);
+                    } catch (problem) {
+                        // An oversized sum still reports the original total validation error.
+                        if (!(problem instanceof AmountError)) throw problem;
+                    }
+                    throw {
+                        code: "total",
+                        difference,
+                        differenceAsset: sourceAsset!.code,
+                    } satisfies Issue;
+                }
             }
             const savedFees: FeeCreate[] = [];
             if (kind !== "opening") {
@@ -1049,6 +1070,8 @@ export function PostingForm({
                         <>
                             {t.errors[issue.code]}
                             {issue.asset && ` ${issue.asset} · ${t.precisionHelp}: ${issue.scale}`}
+                            {issue.difference !== undefined &&
+                                ` ${t.difference}: ${issue.difference} ${issue.differenceAsset}`}
                         </>
                     ) : (
                         error
