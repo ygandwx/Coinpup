@@ -734,7 +734,10 @@
               "operation_file_links",
               "ocr_jobs",
               "ocr_drafts",
-              "ocr_confirmations"
+              "ocr_confirmations",
+              "business_parties",
+              "business_documents",
+              "business_document_lines"
             ],
             "title": "Entity Type",
             "type": "string"

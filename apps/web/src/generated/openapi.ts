@@ -1102,7 +1102,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
