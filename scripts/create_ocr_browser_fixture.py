@@ -57,6 +57,60 @@ def require_fixture_target(settings):
         raise SystemExit("Requires explicit disposable Compose OCR browser opt-in")
 
 
+def fictional_completion(amounts):
+    """Fixed fictional browser observations; never a substitute for native OCR evidence."""
+    if amounts not in (["10.00"], ["10.00", "20.00", "30.00"], ["10.00", "20.00", None]):
+        raise ValueError("Only fixed fictional browser observations are allowed")
+    document = len(amounts) == 1
+    rows = [
+        [
+            {
+                "path": f"header.{role}" if document else f"rows.0.0.{index}.{role}",
+                "role": role,
+                "value": value,
+                "status": "certain" if value is not None else "review",
+                "evidence": [{"page": 0, "raw": value or "[unreadable]"}],
+            }
+            for role, value in [
+                ("total" if document else "amount", amount),
+                ("currency", "USD"),
+                ("document_date" if document else "date", "2031-07-18"),
+            ]
+        ]
+        for index, amount in enumerate(amounts)
+    ]
+    recognition = {
+        "raw_text": "Fictional seeded browser candidate: Total USD "
+        + ", ".join(value or "[unreadable]" for value in amounts),
+        "pages": [{"page_index": 0, "layer": "absent", "route": "render"}],
+        "parsed": {"fields": [field for row in rows for field in row]},
+    }
+    reviewed = field_review(recognition)
+    return Completion(
+        summary={"pages": 1, "recognition": recognition},
+        candidates=[
+            Candidate(
+                source_key="document:0" if document else f"page:0/table:0/row:{index}",
+                recognized={
+                    "version": 1,
+                    "kind": "document" if document else "statement_row",
+                    "fields": row,
+                },
+                evidence={"pages": [0]},
+                fields={
+                    "review": [
+                        field
+                        for field in reviewed
+                        if field["path"] in {item["path"] for item in row}
+                    ],
+                    "confirmed": [],
+                },
+            )
+            for index, row in enumerate(rows)
+        ],
+    )
+
+
 def main():
     settings = Settings()
     require_fixture_target(settings)
@@ -100,29 +154,10 @@ def main():
             "fictional-browser.png" if photo else "fictional-browser.pdf",
         )
         file_id = uploaded["receipt"].file_id
-        rows = [
-            [
-                {
-                    "path": f"header.{role}" if row_count == "1" else f"rows.0.0.{index}.{role}",
-                    "role": role,
-                    "value": value,
-                    "status": "certain",
-                    "evidence": [{"page": 0, "raw": value}],
-                }
-                for role, value in [
-                    ("total" if row_count == "1" else "amount", amount),
-                    ("currency", "USD"),
-                    ("document_date" if row_count == "1" else "date", "2031-07-18"),
-                ]
-            ]
-            for index, amount in enumerate(amounts)
-        ]
-        fields = [field for row in rows for field in row]
-        recognition = {
-            "raw_text": "Fictional seeded browser candidate: Total USD " + ", ".join(amounts),
-            "pages": [{"page_index": 0, "layer": "absent", "route": "render"}],
-            "parsed": {"fields": fields},
-        }
+        if os.environ.get("COINPUP_BROWSER_MISSING_LAST") == "1":
+            if row_count != "3":
+                raise SystemExit("Missing final amount requires the fictional three-row fixture")
+            amounts[-1] = None
         queue = OcrQueueService(database.engine)
         job = queue.create_job(
             owner,
@@ -139,30 +174,14 @@ def main():
             raise SystemExit("Unexpected pending job in disposable browser database")
         done = queue.finish(
             lease,
-            Completion(
-                summary={"pages": 1, "recognition": recognition},
-                candidates=[
-                    Candidate(
-                        source_key="document:0"
-                        if row_count == "1"
-                        else f"page:0/table:0/row:{index}",
-                        recognized={
-                            "version": 1,
-                            "kind": "document" if row_count == "1" else "statement_row",
-                            "fields": row,
-                        },
-                        evidence={"pages": [0]},
-                        fields={"review": field_review(recognition), "confirmed": []},
-                    )
-                    for index, row in enumerate(rows)
-                ],
-            ),
+            fictional_completion(amounts),
         )
         print(
             json.dumps(
                 {
                     "entity": str(entity.id),
                     "ledger": str(ledger),
+                    "file": str(file_id),
                     "job": str(job.id),
                     "draft": str(done.result.draft_ids[0]),
                     "drafts": [str(value) for value in done.result.draft_ids],
