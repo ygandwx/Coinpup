@@ -115,25 +115,28 @@ def test_outer_failure_rolls_back_posting_receipt_link_and_change_log(bound_setu
 
 def test_bound_v2_keeps_raw_omissions_and_original_replay_after_archive(bound_setup):
     s = bound_setup
-    command = classified(s, kind="income", amount="001.00", id=uuid4())
+    command = classified(s, kind="income", amount="1.00", id=uuid4())
     original = command.model_dump(mode="json", exclude_unset=True)
     original.pop("description")
+    command = type(command).model_validate(original)
     raw = json.dumps(original).encode()
     with s["structure"]._transaction(s["owner"], write=True) as session:
         bound = bind_commands(session, s["owner"], [s["ledger"]], ["USD"])
         receipt = bound.post("income", s["ledger"], command, "fictional-v2", raw_body=raw)
     before = state(s)
-    with pytest.raises(LedgerError) as error:
-        with s["structure"]._transaction(s["owner"], write=True) as session:
-            bound = bind_commands(session, s["owner"], [s["ledger"]], ["USD"])
-            bound.post(
-                "income",
-                s["ledger"],
-                command,
-                "fictional-v2",
-                raw_body=json.dumps({**original, "description": ""}).encode(),
-            )
-    assert error.value.code == "idempotency_conflict" and state(s) == before
+    for changes in ({"description": ""}, {"amount": "1.0"}):
+        changed = {**original, **changes}
+        with pytest.raises(LedgerError) as error:
+            with s["structure"]._transaction(s["owner"], write=True) as session:
+                bound = bind_commands(session, s["owner"], [s["ledger"]], ["USD"])
+                bound.post(
+                    "income",
+                    s["ledger"],
+                    type(command).model_validate(changed),
+                    "fictional-v2",
+                    raw_body=json.dumps(changed).encode(),
+                )
+        assert error.value.code == "idempotency_conflict" and state(s) == before
     s["structure"].update_entity(
         s["owner"], s["entity"].id, EntityUpdate(expected_version=1, archived=True)
     )
