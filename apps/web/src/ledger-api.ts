@@ -22,6 +22,10 @@ export type Category = components["schemas"]["CategoryResponse"];
 export type TemplateCategory = components["schemas"]["TemplateCategory"];
 export type CategoryTemplate = components["schemas"]["TemplateResponse"];
 export type Balance = components["schemas"]["BalanceResponse"];
+export type ControlBalance = components["schemas"]["ControlBalance"];
+export type ControlBalanceQuery = NonNullable<
+    operations["balances_api_v1_ledgers__ledger_id__control_balances_get"]["parameters"]["query"]
+>;
 export type AssetResponse = Asset;
 export type LedgerResponse = Ledger;
 export type EntityResponse = Entity;
@@ -168,6 +172,11 @@ export const listBalances = (
     options?: BalancePageOptions | AbortSignal,
     signal?: AbortSignal,
 ): Promise<Balance[]> => list(`${ledgerPath(ledgerId)}/balances`, options, signal);
+export const listControlBalances = (
+    ledgerId: UUID,
+    options?: ControlBalanceQuery,
+    signal?: AbortSignal,
+): Promise<ControlBalance[]> => list(`${ledgerPath(ledgerId)}/control-balances`, options, signal);
 export const createAsset = (csrf: string, body: AssetCreate): Promise<Asset> =>
     writeJson("/api/v1/assets", csrf, body);
 export const updateAsset = (csrf: string, assetId: string, body: AssetUpdate): Promise<Asset> =>

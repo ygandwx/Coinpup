@@ -12,7 +12,7 @@
 
 ## 正在进行
 
-- 当前：#71–#99已合入；T05-3/4已完成，五类财务确认与关联回执完整恢复及中英桌面手机浏览器验收通过。OPT-23按[ADR0022](../architecture/decisions/0022-control-account-implementation.md)拆包，账户类别、引用身份及维度约束已合入，当前控制账户管理与往来余额查询。清晰OCR未达95%，仍按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填；不重跑正式验收。
+- 当前：#71–#100已合入；T05-3/4已完成，五类财务确认与关联回执完整恢复及中英桌面手机浏览器验收通过。OPT-23按[ADR0022](../architecture/decisions/0022-control-account-implementation.md)拆包，账户/维度、自动管理和往来查询恢复已合入，当前独立网页展示及双语浏览器验收。清晰OCR未达95%，仍按[ADR0020](../architecture/decisions/0020-ocr-prefill-and-review.md)临时Tesseract全OCR需确认，文字层按解析预填；不重跑正式验收。
 - 四份 ADR #43–#46 已依次合入，决定见 [ADR 索引](../architecture/decisions/README.md)；本轮实现账户与结账设计，登录防护实现不开始。
 - 优化计划及逐包状态见 [optimization-plan.md](optimization-plan.md)；上一轮 OPT-01 至 OPT-08 已合入，验证证据见各 PR。本轮按用户指定顺序执行。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。
@@ -46,8 +46,8 @@
 
 ## 下一步
 
-1. #97–#99账户、引用身份与维度约束已合入；当前feat/opt-23-control-balances补自动管理、独立余额查询及带维度恢复，四项CI全绿后合入。
-2. 按ADR0022继续最小引用模型、分录维度/冲销约束，再补系统账户/资产管理与独立往来余额查询、恢复验证；不做T06命令。
+1. #97–#100已合入；当前feat/opt-23-control-workspace补独立往来面板、方向筛选与中英桌面手机验收，四项CI全绿后合入并完成OPT-23。
+2. OPT-23仅交付账户/维度基础、内部管理、只读查询与展示；经营单据、Invoice及结算命令仍留T06。
 3. 接续ADR0017的OPT-25：可选结账，拒绝关闭期间新写/更正/取消，带理由重开，原回执优先重放。
 4. 保留OCR临时全字段需确认，不重跑正式验收；不进入T06及以后或OPT-24/30/09。
 5. 完成或触发停止条件后汇报并等待，证据留PR，保留财务不变量和未知提交原意图。
