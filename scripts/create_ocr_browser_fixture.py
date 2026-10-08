@@ -3,7 +3,7 @@
 import base64
 import json
 import os
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from check_bundle_restore import fictional_pdf, upload_fixture
 from coinpup_api.config import Settings
@@ -78,6 +78,7 @@ def main():
         )
         ledger = entity.ledger.id
         photo = os.environ.get("COINPUP_BROWSER_FIXTURE_IMAGE") == "1"
+        identity = UUID(os.environ.get("COINPUP_BROWSER_FIXTURE_IDENTITY", str(entity.id)))
         uploaded = upload_fixture(
             DocumentService(database.engine),
             FileStore(
@@ -88,7 +89,7 @@ def main():
             PHOTO
             if photo
             else fictional_pdf(
-                "Fictional total USD 10.00", pages=2, identity=f"Fictional {entity.id}"
+                "Fictional total USD 10.00", pages=2, identity=f"Fictional {identity}"
             ),
             "fictional-browser.png" if photo else "fictional-browser.pdf",
         )

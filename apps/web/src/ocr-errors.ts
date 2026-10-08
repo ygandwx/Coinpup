@@ -10,8 +10,8 @@ export function ocrError(error: unknown, locale: Locale): string {
             : "Recognition is unavailable. Retry later or post manually.";
     if (code === "version_conflict")
         return zh
-            ? "草稿已被修改。请核对服务器版本后重新编辑。"
-            : "This draft changed. Review the server version before editing again.";
+            ? "草稿或关联流水已被修改。请核对服务器版本后重新编辑。"
+            : "The draft or linked entry changed. Review the server version before editing again.";
     if (code === "ocr_duplicate_confirmation")
         return zh
             ? "此原件行已有确认记录，请先核对重复提示。"

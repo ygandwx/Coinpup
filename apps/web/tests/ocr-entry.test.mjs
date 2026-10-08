@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { initialEntry, savedEntry, preparedEntry } from "../src/ocr-entry.ts";
+import { initialEntry, savedEntry, savedAction, preparedEntry } from "../src/ocr-entry.ts";
+
+test("saved link preserves the selected version and rejects malformed review data", () => {
+    const action = { kind: "link", operation_id: "fictional-operation", expected_version: 3 };
+    assert.equal(savedAction(action), action);
+    assert.equal(savedEntry(action), null);
+    for (const version of [0, -1, 1.5, "3", null, undefined, Infinity])
+        assert.equal(savedAction({ ...action, expected_version: version }), null);
+    assert.equal(savedAction({ ...action, operation_id: {} }), null);
+});
 
 const assets = [{ asset_id: "USD", code: "USD", enabled: true }];
 function review(source = "ocr") {

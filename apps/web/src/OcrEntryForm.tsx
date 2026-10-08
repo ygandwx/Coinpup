@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { PostingForm } from "./PostingForm";
 import type { PostingInput } from "./pending-command";
-import { formInput, initialEntry, preparedEntry, savedEntry } from "./ocr-entry";
+import { formInput, initialEntry, preparedEntry, savedAction } from "./ocr-entry";
+import type { Action } from "./ocr-entry";
+import { OcrDuplicateNotice, OcrLinkPicker } from "./OcrRelations";
 import type { Session } from "./api";
 import type { Account, Asset, Category } from "./ledger-api";
 import type { Locale } from "./i18n";
@@ -43,26 +45,32 @@ export function OcrEntryForm({
     onEditing: (value: boolean) => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
-    const [kind, setKind] = useState<PostingInput["kind"] | "">("");
+    const [kind, setKind] = useState<Action["kind"] | "">("");
+    const [linkOpen, setLinkOpen] = useState(false);
+    const [duplicates, setDuplicates] = useState({ ready: false, acknowledged: false });
     const [input, setInput] = useState<PostingInput | null>(null),
         [busy, setBusy] = useState(false);
-    const entry = savedEntry(review.review.entry);
+    const action = savedAction(review.review.entry);
+    const entry = action?.kind === "link" ? null : action;
+    const changedKind = !!kind && kind !== action?.kind;
     const complete = review.fields.every(
         (field) => !field.requires_confirmation || confirmed.includes(field.path),
     );
     useEffect(() => {
-        onEditing(input !== null || busy);
+        onEditing(input !== null || linkOpen || busy);
         return () => onEditing(false);
-    }, [input, busy, onEditing]);
-    async function save(value: PostingInput) {
+    }, [input, linkOpen, busy, onEditing]);
+    async function save(value: Action) {
         setBusy(true);
         try {
             const next = await saveDraftReview(session.csrf_token, ledger, review.draft_id, {
                 expected_version: review.version,
-                review: { confirmed, entry: preparedEntry(value) },
+                review: { confirmed, entry: value },
             });
             onSaved(next);
             setInput(null);
+            setLinkOpen(false);
+            setKind(value.kind);
         } catch (error) {
             onError(error);
         } finally {
@@ -70,7 +78,8 @@ export function OcrEntryForm({
         }
     }
     async function confirm() {
-        if (!entry || dirty || !complete || locked || busy) return;
+        if (!action || dirty || !complete || locked || busy || !duplicates.ready || changedKind)
+            return;
         try {
             await controller.start(session, [
                 {
@@ -81,8 +90,8 @@ export function OcrEntryForm({
                         target_ledger_id: ledger,
                         target_file_id: file,
                         confirmed,
-                        duplicate_ack: false,
-                        entry,
+                        duplicate_ack: duplicates.acknowledged,
+                        entry: action,
                     },
                 },
             ]);
@@ -100,7 +109,30 @@ export function OcrEntryForm({
                     "Choose an entry type, account and categories, then check dates and amounts. Saving prepares a draft; only explicit confirmation posts it.",
                 )}
             </p>
-            {input ? (
+            <OcrDuplicateNotice
+                ledger={ledger}
+                draft={review.draft_id}
+                version={review.version}
+                action={action}
+                assets={assets}
+                locale={locale}
+                locked={locked || busy || input !== null || linkOpen}
+                onChange={setDuplicates}
+                onError={onError}
+            />
+            {linkOpen ? (
+                <OcrLinkPicker
+                    ledger={ledger}
+                    locale={locale}
+                    busy={busy || locked}
+                    onSave={(value) => void save(value)}
+                    onError={onError}
+                    onCancel={() => {
+                        setLinkOpen(false);
+                        setKind(action?.kind ?? "");
+                    }}
+                />
+            ) : input ? (
                 <PostingForm
                     locale={locale}
                     accounts={accounts}
@@ -110,11 +142,20 @@ export function OcrEntryForm({
                     showRetainedHelp={false}
                     busy={busy || locked}
                     submitLabel={t("保存入账草稿", "Save prepared entry")}
-                    onSubmit={(value) => void save(value)}
-                    onCancel={() => setInput(null)}
+                    onSubmit={(value) => void save(preparedEntry(value))}
+                    onCancel={() => {
+                        setInput(null);
+                        setKind(action?.kind ?? "");
+                    }}
                 />
             ) : (
                 <>
+                    {action?.kind === "link" && (
+                        <p>
+                            {t("已保存关联", "Saved link")}: {action.operation_id} · v
+                            {action.expected_version}
+                        </p>
+                    )}
                     {entry && (
                         <p>
                             {t("已保存", "Saved")}:{" "}
@@ -140,9 +181,7 @@ export function OcrEntryForm({
                         aria-label={t("选择入账类型", "Choose entry type")}
                         value={kind}
                         disabled={locked || busy}
-                        onChange={(event) =>
-                            setKind(event.target.value as PostingInput["kind"] | "")
-                        }
+                        onChange={(event) => setKind(event.target.value as Action["kind"] | "")}
                     >
                         <option value="">{t("请选择", "Choose")}</option>
                         {(
@@ -152,6 +191,7 @@ export function OcrEntryForm({
                                 ["expense", "支出", "Expense"],
                                 ["transfer", "转账", "Transfer"],
                                 ["exchange", "换汇", "Exchange"],
+                                ["link", "关联已有流水", "Link existing entry"],
                             ] as const
                         ).map(([value, zh, en]) => (
                             <option value={value} key={value}>
@@ -163,16 +203,21 @@ export function OcrEntryForm({
                         <button
                             disabled={locked || busy || !kind}
                             onClick={() =>
-                                kind &&
-                                setInput(initialEntry(kind, review, assets, confirmed, false))
+                                kind === "link"
+                                    ? setLinkOpen(true)
+                                    : kind &&
+                                      setInput(initialEntry(kind, review, assets, confirmed, false))
                             }
                         >
                             {t("填写入账草稿", "Prepare entry")}
                         </button>
                         <button
-                            disabled={locked || busy || !kind || !confirmed.length}
+                            disabled={
+                                locked || busy || !kind || kind === "link" || !confirmed.length
+                            }
                             onClick={() =>
                                 kind &&
+                                kind !== "link" &&
                                 setInput(initialEntry(kind, review, assets, confirmed, true))
                             }
                         >
@@ -187,10 +232,20 @@ export function OcrEntryForm({
                             </button>
                         )}
                         <button
-                            disabled={locked || busy || dirty || !entry || !complete}
+                            disabled={
+                                locked ||
+                                busy ||
+                                dirty ||
+                                !action ||
+                                !complete ||
+                                !duplicates.ready ||
+                                changedKind
+                            }
                             onClick={() => void confirm()}
                         >
-                            {t("确认入账", "Confirm and post")}
+                            {action?.kind === "link"
+                                ? t("确认关联", "Confirm link")
+                                : t("确认入账", "Confirm and post")}
                         </button>
                     </div>
                     {!complete && (
