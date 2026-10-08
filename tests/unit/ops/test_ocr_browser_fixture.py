@@ -1,6 +1,8 @@
 """Fictional browser seeds must fail closed before constructing a database engine."""
 
 import importlib
+import struct
+import zlib
 from pathlib import Path
 
 import pytest
@@ -39,3 +41,17 @@ def test_guard_unwraps_secret_and_precedes_database(
     monkeypatch.setattr(checker, "Database", database)
     with pytest.raises(RuntimeError if allowed else SystemExit, match="fixture|Requires"):
         checker.main()
+
+
+def test_photo_fixture_has_valid_png_chunks_for_strict_browser_decoders(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / "scripts"))
+    data = importlib.import_module("create_ocr_browser_fixture").PHOTO
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    offset = 8
+    while offset < len(data):
+        size = struct.unpack(">I", data[offset : offset + 4])[0]
+        body = data[offset + 4 : offset + 8 + size]
+        crc = struct.unpack(">I", data[offset + 8 + size : offset + 12 + size])[0]
+        assert zlib.crc32(body) & 0xFFFFFFFF == crc
+        offset += size + 12
+    assert offset == len(data) and body == b"IEND"

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "vite",
@@ -19,6 +19,7 @@
     "gen:api": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts --default-non-nullable false"
   },
   "dependencies": {
+    "pdfjs-dist": "6.4.299",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

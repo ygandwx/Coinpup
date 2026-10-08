@@ -18,7 +18,9 @@ from check_backup_restore import change_state, snapshot, verify_change_continuat
 from restore_bundle import restore_bundle
 
 
-def fictional_pdf(label="Fictional Coinpup bundle fixture"):
+def fictional_pdf(label="Fictional Coinpup bundle fixture", *, pages=1):
+    if pages not in (1, 2):
+        raise ValueError("Fictional fixture supports one or two pages")
     content = f"BT /F1 12 Tf 50 100 Td ({label}) Tj ET".encode("ascii")
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -28,14 +30,20 @@ def fictional_pdf(label="Fictional Coinpup bundle fixture"):
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
         f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream",
     ]
+    if pages == 2:
+        objects[1] = b"<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>"
+        objects.append(objects[2])
+    count = len(objects) + 1
     output, offsets = b"%PDF-1.4\n", [0]
     for index, item in enumerate(objects, 1):
         offsets.append(len(output))
         output += f"{index} 0 obj\n".encode() + item + b"\nendobj\n"
     start = len(output)
-    output += b"xref\n0 6\n0000000000 65535 f \n"
+    output += f"xref\n0 {count}\n0000000000 65535 f \n".encode()
     output += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:])
-    return output + f"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n".encode()
+    return (
+        output + f"trailer\n<< /Size {count} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n".encode()
+    )
 
 
 PNG = base64.b64decode(

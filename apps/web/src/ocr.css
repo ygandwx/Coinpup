@@ -40,6 +40,11 @@
 .ocr-evidence {
     min-width: 0;
 }
+.ocr-preview canvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #d9dfdb;
+}
 .ocr-raw {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
