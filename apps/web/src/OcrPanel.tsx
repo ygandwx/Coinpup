@@ -23,6 +23,8 @@ import type { ConfirmationReceipt } from "./ocr-api";
 import type { OcrJobIntents } from "./ocr-job-intents";
 import "./ocr.css";
 import { OriginalPreview } from "./OriginalPreview";
+import { OcrBatch } from "./OcrBatch";
+import type { BatchSelection } from "./OcrBatch";
 
 function fieldName(path: string, locale: Locale): string {
     const role = path.split(".").at(-1) ?? "";
@@ -78,6 +80,8 @@ export function OcrPanel({
     const confirmation = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const confirmationLocked = !["idle", "rejected", "confirmed"].includes(confirmation.status);
     const [formEditing, setFormEditing] = useState(false);
+    const [batchEditing, setBatchEditing] = useState(false);
+    const [selected, setSelected] = useState<BatchSelection[]>([]);
     const active = useRef(true);
     const unauthorized = useRef(onUnauthorized);
     useEffect(() => {
@@ -110,6 +114,7 @@ export function OcrPanel({
     const [receipt, setReceipt] = useState<ConfirmationReceipt | null>(null);
     const [detailRefresh, setDetailRefresh] = useState(0);
     function selectJob(id: string) {
+        setSelected([]);
         setJobId(id);
         setDraftId("");
         setDrafts([]);
@@ -122,9 +127,12 @@ export function OcrPanel({
         else setError(problem);
     }
     useEffect(() => {
-        onEditingChange(dirty || busy || formEditing);
+        onEditingChange(dirty || busy || formEditing || batchEditing);
         return () => onEditingChange(false);
-    }, [dirty, busy, formEditing, onEditingChange]);
+    }, [dirty, busy, formEditing, batchEditing, onEditingChange]);
+    useEffect(() => {
+        if (confirmation.receipts.length) setRefresh((value) => value + 1);
+    }, [confirmation.receipts]);
     useEffect(() => {
         const abort = new AbortController();
         void Promise.all([
@@ -266,7 +274,7 @@ export function OcrPanel({
             if (active.current) setBusy(false);
         }
     }
-    const locked = busy || dirty || formEditing || confirmationLocked || copyLocked;
+    const locked = busy || dirty || formEditing || confirmationLocked || copyLocked || batchEditing;
     const stateName = (state: string) =>
         ({
             pending: t("排队中", "Queued"),
@@ -377,13 +385,61 @@ export function OcrPanel({
                 ))}
             </ul>
             {pager(jobPage, jobs.length, setJobPage)}
+            <OcrBatch
+                session={session}
+                entities={entities}
+                locale={locale}
+                ledger={ledger}
+                selected={selected}
+                locked={
+                    busy ||
+                    dirty ||
+                    formEditing ||
+                    confirmationLocked ||
+                    copyLocked ||
+                    entity.archived
+                }
+                controller={controller}
+                onClear={() => setSelected([])}
+                onEditing={setBatchEditing}
+                onError={failed}
+            />
             <div className="ocr-columns">
                 <div>
                     <h3>{t("逐行草稿", "Draft rows")}</h3>
                     <ul className="ocr-list">
                         {drafts.map((draft, index) => (
                             <li key={draft.id}>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        data-testid={`select-draft-${draft.id}`}
+                                        checked={selected.some((row) => row.id === draft.id)}
+                                        disabled={
+                                            locked ||
+                                            entity.archived ||
+                                            draft.status !== "draft" ||
+                                            (selected.length >= 200 &&
+                                                !selected.some((row) => row.id === draft.id))
+                                        }
+                                        onChange={(event) =>
+                                            setSelected((rows) =>
+                                                event.target.checked
+                                                    ? [
+                                                          ...rows,
+                                                          {
+                                                              id: draft.id,
+                                                              number: page * 25 + index + 1,
+                                                          },
+                                                      ]
+                                                    : rows.filter((row) => row.id !== draft.id),
+                                            )
+                                        }
+                                    />
+                                    {t("选择草稿", "Select draft")} {page * 25 + index + 1}
+                                </label>
                                 <button
+                                    data-testid={`ocr-draft-${draft.id}`}
                                     disabled={locked}
                                     aria-pressed={draft.id === draftId}
                                     onClick={() => {
@@ -473,6 +529,7 @@ export function OcrPanel({
                                             formEditing ||
                                             confirmationLocked ||
                                             copyLocked ||
+                                            batchEditing ||
                                             entity.archived ||
                                             review.status === "confirmed"
                                         }
@@ -496,6 +553,7 @@ export function OcrPanel({
                                     formEditing ||
                                     confirmationLocked ||
                                     copyLocked ||
+                                    batchEditing ||
                                     entity.archived ||
                                     review.status === "confirmed"
                                 }
@@ -509,6 +567,7 @@ export function OcrPanel({
                                     formEditing ||
                                     confirmationLocked ||
                                     copyLocked ||
+                                    batchEditing ||
                                     entity.archived ||
                                     review.status === "confirmed"
                                 }
@@ -521,7 +580,7 @@ export function OcrPanel({
                                     : t("忽略草稿", "Ignore draft")}
                             </button>
                             <button
-                                disabled={busy || formEditing || confirmationLocked}
+                                disabled={busy || formEditing || confirmationLocked || batchEditing}
                                 onClick={() => {
                                     setError(null);
                                     setDetailRefresh((v) => v + 1);
@@ -555,7 +614,13 @@ export function OcrPanel({
                             assets={assets}
                             categories={categories}
                             controller={controller}
-                            locked={busy || confirmationLocked || dataLoading || entity.archived}
+                            locked={
+                                busy ||
+                                confirmationLocked ||
+                                dataLoading ||
+                                entity.archived ||
+                                batchEditing
+                            }
                             dirty={dirty}
                             onEditing={setFormEditing}
                             onSaved={(next) => {

@@ -4,6 +4,10 @@ import type { Locale } from "./i18n";
 export function ocrError(error: unknown, locale: Locale): string {
     const zh = locale === "zh";
     const code = error instanceof ApiError ? error.code : null;
+    if (code === "ocr_batch_not_ready")
+        return zh
+            ? "所选草稿尚未全部准备好。请逐行复核字段并保存入账草稿后重试。"
+            : "Selected drafts are not all ready. Review each row and save its prepared entry before retrying.";
     if (code === "ocr_unavailable")
         return zh
             ? "识别服务暂不可用。可稍后重试或手动记账。"

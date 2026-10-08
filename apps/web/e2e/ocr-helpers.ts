@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 
-export function seed(photo = false, identity?: string) {
+export function seed(photo = false, identity?: string, rows: 1 | 3 = 1) {
     return JSON.parse(
         execFileSync(
             "docker",
@@ -14,6 +14,8 @@ export function seed(photo = false, identity?: string) {
                 "COINPUP_CREATE_OCR_BROWSER_FIXTURE=1",
                 "-e",
                 `COINPUP_BROWSER_FIXTURE_IMAGE=${photo ? "1" : "0"}`,
+                "-e",
+                `COINPUP_BROWSER_FIXTURE_ROWS=${rows}`,
                 ...(identity ? ["-e", `COINPUP_BROWSER_FIXTURE_IDENTITY=${identity}`] : []),
                 "api",
                 "python",
