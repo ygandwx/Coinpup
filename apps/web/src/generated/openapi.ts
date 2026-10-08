@@ -479,6 +479,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Confirmation
+         * @description Read the historical receipt; unknown submissions should replay the original POST.
+         */
+        get: operations["get_confirmation_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm
+         * @description Retry with the same intent and original JSON; changed requests return conflict.
+         */
+        post: operations["confirm_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Duplicates
+         * @description Up to 20 prior confirmations of the same bytes/source row; never auto-merge.
+         */
+        get: operations["duplicates_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/review": {
         parameters: {
             query?: never;
@@ -1055,6 +1115,72 @@ export interface components {
             /** Seq */
             seq: string;
         };
+        /** ConfirmationCreate */
+        ConfirmationCreate: {
+            /** Confirmed */
+            confirmed: string[];
+            /**
+             * Duplicate Ack
+             * @default false
+             */
+            duplicate_ack?: boolean;
+            /** Entry */
+            entry: components["schemas"]["OpeningEntry"] | components["schemas"]["IncomeEntry"] | components["schemas"]["ExpenseEntry"] | components["schemas"]["TransferEntry"] | components["schemas"]["ExchangeEntry"] | components["schemas"]["LinkEntry"];
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Target File Id
+             * Format: uuid
+             */
+            target_file_id: string;
+            /**
+             * Target Ledger Id
+             * Format: uuid
+             */
+            target_ledger_id: string;
+        };
+        /** ConfirmationResponse */
+        ConfirmationResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "link";
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /** Draft Version */
+            draft_version: number;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Operation */
+            operation: components["schemas"]["OperationResponse"] | components["schemas"]["TransferResponse"] | components["schemas"]["ExchangeResponse"];
+            /**
+             * Target File Id
+             * Format: uuid
+             */
+            target_file_id: string;
+            /**
+             * Target Ledger Id
+             * Format: uuid
+             */
+            target_ledger_id: string;
+        };
         /** CorrectionCreate */
         CorrectionCreate: {
             /** Expected Version */
@@ -1179,6 +1305,34 @@ export interface components {
             updated_at: string;
             /** Version */
             version: number;
+        };
+        /** DuplicateConfirmation */
+        DuplicateConfirmation: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * Target Ledger Id
+             * Format: uuid
+             */
+            target_ledger_id: string;
         };
         /** EntityCreate */
         EntityCreate: {
@@ -1317,6 +1471,15 @@ export interface components {
              */
             transaction_date: string;
         };
+        /** ExchangeEntry */
+        ExchangeEntry: {
+            command: components["schemas"]["ExchangeCreate"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "exchange";
+        };
         /** ExchangeReplacement */
         ExchangeReplacement: {
             /**
@@ -1449,6 +1612,15 @@ export interface components {
              * Format: date
              */
             transaction_date: string;
+        };
+        /** ExpenseEntry */
+        ExpenseEntry: {
+            command: components["schemas"]["ExpenseCreate"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "expense";
         };
         /** ExpenseReplacement */
         ExpenseReplacement: {
@@ -1669,6 +1841,15 @@ export interface components {
              */
             transaction_date: string;
         };
+        /** IncomeEntry */
+        IncomeEntry: {
+            command: components["schemas"]["IncomeCreate"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "income";
+        };
         /** IncomeReplacement */
         IncomeReplacement: {
             /**
@@ -1871,6 +2052,21 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** LinkEntry */
+        LinkEntry: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "link";
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+        };
         /** LinkResponse */
         LinkResponse: {
             /** Archived */
@@ -1953,6 +2149,15 @@ export interface components {
              * Format: date
              */
             transaction_date: string;
+        };
+        /** OpeningEntry */
+        OpeningEntry: {
+            command: components["schemas"]["OpeningCreate"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "opening";
         };
         /** OpeningReplacement */
         OpeningReplacement: {
@@ -2187,6 +2392,15 @@ export interface components {
              * Format: date
              */
             transaction_date: string;
+        };
+        /** TransferEntry */
+        TransferEntry: {
+            command: components["schemas"]["TransferCreate"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "transfer";
         };
         /** TransferReplacement */
         TransferReplacement: {
@@ -3415,6 +3629,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_confirmation_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicates_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__duplicates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateConfirmation"][];
                 };
             };
             /** @description Validation Error */

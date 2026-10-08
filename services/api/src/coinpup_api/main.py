@@ -19,6 +19,7 @@ from coinpup_api.database import Database, DatabaseProbe
 from coinpup_api.files.router import create_document_router
 from coinpup_api.ledger.posting_router import create_posting_router
 from coinpup_api.ledger.router import create_ledger_router
+from coinpup_api.ocr.confirmation_router import create_confirmation_router
 from coinpup_api.ocr.draft_reads import create_draft_router
 from coinpup_api.ocr.review_router import create_review_router
 from coinpup_api.ocr.router import create_ocr_router
@@ -111,6 +112,7 @@ def create_app(
     app.include_router(create_sync_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_draft_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_review_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_confirmation_router(settings, getattr(probe, "engine", None)))
     app.include_router(
         create_ocr_router(settings, getattr(probe, "engine", None), ocr_configuration)
     )

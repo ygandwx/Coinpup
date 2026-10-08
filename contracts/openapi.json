@@ -780,6 +780,167 @@
         "title": "ChangeRecord",
         "type": "object"
       },
+      "ConfirmationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Confirmed",
+            "type": "array"
+          },
+          "duplicate_ack": {
+            "default": false,
+            "title": "Duplicate Ack",
+            "type": "boolean"
+          },
+          "entry": {
+            "discriminator": {
+              "mapping": {
+                "exchange": "#/components/schemas/ExchangeEntry",
+                "expense": "#/components/schemas/ExpenseEntry",
+                "income": "#/components/schemas/IncomeEntry",
+                "link": "#/components/schemas/LinkEntry",
+                "opening": "#/components/schemas/OpeningEntry",
+                "transfer": "#/components/schemas/TransferEntry"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OpeningEntry"
+              },
+              {
+                "$ref": "#/components/schemas/IncomeEntry"
+              },
+              {
+                "$ref": "#/components/schemas/ExpenseEntry"
+              },
+              {
+                "$ref": "#/components/schemas/TransferEntry"
+              },
+              {
+                "$ref": "#/components/schemas/ExchangeEntry"
+              },
+              {
+                "$ref": "#/components/schemas/LinkEntry"
+              }
+            ],
+            "title": "Entry"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "target_file_id": {
+            "format": "uuid",
+            "title": "Target File Id",
+            "type": "string"
+          },
+          "target_ledger_id": {
+            "format": "uuid",
+            "title": "Target Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "expected_version",
+          "target_ledger_id",
+          "target_file_id",
+          "confirmed",
+          "entry"
+        ],
+        "title": "ConfirmationCreate",
+        "type": "object"
+      },
+      "ConfirmationResponse": {
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "link"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "draft_version": {
+            "title": "Draft Version",
+            "type": "integer"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation": {
+            "discriminator": {
+              "mapping": {
+                "exchange": "#/components/schemas/ExchangeResponse",
+                "expense": "#/components/schemas/OperationResponse",
+                "income": "#/components/schemas/OperationResponse",
+                "opening": "#/components/schemas/OperationResponse",
+                "transfer": "#/components/schemas/TransferResponse"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OperationResponse"
+              },
+              {
+                "$ref": "#/components/schemas/TransferResponse"
+              },
+              {
+                "$ref": "#/components/schemas/ExchangeResponse"
+              }
+            ],
+            "title": "Operation"
+          },
+          "target_file_id": {
+            "format": "uuid",
+            "title": "Target File Id",
+            "type": "string"
+          },
+          "target_ledger_id": {
+            "format": "uuid",
+            "title": "Target Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "draft_id",
+          "ledger_id",
+          "draft_version",
+          "action",
+          "target_ledger_id",
+          "target_file_id",
+          "operation"
+        ],
+        "title": "ConfirmationResponse",
+        "type": "object"
+      },
       "CorrectionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1031,6 +1192,44 @@
           "updated_at"
         ],
         "title": "DraftSummary",
+        "type": "object"
+      },
+      "DuplicateConfirmation": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "target_ledger_id": {
+            "format": "uuid",
+            "title": "Target Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "draft_id",
+          "ledger_id",
+          "target_ledger_id",
+          "operation_id",
+          "created_at"
+        ],
+        "title": "DuplicateConfirmation",
         "type": "object"
       },
       "EntityCreate": {
@@ -1507,6 +1706,25 @@
         "title": "ExchangeCreate",
         "type": "object"
       },
+      "ExchangeEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/ExchangeCreate"
+          },
+          "kind": {
+            "const": "exchange",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "command"
+        ],
+        "title": "ExchangeEntry",
+        "type": "object"
+      },
       "ExchangeReplacement": {
         "additionalProperties": false,
         "properties": {
@@ -1759,6 +1977,25 @@
           "splits"
         ],
         "title": "ExpenseCreate",
+        "type": "object"
+      },
+      "ExpenseEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/ExpenseCreate"
+          },
+          "kind": {
+            "const": "expense",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "command"
+        ],
+        "title": "ExpenseEntry",
         "type": "object"
       },
       "ExpenseReplacement": {
@@ -2238,6 +2475,25 @@
         "title": "IncomeCreate",
         "type": "object"
       },
+      "IncomeEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/IncomeCreate"
+          },
+          "kind": {
+            "const": "income",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "command"
+        ],
+        "title": "IncomeEntry",
+        "type": "object"
+      },
       "IncomeReplacement": {
         "additionalProperties": false,
         "properties": {
@@ -2659,6 +2915,33 @@
         "title": "LineAudit",
         "type": "object"
       },
+      "LinkEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "link",
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "operation_id",
+          "expected_version"
+        ],
+        "title": "LinkEntry",
+        "type": "object"
+      },
       "LinkResponse": {
         "properties": {
           "archived": {
@@ -2815,6 +3098,25 @@
           "account_id"
         ],
         "title": "OpeningCreate",
+        "type": "object"
+      },
+      "OpeningEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/OpeningCreate"
+          },
+          "kind": {
+            "const": "opening",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "command"
+        ],
+        "title": "OpeningEntry",
         "type": "object"
       },
       "OpeningReplacement": {
@@ -3332,6 +3634,25 @@
           "destination_account_id"
         ],
         "title": "TransferCreate",
+        "type": "object"
+      },
+      "TransferEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/TransferCreate"
+          },
+          "kind": {
+            "const": "transfer",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "command"
+        ],
+        "title": "TransferEntry",
         "type": "object"
       },
       "TransferReplacement": {
@@ -5664,6 +5985,198 @@
           }
         },
         "summary": "Get Draft",
+        "tags": [
+          "OCR drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/confirmation": {
+      "get": {
+        "description": "Read the historical receipt; unknown submissions should replay the original POST.",
+        "operationId": "get_confirmation_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Confirmation",
+        "tags": [
+          "OCR drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/confirmations": {
+      "post": {
+        "description": "Retry with the same intent and original JSON; changed requests return conflict.",
+        "operationId": "confirm_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__confirmations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "OCR drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/ocr-drafts/{draft_id}/duplicates": {
+      "get": {
+        "description": "Up to 20 prior confirmations of the same bytes/source row; never auto-merge.",
+        "operationId": "duplicates_api_v1_ledgers__ledger_id__ocr_drafts__draft_id__duplicates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DuplicateConfirmation"
+                  },
+                  "title": "Response Duplicates Api V1 Ledgers  Ledger Id  Ocr Drafts  Draft Id  Duplicates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicates",
         "tags": [
           "OCR drafts"
         ]
