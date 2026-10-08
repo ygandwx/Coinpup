@@ -22,6 +22,7 @@ on:
       - "Dockerfile"
       - "compose.ocr.yaml"
       - "scripts/check_ocr_worker.py"
+      - "scripts/check_ocr_restore.py"
       - "requirements-benchmark.lock"
       - ".github/workflows/ocr.yml"
 
@@ -226,11 +227,36 @@ jobs:
           worker_run ro python -m coinpup_api.ocr.worker --once
           worker_run ro python -m coinpup_api.ocr.worker --once
           worker_run ro python scripts/check_ocr_worker.py verify
+      - name: Restore a real worker bundle and resume its interrupted task
+        run: |
+          docker build --progress=plain -t coinpup-api-worker-check:ci .
+          docker volume create coinpup-worker-recovery
+          docker exec coinpup-worker-db createdb -U coinpup coinpup_restore_worker
+          recovery_run() {
+            docker run --rm --network coinpup-worker-check --read-only --cap-drop ALL --security-opt no-new-privileges \
+              --tmpfs /tmp:rw,noexec,nosuid,size=512m,mode=0700,uid=10001,gid=10001 \
+              -e COINPUP_RUN_WORKER_RESTORE=1 \
+              -e COINPUP_BACKUP_DATABASE_URL=postgresql+psycopg://coinpup:fictional-worker@worker-db:5432/coinpup_test_worker \
+              -e COINPUP_RESTORE_DATABASE_URL=postgresql+psycopg://coinpup:fictional-worker@worker-db:5432/coinpup_restore_worker \
+              -v coinpup-worker-files:/source:ro -v coinpup-worker-recovery:/app/data/files \
+              coinpup-api-worker-check:ci python scripts/check_ocr_restore.py "$@"
+          }
+          recovery_run prepare
+          recovery_run bundle
+          docker run --rm --network coinpup-worker-check --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --cpus 2 --memory 4g --memory-swap 4g --pids-limit 64 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=512m,mode=0700,uid=10001,gid=10001 \
+            -e COINPUP_DATABASE_URL=postgresql+psycopg://coinpup@worker-db:5432/coinpup_restore_worker \
+            -e COINPUP_FILES_DIRECTORY=/app/data/files/restored \
+            -v coinpup-worker-recovery:/app/data/files:ro coinpup-ocr-worker:ci \
+            python -m coinpup_api.ocr.worker --once
+          recovery_run verify
       - name: Remove disposable worker containers and volumes
         if: always()
         run: |
           docker rm -f coinpup-worker-db 2>/dev/null || true
           docker volume rm coinpup-worker-files 2>/dev/null || true
+          docker volume rm coinpup-worker-recovery 2>/dev/null || true
           docker network rm coinpup-worker-check 2>/dev/null || true
       - name: Reject missing local models before engine initialization
         run: |
