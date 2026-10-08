@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pydantic import TypeAdapter, ValidationError
 
 from coinpup_api.ledger.models import CommandReceipt
+from coinpup_api.ledger.period_checks import require_open_period
 from coinpup_api.ledger.posting_schemas import FinancialResponse
 from coinpup_api.ledger.service import LedgerError
 
@@ -182,4 +183,5 @@ class CommandIdempotency:
                 return
             if entity.archived:
                 raise LedgerError("entity_archived", 409, "Restore the entity before posting.")
+            require_open_period(session, ledger_id, payload)
             yield session, digest, None
