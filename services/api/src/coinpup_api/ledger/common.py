@@ -59,7 +59,11 @@ class PostingCore(LedgerService):
     @staticmethod
     def _account(session, ledger_id, account_id, asset_id):
         account = session.scalar(
-            select(Account).where(Account.id == account_id, Account.ledger_id == ledger_id)
+            select(Account).where(
+                Account.id == account_id,
+                Account.ledger_id == ledger_id,
+                Account.account_class == "money",
+            )
         )
         if account is None:
             raise _not_found()

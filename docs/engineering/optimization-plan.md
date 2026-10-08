@@ -82,7 +82,7 @@
 | OPT-20 | 幂等摘要 v2 | C 结构性改进 | OPT-08 | 已完成 | #38 |
 | OPT-21 | 数据库形状校验按业务类型分发 | C | OPT-08 | 已完成 | [#41](https://github.com/ygandwx/Coinpup/pull/41) |
 | OPT-22 | 变更日志与同步游标 | C | OPT-08 | 已完成 | [#42](https://github.com/ygandwx/Coinpup/pull/42) |
-| OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 已完成（仅 ADR，未实现） | [#43](https://github.com/ygandwx/Coinpup/pull/43) |
+| OPT-23 🛑 | 资产负债类账户与维度 | C | 无（ADR 可随时写） | 进行中（已采纳A，按ADR0022分包） | [#43](https://github.com/ygandwx/Coinpup/pull/43) |
 | OPT-24 🛑 | 跨账本关联业务 | C | OPT-23 | 待开始 | |
 | OPT-25 🛑 | 结账与期间锁定 | C | 无（ADR 可随时写） | 已完成（仅 ADR，未实现） | [#44](https://github.com/ygandwx/Coinpup/pull/44) |
 | OPT-30 🛑 | 登录防护与暴露面 | D 部署前 | 无 | 已完成（仅 ADR，未实现） | [#45](https://github.com/ygandwx/Coinpup/pull/45) |
@@ -484,6 +484,8 @@ Coinpup/
 - **验收**：测试通过；ADR 已合入；`services/api/AGENTS.md` 已加入“新业务表必须接入变更日志”的规则。
 
 ### OPT-23 🛑 资产负债类账户与维度（T06/T07 的前置）
+
+执行补充（2026-10-09）：用户已批准ADR0016选A的模型、约束及余额查询实现。分包与当前代码前提见[ADR0022](../architecture/decisions/0022-control-account-implementation.md)：往来/单据尚无表，先建立最小引用身份保证复合外键；不实现T06单据、Invoice或结算命令。
 
 - **问题**：
   - 分录行的角色是一个封闭集合（`ck_journal_lines_role`：`account`/`income`/`expense`/`equity`/`exchange`）；

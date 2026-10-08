@@ -4,13 +4,15 @@ import hashlib
 import json
 import runpy
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 
 from alembic import command
 from alembic.config import Config
 from coinpup_api.ledger.models import FinancialOperation, JournalLine, OpeningPosition
 from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.readers import PostingReaders, operation_state
-from coinpup_api.ledger.schemas import AccountCreate, CategoryCreate, EntityCreate
+from coinpup_api.ledger.schemas import CategoryCreate, EntityCreate
 from coinpup_api.ledger.service import LedgerService
 from sqlalchemy import MetaData, Table, insert, inspect, select, text
 from sqlalchemy.orm import Session
@@ -121,18 +123,30 @@ def create_legacy_v1_receipts(engine, owner):
             owner, EntityCreate(kind="personal", name="Fictional v1 history", base_asset_id="USD")
         )
         ledger = entity.ledger.id
-        accounts = [
-            service.create_account(
-                owner,
-                ledger,
-                AccountCreate(
-                    name=f"Fictional historical wallet {index}",
-                    kind="wise",
-                    asset_ids=["USD", "EUR"],
-                ),
-            )
-            for index in range(2)
-        ]
+        # Seed actual 0008 columns; current ORM account classes did not exist then.
+        accounts = [SimpleNamespace(id=uuid4()) for _ in range(2)]
+        with engine.begin() as connection:
+            metadata = MetaData()
+            account_table = Table("accounts", metadata, autoload_with=connection)
+            account_assets = Table("account_assets", metadata, autoload_with=connection)
+            assert "account_class" not in account_table.c
+            for index, account in enumerate(accounts):
+                connection.execute(
+                    insert(account_table).values(
+                        id=account.id,
+                        ledger_id=ledger,
+                        name=f"Fictional historical wallet {index}",
+                        kind="wise",
+                    )
+                )
+                for asset in ("USD", "EUR"):
+                    connection.execute(
+                        insert(account_assets).values(
+                            account_id=account.id,
+                            ledger_id=ledger,
+                            asset_id=asset,
+                        )
+                    )
         expense = service.create_category(
             owner, ledger, CategoryCreate(name="Fictional v1 expense", kind="expense")
         )

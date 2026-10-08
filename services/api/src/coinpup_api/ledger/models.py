@@ -137,6 +137,17 @@ class Account(Versioned, Base):
     __tablename__ = "accounts"
     __table_args__ = (
         UniqueConstraint("id", "ledger_id", name="uq_accounts_id_ledger"),
+        UniqueConstraint("ledger_id", "system_key", name="uq_accounts_ledger_system_key"),
+        CheckConstraint(
+            "(account_class = 'money' AND system_key IS NULL AND kind IS NOT NULL) OR "
+            "(kind IS NULL AND system_key IS NOT NULL AND ("
+            "(account_class = 'receivable' AND system_key = 'receivable.customer') OR "
+            "(account_class = 'payable' AND system_key = 'payable.supplier') OR "
+            "(account_class = 'intercompany' AND system_key IN "
+            "('intercompany.receivable', 'intercompany.payable')) OR "
+            "(account_class = 'advance' AND system_key IN ('advance.received', 'advance.paid'))))",
+            name="ck_accounts_class_identity",
+        ),
         CheckConstraint(
             "kind IN ('bank', 'cash', 'wechat', 'alipay', 'credit_card', "
             "'paypal', 'wise', 'stripe', 'crypto')",
@@ -155,7 +166,11 @@ class Account(Versioned, Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    account_class: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="money", server_default="money"
+    )
+    system_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
     details: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
