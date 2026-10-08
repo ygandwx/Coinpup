@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { PostingForm } from "./PostingForm";
 import type { PostingInput } from "./pending-command";
-import { formInput, initialEntry, preparedEntry, savedAction } from "./ocr-entry";
+import {
+    formInput,
+    initialEntry,
+    preparedEntry,
+    savedAction,
+    savedDestination,
+    replaceAction,
+} from "./ocr-entry";
 import type { Action } from "./ocr-entry";
 import { OcrDuplicateNotice, OcrLinkPicker } from "./OcrRelations";
 import type { Session } from "./api";
@@ -51,6 +58,7 @@ export function OcrEntryForm({
     const [input, setInput] = useState<PostingInput | null>(null),
         [busy, setBusy] = useState(false);
     const action = savedAction(review.review.entry);
+    const target = savedDestination(review.review.entry) ?? { ledger, file };
     const entry = action?.kind === "link" ? null : action;
     const changedKind = !!kind && kind !== action?.kind;
     const complete = review.fields.every(
@@ -65,7 +73,7 @@ export function OcrEntryForm({
         try {
             const next = await saveDraftReview(session.csrf_token, ledger, review.draft_id, {
                 expected_version: review.version,
-                review: { confirmed, entry: value },
+                review: { confirmed, entry: replaceAction(review.review.entry, value) },
             });
             onSaved(next);
             setInput(null);
@@ -87,8 +95,8 @@ export function OcrEntryForm({
                     draftId: review.draft_id,
                     body: {
                         expected_version: review.version,
-                        target_ledger_id: ledger,
-                        target_file_id: file,
+                        target_ledger_id: target.ledger,
+                        target_file_id: target.file,
                         confirmed,
                         duplicate_ack: duplicates.acknowledged,
                         entry: action,
@@ -111,6 +119,7 @@ export function OcrEntryForm({
             </p>
             <OcrDuplicateNotice
                 ledger={ledger}
+                targetLedger={target.ledger}
                 draft={review.draft_id}
                 version={review.version}
                 action={action}
@@ -122,7 +131,7 @@ export function OcrEntryForm({
             />
             {linkOpen ? (
                 <OcrLinkPicker
-                    ledger={ledger}
+                    ledger={target.ledger}
                     locale={locale}
                     busy={busy || locked}
                     onSave={(value) => void save(value)}

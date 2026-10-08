@@ -5,7 +5,8 @@ import { downloadFile, listFiles } from "./files-api";
 import type { StoredFile } from "./files-api";
 import type { Locale } from "./i18n";
 import { ocrError } from "./ocr-errors";
-import { OcrEntryForm } from "./OcrEntryForm";
+import { OcrDestination } from "./OcrDestination";
+import type { OcrCopyController } from "./ocr-copy";
 import type { PendingConfirmationController } from "./pending-confirmations";
 import type { Entity, Account, Asset, Category } from "./ledger-api";
 import {
@@ -44,6 +45,8 @@ type Props = {
     session: Session;
     locale: Locale;
     entity: Entity;
+    entities: Entity[];
+    copies: OcrCopyController;
     jobs: OcrJobIntents;
     controller: PendingConfirmationController;
     accounts: Account[];
@@ -57,6 +60,8 @@ export function OcrPanel({
     session,
     locale,
     entity,
+    entities,
+    copies,
     jobs: intents,
     controller,
     accounts,
@@ -68,6 +73,8 @@ export function OcrPanel({
 }: Props) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const ledger = entity.ledger.id;
+    const copy = useSyncExternalStore(copies.subscribe, copies.getSnapshot);
+    const copyLocked = copy.context !== null;
     const confirmation = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const confirmationLocked = !["idle", "rejected", "confirmed"].includes(confirmation.status);
     const [formEditing, setFormEditing] = useState(false);
@@ -87,7 +94,9 @@ export function OcrPanel({
     const [drafts, setDrafts] = useState<OcrDraft[]>([]),
         [fileId, setFileId] = useState("");
     const [jobId, setJobId] = useState(""),
-        [draftId, setDraftId] = useState("");
+        [draftId, setDraftId] = useState(() =>
+            copy.context?.ledger === ledger ? copy.context.draft : "",
+        );
     const [page, setPage] = useState(0),
         [filePage, setFilePage] = useState(0),
         [jobPage, setJobPage] = useState(0);
@@ -257,7 +266,7 @@ export function OcrPanel({
             if (active.current) setBusy(false);
         }
     }
-    const locked = busy || dirty || formEditing || confirmationLocked;
+    const locked = busy || dirty || formEditing || confirmationLocked || copyLocked;
     const stateName = (state: string) =>
         ({
             pending: t("排队中", "Queued"),
@@ -463,6 +472,7 @@ export function OcrPanel({
                                             busy ||
                                             formEditing ||
                                             confirmationLocked ||
+                                            copyLocked ||
                                             entity.archived ||
                                             review.status === "confirmed"
                                         }
@@ -485,6 +495,7 @@ export function OcrPanel({
                                     busy ||
                                     formEditing ||
                                     confirmationLocked ||
+                                    copyLocked ||
                                     entity.archived ||
                                     review.status === "confirmed"
                                 }
@@ -497,6 +508,7 @@ export function OcrPanel({
                                     busy ||
                                     formEditing ||
                                     confirmationLocked ||
+                                    copyLocked ||
                                     entity.archived ||
                                     review.status === "confirmed"
                                 }
@@ -530,7 +542,9 @@ export function OcrPanel({
                                     : receipt.operation.source_asset_id}
                             </p>
                         )}
-                        <OcrEntryForm
+                        <OcrDestination
+                            entities={entities}
+                            copies={copies}
                             session={session}
                             locale={locale}
                             ledger={ledger}

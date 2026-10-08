@@ -1,6 +1,31 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { initialEntry, savedEntry, savedAction, preparedEntry } from "../src/ocr-entry.ts";
+import {
+    initialEntry,
+    savedEntry,
+    savedAction,
+    preparedEntry,
+    savedDestination,
+    destinationEntry,
+    replaceAction,
+} from "../src/ocr-entry.ts";
+
+test("destination wrapper preserves exact actions and can explicitly clear old ledger references", () => {
+    const target = {
+        ledger: "11111111-1111-4111-8111-111111111111",
+        file: "22222222-2222-4222-8222-222222222222",
+    };
+    const action = { kind: "link", operation_id: "fictional", expected_version: 2 };
+    const wrapper = destinationEntry(target, action);
+    assert.deepEqual(savedDestination(wrapper), target);
+    assert.equal(savedAction(wrapper), action);
+    const cleared = destinationEntry(target, null);
+    assert.equal(savedAction(cleared), null);
+    assert.equal(savedAction(replaceAction(cleared, action)), action);
+    assert.equal(replaceAction(action, action), action);
+    assert.equal(savedAction({ ...wrapper, version: 2 }), null);
+    assert.equal(savedAction({ ...wrapper, ledger_id: null }), null);
+});
 
 test("saved link preserves the selected version and rejects malformed review data", () => {
     const action = { kind: "link", operation_id: "fictional-operation", expected_version: 3 };

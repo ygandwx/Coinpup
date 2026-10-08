@@ -124,6 +124,7 @@ export function OcrLinkPicker({
 type DuplicateState = { ready: boolean; acknowledged: boolean };
 export function OcrDuplicateNotice({
     ledger,
+    targetLedger,
     draft,
     version,
     action,
@@ -134,6 +135,7 @@ export function OcrDuplicateNotice({
     onError,
 }: {
     ledger: string;
+    targetLedger: string;
     draft: string;
     version: number;
     action: Action | null;
@@ -189,7 +191,7 @@ export function OcrDuplicateNotice({
         if (!date || !asset || !amount || scale === undefined) return;
         const abort = new AbortController();
         void listOperations(
-            ledger,
+            targetLedger,
             { status: "active", from_date: date, to_date: date, limit: 200 },
             abort.signal,
         )
@@ -215,7 +217,7 @@ export function OcrDuplicateNotice({
                 if (!abort.signal.aborted) errorRef.current(error);
             });
         return () => abort.abort();
-    }, [ledger, date, asset, amount, scale, refresh]);
+    }, [targetLedger, date, asset, amount, scale, refresh]);
     async function inspect(match: DuplicateConfirmation) {
         inspection.current?.abort();
         const abort = new AbortController();
