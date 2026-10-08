@@ -12,7 +12,13 @@ source 仅包含 `path`、`sha256`、`byte_size`：可信 worker 准备的随机
 
 `run_isolated` 的可选 heartbeat 仅在父进程执行：启动前、管道等待循环及收集输出后检查，必须明确返回 true。worker 在回调内自行按租约周期节流，以有超时的短事务续租，不持事务等待识别；回调异常、失租或归档均取消计算。取消沿用完整进程组终止、等待与临时文件清理，返回稳定 processing_cancelled，不接受已收集的晚到结果；清理失败仍优先返回 processing_cleanup_failed。回调、租约凭据和数据库连接不传子进程，最终数据库写回仍必须校验 token/generation 和到期时间。
 
-## 文字层三态
+## 固定识别配置与建议值
+
+内部 recognize_document 动作只接受 version/source/media_type/processing；processing 由 runtime.processing_configuration 冻结 selection.json、全部探测/准备/图片/解析/进程预算以及处理源码摘要，客户端不能选择引擎。收到与当前实现不一致的旧配置时拒绝，不用新默认值覆盖旧意图；升级须保留匹配旧配置的 worker，或显式创建新意图。文字层不初始化模型；首次实际 OCR 才核验只读 /opt/coinpup-ocr 中冻结 manifest 和三个 fast 模型的大小/摘要，再初始化 Tesseract PSM6。
+
+识别沿用共享 recognize_document，不改解析器或正式验收；新增 field_review 按字段的全部证据页生成来源、候选、建议值及待确认标记。仅全部来自 present/extract 且 certain 的字段预填；任何 OCR 页参与的字段一律需确认，无证据/未知来源也需确认。原始字段、状态和文字不覆盖；预填仍不代表授权入账。叠加展示策略后完整响应仍受 768 KiB 上限约束，超限整份失败，不截断冒充完整。
+
+## 文字层路由
 
 响应始终含 `version`、`page_count`、`pages`、`reason_code`；每页含零基 `page_index`、`layer`、`route`、`reason_code`。整体不可读时 page_count=null、pages=[]，不从部分成功的页树推断其余页面无文字。
 
