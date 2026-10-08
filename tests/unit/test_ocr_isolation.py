@@ -246,3 +246,99 @@ def test_success_counts_stderr_without_returning_its_contents(processor, budget)
     assert result.stderr_bytes == len(b"Fictional diagnostic\n")
     assert "Fictional diagnostic" not in repr(result)
     assert '"fictional"' not in repr(result)
+
+
+@pytest.mark.parametrize("answer", [False, None, 1, "true", [], {}])
+def test_heartbeat_requires_explicit_boolean_success(answer):
+    with pytest.raises(IsolationError, match="^OCR processing was cancelled\\.$") as caught:
+        isolation._heartbeat(lambda: answer)
+    assert caught.value.code == "processing_cancelled"
+
+
+def test_heartbeat_callback_exception_does_not_expose_private_information():
+    def renew():
+        raise RuntimeError("Fictional database URL and lease token")
+
+    with pytest.raises(IsolationError) as caught:
+        isolation._heartbeat(renew)
+    assert caught.value.code == "processing_cancelled"
+    assert "Fictional" not in str(caught.value) and caught.value.__suppress_context__
+    isolation._heartbeat(None)
+    isolation._heartbeat(lambda: True)
+
+
+@LINUX
+def test_cancelled_initial_lease_never_starts_a_processor(processor, budget, monkeypatch):
+    monkeypatch.setattr(
+        isolation.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: pytest.fail("Started cancelled work"),
+    )
+    with pytest.raises(IsolationError) as caught:
+        run_isolated({"mode": "inspect"}, budget, heartbeat=lambda: False)
+    assert caught.value.code == "processing_cancelled"
+
+
+@LINUX
+@pytest.mark.parametrize("raise_on_loss", [False, True])
+def test_lost_lease_cancels_waiting_processor_and_its_descendant(
+    processor, budget, tmp_path, raise_on_loss
+):
+    marker = tmp_path / "fictional-lost-lease.pid"
+    calls = []
+
+    def renew():
+        calls.append(marker.exists())
+        if marker.exists() and raise_on_loss:
+            raise RuntimeError("Fictional lost lease")
+        return not marker.exists()
+
+    try:
+        with pytest.raises(IsolationError) as caught:
+            run_isolated(
+                {"mode": "descendant", "marker": str(marker), "parent_waits": True},
+                budget,
+                heartbeat=renew,
+            )
+        assert caught.value.code == "processing_cancelled"
+        assert calls[0] is False and calls[-1] is True
+        pid = int(marker.read_text())
+        deadline = time.monotonic() + 3
+        while live_process(pid) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert not live_process(pid), "Cancellation left a live descendant"
+    finally:
+        if marker.exists():
+            pid = int(marker.read_text())
+            if live_process(pid):
+                os.kill(pid, signal.SIGKILL)
+
+
+@LINUX
+def test_active_heartbeat_is_parent_only_and_can_read_completed_output(processor, budget):
+    calls = []
+
+    def renew():
+        calls.append(os.getpid())
+        return True
+
+    result = run_isolated({"mode": "inspect"}, budget, heartbeat=renew)
+    assert len(calls) >= 2 and set(calls) == {os.getpid()}
+    assert json.loads(result.output)["request"] == {"mode": "inspect"}
+
+
+@LINUX
+def test_lease_lost_after_output_collection_cannot_return_success(processor, budget, monkeypatch):
+    collect = isolation._collect
+    active = True
+
+    def collect_then_lose(*args):
+        nonlocal active
+        result = collect(*args)
+        active = False
+        return result
+
+    monkeypatch.setattr(isolation, "_collect", collect_then_lose)
+    with pytest.raises(IsolationError) as caught:
+        run_isolated({"mode": "inspect"}, budget, heartbeat=lambda: active)
+    assert caught.value.code == "processing_cancelled"
