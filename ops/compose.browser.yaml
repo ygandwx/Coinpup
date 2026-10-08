@@ -1,0 +1,6 @@
+# Disposable browser protocol tests use guarded fictional worker outcomes.
+# Native offline recognition is exercised independently by ocr.yml, never here.
+services:
+  api:
+    environment:
+      COINPUP_OCR_ENABLED: "true"

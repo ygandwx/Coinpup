@@ -43,6 +43,14 @@ function fieldName(path: string, locale: Locale): string {
     const name = names[match?.[1] ?? role]?.[locale === "zh" ? 0 : 1] ?? role.replaceAll("_", " ");
     return match ? `${name} (${match[2].toUpperCase()})` : name;
 }
+function sourceLabel(key: string, locale: Locale): string | null {
+    const row = /^page:(\d{1,6})\/table:(\d{1,6})\/row:(\d{1,6})$/u.exec(key);
+    if (!row) return null;
+    const [page, table, line] = row.slice(1).map((value) => Number(value) + 1);
+    return locale === "zh"
+        ? `原件第 ${page} 页，第 ${table} 个表格，第 ${line} 行`
+        : `Original page ${page}, table ${table}, row ${line}`;
+}
 type Props = {
     session: Session;
     locale: Locale;
@@ -469,6 +477,9 @@ export function OcrPanel({
                             {t("原文与候选", "Source text and candidates")} ·{" "}
                             {stateName(review.status)}
                         </h3>
+                        {sourceLabel(detail.source_key, locale) && (
+                            <p>{sourceLabel(detail.source_key, locale)}</p>
+                        )}
                         <button disabled={busy} onClick={() => void original()}>
                             {t("下载原件对照", "Download original for comparison")}
                         </button>

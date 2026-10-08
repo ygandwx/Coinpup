@@ -4,6 +4,7 @@ import importlib
 import struct
 import zlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from coinpup_api.config import Settings
@@ -20,11 +21,14 @@ from pydantic import SecretStr
         ("1", "test", "postgres", "fictional_other", False),
     ],
 )
+@pytest.mark.parametrize("module", ["create_ocr_browser_fixture", "finish_ocr_browser_fixture"])
 def test_guard_unwraps_secret_and_precedes_database(
-    monkeypatch, opt_in, environment, host, name, allowed
+    monkeypatch, opt_in, environment, host, name, allowed, module
 ):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / "scripts"))
-    checker = importlib.import_module("create_ocr_browser_fixture")
+    checker = importlib.import_module(module)
+    monkeypatch.setenv("COINPUP_BROWSER_JOB_ID", "11111111-1111-4111-8111-111111111111")
+    monkeypatch.setenv("COINPUP_BROWSER_JOB_ACTION", "finish")
     settings = Settings(_env_file=None).model_copy(
         update={
             "environment": environment,
@@ -55,3 +59,42 @@ def test_photo_fixture_has_valid_png_chunks_for_strict_browser_decoders(monkeypa
         assert zlib.crc32(body) & 0xFFFFFFFF == crc
         offset += size + 12
     assert offset == len(data) and body == b"IEND"
+
+
+@pytest.mark.parametrize(
+    "filename,name,allowed",
+    [
+        ("fictional-browser.pdf", "Fictional E2E OCR fixture", True),
+        ("unrelated.pdf", "Fictional E2E OCR fixture", False),
+        ("fictional-browser.pdf", "Unrelated entity", False),
+        (None, None, False),
+    ],
+)
+def test_worker_outcomes_require_known_fictional_source(monkeypatch, filename, name, allowed):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / "scripts"))
+    checker = importlib.import_module("finish_ocr_browser_fixture")
+    row = (SimpleNamespace(created_by="fictional-owner"), filename, name) if filename else None
+    session = SimpleNamespace(execute=lambda _query: SimpleNamespace(one_or_none=lambda: row))
+    if allowed:
+        assert (
+            checker.require_fictional_job(session, "11111111-1111-4111-8111-111111111111")
+            == "fictional-owner"
+        )
+    else:
+        with pytest.raises(SystemExit, match="known fictional"):
+            checker.require_fictional_job(session, "11111111-1111-4111-8111-111111111111")
+
+
+def test_unreadable_fictional_amount_stays_null_and_rescan_preserves_row_identity(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / "scripts"))
+    build = importlib.import_module("create_ocr_browser_fixture").fictional_completion
+    before, after = build(["10.00", "20.00", None]), build(["10.00", "20.00", "30.00"])
+    assert [row.source_key for row in before.candidates] == [
+        row.source_key for row in after.candidates
+    ]
+    assert before.candidates[2].recognized["fields"][0]["value"] is None
+    assert after.candidates[2].recognized["fields"][0]["value"] == "30.00"
+    assert before.candidates[2].fields["review"][0]["requires_confirmation"]
+    assert before.candidates[2].fields["review"][0]["suggested_value"] is None
+    with pytest.raises(ValueError, match="fixed fictional"):
+        build(["123.00"])

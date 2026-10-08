@@ -114,6 +114,7 @@ jobs:
       E2E_USERNAME: admin-e2e
       E2E_PASSWORD: Test-only-password-2026!
       BASE_URL: http://127.0.0.1:8000
+      COMPOSE_FILE: compose.yaml:ops/compose.browser.yaml
     steps:
       - uses: actions/checkout@v4
         with:
