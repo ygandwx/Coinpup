@@ -212,3 +212,74 @@ class BusinessDocumentLine(ReferenceIdentity, Base):
     net_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
     tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+
+
+class RecurringInvoiceRule(ReferenceIdentity, Base):
+    __tablename__ = "recurring_invoice_rules"
+    __table_args__ = (
+        *identity_constraints(__tablename__),
+        ForeignKeyConstraint(
+            ["source_document_id", "ledger_id"],
+            ["business_documents.id", "business_documents.ledger_id"],
+            name="fk_recurring_invoice_rules_source_ledger",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "btrim(name) <> '' AND btrim(timezone_name) <> ''",
+            name="ck_recurring_invoice_rules_names",
+        ),
+        CheckConstraint(
+            "frequency IN ('day', 'week', 'month', 'year') "
+            "AND interval_count BETWEEN 1 AND 120 AND next_index >= 0 "
+            "AND anchor_date BETWEEN DATE '0001-01-01' AND DATE '9999-12-31'",
+            name="ck_recurring_invoice_rules_calendar",
+        ),
+        CheckConstraint(
+            "source_version > 0 AND jsonb_typeof(template_input) = 'object'",
+            name="ck_recurring_invoice_rules_template",
+        ),
+    )
+
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    timezone_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    anchor_date: Mapped[date] = mapped_column(Date, nullable=False)
+    frequency: Mapped[str] = mapped_column(String(5), nullable=False)
+    interval_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    next_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    source_document_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    template_input: Mapped[dict] = mapped_column(JSONB(none_as_null=True), nullable=False)
+
+
+class RecurringInvoiceInstance(ReferenceIdentity, Base):
+    __tablename__ = "recurring_invoice_instances"
+    __table_args__ = (
+        *identity_constraints(__tablename__),
+        UniqueConstraint("rule_id", "occurrence_index", name="uq_recurring_invoice_instances_slot"),
+        ForeignKeyConstraint(
+            ["rule_id", "ledger_id"],
+            ["recurring_invoice_rules.id", "recurring_invoice_rules.ledger_id"],
+            name="fk_recurring_invoice_instances_rule_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["id", "ledger_id"],
+            ["business_documents.id", "business_documents.ledger_id"],
+            name="fk_recurring_invoice_instances_document_ledger",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "occurrence_index >= 0 AND rule_version > 0 "
+            "AND scheduled_date BETWEEN DATE '0001-01-01' AND DATE '9999-12-31' "
+            "AND jsonb_typeof(original_input) = 'object'",
+            name="ck_recurring_invoice_instances_profile",
+        ),
+    )
+
+    rule_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    occurrence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    scheduled_date: Mapped[date] = mapped_column(Date, nullable=False)
+    rule_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    original_input: Mapped[dict] = mapped_column(JSONB(none_as_null=True), nullable=False)

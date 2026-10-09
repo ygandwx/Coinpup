@@ -52,6 +52,8 @@ EntityType = Literal[
     "ledger_period_audits",
     "ledger_period_receipts",
     "business_projects",
+    "recurring_invoice_rules",
+    "recurring_invoice_instances",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 
