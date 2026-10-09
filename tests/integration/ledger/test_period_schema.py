@@ -18,6 +18,7 @@ from tests.integration.conftest import (
     project_dimension_migration,
     project_migration,
     recurring_migration,
+    reminder_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import classified
@@ -238,6 +239,7 @@ def test_period_migration_refuses_history_and_round_trips_empty(ledger_setup, hi
     def run():
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                reminder_migration()["downgrade"]()
                 recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
@@ -248,6 +250,7 @@ def test_period_migration_refuses_history_and_round_trips_empty(ledger_setup, hi
                 project_dimension_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
                 recurring_migration()["upgrade"]()
+                reminder_migration()["upgrade"]()
 
     if history == "empty":
         run()

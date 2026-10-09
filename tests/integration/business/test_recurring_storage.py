@@ -26,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.conftest import recurring_migration
+from tests.integration.conftest import recurring_migration, reminder_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import financial_counts
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -278,12 +278,15 @@ def test_protected_downgrade_and_empty_round_trip(recurrence):
     s = recurrence
     migration = recurring_migration()
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
+        reminder_migration()["downgrade"]()
         migration["downgrade"]()
         migration["upgrade"]()
+        reminder_migration()["upgrade"]()
     create_rule(s)
     before = snapshot(s)
     with pytest.raises(IntegrityError) as failure:
         with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
+            reminder_migration()["downgrade"]()
             migration["downgrade"]()
     assert failure.value.orig.diag.constraint_name == "ck_recurring_downgrade"
     assert snapshot(s) == before

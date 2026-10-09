@@ -22,6 +22,7 @@ from tests.integration.conftest import (
     project_dimension_migration,
     project_migration,
     recurring_migration,
+    reminder_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -176,6 +177,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                reminder_migration()["downgrade"]()
                 recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 draft_header_migration()["downgrade"]()
@@ -194,6 +196,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 draft_header_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
                 recurring_migration()["upgrade"]()
+                reminder_migration()["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:
