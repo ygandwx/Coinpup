@@ -1428,7 +1428,9 @@
               "ledger_period_receipts",
               "business_projects",
               "recurring_invoice_rules",
-              "recurring_invoice_instances"
+              "recurring_invoice_instances",
+              "reminder_events",
+              "reminder_event_revisions"
             ],
             "title": "Entity Type",
             "type": "string"

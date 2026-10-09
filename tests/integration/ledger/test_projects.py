@@ -16,6 +16,7 @@ from tests.integration.conftest import (
     project_dimension_migration,
     project_migration,
     recurring_migration,
+    reminder_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -155,6 +156,7 @@ def test_project_migration_guards_history_and_empty_round_trip(ledger_setup, his
         seed(s)
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                reminder_migration()["downgrade"]()
                 recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
@@ -167,11 +169,13 @@ def test_project_migration_guards_history_and_empty_round_trip(ledger_setup, his
                 project_dimension_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
                 recurring_migration()["upgrade"]()
+                reminder_migration()["upgrade"]()
     before = snapshot(s)
 
     def run():
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                reminder_migration()["downgrade"]()
                 recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
@@ -180,6 +184,7 @@ def test_project_migration_guards_history_and_empty_round_trip(ledger_setup, his
                 project_dimension_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
                 recurring_migration()["upgrade"]()
+                reminder_migration()["upgrade"]()
 
     if history == "empty":
         run()
