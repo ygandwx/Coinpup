@@ -3,7 +3,12 @@
 from uuid import uuid4
 
 import pytest
-from coinpup_api.business.draft_schemas import DraftCreate, DraftLineInput
+from coinpup_api.business.draft_schemas import (
+    DraftArchive,
+    DraftCreate,
+    DraftLineInput,
+    DraftUpdate,
+)
 from pydantic import ValidationError
 
 
@@ -67,3 +72,35 @@ def test_exact_sources_and_bounded_distinct_lines():
     for changes in (dict(issuer_snapshot={}), dict(state="draft"), dict(total_amount="0.00")):
         with pytest.raises(ValidationError):
             DraftCreate(**(body | changes))
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        dict(expected_version="1"),
+        dict(expected_version=0),
+        dict(refresh_snapshots="true"),
+        dict(archived=True),
+    ],
+)
+def test_update_requires_explicit_lines_and_strict_version_and_refresh(changes):
+    body = dict(
+        document_kind="invoice",
+        party_id=uuid4(),
+        asset_id="USD",
+        issue_date="2026-10-09",
+        expected_version=1,
+    )
+    with pytest.raises(ValidationError):
+        DraftUpdate(**body)
+    assert DraftUpdate(**body, lines=[]).lines == []
+    with pytest.raises(ValidationError):
+        DraftUpdate(**(body | dict(lines=[]) | changes))
+    assert DraftArchive(expected_version=1, archived=True).archived
+    for values in (
+        dict(expected_version=1, archived="true"),
+        dict(expected_version=1),
+        dict(expected_version=0, archived=False),
+    ):
+        with pytest.raises(ValidationError):
+            DraftArchive(**values)
