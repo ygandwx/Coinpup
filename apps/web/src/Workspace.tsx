@@ -859,9 +859,16 @@ export function BusinessWorkspace({
                     )}
                 </header>
                 {loadError !== null && (
-                    <p className="inline-error" role="alert">
-                        {businessError(loadError, locale)}
-                    </p>
+                    <div className="inline-error" role="alert">
+                        <p>{businessError(loadError, locale)}</p>
+                        <button
+                            type="button"
+                            disabled={loading || ledgerLoading || busy}
+                            onClick={reload}
+                        >
+                            {t("重试读取", "Retry loading")}
+                        </button>
+                    </div>
                 )}
                 {!editor && errorText && (
                     <p className="inline-error" role="alert">
@@ -953,7 +960,7 @@ export function BusinessWorkspace({
                         </p>
                         <button
                             className="primary-button"
-                            disabled={loading || busy}
+                            disabled={loading || busy || navigationLocked}
                             onClick={() => openEditor({ kind: "entity" })}
                         >
                             {t("创建第一个账本", "Create your first ledger")}
