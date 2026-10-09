@@ -15,6 +15,7 @@ from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.money import Amount
 
 DIMENSION_FIELDS = (
+    "project_id",
     "party_id",
     "counterparty_entity_id",
     "document_id",
@@ -35,6 +36,7 @@ class PostingLine:
     category_id: UUID | None = None
     id: UUID = field(default_factory=uuid4)
     component_no: int = 0
+    project_id: UUID | None = None
     party_id: UUID | None = None
     counterparty_entity_id: UUID | None = None
     document_id: UUID | None = None

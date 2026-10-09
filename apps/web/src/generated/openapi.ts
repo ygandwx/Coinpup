@@ -2217,6 +2217,8 @@ export interface components {
             line_no: number;
             /** Party Id */
             party_id?: string | null;
+            /** Project Id */
+            project_id?: string | null;
             /** Role */
             role: string;
         };

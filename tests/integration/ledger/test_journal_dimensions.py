@@ -13,6 +13,7 @@ from coinpup_api.ledger.schemas import EntityCreate
 from sqlalchemy import insert, select, update
 from sqlalchemy.exc import IntegrityError
 
+from tests.integration.conftest import project_dimension_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_business_references import seed
 from tests.integration.ledger.test_exchange_constraints import _header, _legacy_principal
@@ -200,8 +201,10 @@ def test_old_money_history_has_identical_json_and_survives_dimension_round_trip(
     )
     with s["engine"].begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
+            project_dimension_migration()["downgrade"]()
             migration["downgrade"]()
             migration["upgrade"]()
+            project_dimension_migration()["upgrade"]()
         assert all(
             all(row[name] is None for name in FIELDS)
             for row in connection.execute(select(JournalLine.__table__)).mappings()

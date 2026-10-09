@@ -3067,6 +3067,18 @@
             ],
             "title": "Party Id"
           },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "role": {
             "title": "Role",
             "type": "string"

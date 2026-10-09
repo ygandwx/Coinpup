@@ -107,6 +107,7 @@ def seed_controls(engine, owner):
                 session.flush()
                 quantity = Amount.parse(value, get_asset("USD"))
                 dimensions = dict(
+                    project_id=project,
                     party_id=party,
                     document_id=document,
                     document_line_id=line,
@@ -228,4 +229,11 @@ def verify_controls(engine, owner, evidence):
         )
         == evidence["receipt"]
     )
-    assert posting.history(owner, ledger, evidence["operation"]) == evidence["history"]
+    history = posting.history(owner, ledger, evidence["operation"])
+    assert history == evidence["history"]
+    assert all(
+        line.project_id == evidence["project"]
+        for item in history
+        for journal in item.journals
+        for line in journal.lines
+    )
