@@ -10,6 +10,7 @@ import { PendingUploadController } from "./pending-upload";
 import { PendingConfirmationController } from "./pending-confirmations";
 import { OcrJobIntents } from "./ocr-job-intents";
 import { PendingPeriodController } from "./pending-period";
+import { PendingMasterDataController } from "./pending-business";
 import { OcrCopyController } from "./ocr-copy";
 
 type IconName =
@@ -323,6 +324,7 @@ export function App() {
     const [ocrJobs] = useState(() => new OcrJobIntents());
     const [copies] = useState(() => new OcrCopyController());
     const [periods] = useState(() => new PendingPeriodController());
+    const [masters] = useState(() => new PendingMasterDataController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
     const [retryKey, setRetryKey] = useState(0);
@@ -351,6 +353,7 @@ export function App() {
                     confirmations.setOwner(String(session.user.id));
                     copies.setOwner(String(session.user.id));
                     periods.setOwner(String(session.user.id));
+                    masters.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -363,6 +366,7 @@ export function App() {
                     confirmations.setOwner(null);
                     copies.setOwner(null);
                     periods.setOwner(null);
+                    masters.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -371,7 +375,7 @@ export function App() {
                     });
             });
         return () => controller.abort();
-    }, [retryKey, commands, uploads, ocrJobs, confirmations, copies, periods]);
+    }, [retryKey, commands, uploads, ocrJobs, confirmations, copies, periods, masters]);
 
     useEffect(() => {
         if (auth.status === "checking" || auth.status === "unavailable") return;
@@ -393,6 +397,7 @@ export function App() {
             confirmations.setOwner(null, true);
             copies.setOwner(null, true);
             periods.setOwner(null, true);
+            masters.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -402,6 +407,7 @@ export function App() {
                 confirmations.setOwner(null, true);
                 copies.setOwner(null, true);
                 periods.setOwner(null, true);
+                masters.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -447,6 +453,7 @@ export function App() {
                     confirmations={confirmations}
                     copies={copies}
                     periods={periods}
+                    masters={masters}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -454,6 +461,7 @@ export function App() {
                         confirmations.setOwner(null);
                         copies.setOwner(null);
                         periods.setOwner(null);
+                        masters.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -501,6 +509,7 @@ export function App() {
                                         confirmations.setOwner(String(session.user.id));
                                         copies.setOwner(String(session.user.id));
                                         periods.setOwner(String(session.user.id));
+                                        masters.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}
