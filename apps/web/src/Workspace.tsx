@@ -14,6 +14,8 @@ import type { PendingMasterDataController } from "./pending-business";
 import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
 import { RecurringPanel } from "./RecurringPanel";
+import { ReminderPanel } from "./ReminderPanel";
+import type { PendingReminderController } from "./pending-reminder";
 import type { PendingRecurringController } from "./pending-recurring";
 import type { PendingBusinessDraftController } from "./pending-business-drafts";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
@@ -60,6 +62,7 @@ import "./workspace.css";
 type View =
     | "drafts"
     | "recurring"
+    | "reminders"
     | "masters"
     | "periods"
     | "controls"
@@ -83,6 +86,7 @@ const views: View[] = [
     "masters",
     "drafts",
     "recurring",
+    "reminders",
     "categories",
     "details",
     "assets",
@@ -316,6 +320,7 @@ export function BusinessWorkspace({
     masters,
     drafts,
     recurring,
+    reminders,
     onUnauthorized,
 }: {
     session: Session;
@@ -329,6 +334,7 @@ export function BusinessWorkspace({
     masters: PendingMasterDataController;
     drafts: PendingBusinessDraftController;
     recurring: PendingRecurringController;
+    reminders: PendingReminderController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -351,6 +357,12 @@ export function BusinessWorkspace({
     );
     const recurringRecoveryLedger = recurringLocked ? recurringState.plan?.ledgerId : undefined;
     const [recurringEditing, setRecurringEditing] = useState(false);
+    const reminderState = useSyncExternalStore(reminders.subscribe, reminders.getSnapshot);
+    const reminderLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
+        reminderState.status,
+    );
+    const reminderRecoveryLedger = reminderLocked ? reminderState.plan?.ledgerId : undefined;
+    const [reminderEditing, setReminderEditing] = useState(false);
     const [draftTarget, setDraftTarget] = useState<{ entityId: string; id: string } | null>(() => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get("draft"),
@@ -391,7 +403,9 @@ export function BusinessWorkspace({
         draftLocked ||
         draftEditing ||
         recurringLocked ||
-        recurringEditing;
+        recurringEditing ||
+        reminderLocked ||
+        reminderEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -431,6 +445,7 @@ export function BusinessWorkspace({
         masters: t("往来与项目", "Parties and projects"),
         drafts: t("经营草稿", "Business drafts"),
         recurring: t("周期Invoice", "Recurring invoices"),
+        reminders: t("提醒事项", "Reminder events"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
         settings: t("设置", "Settings"),
@@ -454,7 +469,8 @@ export function BusinessWorkspace({
             !periodLocked &&
             !masterLocked &&
             !draftLocked &&
-            !recurringLocked
+            !recurringLocked &&
+            !reminderLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -472,6 +488,7 @@ export function BusinessWorkspace({
         masterLocked,
         draftLocked,
         recurringLocked,
+        reminderLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -492,6 +509,14 @@ export function BusinessWorkspace({
             setView("recurring");
         }
     }, [recurringRecoveryLedger, entities]);
+    useEffect(() => {
+        if (!reminderRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === reminderRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("reminders");
+        }
+    }, [reminderRecoveryLedger, entities]);
     useEffect(() => {
         if (!draftRecoveryLedger) return;
         const owner = entities.find((item) => item.ledger.id === draftRecoveryLedger);
@@ -834,6 +859,7 @@ export function BusinessWorkspace({
                                         masters: "◇",
                                         drafts: "▤",
                                         recurring: "↻",
+                                        reminders: "◷",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -1019,7 +1045,8 @@ export function BusinessWorkspace({
                         {view !== "transactions" &&
                             view !== "files" &&
                             view !== "ocr" &&
-                            view !== "recurring" && (
+                            view !== "recurring" &&
+                            view !== "reminders" && (
                                 <label className="archive-toggle">
                                     <input
                                         type="checkbox"
@@ -1033,6 +1060,19 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "reminders" && (
+                            <ReminderPanel
+                                key={`${session.user.id}:${entity.ledger.id}`}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={reminders}
+                                archived={entity.archived}
+                                dataLoading={loading || ledgerLoading || !current}
+                                onUnauthorized={onUnauthorized}
+                                onEditing={setReminderEditing}
+                            />
                         )}
                         {view === "recurring" && (
                             <RecurringPanel
