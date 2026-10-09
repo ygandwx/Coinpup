@@ -1,6 +1,11 @@
 # Disposable browser protocol tests use guarded fictional worker outcomes.
 # Native offline recognition is exercised independently by ocr.yml, never here.
+# Run scripts/prepare_browser_ci_image.py before building this CI-only override.
 services:
+  postgres:
+    image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
   api:
+    build:
+      dockerfile: build/Dockerfile.browser-ci
     environment:
       COINPUP_OCR_ENABLED: "true"

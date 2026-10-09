@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:17
+        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
         env:
           POSTGRES_DB: coinpup
           POSTGRES_USER: coinpup
@@ -132,7 +132,9 @@ jobs:
       - name: Create disposable development configuration
         run: python3 scripts/init_env.py
       - name: Start services
-        run: docker compose up -d --build --wait
+        run: |
+          python3 scripts/prepare_browser_ci_image.py
+          docker compose up -d --build --wait
       - name: Apply migrations
         run: docker compose exec -T api python -m alembic upgrade head
       - name: Verify API connection
