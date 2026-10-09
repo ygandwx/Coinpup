@@ -12,6 +12,7 @@ import { OcrJobIntents } from "./ocr-job-intents";
 import { PendingPeriodController } from "./pending-period";
 import { PendingMasterDataController } from "./pending-business";
 import { PendingBusinessDraftController } from "./pending-business-drafts";
+import { PendingRecurringController } from "./pending-recurring";
 import { OcrCopyController } from "./ocr-copy";
 
 type IconName =
@@ -327,6 +328,7 @@ export function App() {
     const [periods] = useState(() => new PendingPeriodController());
     const [masters] = useState(() => new PendingMasterDataController());
     const [drafts] = useState(() => new PendingBusinessDraftController());
+    const [recurring] = useState(() => new PendingRecurringController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
     const [retryKey, setRetryKey] = useState(0);
@@ -357,6 +359,7 @@ export function App() {
                     periods.setOwner(String(session.user.id));
                     masters.setOwner(String(session.user.id));
                     drafts.setOwner(String(session.user.id));
+                    recurring.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -371,6 +374,7 @@ export function App() {
                     periods.setOwner(null);
                     masters.setOwner(null);
                     drafts.setOwner(null);
+                    recurring.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -379,7 +383,18 @@ export function App() {
                     });
             });
         return () => controller.abort();
-    }, [retryKey, commands, uploads, ocrJobs, confirmations, copies, periods, masters, drafts]);
+    }, [
+        retryKey,
+        commands,
+        uploads,
+        ocrJobs,
+        confirmations,
+        copies,
+        periods,
+        masters,
+        drafts,
+        recurring,
+    ]);
 
     useEffect(() => {
         if (auth.status === "checking" || auth.status === "unavailable") return;
@@ -403,6 +418,7 @@ export function App() {
             periods.setOwner(null, true);
             masters.setOwner(null, true);
             drafts.setOwner(null, true);
+            recurring.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -414,6 +430,7 @@ export function App() {
                 periods.setOwner(null, true);
                 masters.setOwner(null, true);
                 drafts.setOwner(null, true);
+                recurring.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -461,6 +478,7 @@ export function App() {
                     periods={periods}
                     masters={masters}
                     drafts={drafts}
+                    recurring={recurring}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -470,6 +488,7 @@ export function App() {
                         periods.setOwner(null);
                         masters.setOwner(null);
                         drafts.setOwner(null);
+                        recurring.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -519,6 +538,7 @@ export function App() {
                                         periods.setOwner(String(session.user.id));
                                         masters.setOwner(String(session.user.id));
                                         drafts.setOwner(String(session.user.id));
+                                        recurring.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}
