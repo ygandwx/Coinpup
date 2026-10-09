@@ -1,12 +1,21 @@
 """Versioned recurring draft inputs; changing a calendar requires a replacement rule."""
 
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import Field, StrictBool, StrictInt, StrictStr, field_validator, model_validator
+from pydantic import (
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from coinpup_api.business.draft_schemas import BusinessDraftCreate
-from coinpup_api.business.recurrence_calendar import Frequency
+from coinpup_api.business.recurrence_calendar import CalendarSchedule, Frequency, RecurrenceError
 from coinpup_api.business.schemas import BusinessCommand
 from coinpup_api.ledger.posting_schemas import CalendarDateFilter
 from coinpup_api.ledger.schemas import Name, RecordResponse, Version
@@ -53,6 +62,18 @@ class RecurringRuleResponse(RecurringRuleCreate, RecordResponse):
     archived: bool
     next_index: int
     template_input: BusinessDraftCreate
+
+    @computed_field
+    @property
+    def next_scheduled_date(self) -> date | None:
+        try:
+            return CalendarSchedule(
+                self.anchor_date, self.frequency, self.interval_count
+            ).occurrence(self.next_index)
+        except RecurrenceError as error:
+            if error.code == "recurrence_date_range":
+                return None
+            raise
 
 
 class RecurringInstanceResponse(RecordResponse):

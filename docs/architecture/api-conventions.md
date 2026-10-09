@@ -36,6 +36,13 @@
 - 草稿quantity、unit_price、discount_amount、tax_rate_percent是原始输入回显，保留其合法十进制拼写（含小数尾零、金额负零）；它们不适用上文金额输出规范化规则。派生净额、税额和合计仍按资产精度固定小数位，服务器按方案A重算。
 - 列表默认包含归档，按创建时间/ID升序分页，详情包含有效行；归档草稿可读，显式恢复后才可编辑。确认、结算及其永久回执由后续任务实现。
 
+## 周期 Invoice 草稿
+
+- `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
+- 创建捕获指定源Invoice草稿版本，重复稳定ID返回409；更改名称或刷新模板、暂停/恢复都要求expected_version。起点、周期和IANA时区不可修改；模板不会跟随源草稿自动变化。实例以序号升序分页，原生成输入与可编辑的当前草稿分开读取，两者ID相同。
+- 规则默认包含归档，分页/排序沿用普通资料约定。只读next_scheduled_date根据原起点和next_index计算，超出日历范围返回null；它不是已生成证明，也不推进游标。后台每生成一个实例都增加规则版本，旧编辑版本返回409。
+- 未知提交保留原ID、正文和版本；创建仅在版本1且原日历/源版本/名称完全匹配时可由读取确认，任何更高版本都须显式处理冲突。更新不能凭相似当前字段推断本次已提交。规则见[ADR0033](decisions/0033-recurring-draft-storage.md)，任务调用与积压处理见[运维](../engineering/operations.md)。
+
 ## 幂等与回执
 
 - 财务写命令必须带 `Idempotency-Key`：1–128 个不含空格的可见 ASCII 字符，作用域为账本。同键同请求返回永久保存的原回执；同键不同请求返回 409，失败事务不保存成功回执。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
