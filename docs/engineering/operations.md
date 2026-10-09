@@ -168,7 +168,9 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -e COINPUP_RESTO
 
 ## 自动化验证与验收边界
 
-CI 的数据库服务和浏览器 Compose 覆盖使用 Docker 官方 ECR Public 的 PostgreSQL 17，固定镜像摘要以避免共享 runner 的 Docker Hub 匿名拉取限流。来源为 [Docker 官方公共分发渠道](https://www.docker.com/blog/news-from-aws-reinvent-docker-official-images-on-amazon-ecr-public/)，无需新增凭据。升级时核对 Docker Hub 与该渠道镜像清单摘要一致，同步更新两处引用并通过迁移、浏览器及完整恢复检查；本地 `compose.yaml` 默认来源不变。拉取失败仍使检查失败，不跳过测试。
+CI 的 PostgreSQL 17、Node 24 和 Python 3.12 基础镜像使用固定摘要的 [Docker 官方 ECR Public 渠道](https://www.docker.com/blog/news-from-aws-reinvent-docker-official-images-on-amazon-ecr-public/)，避免共享 runner 的 Docker Hub 匿名拉取限流，无需新增凭据。浏览器 Compose 覆盖启动前运行 `python scripts/prepare_browser_ci_image.py`，生成仅替换 web/api 两个 FROM 的 `build/Dockerfile.browser-ci`；原 Dockerfile、OCR stage 和本地默认 Compose 不变，预期基础镜像发生变化则准备步骤直接失败。
+
+升级时核对 Docker Hub 与 ECR 对应镜像清单摘要一致，同步更新 CI/浏览器覆盖的 PostgreSQL 引用和准备脚本的 Node/Python 映射，并通过迁移、浏览器及完整恢复检查。拉取失败仍使检查失败，不跳过测试。
 
 单元检查不需要 PostgreSQL：
 
