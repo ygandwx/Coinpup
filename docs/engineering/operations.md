@@ -168,6 +168,8 @@ docker compose run --rm --no-deps -v "$PWD/backups:/backups:ro" -e COINPUP_RESTO
 
 ## 自动化验证与验收边界
 
+CI 的数据库服务和浏览器 Compose 覆盖使用 Docker 官方 ECR Public 的 PostgreSQL 17，固定镜像摘要以避免共享 runner 的 Docker Hub 匿名拉取限流。来源为 [Docker 官方公共分发渠道](https://www.docker.com/blog/news-from-aws-reinvent-docker-official-images-on-amazon-ecr-public/)，无需新增凭据。升级时核对 Docker Hub 与该渠道镜像清单摘要一致，同步更新两处引用并通过迁移、浏览器及完整恢复检查；本地 `compose.yaml` 默认来源不变。拉取失败仍使检查失败，不跳过测试。
+
 单元检查不需要 PostgreSQL：
 
 ```sh
