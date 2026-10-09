@@ -15,6 +15,7 @@ from tests.integration.conftest import (
     draft_line_migration,
     project_dimension_migration,
     project_migration,
+    recurring_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -154,6 +155,7 @@ def test_project_migration_guards_history_and_empty_round_trip(ledger_setup, his
         seed(s)
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
             c.exec_driver_sql(
@@ -164,17 +166,20 @@ def test_project_migration_guards_history_and_empty_round_trip(ledger_setup, his
             with Operations.context(MigrationContext.configure(c)):
                 project_dimension_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
+                recurring_migration()["upgrade"]()
     before = snapshot(s)
 
     def run():
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
                 project_migration()["downgrade"]()
                 project_migration()["upgrade"]()
                 project_dimension_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
+                recurring_migration()["upgrade"]()
 
     if history == "empty":
         run()

@@ -29,6 +29,11 @@ from coinpup_api.ledger.schemas import EntityCreate
 from coinpup_api.ledger.service import LedgerError, LedgerService
 from sqlalchemy import insert, select
 
+if __package__:
+    from .check_recurring_restore import seed_recurring, verify_recurring
+else:
+    from check_recurring_restore import seed_recurring, verify_recurring
+
 
 def seed_controls(engine, owner):
     structure, controls = LedgerService(engine), ControlAccounts(engine)
@@ -182,6 +187,7 @@ def seed_controls(engine, owner):
         owner, ledger, draft, BusinessDraftArchive(expected_version=3, archived=False)
     )
     assert draft_response.version == 4 and draft_response.lines[0].version == 2
+    recurring = seed_recurring(engine, owner, ledger, draft_response)
 
     draft_values = draft_response.model_dump(
         exclude={
@@ -224,6 +230,7 @@ def seed_controls(engine, owner):
     return dict(
         ledger=ledger,
         draft=draft,
+        recurring=recurring,
         draft_input=draft_input,
         draft_edit=draft_edit,
         draft_response=draft_response,
@@ -294,6 +301,7 @@ def verify_controls(engine, owner, evidence):
         assert line["version"] == 2
     drafts = DraftService(engine)
     assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
+    verify_recurring(engine, evidence["recurring"])
     try:
         drafts.create_draft(owner, ledger, evidence["draft_input"])
     except LedgerError as error:
