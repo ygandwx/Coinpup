@@ -1,0 +1,45 @@
+.draft-fields,
+.draft-line {
+    min-width: 0;
+    margin: 18px 0;
+    padding: 16px;
+    border: 1px solid #dce2d3;
+    border-radius: 10px;
+}
+.draft-fields legend,
+.draft-line legend {
+    padding: 0 6px;
+    overflow-wrap: anywhere;
+}
+.draft-totals dl {
+    display: grid;
+    gap: 12px;
+}
+.draft-totals dl > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    justify-content: space-between;
+}
+.draft-totals dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.draft-fields .check-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    align-items: flex-start;
+}
+.draft-fields .check-row input {
+    flex: none;
+}
+@media (max-width: 600px) {
+    .draft-fields {
+        padding: 10px;
+    }
+    .draft-line {
+        padding: 10px;
+    }
+}
