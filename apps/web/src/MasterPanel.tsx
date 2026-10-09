@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { listMasterData } from "./business-api";
@@ -28,6 +28,7 @@ export function MasterPanel({
     onEditing: (editing: boolean) => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
+    const kindId = useId();
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
     const [kind, setKind] = useState<MasterKind>(plan?.kind ?? "parties");
@@ -146,9 +147,10 @@ export function MasterPanel({
                     "Records belong to this ledger. Archiving preserves history; saving details does not post money.",
                 )}
             </p>
-            <label>
-                {t("资料类型", "Record type")}
+            <div className="master-field">
+                <label htmlFor={kindId}>{t("资料类型", "Record type")}</label>
                 <select
+                    id={kindId}
                     value={kind}
                     disabled={!!editor || unresolved}
                     onChange={(event) => {
@@ -159,7 +161,7 @@ export function MasterPanel({
                     <option value="parties">{t("往来单位", "Business parties")}</option>
                     <option value="projects">{t("项目", "Projects")}</option>
                 </select>
-            </label>
+            </div>
             {archived && (
                 <p role="status">
                     {t(

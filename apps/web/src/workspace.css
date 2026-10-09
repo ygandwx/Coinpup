@@ -1148,6 +1148,9 @@
 .master-panel {
     overflow-wrap: anywhere;
 }
+.master-field {
+    min-width: 0;
+}
 .master-panel fieldset {
     border: 1px solid #dce2d3;
     margin: 16px 0;

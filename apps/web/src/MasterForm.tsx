@@ -76,8 +76,8 @@ export function MasterForm({
             <fieldset disabled={locked}>
                 <legend>{t("资料内容", "Record details")}</legend>
                 <div className="form-grid">
-                    <label htmlFor={`${id}-name`}>
-                        {t("名称", "Name")}
+                    <div className="master-field">
+                        <label htmlFor={`${id}-name`}>{t("名称", "Name")}</label>
                         <input
                             id={`${id}-name`}
                             required
@@ -85,10 +85,10 @@ export function MasterForm({
                             value={values.name ?? ""}
                             onChange={(e) => setValues({ ...values, name: e.target.value })}
                         />
-                    </label>
+                    </div>
                     {kind === "parties" && (
-                        <label htmlFor={`${id}-role`}>
-                            {t("往来角色", "Party role")}
+                        <div className="master-field">
+                            <label htmlFor={`${id}-role`}>{t("往来角色", "Party role")}</label>
                             <select
                                 id={`${id}-role`}
                                 value={values.role ?? "both"}
@@ -105,13 +105,13 @@ export function MasterForm({
                                     {t("客户与供应商", "Customer and supplier")}
                                 </option>
                             </select>
-                        </label>
+                        </div>
                     )}
                     {optionalFields
                         .filter(([field]) => kind === "parties" || field === "notes")
                         .map(([field, zh, en, max]) => (
-                            <label key={field} htmlFor={`${id}-${field}`}>
-                                {t(zh, en)}
+                            <div className="master-field" key={field}>
+                                <label htmlFor={`${id}-${field}`}>{t(zh, en)}</label>
                                 <textarea
                                     id={`${id}-${field}`}
                                     maxLength={max}
@@ -121,7 +121,7 @@ export function MasterForm({
                                         setValues({ ...values, [field]: e.target.value })
                                     }
                                 />
-                            </label>
+                            </div>
                         ))}
                 </div>
                 {existing && (
