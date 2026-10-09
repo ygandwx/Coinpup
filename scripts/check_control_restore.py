@@ -140,6 +140,21 @@ def seed_controls(engine, owner):
                     insert(JournalLine), prepare_journal_lines(rows, {"USD": get_asset("USD")})
                 )
                 operations.append(operation)
+    draft = uuid4()
+    draft_values = dict(
+        document_kind="invoice",
+        state="draft",
+        party_id=profiled_party,
+        asset_id="USD",
+        issue_date=date(2026, 10, 9),
+        due_date=date(2026, 10, 20),
+        notes="Fictional draft recovery 备注",
+        issuer_snapshot={"name": "Fictional issuer"},
+        party_snapshot={"name": profile["name"]},
+    )
+    with controls._transaction(owner, write=True) as session:
+        controls._ledger(session, owner, ledger, write=True)
+        session.add(BusinessDocument(id=draft, ledger_id=ledger, **draft_values))
     posting = PostingService(engine)
     cancellation = CancellationCreate(
         expected_version=1, reason="Fictional control recovery cancel"
@@ -152,6 +167,8 @@ def seed_controls(engine, owner):
     assert structure.list_accounts(owner, ledger) == [] and posting.balances(owner, ledger) == []
     return dict(
         ledger=ledger,
+        draft=draft,
+        draft_values=draft_values,
         profile=profile,
         project=project,
         profiled_party=profiled_party,
@@ -191,6 +208,16 @@ def verify_controls(engine, owner, evidence):
             project["name"] == "Fictional 恢复项目"
             and project["notes"] == "Fictional project notes"
         )
+    with engine.connect() as connection:
+        draft = (
+            connection.execute(
+                select(BusinessDocument.__table__).where(BusinessDocument.id == evidence["draft"])
+            )
+            .mappings()
+            .one()
+        )
+        assert {key: draft[key] for key in evidence["draft_values"]} == evidence["draft_values"]
+        assert draft["ledger_id"] == ledger and draft["version"] == 1
     master = BusinessService(engine)
     for create, read, payload in (
         (
