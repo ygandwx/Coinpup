@@ -53,3 +53,14 @@ class RecurringRuleResponse(RecurringRuleCreate, RecordResponse):
     archived: bool
     next_index: int
     template_input: BusinessDraftCreate
+
+
+class RecurringInstanceResponse(RecordResponse):
+    id: UUID
+    ledger_id: UUID
+    rule_id: UUID
+    occurrence_index: int
+    scheduled_date: CalendarDateFilter
+    rule_version: int
+    original_input: BusinessDraftCreate
+    archived: bool

@@ -1,20 +1,14 @@
-"""Fictional recurring rows for the guarded disposable bundle checker, not a job API."""
+"""Fictional recurring service generation and replay across complete bundle recovery."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from coinpup_api.business.draft_schemas import BusinessDraftCreate, BusinessDraftLineInput
-from coinpup_api.business.drafts import DraftService
-from coinpup_api.business.models import (
-    BusinessDocument,
-    BusinessDocumentLine,
-    RecurringInvoiceInstance,
-    RecurringInvoiceRule,
-)
-from coinpup_api.business.recurrence_calendar import instantiate_draft
-from coinpup_api.sync.locking import acquire_write_lock
+from coinpup_api.business.models import RecurringInvoiceInstance, RecurringInvoiceRule
+from coinpup_api.business.recurring_generation import RecurringGenerationService
+from coinpup_api.business.recurring_rules import RecurringRuleService
+from coinpup_api.business.recurring_schemas import RecurringRuleCreate
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 def seed_recurring(engine, owner, ledger, source):
@@ -27,49 +21,31 @@ def seed_recurring(engine, owner, ledger, source):
     ]
     template = BusinessDraftCreate.model_validate(values)
     rule_id = uuid4()
-    generated = instantiate_draft(template, rule_id, 0, date(2026, 11, 9))
-    service = DraftService(engine)
-    with Session(engine) as session, session.begin():
-        acquire_write_lock(session)
-        _, entity = service._ledger(session, owner, ledger, write=True)
-        header, lines, _ = service._prepare(session, ledger, entity, generated)
-        rule = RecurringInvoiceRule(
+    RecurringRuleService(engine).create_rule(
+        owner,
+        ledger,
+        RecurringRuleCreate(
             id=rule_id,
-            ledger_id=ledger,
-            name="Fictional recurring recovery",
+            name="Fictional 恢复周期",
             timezone_name="Asia/Shanghai",
-            anchor_date=generated.issue_date,
+            anchor_date=date(2026, 11, 9),
             frequency="month",
             interval_count=1,
             source_document_id=source.id,
             source_version=source.version,
-            template_input=template.model_dump(mode="json"),
-        )
-        session.add(rule)
-        session.add(BusinessDocument(id=generated.id, **header))
-        session.flush()
-        session.add_all(BusinessDocumentLine(document_id=generated.id, **line) for line in lines)
-        session.flush()
-        session.add(
-            RecurringInvoiceInstance(
-                id=generated.id,
-                ledger_id=ledger,
-                rule_id=rule.id,
-                occurrence_index=0,
-                scheduled_date=generated.issue_date,
-                rule_version=1,
-                original_input=generated.model_dump(mode="json"),
-            )
-        )
-        session.flush()
-        rule.version += 1
-        rule.next_index += 1
+        ),
+    )
+    receipt = RecurringGenerationService(engine).generate_occurrence(
+        owner, ledger, rule_id, 0, now=datetime(2030, 1, 1, tzinfo=UTC)
+    )
     return dict(
         rule=rule_id,
+        owner=owner,
         ledger=ledger,
         source_version=source.version,
         template=template.model_dump(mode="json"),
-        generated=generated.model_dump(mode="json"),
+        generated=receipt.original_input.model_dump(mode="json"),
+        receipt=receipt,
     )
 
 
@@ -101,3 +77,12 @@ def verify_recurring(engine, evidence):
         assert str(instance["id"]) == evidence["generated"]["id"]
         assert instance["occurrence_index"] == 0 and instance["rule_version"] == 1
         assert instance["version"] == 1 and not instance["archived"]
+
+    replay = RecurringGenerationService(engine).generate_occurrence(
+        evidence["owner"],
+        evidence["ledger"],
+        evidence["rule"],
+        0,
+        now=datetime(2030, 1, 1, tzinfo=UTC),
+    )
+    assert replay == evidence["receipt"]
