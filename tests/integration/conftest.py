@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261009_0018",)
+        assert context.get_current_heads() == ("20261009_0019",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261009_0018",)
+        assert context.get_current_heads() == ("20261009_0019",)
 
 
 def confirmation_schema_migration():
@@ -65,6 +65,15 @@ def business_reference_migration():
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261009_0016_business_references.py"
+        )
+    )
+
+
+def party_profile_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261009_0019_party_profiles.py"
         )
     )
 

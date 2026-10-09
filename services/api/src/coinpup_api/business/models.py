@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Integer,
+    String,
     UniqueConstraint,
     Uuid,
     func,
@@ -46,7 +47,26 @@ class ReferenceIdentity:
 
 class BusinessParty(ReferenceIdentity, Base):
     __tablename__ = "business_parties"
-    __table_args__ = identity_constraints(__tablename__)
+    __table_args__ = (
+        *identity_constraints(__tablename__),
+        CheckConstraint(
+            "(name IS NULL AND role IS NULL AND legal_name IS NULL AND email IS NULL "
+            "AND phone IS NULL AND address IS NULL AND tax_identifier IS NULL AND notes IS NULL) "
+            "OR (name IS NOT NULL AND role IS NOT NULL AND btrim(name) <> '' "
+            "AND role IN ('customer', 'supplier', 'both'))",
+            name="ck_business_parties_profile",
+        ),
+    )
+
+    # Legacy reference identities remain explicitly unconfigured until completed.
+    name: Mapped[str | None] = mapped_column(String(160))
+    role: Mapped[str | None] = mapped_column(String(8))
+    legal_name: Mapped[str | None] = mapped_column(String(200))
+    email: Mapped[str | None] = mapped_column(String(254))
+    phone: Mapped[str | None] = mapped_column(String(64))
+    address: Mapped[str | None] = mapped_column(String(1000))
+    tax_identifier: Mapped[str | None] = mapped_column(String(128))
+    notes: Mapped[str | None] = mapped_column(String(2000))
 
 
 class BusinessDocument(ReferenceIdentity, Base):

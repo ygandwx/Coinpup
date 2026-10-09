@@ -14,7 +14,7 @@
 ## 正在进行
 
 - 开工基线：main ce27436（#106），本地干净、无开放PR，main CI 37844693231通过；T05、OPT-23/25本轮基础已完成，证据见原PR。现开始T06设计及往来单位/项目工作包，复用控制账户、维度、永久回执和期间锁。
-- 当前分支docs/t06-design-and-handoff：更新持续开发循环、T06拆包与[ADR0024](../architecture/decisions/0024-business-master-data.md)。Invoice含税方式/折扣/舍入规则待用户选择，不阻塞资料模型。
+- T06设计#107已合入，main 28d17d9四项检查通过；当前分支feat/t06-party-profiles实施[ADR0024](../architecture/decisions/0024-business-master-data.md)的往来资料迁移/约束/恢复。Invoice含税方式/折扣/舍入规则待用户选择，不阻塞资料模型。
 - 经营命令按[ADR0016](../architecture/decisions/0016-account-classes-and-dimensions.md)，当前基础边界见0022/0023；报表快照随T08。OCR按0020临时全字段需确认。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。chore/t05-3-ocr-stop保留未完全合入的历史交接内容。
 
@@ -47,7 +47,7 @@
 
 ## 下一步
 
-1. 本包本地fast、PR四项CI全绿合入，核对main检查；随后T06-1往来单位/项目模型迁移与约束。
+1. 往来资料包本地fast、PR四项CI全绿合入，核对main检查；随后T06-1项目模型迁移与约束。
 2. 接资料服务/API/恢复与双语页面；项目维度复用现有分录封存/冲销规则。
 3. 单据确认、结算、退款、Invoice/周期草稿按路线图增量；Invoice计价选择待答复，依赖部分不擅自定案。
 4. T06验收B-05至B-14及恢复后直接推进T07及后续；真实部署/发布等另行授权，安全开发继续。
