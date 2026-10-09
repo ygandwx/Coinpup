@@ -740,7 +740,8 @@
               "business_document_lines",
               "ledger_periods",
               "ledger_period_audits",
-              "ledger_period_receipts"
+              "ledger_period_receipts",
+              "business_projects"
             ],
             "title": "Entity Type",
             "type": "string"

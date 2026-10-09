@@ -12,7 +12,7 @@ from coinpup_api.sync.models import ChangeLog
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
-from tests.integration.conftest import period_migration
+from tests.integration.conftest import period_migration, project_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import classified
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -232,8 +232,10 @@ def test_period_migration_refuses_history_and_round_trips_empty(ledger_setup, hi
     def run():
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                project_migration()["downgrade"]()
                 period_migration()["downgrade"]()
                 period_migration()["upgrade"]()
+                project_migration()["upgrade"]()
 
     if history == "empty":
         run()

@@ -3,7 +3,12 @@
 from datetime import date
 from uuid import uuid4
 
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine, BusinessParty
+from coinpup_api.business.models import (
+    BusinessDocument,
+    BusinessDocumentLine,
+    BusinessParty,
+    BusinessProject,
+)
 from coinpup_api.ledger.assets import get_asset
 from coinpup_api.ledger.control_accounts import ControlAccounts
 from coinpup_api.ledger.control_schemas import CONTROL_CLASSES
@@ -44,8 +49,18 @@ def seed_controls(engine, owner):
         notes="Fictional restore 备注",
     )
     profiled_party = None
+    project = uuid4()
     with controls._transaction(owner, write=True) as session:
         accounts = controls.ensure(session, owner, ledger, requirements)
+        session.add(
+            BusinessProject(
+                id=project,
+                ledger_id=ledger,
+                name="Fictional 恢复项目",
+                notes="Fictional project notes",
+            )
+        )
+        session.flush()
         # Two explicit fictional parties/documents distinguish otherwise matching balances.
         for index in range(2):
             party, document, line = uuid4(), uuid4(), uuid4()
@@ -135,6 +150,7 @@ def seed_controls(engine, owner):
     return dict(
         ledger=ledger,
         profile=profile,
+        project=project,
         profiled_party=profiled_party,
         expected=expected,
         operation=operations[0],
@@ -159,6 +175,19 @@ def verify_controls(engine, owner, evidence):
         )
         assert {key: row[key] for key in evidence["profile"]} == evidence["profile"]
         assert row["version"] == 1 and row["ledger_id"] == ledger
+    with engine.connect() as connection:
+        project = (
+            connection.execute(
+                select(BusinessProject.__table__).where(BusinessProject.id == evidence["project"])
+            )
+            .mappings()
+            .one()
+        )
+        assert project["ledger_id"] == ledger and project["version"] == 1
+        assert (
+            project["name"] == "Fictional 恢复项目"
+            and project["notes"] == "Fictional project notes"
+        )
     assert controls.balances(owner, ledger) == evidence["expected"]
     assert LedgerService(engine).list_accounts(owner, ledger) == []
     assert posting.balances(owner, ledger) == []

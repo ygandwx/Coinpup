@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261009_0019",)
+        assert context.get_current_heads() == ("20261009_0020",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261009_0019",)
+        assert context.get_current_heads() == ("20261009_0020",)
 
 
 def confirmation_schema_migration():
@@ -65,6 +65,15 @@ def business_reference_migration():
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261009_0016_business_references.py"
+        )
+    )
+
+
+def project_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261009_0020_projects.py"
         )
     )
 
@@ -96,7 +105,7 @@ def restore_current_change_types(engine):
         )
         connection.exec_driver_sql(
             "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-            f"(entity_type IN ({period_migration()['_ENTITY_TYPES']}))"
+            f"(entity_type IN ({project_migration()['_ENTITY_TYPES']}))"
         )
 
 
@@ -117,6 +126,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | confirmation_schema_migration()["_CHANGE_TRIGGER_SQL"]
             | business_reference_migration()["_CHANGE_TRIGGER_SQL"]
             | period_migration()["_CHANGE_TRIGGER_SQL"]
+            | project_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -156,7 +166,7 @@ def structure_database(request):
                 "operation_file_links, stored_files, "
                 "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations, account_assets, accounts, business_document_lines, "
-                "business_documents, business_parties, ledger_period_receipts, "
+                "business_documents, business_parties, business_projects, ledger_period_receipts, "
                 "ledger_period_audits, ledger_periods RESTRICT"
             )
             connection.execute(delete(AccountAsset))
