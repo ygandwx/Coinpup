@@ -1,11 +1,12 @@
 """Minimal scoped identities for immutable journal dimensions (ADR 0022)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKeyConstraint,
     Integer,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from coinpup_api.models import Base
@@ -82,7 +84,42 @@ class BusinessProject(ReferenceIdentity, Base):
 
 class BusinessDocument(ReferenceIdentity, Base):
     __tablename__ = "business_documents"
-    __table_args__ = identity_constraints(__tablename__)
+    __table_args__ = (
+        *identity_constraints(__tablename__),
+        ForeignKeyConstraint(
+            ["party_id", "ledger_id"],
+            ["business_parties.id", "business_parties.ledger_id"],
+            name="fk_business_documents_party_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["asset_id"],
+            ["assets.asset_id"],
+            name="fk_business_documents_asset",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "(document_kind IS NULL AND state IS NULL AND party_id IS NULL AND asset_id IS NULL "
+            "AND issue_date IS NULL AND due_date IS NULL AND notes IS NULL "
+            "AND issuer_snapshot IS NULL AND party_snapshot IS NULL) OR "
+            "(document_kind IS NOT NULL AND document_kind IN ('invoice', 'bill') "
+            "AND state IS NOT NULL AND state = 'draft' AND party_id IS NOT NULL "
+            "AND asset_id IS NOT NULL AND issue_date IS NOT NULL "
+            "AND issuer_snapshot IS NOT NULL AND jsonb_typeof(issuer_snapshot) = 'object' "
+            "AND party_snapshot IS NOT NULL AND jsonb_typeof(party_snapshot) = 'object')",
+            name="ck_business_documents_profile",
+        ),
+    )
+
+    document_kind: Mapped[str | None] = mapped_column(String(7))
+    state: Mapped[str | None] = mapped_column(String(5))
+    party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    asset_id: Mapped[str | None] = mapped_column(String(200))
+    issue_date: Mapped[date | None] = mapped_column(Date)
+    due_date: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(String(2000))
+    issuer_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    party_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
 
 
 class BusinessDocumentLine(ReferenceIdentity, Base):
