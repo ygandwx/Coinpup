@@ -143,6 +143,8 @@ jobs:
           -e COINPUP_ENVIRONMENT=test -e COINPUP_CREATE_TEST_ADMIN=1
           -e E2E_USERNAME -e E2E_PASSWORD
           api python scripts/create_test_admin.py
+      - name: Verify recurring maintenance CLI
+        run: docker compose exec -T api python -m coinpup_api.jobs recurring-invoices --per-rule 1
       - name: Verify real browser authentication
         run: npm --prefix apps/web run test:e2e
       - name: Verify database and private-file bundles in isolated recovery targets
