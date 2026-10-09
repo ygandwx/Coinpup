@@ -944,6 +944,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_api_v1_ledgers__ledger_id__recurring_invoice_rules_get"];
+        put?: never;
+        /** Create Rule */
+        post: operations["create_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rule */
+        get: operations["get_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Rule */
+        patch: operations["update_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules/{rule_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Archive Rule */
+        patch: operations["archive_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__archive_patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules/{rule_id}/instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Instances */
+        get: operations["list_instances_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__instances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules/{rule_id}/instances/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Instance */
+        get: operations["get_instance_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__instances__index__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/transfers": {
         parameters: {
             query?: never;
@@ -3062,6 +3149,158 @@ export interface components {
             name?: string | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** RecurringInstanceResponse */
+        RecurringInstanceResponse: {
+            /** Archived */
+            archived: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Occurrence Index */
+            occurrence_index: number;
+            original_input: components["schemas"]["BusinessDraftCreate"];
+            /**
+             * Rule Id
+             * Format: uuid
+             */
+            rule_id: string;
+            /** Rule Version */
+            rule_version: number;
+            /**
+             * Scheduled Date
+             * Format: date
+             */
+            scheduled_date: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** RecurringRuleArchive */
+        RecurringRuleArchive: {
+            /** Archived */
+            archived: boolean;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** RecurringRuleCreate */
+        RecurringRuleCreate: {
+            /**
+             * Anchor Date
+             * Format: date
+             */
+            anchor_date: string;
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "day" | "week" | "month" | "year";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Interval Count
+             * @default 1
+             */
+            interval_count?: number;
+            /** Name */
+            name: string;
+            /**
+             * Source Document Id
+             * Format: uuid
+             */
+            source_document_id: string;
+            /** Source Version */
+            source_version: number;
+            /** Timezone Name */
+            timezone_name: string;
+        };
+        /** RecurringRuleResponse */
+        RecurringRuleResponse: {
+            /**
+             * Anchor Date
+             * Format: date
+             */
+            anchor_date: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "day" | "week" | "month" | "year";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Interval Count
+             * @default 1
+             */
+            interval_count?: number;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Name */
+            name: string;
+            /** Next Index */
+            next_index: number;
+            /** Next Scheduled Date */
+            readonly next_scheduled_date: string | null;
+            /**
+             * Source Document Id
+             * Format: uuid
+             */
+            source_document_id: string;
+            /** Source Version */
+            source_version: number;
+            template_input: components["schemas"]["BusinessDraftCreate"];
+            /** Timezone Name */
+            timezone_name: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** RecurringRuleUpdate */
+        RecurringRuleUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Name */
+            name: string;
+            /** Source Document Id */
+            source_document_id?: string | null;
+            /** Source Version */
+            source_version?: number | null;
         };
         /** ReviewField */
         ReviewField: {
@@ -5668,6 +5907,254 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeriodChangeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rules_api_v1_ledgers__ledger_id__recurring_invoice_rules_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_rule_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__archive_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringRuleArchive"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_instances_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__instances_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringInstanceResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_instance_api_v1_ledgers__ledger_id__recurring_invoice_rules__rule_id__instances__index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                rule_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringInstanceResponse"];
                 };
             };
             /** @description Validation Error */

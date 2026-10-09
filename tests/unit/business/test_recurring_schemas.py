@@ -42,6 +42,7 @@ def values():
         {"name": " \t"},
         {"ledger_id": uuid4()},
         {"next_index": 1},
+        {"next_scheduled_date": "2026-01-31"},
         {"template_input": {}},
         {"archived": True},
     ],
@@ -61,6 +62,7 @@ def test_create_rejects_invalid_and_server_owned_input(changes):
         {"interval_count": 3},
         {"timezone_name": "UTC"},
         {"next_index": 1},
+        {"next_scheduled_date": "2026-01-31"},
         {"archived": True},
     ],
 )
@@ -80,3 +82,18 @@ def test_rename_refresh_and_archive_have_distinct_intents():
     assert RecurringRuleArchive(expected_version=1, archived=True).archived is True
     with pytest.raises(ValidationError):
         RecurringRuleArchive(expected_version=1, archived="true")
+
+
+def test_readonly_next_date_handles_clamping_and_exhaustion_without_advancing_progress():
+    from datetime import date
+
+    from coinpup_api.business.recurring_schemas import RecurringRuleResponse
+
+    rule = RecurringRuleResponse.model_construct(
+        anchor_date=date(2026, 1, 31), frequency="month", interval_count=1, next_index=1
+    )
+    assert rule.next_scheduled_date == date(2026, 2, 28) and rule.next_index == 1
+    exhausted = rule.model_copy(update={"anchor_date": date(9999, 12, 31)})
+    assert exhausted.next_scheduled_date is None and exhausted.next_index == 1
+    schema = RecurringRuleResponse.model_json_schema(mode="serialization")
+    assert schema["properties"]["next_scheduled_date"]["readOnly"] is True
