@@ -115,7 +115,9 @@ typing-inspection==0.4.4
     #   pydantic
     #   pydantic-settings
 tzdata==2026.5
-    # via psycopg
+    # via
+    #   coinpup-api (pyproject.toml)
+    #   psycopg
 uvicorn==0.54.0
     # via coinpup-api (pyproject.toml)
 wheel==0.48.0
