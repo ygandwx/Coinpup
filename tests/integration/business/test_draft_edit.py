@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import pytest
 from coinpup_api.business.draft_schemas import (
-    DraftArchive,
+    BusinessDraftArchive,
+    BusinessDraftLineInput,
+    BusinessDraftResponse,
+    BusinessDraftUpdate,
     DraftHeaderInput,
-    DraftLineInput,
-    DraftResponse,
-    DraftUpdate,
 )
 from coinpup_api.business.models import BusinessDocumentLine
 from coinpup_api.business.schemas import PartyCreate, PartyUpdate, ProjectUpdate
@@ -32,9 +32,10 @@ pytestmark = pytest.mark.integration
 def command(row, **changes):
     body = {field: getattr(row, field) for field in DraftHeaderInput.model_fields}
     body["lines"] = [
-        {field: getattr(line, field) for field in DraftLineInput.model_fields} for line in row.lines
+        {field: getattr(line, field) for field in BusinessDraftLineInput.model_fields}
+        for line in row.lines
     ]
-    return DraftUpdate(**(body | dict(expected_version=row.version) | changes))
+    return BusinessDraftUpdate(**(body | dict(expected_version=row.version) | changes))
 
 
 def save(s, row, **changes):
@@ -166,7 +167,7 @@ def test_failure_after_full_flush_rolls_back_parent_lines_and_notifications(draf
     def fail(*args, **kwargs):
         raise RuntimeError("Fictional interrupted response")
 
-    monkeypatch.setattr(DraftResponse, "__init__", fail)
+    monkeypatch.setattr(BusinessDraftResponse, "__init__", fail)
     with pytest.raises(RuntimeError, match="Fictional interrupted response"):
         save(s, original, lines=[replacement], notes="Fictional change")
     assert snapshot(s) == before
@@ -198,7 +199,7 @@ def test_foreign_document_lines_and_owned_read_boundaries(drafts):
                 owner, ledger, original.id, command(original)
             ),
             lambda owner=owner, ledger=ledger: s["service"].set_draft_archived(
-                owner, ledger, original.id, DraftArchive(expected_version=1, archived=True)
+                owner, ledger, original.id, BusinessDraftArchive(expected_version=1, archived=True)
             ),
         ):
             with pytest.raises(LedgerError) as error:
@@ -215,7 +216,10 @@ def test_archive_restore_preserves_lines_even_after_references_become_unavailabl
     )
     s["structure"].update_asset(s["owner"], "USD", AssetUpdate(expected_version=1, enabled=False))
     archived = s["service"].set_draft_archived(
-        s["owner"], s["ledger"], original.id, DraftArchive(expected_version=1, archived=True)
+        s["owner"],
+        s["ledger"],
+        original.id,
+        BusinessDraftArchive(expected_version=1, archived=True),
     )
     assert archived.archived and archived.version == 2 and archived.lines == original.lines
     assert s["service"].get_draft(s["owner"], s["ledger"], original.id) == archived
@@ -224,13 +228,19 @@ def test_archive_restore_preserves_lines_even_after_references_become_unavailabl
         save(s, archived)
     assert error.value.code == "draft_archived" and snapshot(s) == before
     restored = s["service"].set_draft_archived(
-        s["owner"], s["ledger"], original.id, DraftArchive(expected_version=2, archived=False)
+        s["owner"],
+        s["ledger"],
+        original.id,
+        BusinessDraftArchive(expected_version=2, archived=False),
     )
     assert not restored.archived and restored.version == 3 and restored.lines == original.lines
     before = snapshot(s)
     with pytest.raises(LedgerError) as error:
         s["service"].set_draft_archived(
-            s["owner"], s["ledger"], original.id, DraftArchive(expected_version=2, archived=True)
+            s["owner"],
+            s["ledger"],
+            original.id,
+            BusinessDraftArchive(expected_version=2, archived=True),
         )
     assert error.value.code == "version_conflict" and snapshot(s) == before
 

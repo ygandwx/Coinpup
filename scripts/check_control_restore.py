@@ -3,7 +3,11 @@
 from datetime import date
 from uuid import uuid4
 
-from coinpup_api.business.draft_schemas import DraftArchive, DraftCreate, DraftUpdate
+from coinpup_api.business.draft_schemas import (
+    BusinessDraftArchive,
+    BusinessDraftCreate,
+    BusinessDraftUpdate,
+)
 from coinpup_api.business.drafts import DraftService
 from coinpup_api.business.models import (
     BusinessDocument,
@@ -143,7 +147,7 @@ def seed_controls(engine, owner):
                 )
                 operations.append(operation)
     draft, draft_line = uuid4(), uuid4()
-    draft_input = DraftCreate(
+    draft_input = BusinessDraftCreate(
         id=draft,
         document_kind="invoice",
         party_id=profiled_party,
@@ -169,11 +173,13 @@ def seed_controls(engine, owner):
     draft_response = drafts.create_draft(owner, ledger, draft_input)
     edit_body = draft_input.model_dump(exclude={"id"})
     edit_body["lines"][0]["quantity"] = "4.00"
-    draft_edit = DraftUpdate(expected_version=1, **edit_body)
+    draft_edit = BusinessDraftUpdate(expected_version=1, **edit_body)
     draft_response = drafts.update_draft(owner, ledger, draft, draft_edit)
-    drafts.set_draft_archived(owner, ledger, draft, DraftArchive(expected_version=2, archived=True))
+    drafts.set_draft_archived(
+        owner, ledger, draft, BusinessDraftArchive(expected_version=2, archived=True)
+    )
     draft_response = drafts.set_draft_archived(
-        owner, ledger, draft, DraftArchive(expected_version=3, archived=False)
+        owner, ledger, draft, BusinessDraftArchive(expected_version=3, archived=False)
     )
     assert draft_response.version == 4 and draft_response.lines[0].version == 2
 

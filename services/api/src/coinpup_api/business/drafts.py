@@ -5,7 +5,11 @@ from decimal import Decimal
 
 from sqlalchemy import and_, func, or_, select
 
-from coinpup_api.business.draft_schemas import DraftLineResponse, DraftResponse, DraftSummary
+from coinpup_api.business.draft_schemas import (
+    BusinessDraftLineResponse,
+    BusinessDraftResponse,
+    BusinessDraftSummary,
+)
 from coinpup_api.business.models import (
     BusinessDocument,
     BusinessDocumentLine,
@@ -74,10 +78,14 @@ def _response(document, lines, asset):
         ):
             raise LedgerError("draft_integrity", 409, "Stored draft pricing is inconsistent.")
         results.append(
-            DraftLineResponse(**_fields(line, DraftLineResponse, **_amounts(calculated)))
+            BusinessDraftLineResponse(
+                **_fields(line, BusinessDraftLineResponse, **_amounts(calculated))
+            )
         )
-    return DraftResponse(
-        **_fields(document, DraftResponse, lines=results, line_count=len(lines), **_amounts(price))
+    return BusinessDraftResponse(
+        **_fields(
+            document, BusinessDraftResponse, lines=results, line_count=len(lines), **_amounts(price)
+        )
     )
 
 
@@ -361,6 +369,8 @@ class DraftService(LedgerService):
                     for name, value in zip(AMOUNTS, values, strict=True)
                 }
                 results.append(
-                    DraftSummary(**_fields(document, DraftSummary, line_count=count, **amounts))
+                    BusinessDraftSummary(
+                        **_fields(document, BusinessDraftSummary, line_count=count, **amounts)
+                    )
                 )
             return results

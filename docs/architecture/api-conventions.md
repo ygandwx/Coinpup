@@ -29,6 +29,13 @@
 - 更正保持业务 ID 和种类，完整冲销旧本金与全部费用再写入替代分录；取消只冲销，终止后不能重新激活。命令需要当前版本、非空原因和完整替代内容，替代内容不带业务 ID；期初账户/资产固定。来源：[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 原始分录、封存行和回执不可修改或删除；更正/取消保持连续版本链。旧账户、分类或资产失效后仍可精确冲销，替代内容的新引用须有效；历史按版本保留原因、执行人及精确有符号分录。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
 
+## 经营草稿
+
+- 经营草稿使用 `/api/v1/ledgers/{ledger_id}/business-documents`：创建/列表、按ID读取、PUT完整保存和PATCH归档状态；具体字段由OpenAPI生成。均使用现有会话与CSRF边界，不产生分录或财务回执。
+- 创建使用稳定整单/行UUID；完整保存要求父expected_version及显式lines，移除用归档，保留行身份/序号；资料快照仅由服务器生成，更换引用或显式刷新才更新。未知提交保留原意图，不自动换ID/版本。来源：[ADR0029](decisions/0029-draft-create-read.md)、[ADR0030](decisions/0030-draft-edit.md)。
+- 草稿quantity、unit_price、discount_amount、tax_rate_percent是原始输入回显，保留其合法十进制拼写（含小数尾零、金额负零）；它们不适用上文金额输出规范化规则。派生净额、税额和合计仍按资产精度固定小数位，服务器按方案A重算。
+- 列表默认包含归档，按创建时间/ID升序分页，详情包含有效行；归档草稿可读，显式恢复后才可编辑。确认、结算及其永久回执由后续任务实现。
+
 ## 幂等与回执
 
 - 财务写命令必须带 `Idempotency-Key`：1–128 个不含空格的可见 ASCII 字符，作用域为账本。同键同请求返回永久保存的原回执；同键不同请求返回 409，失败事务不保存成功回执。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。

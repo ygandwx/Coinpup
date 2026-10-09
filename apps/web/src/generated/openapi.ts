@@ -292,6 +292,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Business Documents */
+        get: operations["list_business_documents_api_v1_ledgers__ledger_id__business_documents_get"];
+        put?: never;
+        /** Create Business Document */
+        post: operations["create_business_document_api_v1_ledgers__ledger_id__business_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Business Document */
+        get: operations["get_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__get"];
+        /** Update Business Document */
+        put: operations["update_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Archive Business Document */
+        patch: operations["archive_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__archive_patch"];
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-parties": {
         parameters: {
             query?: never;
@@ -1112,6 +1165,336 @@ export interface components {
             asset_id: string;
             /** Link Enabled */
             link_enabled: boolean;
+        };
+        /** BusinessDraftArchive */
+        BusinessDraftArchive: {
+            /** Archived */
+            archived: boolean;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** BusinessDraftCreate */
+        BusinessDraftCreate: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Lines */
+            lines?: components["schemas"]["BusinessDraftLineInput"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+        };
+        /** BusinessDraftLineInput */
+        BusinessDraftLineInput: {
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Discount Amount
+             * @default 0
+             */
+            discount_amount?: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Project Id */
+            project_id?: string | null;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /**
+             * Tax Rate Percent
+             * @default 0
+             */
+            tax_rate_percent?: string;
+            /** Unit Price */
+            unit_price: string;
+        };
+        /** BusinessDraftLineResponse */
+        BusinessDraftLineResponse: {
+            /** Archived */
+            archived: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /**
+             * Category Kind
+             * @enum {string}
+             */
+            category_kind: "income" | "expense";
+            /** Category Snapshot */
+            category_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /**
+             * Discount Amount
+             * @default 0
+             */
+            discount_amount?: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line No */
+            line_no: number;
+            /** Net Amount */
+            net_amount: string;
+            /** Project Id */
+            project_id?: string | null;
+            /** Project Snapshot */
+            project_snapshot: {
+                [key: string]: unknown;
+            } | null;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /**
+             * Tax Rate Percent
+             * @default 0
+             */
+            tax_rate_percent?: string;
+            /** Total Amount */
+            total_amount: string;
+            /** Unit Price */
+            unit_price: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** BusinessDraftResponse */
+        BusinessDraftResponse: {
+            /** Archived */
+            archived: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Issuer Snapshot */
+            issuer_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Lines */
+            lines: components["schemas"]["BusinessDraftLineResponse"][];
+            /** Net Amount */
+            net_amount: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Party Snapshot */
+            party_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * State
+             * @constant
+             */
+            state: "draft";
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** BusinessDraftSummary */
+        BusinessDraftSummary: {
+            /** Archived */
+            archived: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Issuer Snapshot */
+            issuer_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Net Amount */
+            net_amount: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Party Snapshot */
+            party_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * State
+             * @constant
+             */
+            state: "draft";
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** BusinessDraftUpdate */
+        BusinessDraftUpdate: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Lines */
+            lines: components["schemas"]["BusinessDraftLineInput"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /**
+             * Refresh Snapshots
+             * @default false
+             */
+            refresh_snapshots?: boolean;
         };
         /** CancellationCreate */
         CancellationCreate: {
@@ -3590,6 +3973,186 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BalanceResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_business_documents_api_v1_ledgers__ledger_id__business_documents_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDraftSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_business_document_api_v1_ledgers__ledger_id__business_documents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessDraftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessDraftUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__archive_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessDraftArchive"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDraftResponse"];
                 };
             };
             /** @description Validation Error */

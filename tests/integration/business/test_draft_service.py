@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 import pytest
-from coinpup_api.business.draft_schemas import DraftCreate, DraftResponse
+from coinpup_api.business.draft_schemas import BusinessDraftCreate, BusinessDraftResponse
 from coinpup_api.business.drafts import DraftService
 from coinpup_api.business.models import BusinessDocument
 from coinpup_api.business.schemas import PartyCreate, PartyUpdate, ProjectCreate, ProjectUpdate
@@ -51,7 +51,7 @@ def drafts(ledger_setup):
     )
 
     def payload(**changes):
-        return DraftCreate(
+        return BusinessDraftCreate(
             **(
                 dict(
                     id=uuid4(),
@@ -93,7 +93,7 @@ def test_create_exact_snapshots_notifications_and_no_financial_effect(drafts, ki
     body = s["payload"](document_kind=kind).model_dump()
     if kind == "bill":
         body["lines"][0]["category_id"] = s["expenses"][0].id
-    payload = DraftCreate(**body)
+    payload = BusinessDraftCreate(**body)
     result = s["service"].create_draft(s["owner"], s["ledger"], payload)
     assert (result.net_amount, result.tax_amount, result.total_amount) == ("50.00", "4.13", "54.13")
     assert result.lines[0].quantity == "3.00" and result.lines[0].tax_rate_percent == "8.2500"
@@ -179,7 +179,7 @@ def test_foreign_references_and_missing_owner_are_rejected_atomically(drafts, fi
     before = snapshot(s)
     for owner in (s["owner"], uuid4()):
         with pytest.raises(LedgerError) as error:
-            s["service"].create_draft(owner, s["ledger"], DraftCreate(**body))
+            s["service"].create_draft(owner, s["ledger"], BusinessDraftCreate(**body))
         assert error.value.code == "not_found"
     assert snapshot(s) == before
     with pytest.raises(LedgerError):
@@ -200,7 +200,7 @@ def test_invalid_pricing_rolls_back_all_tables(drafts, change, code):
     body["lines"][0].update(change)
     before = snapshot(s)
     with pytest.raises(LedgerError) as error:
-        s["service"].create_draft(s["owner"], s["ledger"], DraftCreate(**body))
+        s["service"].create_draft(s["owner"], s["ledger"], BusinessDraftCreate(**body))
     assert error.value.code == code and snapshot(s) == before
 
 
@@ -211,7 +211,7 @@ def test_post_flush_failure_rolls_back_notifications_and_entire_draft(drafts, mo
     def fail(*args, **kwargs):
         raise RuntimeError("Fictional serialization failure")
 
-    monkeypatch.setattr(DraftResponse, "__init__", fail)
+    monkeypatch.setattr(BusinessDraftResponse, "__init__", fail)
     with pytest.raises(RuntimeError, match="Fictional serialization failure"):
         s["service"].create_draft(s["owner"], s["ledger"], s["payload"]())
     assert snapshot(s) == before
@@ -315,7 +315,7 @@ def test_unavailable_or_wrong_direction_references_reject_new_drafts(drafts, cas
         body["lines"][0]["category_id"] = s["expenses"][0].id
     before = snapshot(s)
     with pytest.raises(LedgerError) as error:
-        s["service"].create_draft(s["owner"], s["ledger"], DraftCreate(**body))
+        s["service"].create_draft(s["owner"], s["ledger"], BusinessDraftCreate(**body))
     assert error.value.code == code and snapshot(s) == before
 
 
@@ -326,5 +326,5 @@ def test_reused_line_identity_rolls_back_new_parent(drafts):
     payload["lines"][0]["id"] = original.lines[0].id
     before = snapshot(s)
     with pytest.raises(LedgerError) as error:
-        s["service"].create_draft(s["owner"], s["ledger"], DraftCreate(**payload))
+        s["service"].create_draft(s["owner"], s["ledger"], BusinessDraftCreate(**payload))
     assert error.value.code == "duplicate_record" and snapshot(s) == before

@@ -4,10 +4,10 @@ from uuid import uuid4
 
 import pytest
 from coinpup_api.business.draft_schemas import (
-    DraftArchive,
-    DraftCreate,
-    DraftLineInput,
-    DraftUpdate,
+    BusinessDraftArchive,
+    BusinessDraftCreate,
+    BusinessDraftLineInput,
+    BusinessDraftUpdate,
 )
 from pydantic import ValidationError
 
@@ -50,11 +50,13 @@ def line_values():
 )
 def test_rejects_unsafe_or_server_owned_line_values(changes):
     with pytest.raises(ValidationError):
-        DraftLineInput(**(line_values() | changes))
+        BusinessDraftLineInput(**(line_values() | changes))
 
 
 def test_exact_sources_and_bounded_distinct_lines():
-    line = DraftLineInput(**(line_values() | dict(unit_price="-0.00", tax_rate_percent="123.4500")))
+    line = BusinessDraftLineInput(
+        **(line_values() | dict(unit_price="-0.00", tax_rate_percent="123.4500"))
+    )
     assert line.quantity == "3.00" and line.unit_price == "-0.00"
     assert line.tax_rate_percent == "123.4500"
     body = dict(
@@ -64,14 +66,14 @@ def test_exact_sources_and_bounded_distinct_lines():
         asset_id="USD",
         issue_date="2026-10-09",
     )
-    assert DraftCreate(**body).lines == []
-    assert len(DraftCreate(**body, lines=[line]).lines) == 1
-    for lines in ([line, line], [DraftLineInput(**line_values()) for _ in range(201)]):
+    assert BusinessDraftCreate(**body).lines == []
+    assert len(BusinessDraftCreate(**body, lines=[line]).lines) == 1
+    for lines in ([line, line], [BusinessDraftLineInput(**line_values()) for _ in range(201)]):
         with pytest.raises(ValidationError):
-            DraftCreate(**body, lines=lines)
+            BusinessDraftCreate(**body, lines=lines)
     for changes in (dict(issuer_snapshot={}), dict(state="draft"), dict(total_amount="0.00")):
         with pytest.raises(ValidationError):
-            DraftCreate(**(body | changes))
+            BusinessDraftCreate(**(body | changes))
 
 
 @pytest.mark.parametrize(
@@ -92,15 +94,15 @@ def test_update_requires_explicit_lines_and_strict_version_and_refresh(changes):
         expected_version=1,
     )
     with pytest.raises(ValidationError):
-        DraftUpdate(**body)
-    assert DraftUpdate(**body, lines=[]).lines == []
+        BusinessDraftUpdate(**body)
+    assert BusinessDraftUpdate(**body, lines=[]).lines == []
     with pytest.raises(ValidationError):
-        DraftUpdate(**(body | dict(lines=[]) | changes))
-    assert DraftArchive(expected_version=1, archived=True).archived
+        BusinessDraftUpdate(**(body | dict(lines=[]) | changes))
+    assert BusinessDraftArchive(expected_version=1, archived=True).archived
     for values in (
         dict(expected_version=1, archived="true"),
         dict(expected_version=1),
         dict(expected_version=0, archived=False),
     ):
         with pytest.raises(ValidationError):
-            DraftArchive(**values)
+            BusinessDraftArchive(**values)

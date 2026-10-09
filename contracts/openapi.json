@@ -420,6 +420,691 @@
         "title": "BalanceResponse",
         "type": "object"
       },
+      "BusinessDraftArchive": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version",
+          "archived"
+        ],
+        "title": "BusinessDraftArchive",
+        "type": "object"
+      },
+      "BusinessDraftCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDraftLineInput"
+            },
+            "maxItems": 200,
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "id"
+        ],
+        "title": "BusinessDraftCreate",
+        "type": "object"
+      },
+      "BusinessDraftLineInput": {
+        "additionalProperties": false,
+        "properties": {
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "discount_amount": {
+            "default": "0",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Discount Amount",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "quantity": {
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Quantity",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "tax_rate_percent": {
+            "default": "0",
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Tax Rate Percent",
+            "type": "string"
+          },
+          "unit_price": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Unit Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "quantity",
+          "unit_price",
+          "category_id",
+          "recognition_date"
+        ],
+        "title": "BusinessDraftLineInput",
+        "type": "object"
+      },
+      "BusinessDraftLineResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "category_kind": {
+            "enum": [
+              "income",
+              "expense"
+            ],
+            "title": "Category Kind",
+            "type": "string"
+          },
+          "category_snapshot": {
+            "additionalProperties": true,
+            "title": "Category Snapshot",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "discount_amount": {
+            "default": "0",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Discount Amount",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_no": {
+            "title": "Line No",
+            "type": "integer"
+          },
+          "net_amount": {
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "project_snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Snapshot"
+          },
+          "quantity": {
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Quantity",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "tax_amount": {
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "tax_rate_percent": {
+            "default": "0",
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Tax Rate Percent",
+            "type": "string"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "unit_price": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Unit Price",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "updated_at",
+          "id",
+          "description",
+          "quantity",
+          "unit_price",
+          "category_id",
+          "recognition_date",
+          "document_id",
+          "ledger_id",
+          "line_no",
+          "asset_id",
+          "category_kind",
+          "archived",
+          "category_snapshot",
+          "project_snapshot",
+          "net_amount",
+          "tax_amount",
+          "total_amount"
+        ],
+        "title": "BusinessDraftLineResponse",
+        "type": "object"
+      },
+      "BusinessDraftResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "issuer_snapshot": {
+            "additionalProperties": true,
+            "title": "Issuer Snapshot",
+            "type": "object"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDraftLineResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "net_amount": {
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "party_snapshot": {
+            "additionalProperties": true,
+            "title": "Party Snapshot",
+            "type": "object"
+          },
+          "state": {
+            "const": "draft",
+            "title": "State",
+            "type": "string"
+          },
+          "tax_amount": {
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "updated_at",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "id",
+          "ledger_id",
+          "state",
+          "archived",
+          "issuer_snapshot",
+          "party_snapshot",
+          "line_count",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "lines"
+        ],
+        "title": "BusinessDraftResponse",
+        "type": "object"
+      },
+      "BusinessDraftSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "issuer_snapshot": {
+            "additionalProperties": true,
+            "title": "Issuer Snapshot",
+            "type": "object"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "net_amount": {
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "party_snapshot": {
+            "additionalProperties": true,
+            "title": "Party Snapshot",
+            "type": "object"
+          },
+          "state": {
+            "const": "draft",
+            "title": "State",
+            "type": "string"
+          },
+          "tax_amount": {
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "updated_at",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "id",
+          "ledger_id",
+          "state",
+          "archived",
+          "issuer_snapshot",
+          "party_snapshot",
+          "line_count",
+          "net_amount",
+          "tax_amount",
+          "total_amount"
+        ],
+        "title": "BusinessDraftSummary",
+        "type": "object"
+      },
+      "BusinessDraftUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDraftLineInput"
+            },
+            "maxItems": 200,
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "refresh_snapshots": {
+            "default": false,
+            "title": "Refresh Snapshots",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "lines",
+          "expected_version"
+        ],
+        "title": "BusinessDraftUpdate",
+        "type": "object"
+      },
       "CancellationCreate": {
         "additionalProperties": false,
         "properties": {
@@ -6005,6 +6690,363 @@
         "summary": "Balances",
         "tags": [
           "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents": {
+      "get": {
+        "operationId": "list_business_documents_api_v1_ledgers__ledger_id__business_documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessDraftSummary"
+                  },
+                  "title": "Response List Business Documents Api V1 Ledgers  Ledger Id  Business Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Business Documents",
+        "tags": [
+          "business drafts"
+        ]
+      },
+      "post": {
+        "operationId": "create_business_document_api_v1_ledgers__ledger_id__business_documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessDraftCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Business Document",
+        "tags": [
+          "business drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}": {
+      "get": {
+        "operationId": "get_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Business Document",
+        "tags": [
+          "business drafts"
+        ]
+      },
+      "put": {
+        "operationId": "update_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessDraftUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Business Document",
+        "tags": [
+          "business drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/archive": {
+      "patch": {
+        "operationId": "archive_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__archive_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessDraftArchive"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Business Document",
+        "tags": [
+          "business drafts"
         ]
       }
     },
