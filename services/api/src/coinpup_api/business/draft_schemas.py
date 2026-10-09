@@ -3,12 +3,12 @@
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import Field, StrictStr, field_validator, model_validator
+from pydantic import Field, StrictBool, StrictStr, field_validator, model_validator
 
 from coinpup_api.business.pricing import _ratio
 from coinpup_api.business.schemas import BusinessCommand, Notes
 from coinpup_api.ledger.posting_schemas import CalendarDateFilter
-from coinpup_api.ledger.schemas import AssetId, CategoryKind, RecordResponse
+from coinpup_api.ledger.schemas import AssetId, CategoryKind, RecordResponse, Version
 
 RatioText = Annotated[StrictStr, Field(min_length=1, max_length=39)]
 PriceText = Annotated[StrictStr, Field(min_length=1, max_length=40)]
@@ -71,6 +71,17 @@ class DraftInput(DraftHeaderInput):
 
 class DraftCreate(DraftInput):
     id: UUID
+
+
+class DraftUpdate(DraftInput):
+    expected_version: Version
+    lines: list[DraftLineInput] = Field(max_length=200)
+    refresh_snapshots: StrictBool = False
+
+
+class DraftArchive(BusinessCommand):
+    expected_version: Version
+    archived: StrictBool
 
 
 class DraftLineResponse(DraftLineInput, RecordResponse):

@@ -3,7 +3,7 @@
 from datetime import date
 from uuid import uuid4
 
-from coinpup_api.business.draft_schemas import DraftCreate
+from coinpup_api.business.draft_schemas import DraftArchive, DraftCreate, DraftUpdate
 from coinpup_api.business.drafts import DraftService
 from coinpup_api.business.models import (
     BusinessDocument,
@@ -165,7 +165,18 @@ def seed_controls(engine, owner):
             )
         ],
     )
-    draft_response = DraftService(engine).create_draft(owner, ledger, draft_input)
+    drafts = DraftService(engine)
+    draft_response = drafts.create_draft(owner, ledger, draft_input)
+    edit_body = draft_input.model_dump(exclude={"id"})
+    edit_body["lines"][0]["quantity"] = "4.00"
+    draft_edit = DraftUpdate(expected_version=1, **edit_body)
+    draft_response = drafts.update_draft(owner, ledger, draft, draft_edit)
+    drafts.set_draft_archived(owner, ledger, draft, DraftArchive(expected_version=2, archived=True))
+    draft_response = drafts.set_draft_archived(
+        owner, ledger, draft, DraftArchive(expected_version=3, archived=False)
+    )
+    assert draft_response.version == 4 and draft_response.lines[0].version == 2
+
     draft_values = draft_response.model_dump(
         exclude={
             "id",
@@ -208,6 +219,7 @@ def seed_controls(engine, owner):
         ledger=ledger,
         draft=draft,
         draft_input=draft_input,
+        draft_edit=draft_edit,
         draft_response=draft_response,
         draft_line=draft_line,
         line_values=line_values,
@@ -260,7 +272,7 @@ def verify_controls(engine, owner, evidence):
             .one()
         )
         assert {key: draft[key] for key in evidence["draft_values"]} == evidence["draft_values"]
-        assert draft["ledger_id"] == ledger and draft["version"] == 1
+        assert draft["ledger_id"] == ledger and draft["version"] == 4
     with engine.connect() as connection:
         line = (
             connection.execute(
@@ -273,7 +285,7 @@ def verify_controls(engine, owner, evidence):
         )
         assert {key: line[key] for key in evidence["line_values"]} == evidence["line_values"]
         assert line["document_id"] == evidence["draft"] and line["ledger_id"] == ledger
-        assert line["version"] == 1
+        assert line["version"] == 2
     drafts = DraftService(engine)
     assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
     try:
@@ -282,6 +294,13 @@ def verify_controls(engine, owner, evidence):
         assert error.code == "duplicate_record"
     else:
         raise AssertionError("Restored draft identity was recreated")
+    assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
+    try:
+        drafts.update_draft(owner, ledger, evidence["draft"], evidence["draft_edit"])
+    except LedgerError as error:
+        assert error.code == "version_conflict"
+    else:
+        raise AssertionError("Restored stale draft edit overwrote the saved version")
     assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
     master = BusinessService(engine)
     for create, read, payload in (
