@@ -77,6 +77,7 @@ python -m piptools compile pyproject.toml --extra dev --output-file requirements
 | 任务依赖与验收条件 | [roadmap.md](docs/engineering/roadmap.md) |
 | 优化工作包与状态 | [optimization-plan.md](docs/engineering/optimization-plan.md) |
 | 产品需求与业务验收 | [requirements.md](docs/product/requirements.md)、[acceptance.md](docs/product/acceptance.md) |
+| 提醒规则来源与实施边界 | [reminder-rules.md](docs/product/reminder-rules.md) |
 | 稳定架构与业务不变量 | [overview.md](docs/architecture/overview.md) |
 | 跨接口通用约定 | [api-conventions.md](docs/architecture/api-conventions.md) |
 | OCR 内部处理边界 | [ocr-processing.md](docs/architecture/ocr-processing.md) |
