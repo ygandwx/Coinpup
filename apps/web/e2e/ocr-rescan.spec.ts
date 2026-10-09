@@ -7,6 +7,10 @@ import type { OcrJob, DuplicateConfirmation, ReviewView } from "../src/ocr-api";
 
 async function postRow(page: Page, id: string, account: string, category: string) {
     await page.getByTestId(`ocr-draft-${id}`).click();
+    // The original preview inserts its canvas and navigation above the entry controls.
+    await expect(
+        page.getByTestId(`ocr-review-${id}`).locator('canvas[data-preview-ready="true"]'),
+    ).toBeVisible();
     for (const field of ["Amount", "Currency", "Date"])
         await page.getByLabel(`${field} · Reviewed`, { exact: true }).check();
     await page.getByLabel("Choose entry type", { exact: true }).selectOption("expense");
