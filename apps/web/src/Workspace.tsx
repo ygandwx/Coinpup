@@ -13,6 +13,8 @@ import type { PendingPeriodController } from "./pending-period";
 import type { PendingMasterDataController } from "./pending-business";
 import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
+import { RecurringPanel } from "./RecurringPanel";
+import type { PendingRecurringController } from "./pending-recurring";
 import type { PendingBusinessDraftController } from "./pending-business-drafts";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
 import { FilesPanel } from "./FilesPanel";
@@ -57,6 +59,7 @@ import "./workspace.css";
 
 type View =
     | "drafts"
+    | "recurring"
     | "masters"
     | "periods"
     | "controls"
@@ -79,6 +82,7 @@ const views: View[] = [
     "periods",
     "masters",
     "drafts",
+    "recurring",
     "categories",
     "details",
     "assets",
@@ -311,6 +315,7 @@ export function BusinessWorkspace({
     periods,
     masters,
     drafts,
+    recurring,
     onUnauthorized,
 }: {
     session: Session;
@@ -323,6 +328,7 @@ export function BusinessWorkspace({
     periods: PendingPeriodController;
     masters: PendingMasterDataController;
     drafts: PendingBusinessDraftController;
+    recurring: PendingRecurringController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -339,6 +345,22 @@ export function BusinessWorkspace({
     const draftLocked = !["idle", "rejected", "confirmed", "conflict"].includes(draft.status);
     const draftRecoveryLedger = draftLocked ? draft.plan?.ledgerId : undefined;
     const [draftEditing, setDraftEditing] = useState(false);
+    const recurringState = useSyncExternalStore(recurring.subscribe, recurring.getSnapshot);
+    const recurringLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
+        recurringState.status,
+    );
+    const recurringRecoveryLedger = recurringLocked ? recurringState.plan?.ledgerId : undefined;
+    const [recurringEditing, setRecurringEditing] = useState(false);
+    const [draftTarget, setDraftTarget] = useState<{ entityId: string; id: string } | null>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("draft"),
+            entityId = params.get("entity");
+        return id &&
+            entityId &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+            ? { entityId, id }
+            : null;
+    });
     const master = useSyncExternalStore(masters.subscribe, masters.getSnapshot);
     const masterLocked = !["idle", "rejected", "confirmed", "conflict"].includes(master.status);
     const masterRecoveryLedger = masterLocked ? master.plan?.ledgerId : undefined;
@@ -367,7 +389,9 @@ export function BusinessWorkspace({
         masterLocked ||
         masterEditing ||
         draftLocked ||
-        draftEditing;
+        draftEditing ||
+        recurringLocked ||
+        recurringEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -406,6 +430,7 @@ export function BusinessWorkspace({
         periods: t("结账与重开", "Period closing"),
         masters: t("往来与项目", "Parties and projects"),
         drafts: t("经营草稿", "Business drafts"),
+        recurring: t("周期Invoice", "Recurring invoices"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
         settings: t("设置", "Settings"),
@@ -428,7 +453,8 @@ export function BusinessWorkspace({
             !copyLocked &&
             !periodLocked &&
             !masterLocked &&
-            !draftLocked
+            !draftLocked &&
+            !recurringLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -445,6 +471,7 @@ export function BusinessWorkspace({
         periodLocked,
         masterLocked,
         draftLocked,
+        recurringLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -457,6 +484,14 @@ export function BusinessWorkspace({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen upload ID or entity list changes; retries retain its ledger and operation.
     }, [upload.command?.uploadId, entities]);
 
+    useEffect(() => {
+        if (!recurringRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === recurringRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("recurring");
+        }
+    }, [recurringRecoveryLedger, entities]);
     useEffect(() => {
         if (!draftRecoveryLedger) return;
         const owner = entities.find((item) => item.ledger.id === draftRecoveryLedger);
@@ -569,10 +604,12 @@ export function BusinessWorkspace({
         params.set("view", view === "files" ? "documents" : view);
         if (view === "files" && fileOperation) params.set("operation", fileOperation);
         if (selectedId) params.set("entity", selectedId);
+        if (view === "drafts" && draftTarget?.entityId === selectedId)
+            params.set("draft", draftTarget.id);
         window.history.replaceState(null, "", `/?${params.toString()}`);
         document.title = `${labels[view]} · Coinpup`;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Labels are derived solely from locale; view and locale already trigger the title update.
-    }, [view, selectedId, locale, fileOperation]);
+    }, [view, selectedId, locale, fileOperation, draftTarget]);
 
     function openEditor(next: Editor) {
         editorTrigger.current =
@@ -741,6 +778,7 @@ export function BusinessWorkspace({
                         disabled={loading || busy || !!editor || navigationLocked}
                         onChange={(event) => {
                             setSelectedId(event.target.value);
+                            setDraftTarget(null);
                             setFileOperation(null);
                             setActionError(null);
                             setNotice(false);
@@ -776,6 +814,7 @@ export function BusinessWorkspace({
                             aria-current={view === item ? "page" : undefined}
                             onClick={() => {
                                 setView(item);
+                                setDraftTarget(null);
                                 setFileOperation(null);
                                 setActionError(null);
                                 setNotice(false);
@@ -794,6 +833,7 @@ export function BusinessWorkspace({
                                         periods: "▣",
                                         masters: "◇",
                                         drafts: "▤",
+                                        recurring: "↻",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -976,20 +1016,40 @@ export function BusinessWorkspace({
                                 )}
                             </p>
                         )}
-                        {view !== "transactions" && view !== "files" && view !== "ocr" && (
-                            <label className="archive-toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={showArchived}
-                                    onChange={(event) => setShowArchived(event.target.checked)}
-                                />
-                                {t("显示已归档", "Show archived")}
-                            </label>
-                        )}
+                        {view !== "transactions" &&
+                            view !== "files" &&
+                            view !== "ocr" &&
+                            view !== "recurring" && (
+                                <label className="archive-toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={showArchived}
+                                        onChange={(event) => setShowArchived(event.target.checked)}
+                                    />
+                                    {t("显示已归档", "Show archived")}
+                                </label>
+                            )}
                         {ledgerLoading && (
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "recurring" && (
+                            <RecurringPanel
+                                key={entity.ledger.id}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={recurring}
+                                archived={entity.archived}
+                                dataLoading={loading || ledgerLoading || !current}
+                                onUnauthorized={onUnauthorized}
+                                onEditing={setRecurringEditing}
+                                onOpenDraft={(id) => {
+                                    setDraftTarget({ entityId: entity.id, id });
+                                    setView("drafts");
+                                }}
+                            />
                         )}
                         {view === "drafts" && (
                             <BusinessDraftPanel
@@ -998,6 +1058,10 @@ export function BusinessWorkspace({
                                 locale={locale}
                                 session={session}
                                 controller={drafts}
+                                initialId={
+                                    draftTarget?.entityId === entity.id ? draftTarget.id : undefined
+                                }
+                                onFocusFinished={() => setDraftTarget(null)}
                                 assets={assets}
                                 categories={current?.categories ?? []}
                                 archived={entity.archived}

@@ -50,6 +50,8 @@ export function BusinessDraftPanel({
     dataLoading,
     onEditing,
     onUnauthorized,
+    initialId,
+    onFocusFinished,
 }: {
     ledgerId: string;
     session: Session;
@@ -61,6 +63,8 @@ export function BusinessDraftPanel({
     dataLoading: boolean;
     onEditing: (editing: boolean) => void;
     onUnauthorized: () => void;
+    initialId?: string;
+    onFocusFinished?: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
@@ -95,9 +99,13 @@ export function BusinessDraftPanel({
     const unresolved = !["idle", "confirmed", "conflict", "rejected"].includes(pending.status);
     const confirmed = !!plan && pending.status === "confirmed",
         conflict = !!plan && pending.status === "conflict";
-    const callbacks = useRef({ onEditing, onUnauthorized });
-    callbacks.current = { onEditing, onUnauthorized };
+    const callbacks = useRef({ onEditing, onUnauthorized, onFocusFinished });
+    callbacks.current = { onEditing, onUnauthorized, onFocusFinished };
     const detailAbort = useRef<AbortController | null>(null);
+    const openInitial = useRef<(id: string) => void>(() => {});
+    useEffect(() => {
+        if (initialId) openInitial.current(initialId);
+    }, [initialId]);
     useEffect(() => () => detailAbort.current?.abort(), []);
     useEffect(() => {
         callbacks.current.onEditing(!!editor);
@@ -141,6 +149,7 @@ export function BusinessDraftPanel({
         setEditor(null);
         setLocalError(null);
         setRefresh((value) => value + 1);
+        callbacks.current.onFocusFinished?.();
     }
     function edit(row?: BusinessDraft) {
         if (!controller.dismiss()) return;
@@ -156,8 +165,8 @@ export function BusinessDraftPanel({
         );
         setLocalError(null);
     }
-    async function open(id: string) {
-        if (!controller.dismiss() || reading) return;
+    async function open(id: string, force = false) {
+        if (!controller.dismiss() || (reading && !force)) return;
         detailAbort.current?.abort();
         const abort = new AbortController();
         detailAbort.current = abort;
@@ -173,6 +182,9 @@ export function BusinessDraftPanel({
             if (!abort.signal.aborted) setReading(false);
         }
     }
+    openInitial.current = (id) => {
+        void open(id, true);
+    };
     async function save(fields: DraftFields, refreshSnapshots: boolean) {
         if (dataLoading || !["idle", "rejected"].includes(controller.getSnapshot().status)) return;
         if (!editor || unresolved || confirmed || conflict || archived) return;
