@@ -159,11 +159,14 @@ def test_inconsistent_kernel_facts_fail_closed(kernel, monkeypatch, kind):
         resource._sample()
 
 
-def test_time_namespace_mismatch_and_permission_only_privilege(kernel, monkeypatch):
+@pytest.mark.parametrize("ancestor", ["plain", "pytest-101"])
+def test_time_namespace_mismatch_and_permission_only_privilege(kernel, monkeypatch, ancestor):
     calls = []
+    proc = kernel[0] / ancestor / "proc"
+    monkeypatch.setattr(monitor, "PROC_ROOT", proc)
 
     def readlink(path):
-        if path == kernel[0] / "101/ns/time":
+        if path == proc / "101/ns/time":
             raise PermissionError
         return "time:[123]"
 
@@ -176,11 +179,13 @@ def test_time_namespace_mismatch_and_permission_only_privilege(kernel, monkeypat
     monkeypatch.setattr(monitor.os, "readlink", readlink)
     monkeypatch.setattr(monitor.subprocess, "run", run)
     assert resource._namespace() == "time:[123]"
-    assert calls[0][0] == ["sudo", "-n", "readlink", str(kernel[0] / "101/ns/time")]
+    assert calls[0][0] == ["sudo", "-n", "readlink", str(proc / "101/ns/time")]
     assert calls[0][1]["timeout"] == 10
     assert resource.namespace_reads[0]["privilege"] == "sudo"
     monkeypatch.setattr(
-        monitor.os, "readlink", lambda path: "time:[999]" if "101" in str(path) else "time:[123]"
+        monitor.os,
+        "readlink",
+        lambda path: "time:[999]" if path == proc / "101/ns/time" else "time:[123]",
     )
     with pytest.raises(monitor.ResourceMonitorError, match="resource_time_namespace_mismatch"):
         resource._namespace()
