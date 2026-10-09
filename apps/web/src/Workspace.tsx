@@ -10,6 +10,8 @@ import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
 import { PeriodPanel } from "./PeriodPanel";
 import type { PendingPeriodController } from "./pending-period";
+import type { PendingMasterDataController } from "./pending-business";
+import { MasterPanel } from "./MasterPanel";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
@@ -52,6 +54,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "masters"
     | "periods"
     | "controls"
     | "ocr"
@@ -71,6 +74,7 @@ const views: View[] = [
     "accounts",
     "controls",
     "periods",
+    "masters",
     "categories",
     "details",
     "assets",
@@ -301,6 +305,7 @@ export function BusinessWorkspace({
     confirmations,
     copies,
     periods,
+    masters,
     onUnauthorized,
 }: {
     session: Session;
@@ -311,6 +316,7 @@ export function BusinessWorkspace({
     confirmations: PendingConfirmationController;
     copies: OcrCopyController;
     periods: PendingPeriodController;
+    masters: PendingMasterDataController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -323,6 +329,10 @@ export function BusinessWorkspace({
     const period = useSyncExternalStore(periods.subscribe, periods.getSnapshot);
     const periodLocked = !["idle", "rejected", "confirmed"].includes(period.status);
     const periodRecoveryLedger = periodLocked ? period.plan?.ledgerId : undefined;
+    const master = useSyncExternalStore(masters.subscribe, masters.getSnapshot);
+    const masterLocked = !["idle", "rejected", "confirmed", "conflict"].includes(master.status);
+    const masterRecoveryLedger = masterLocked ? master.plan?.ledgerId : undefined;
+    const [masterEditing, setMasterEditing] = useState(false);
     const [ocrEditing, setOcrEditing] = useState(false);
     const [fileEditing, setFileEditing] = useState(false);
     const [fileOperation, setFileOperation] = useState<string | null>(() => {
@@ -343,7 +353,9 @@ export function BusinessWorkspace({
         ocrEditing ||
         confirmationLocked ||
         copyLocked ||
-        periodLocked;
+        periodLocked ||
+        masterLocked ||
+        masterEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -380,6 +392,7 @@ export function BusinessWorkspace({
         accounts: t("账户", "Accounts"),
         controls: t("往来余额", "Control balances"),
         periods: t("结账与重开", "Period closing"),
+        masters: t("往来与项目", "Parties and projects"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
         settings: t("设置", "Settings"),
@@ -400,7 +413,8 @@ export function BusinessWorkspace({
             !uploadLocked &&
             !confirmationLocked &&
             !copyLocked &&
-            !periodLocked
+            !periodLocked &&
+            !masterLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -409,7 +423,7 @@ export function BusinessWorkspace({
         };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [financialLocked, uploadLocked, confirmationLocked, copyLocked, periodLocked]);
+    }, [financialLocked, uploadLocked, confirmationLocked, copyLocked, periodLocked, masterLocked]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -421,6 +435,14 @@ export function BusinessWorkspace({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- Navigate only when the frozen upload ID or entity list changes; retries retain its ledger and operation.
     }, [upload.command?.uploadId, entities]);
 
+    useEffect(() => {
+        if (!masterRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === masterRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("masters");
+        }
+    }, [masterRecoveryLedger, entities]);
     useEffect(() => {
         if (!periodRecoveryLedger) return;
         const owner = entities.find((item) => item.ledger.id === periodRecoveryLedger);
@@ -740,6 +762,7 @@ export function BusinessWorkspace({
                                         accounts: "▣",
                                         controls: "⇆",
                                         periods: "▣",
+                                        masters: "◇",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -929,6 +952,18 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "masters" && (
+                            <MasterPanel
+                                key={entity.ledger.id}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={masters}
+                                archived={entity.archived}
+                                onUnauthorized={onUnauthorized}
+                                onEditing={setMasterEditing}
+                            />
                         )}
                         {view === "periods" && (
                             <PeriodPanel

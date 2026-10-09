@@ -1144,3 +1144,49 @@
     flex-wrap: wrap;
     gap: 12px;
 }
+
+.master-panel {
+    overflow-wrap: anywhere;
+}
+.master-panel fieldset {
+    border: 1px solid #dce2d3;
+    margin: 16px 0;
+    padding: 16px;
+    min-width: 0;
+}
+.master-panel label {
+    display: block;
+    min-width: 0;
+    margin-bottom: 12px;
+}
+.master-panel input:not([type="checkbox"]),
+.master-panel select,
+.master-panel textarea {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px;
+    font: inherit;
+}
+.master-panel .checkbox-label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.master-records {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+}
+.master-records li {
+    min-width: 0;
+    border: 1px solid #dce2d3;
+    border-radius: 8px;
+    padding: 16px;
+}
+.master-records strong,
+.master-records span {
+    display: block;
+}
