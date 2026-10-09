@@ -1031,6 +1031,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Events */
+        get: operations["list_events_api_v1_ledgers__ledger_id__reminders_get"];
+        put?: never;
+        /** Create Event */
+        post: operations["create_event_api_v1_ledgers__ledger_id__reminders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_api_v1_ledgers__ledger_id__reminders_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event */
+        get: operations["get_event_api_v1_ledgers__ledger_id__reminders__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit Event */
+        patch: operations["edit_event_api_v1_ledgers__ledger_id__reminders__event_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/manual-date": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Manual Date */
+        patch: operations["manual_date_api_v1_ledgers__ledger_id__reminders__event_id__manual_date_patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recalculate Event */
+        post: operations["recalculate_event_api_v1_ledgers__ledger_id__reminders__event_id__recalculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Revisions */
+        get: operations["list_revisions_api_v1_ledgers__ledger_id__reminders__event_id__revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Event */
+        post: operations["transition_event_api_v1_ledgers__ledger_id__reminders__event_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/transfers": {
         parameters: {
             query?: never;
@@ -3302,6 +3423,184 @@ export interface components {
             /** Source Version */
             source_version?: number | null;
         };
+        /** ReminderCreate */
+        ReminderCreate: {
+            /**
+             * Event Kind
+             * @enum {string}
+             */
+            event_kind: "annual" | "tax" | "certificate";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Manual Due Date */
+            manual_due_date?: string | null;
+            /** Manual Reason */
+            manual_reason?: string | null;
+            /** Notes */
+            notes?: string | null;
+            rule?: components["schemas"]["RuleSelection"] | null;
+            /** Title */
+            title: string;
+        };
+        /** ReminderEdit */
+        ReminderEdit: {
+            /** Expected Version */
+            expected_version: number;
+            /** Notes */
+            notes?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** ReminderManual */
+        ReminderManual: {
+            /** Expected Version */
+            expected_version: number;
+            /** Manual Due Date */
+            manual_due_date: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** ReminderRecalculate */
+        ReminderRecalculate: {
+            /** Expected Version */
+            expected_version: number;
+            rule: components["schemas"]["RuleSelection"];
+        };
+        /** ReminderResponse */
+        ReminderResponse: {
+            /** Archived */
+            archived: boolean;
+            /** Calculated Date */
+            calculated_date: string | null;
+            /** Completed */
+            completed: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Effective Date */
+            effective_date: string | null;
+            /** Evaluation */
+            evaluation: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Evaluation Status
+             * @enum {string}
+             */
+            evaluation_status: "calculated" | "missing_parameters" | "needs_verification" | "not_applicable";
+            /**
+             * Event Kind
+             * @enum {string}
+             */
+            event_kind: "annual" | "tax" | "certificate";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Action */
+            last_action: string;
+            /**
+             * Last Actor Id
+             * Format: uuid
+             */
+            last_actor_id: string;
+            /** Last Reason */
+            last_reason: string | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Manual Due Date */
+            manual_due_date: string | null;
+            /** Manual Reason */
+            manual_reason: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** ReminderRevisionResponse */
+        ReminderRevisionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Snapshot */
+            snapshot: {
+                [key: string]: unknown;
+            };
+            /** Version */
+            version: number;
+        };
+        /** ReminderRuleResponse */
+        ReminderRuleResponse: {
+            /**
+             * Checked On
+             * Format: date
+             */
+            checked_on: string;
+            /** Company Type */
+            company_type: string | null;
+            /** Country Code */
+            country_code: string | null;
+            /**
+             * Formula
+             * @enum {string}
+             */
+            formula: "cn_annual" | "wy_annual" | "expiry" | "days_after" | "unverified";
+            /** Id */
+            id: string;
+            /** Offset Days */
+            offset_days: number;
+            /** Region Code */
+            region_code: string | null;
+            /** Required */
+            required: string[];
+            /** Sources */
+            sources: string[];
+            /** Version */
+            version: string;
+        };
+        /** ReminderTransition */
+        ReminderTransition: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "complete" | "reopen" | "archive" | "restore";
+            /** Expected Version */
+            expected_version: number;
+        };
         /** ReviewField */
         ReviewField: {
             /** Candidate Value */
@@ -3335,6 +3634,21 @@ export interface components {
             status: "draft" | "ignored" | "confirmed";
             /** Version */
             version: number;
+        };
+        /** RuleSelection */
+        RuleSelection: {
+            /** Applicability Confirmed */
+            applicability_confirmed?: boolean | null;
+            /** Expiry Date */
+            expiry_date?: string | null;
+            /** Filing Year */
+            filing_year?: number | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Version */
+            rule_version: string;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -6155,6 +6469,329 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecurringInstanceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_events_api_v1_ledgers__ledger_id__reminders_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+                include_completed?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_event_api_v1_ledgers__ledger_id__reminders_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rules_api_v1_ledgers__ledger_id__reminders_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderRuleResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_api_v1_ledgers__ledger_id__reminders__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_event_api_v1_ledgers__ledger_id__reminders__event_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    manual_date_api_v1_ledgers__ledger_id__reminders__event_id__manual_date_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderManual"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recalculate_event_api_v1_ledgers__ledger_id__reminders__event_id__recalculate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderRecalculate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_revisions_api_v1_ledgers__ledger_id__reminders__event_id__revisions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderRevisionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_event_api_v1_ledgers__ledger_id__reminders__event_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderTransition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderResponse"];
                 };
             };
             /** @description Validation Error */

@@ -85,6 +85,13 @@
 - 未知财务结果保留原命令重试，未知上传结果保留原上传 ID 和完整 File 重试；401 仅隐藏内容，同用户登录后手动继续，异用户/明确退出释放。刷新或关闭丢失内存意图，不具有持久离线队列语义。来源：[ADR 0010](decisions/0010-financial-web-and-retry.md)、[ADR 0011](decisions/0011-financial-revision-web.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 
 
+## 提醒事项与修订
+
+- `/api/v1/ledgers/{ledger_id}/reminders`提供事项创建/分页读取；`/rules`返回版本化规则及依据，`/{event_id}`读取/PATCH标题说明，`/revisions`分页读取不可变修订。列表支持include_archived/include_completed，默认均包含；limit 1–200、offset 0–100000。
+- `/{event_id}/recalculate` POST显式规则ID/版本和必要参数，主体注册资料由服务器读取；`/manual-date` PATCH设置日期或显式null清除，均要求理由；`/transition` POST指定complete/reopen/archive/restore。所有修改携带原expected_version，归档事项须先恢复；重复ID/过期版本返回409，不自动换ID或版本。
+- 计算依据、推算日期与人工覆盖分别保存；effective_date优先人工值，其次仅采用calculated状态日期。读取不重算，重算不清除人工覆盖或完成状态。创建可以不选规则以保存手动税务等事项；未知规则版本/事项类型不匹配为422，待核验/缺资料/不适用有独立状态。
+- 全部接口沿用会话归属、Origin/CSRF与no-store，事项/修订不可硬删除，不写财务分录，不等于启用站内或邮件投递。来源：[ADR0035](decisions/0035-reminder-rule-evaluation.md)、[ADR0036](decisions/0036-reminder-event-history.md)。
+
 ## 可选期间关闭
 
 `GET /ledgers/{ledger_id}/period` 默认开放、版本1；只有显式关闭才产生状态。可同时提供 `from_date`/`to_date` 与 `date_basis`（transaction/recognition），返回所选区间 open/closed/partial、生成时间及与区间相交的最近重开审计；未选区间时 `range_status` 为空。此为T08的状态基础，不生成或保存报表快照。
