@@ -20,7 +20,7 @@ export async function login(page: Page): Promise<void> {
 
 export async function api<T>(
     page: Page,
-    method: "GET" | "POST" | "PATCH",
+    method: "GET" | "POST" | "PATCH" | "PUT",
     path: string,
     data?: unknown,
 ): Promise<T> {
