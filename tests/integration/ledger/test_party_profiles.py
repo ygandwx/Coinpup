@@ -144,7 +144,8 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 c.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             else:
                 c.exec_driver_sql(
-                    "TRUNCATE TABLE journal_lines, business_document_lines, "
+                    "TRUNCATE TABLE recurring_invoice_instances, recurring_invoice_rules, "
+                    "journal_lines, business_document_lines, "
                     "business_documents, business_parties RESTRICT"
                 )
     before = snapshot(s)

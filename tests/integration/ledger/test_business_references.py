@@ -21,6 +21,7 @@ from tests.integration.conftest import (
     period_migration,
     project_dimension_migration,
     project_migration,
+    recurring_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -154,7 +155,8 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                     connection.exec_driver_sql("SELECT count(*) FROM journal_lines").scalar() == 0
                 )
                 connection.exec_driver_sql(
-                    "TRUNCATE TABLE journal_lines, business_document_lines, business_documents, "
+                    "TRUNCATE TABLE recurring_invoice_instances, recurring_invoice_rules, "
+                    "journal_lines, business_document_lines, business_documents, "
                     "business_parties RESTRICT"
                 )
         before = snapshot(s)
@@ -174,6 +176,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
                 draft_header_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
@@ -190,6 +193,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 project_dimension_migration()["upgrade"]()
                 draft_header_migration()["upgrade"]()
                 draft_line_migration()["upgrade"]()
+                recurring_migration()["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:
