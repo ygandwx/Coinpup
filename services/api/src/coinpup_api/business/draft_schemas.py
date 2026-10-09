@@ -15,7 +15,7 @@ PriceText = Annotated[StrictStr, Field(min_length=1, max_length=40)]
 Description = Annotated[StrictStr, Field(min_length=1, max_length=2000)]
 
 
-class DraftLineInput(BusinessCommand):
+class BusinessDraftLineInput(BusinessCommand):
     id: UUID
     description: Description
     quantity: RatioText
@@ -59,7 +59,7 @@ class DraftHeaderInput(BusinessCommand):
 
 
 class DraftInput(DraftHeaderInput):
-    lines: list[DraftLineInput] = Field(default_factory=list, max_length=200)
+    lines: list[BusinessDraftLineInput] = Field(default_factory=list, max_length=200)
 
     @model_validator(mode="after")
     def distinct_lines(self):
@@ -69,22 +69,22 @@ class DraftInput(DraftHeaderInput):
         return self
 
 
-class DraftCreate(DraftInput):
+class BusinessDraftCreate(DraftInput):
     id: UUID
 
 
-class DraftUpdate(DraftInput):
+class BusinessDraftUpdate(DraftInput):
     expected_version: Version
-    lines: list[DraftLineInput] = Field(max_length=200)
+    lines: list[BusinessDraftLineInput] = Field(max_length=200)
     refresh_snapshots: StrictBool = False
 
 
-class DraftArchive(BusinessCommand):
+class BusinessDraftArchive(BusinessCommand):
     expected_version: Version
     archived: StrictBool
 
 
-class DraftLineResponse(DraftLineInput, RecordResponse):
+class BusinessDraftLineResponse(BusinessDraftLineInput, RecordResponse):
     document_id: UUID
     ledger_id: UUID
     line_no: int
@@ -98,7 +98,7 @@ class DraftLineResponse(DraftLineInput, RecordResponse):
     total_amount: str
 
 
-class DraftSummary(DraftHeaderInput, RecordResponse):
+class BusinessDraftSummary(DraftHeaderInput, RecordResponse):
     id: UUID
     ledger_id: UUID
     state: Literal["draft"]
@@ -111,5 +111,5 @@ class DraftSummary(DraftHeaderInput, RecordResponse):
     total_amount: str
 
 
-class DraftResponse(DraftSummary):
-    lines: list[DraftLineResponse]
+class BusinessDraftResponse(BusinessDraftSummary):
+    lines: list[BusinessDraftLineResponse]
