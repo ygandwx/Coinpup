@@ -12,7 +12,7 @@ from coinpup_api.sync.models import ChangeLog
 from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 
-from tests.integration.conftest import draft_header_migration
+from tests.integration.conftest import draft_header_migration, draft_line_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_journal_dimensions import initial
 from tests.integration.ledger.test_party_profiles import seed
@@ -194,6 +194,7 @@ def test_legacy_facts_and_notifications_survive_real_migration_round_trip(ledger
     s = ledger_setup
     with s["engine"].begin() as c:
         with Operations.context(MigrationContext.configure(c)):
+            draft_line_migration()["downgrade"]()
             draft_header_migration()["downgrade"]()
             c.execute(
                 text("INSERT INTO business_documents(id,ledger_id) VALUES (:id,:ledger)"),
@@ -202,6 +203,7 @@ def test_legacy_facts_and_notifications_survive_real_migration_round_trip(ledger
             before = dict(c.execute(text("SELECT * FROM business_documents")).mappings().one())
             log = c.execute(select(ChangeLog.__table__)).mappings().all()
             draft_header_migration()["upgrade"]()
+            draft_line_migration()["upgrade"]()
             after = dict(c.execute(select(BusinessDocument.__table__)).mappings().one())
             assert {key: after[key] for key in before} == before
             assert all(after[key] is None for key, _ in draft_header_migration()["_FIELDS"])
@@ -225,6 +227,7 @@ def test_downgrade_refuses_archived_draft_history(ledger_setup):
     with pytest.raises(IntegrityError) as failure:
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                draft_line_migration()["downgrade"]()
                 draft_header_migration()["downgrade"]()
     assert failure.value.orig.diag.constraint_name == "ck_document_draft_downgrade"
     assert snapshot(s) == before

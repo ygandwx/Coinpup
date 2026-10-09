@@ -1,5 +1,6 @@
 """Fictional control facts for the guarded disposable bundle checker, never business APIs."""
 
+from dataclasses import asdict
 from datetime import date
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from coinpup_api.business.models import (
     BusinessParty,
     BusinessProject,
 )
+from coinpup_api.business.pricing import PriceInput, price_line
 from coinpup_api.business.schemas import PartyCreate, ProjectCreate
 from coinpup_api.business.service import BusinessService
 from coinpup_api.ledger.assets import get_asset
@@ -140,7 +142,7 @@ def seed_controls(engine, owner):
                     insert(JournalLine), prepare_journal_lines(rows, {"USD": get_asset("USD")})
                 )
                 operations.append(operation)
-    draft = uuid4()
+    draft, draft_line = uuid4(), uuid4()
     draft_values = dict(
         document_kind="invoice",
         state="draft",
@@ -155,6 +157,27 @@ def seed_controls(engine, owner):
     with controls._transaction(owner, write=True) as session:
         controls._ledger(session, owner, ledger, write=True)
         session.add(BusinessDocument(id=draft, ledger_id=ledger, **draft_values))
+        session.flush()
+        source = PriceInput("3.00", "19.99", "9.97", "8.2500")
+        price = price_line(source, get_asset("USD"))
+        line_values = dict(
+            line_no=1,
+            description="Fictional 恢复服务",
+            asset_id="USD",
+            **asdict(source),
+            category_id=categories["income"],
+            category_kind="income",
+            project_id=project,
+            recognition_date=date(2026, 9, 30),
+            category_snapshot={"name": "Fictional income"},
+            project_snapshot={"name": "Fictional 恢复项目"},
+            net_amount=price.net.to_decimal(),
+            tax_amount=price.tax.to_decimal(),
+            total_amount=price.total.to_decimal(),
+        )
+        session.add(
+            BusinessDocumentLine(id=draft_line, document_id=draft, ledger_id=ledger, **line_values)
+        )
     posting = PostingService(engine)
     cancellation = CancellationCreate(
         expected_version=1, reason="Fictional control recovery cancel"
@@ -168,6 +191,8 @@ def seed_controls(engine, owner):
     return dict(
         ledger=ledger,
         draft=draft,
+        draft_line=draft_line,
+        line_values=line_values,
         draft_values=draft_values,
         profile=profile,
         project=project,
@@ -218,6 +243,19 @@ def verify_controls(engine, owner, evidence):
         )
         assert {key: draft[key] for key in evidence["draft_values"]} == evidence["draft_values"]
         assert draft["ledger_id"] == ledger and draft["version"] == 1
+    with engine.connect() as connection:
+        line = (
+            connection.execute(
+                select(BusinessDocumentLine.__table__).where(
+                    BusinessDocumentLine.id == evidence["draft_line"]
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert {key: line[key] for key in evidence["line_values"]} == evidence["line_values"]
+        assert line["document_id"] == evidence["draft"] and line["ledger_id"] == ledger
+        assert line["version"] == 1
     master = BusinessService(engine)
     for create, read, payload in (
         (
