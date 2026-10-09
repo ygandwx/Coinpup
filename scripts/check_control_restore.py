@@ -14,7 +14,7 @@ from coinpup_api.ledger.posting_schemas import CancellationCreate
 from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_lines
 from coinpup_api.ledger.schemas import EntityCreate
 from coinpup_api.ledger.service import LedgerService
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 
 
 def seed_controls(engine, owner):
@@ -33,6 +33,17 @@ def seed_controls(engine, owner):
     requirements = {key: {"USD"} for key in CONTROL_CLASSES}
     requirements["receivable.customer"].add("EUR")
     operations = []
+    profile = dict(
+        name="Fictional 示例往来",
+        role="both",
+        legal_name="Fictional Example Ltd",
+        email="fictional@example.invalid",
+        phone="Fictional phone",
+        address="Fictional address",
+        tax_identifier="FICTIONAL-NOT-A-TAX-ID",
+        notes="Fictional restore 备注",
+    )
+    profiled_party = None
     with controls._transaction(owner, write=True) as session:
         accounts = controls.ensure(session, owner, ledger, requirements)
         # Two explicit fictional parties/documents distinguish otherwise matching balances.
@@ -40,11 +51,13 @@ def seed_controls(engine, owner):
             party, document, line = uuid4(), uuid4(), uuid4()
             session.add_all(
                 [
-                    BusinessParty(id=party, ledger_id=ledger),
+                    BusinessParty(id=party, ledger_id=ledger, **(profile if index == 0 else {})),
                     BusinessDocument(id=document, ledger_id=ledger),
                 ]
             )
             session.flush()
+            if index == 0:
+                profiled_party = party
             session.add(BusinessDocumentLine(id=line, ledger_id=ledger, document_id=document))
             session.flush()
             for key in CONTROL_CLASSES if index == 0 else {"payable.supplier": "payable"}:
@@ -121,6 +134,8 @@ def seed_controls(engine, owner):
     assert structure.list_accounts(owner, ledger) == [] and posting.balances(owner, ledger) == []
     return dict(
         ledger=ledger,
+        profile=profile,
+        profiled_party=profiled_party,
         expected=expected,
         operation=operations[0],
         cancellation=cancellation,
@@ -132,6 +147,18 @@ def seed_controls(engine, owner):
 def verify_controls(engine, owner, evidence):
     ledger = evidence["ledger"]
     controls, posting = ControlAccounts(engine), PostingService(engine)
+    with engine.connect() as connection:
+        row = (
+            connection.execute(
+                select(BusinessParty.__table__).where(
+                    BusinessParty.id == evidence["profiled_party"]
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert {key: row[key] for key in evidence["profile"]} == evidence["profile"]
+        assert row["version"] == 1 and row["ledger_id"] == ledger
     assert controls.balances(owner, ledger) == evidence["expected"]
     assert LedgerService(engine).list_accounts(owner, ledger) == []
     assert posting.balances(owner, ledger) == []
