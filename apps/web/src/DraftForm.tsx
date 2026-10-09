@@ -180,6 +180,8 @@ export function DraftForm({
                         kind={fields.document_kind}
                         refs={refs}
                         locale={locale}
+                        price={price?.lines[index]}
+                        assetId={fields.asset_id}
                         onChange={(next) =>
                             setFields({
                                 ...fields,

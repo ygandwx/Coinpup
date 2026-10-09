@@ -1,5 +1,7 @@
 import type { DraftLine, DraftReferences } from "./draft-fields";
 import type { Locale } from "./i18n";
+import type { LinePrice } from "./business-pricing";
+import { formatAmount } from "./money";
 
 export function DraftLineFields({
     value,
@@ -7,6 +9,8 @@ export function DraftLineFields({
     kind,
     refs,
     locale,
+    price,
+    assetId,
     onChange,
     onRemove,
 }: {
@@ -15,6 +19,8 @@ export function DraftLineFields({
     kind: "invoice" | "bill";
     refs: DraftReferences;
     locale: Locale;
+    price?: LinePrice;
+    assetId: string;
     onChange: (line: DraftLine) => void;
     onRemove: () => void;
 }) {
@@ -129,6 +135,14 @@ export function DraftLineFields({
                     />
                 </div>
             </div>
+            {price && (
+                <p className="help-text">
+                    {t("未税", "Net")}: {formatAmount(price.net_amount, locale)} ·{" "}
+                    {t("税额", "Tax")}: {formatAmount(price.tax_amount, locale)} ·{" "}
+                    {t("行合计", "Line total")}: {formatAmount(price.total_amount, locale)}{" "}
+                    {assetId}
+                </p>
+            )}
             <button type="button" onClick={onRemove}>
                 {t("移除此行", "Remove line")}
             </button>
