@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, load_only, registry
 
 # Frozen names, deliberately independent of the current storage dimension constants.
 DIMENSIONS = (
+    "project_id",
     "party_id",
     "counterparty_entity_id",
     "document_id",

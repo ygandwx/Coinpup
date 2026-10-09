@@ -349,6 +349,12 @@ class JournalLine(Base):
     __tablename__ = "journal_lines"
     __table_args__ = (
         ForeignKeyConstraint(
+            ["project_id", "ledger_id"],
+            ["business_projects.id", "business_projects.ledger_id"],
+            name="fk_journal_lines_project_ledger",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
             ["party_id", "ledger_id"],
             ["business_parties.id", "business_parties.ledger_id"],
             name="fk_journal_lines_party_ledger",
@@ -448,6 +454,7 @@ class JournalLine(Base):
     account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     category_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
+    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     counterparty_entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)

@@ -14,7 +14,12 @@ from coinpup_api.sync.service import ChangeService
 from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 
-from tests.integration.conftest import party_profile_migration, period_migration, project_migration
+from tests.integration.conftest import (
+    party_profile_migration,
+    period_migration,
+    project_dimension_migration,
+    project_migration,
+)
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -167,6 +172,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                project_dimension_migration()["downgrade"]()
                 project_migration()["downgrade"]()
                 party_profile_migration()["downgrade"]()
                 period_migration()["downgrade"]()
@@ -177,6 +183,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 period_migration()["upgrade"]()
                 party_profile_migration()["upgrade"]()
                 project_migration()["upgrade"]()
+                project_dimension_migration()["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:
