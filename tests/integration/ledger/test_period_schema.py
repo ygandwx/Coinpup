@@ -13,6 +13,7 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from tests.integration.conftest import (
+    draft_line_migration,
     period_migration,
     project_dimension_migration,
     project_migration,
@@ -236,12 +237,14 @@ def test_period_migration_refuses_history_and_round_trips_empty(ledger_setup, hi
     def run():
         with s["engine"].begin() as c:
             with Operations.context(MigrationContext.configure(c)):
+                draft_line_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
                 project_migration()["downgrade"]()
                 period_migration()["downgrade"]()
                 period_migration()["upgrade"]()
                 project_migration()["upgrade"]()
                 project_dimension_migration()["upgrade"]()
+                draft_line_migration()["upgrade"]()
 
     if history == "empty":
         run()

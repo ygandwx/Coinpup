@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.integration.conftest import (
     draft_header_migration,
+    draft_line_migration,
     party_profile_migration,
     period_migration,
     project_dimension_migration,
@@ -173,6 +174,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                draft_line_migration()["downgrade"]()
                 draft_header_migration()["downgrade"]()
                 project_dimension_migration()["downgrade"]()
                 project_migration()["downgrade"]()
@@ -187,6 +189,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 project_migration()["upgrade"]()
                 project_dimension_migration()["upgrade"]()
                 draft_header_migration()["upgrade"]()
+                draft_line_migration()["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:

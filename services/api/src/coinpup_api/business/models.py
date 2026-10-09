@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -10,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Integer,
+    Numeric,
     String,
     UniqueConstraint,
     Uuid,
@@ -122,6 +124,40 @@ class BusinessDocument(ReferenceIdentity, Base):
     party_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
 
 
+_DRAFT_LINE_FIELDS = (
+    "line_no",
+    "description",
+    "asset_id",
+    "quantity",
+    "unit_price",
+    "discount_amount",
+    "tax_rate_percent",
+    "category_id",
+    "category_kind",
+    "project_id",
+    "recognition_date",
+    "category_snapshot",
+    "project_snapshot",
+    "net_amount",
+    "tax_amount",
+    "total_amount",
+)
+_DRAFT_LINE_PROFILE = (
+    "("
+    + " AND ".join(f"{name} IS NULL" for name in _DRAFT_LINE_FIELDS)
+    + ") OR ("
+    + " AND ".join(
+        f"{name} IS NOT NULL"
+        for name in _DRAFT_LINE_FIELDS
+        if name not in ("project_id", "project_snapshot")
+    )
+    + " AND line_no > 0 AND btrim(description) <> '' "
+    "AND category_kind IN ('income', 'expense') AND jsonb_typeof(category_snapshot) = 'object' "
+    "AND ((project_id IS NULL AND project_snapshot IS NULL) OR (project_id IS NOT NULL "
+    "AND project_snapshot IS NOT NULL AND jsonb_typeof(project_snapshot) = 'object')))"
+)
+
+
 class BusinessDocumentLine(ReferenceIdentity, Base):
     __tablename__ = "business_document_lines"
     __table_args__ = (
@@ -135,6 +171,44 @@ class BusinessDocumentLine(ReferenceIdentity, Base):
             name="fk_business_document_lines_document_ledger",
             ondelete="RESTRICT",
         ),
+        UniqueConstraint(
+            "document_id", "ledger_id", "line_no", name="uq_business_document_lines_position"
+        ),
+        ForeignKeyConstraint(
+            ["asset_id"],
+            ["assets.asset_id"],
+            name="fk_business_document_lines_asset",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["category_id", "ledger_id", "category_kind"],
+            ["categories.id", "categories.ledger_id", "categories.kind"],
+            name="fk_business_document_lines_category",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["project_id", "ledger_id"],
+            ["business_projects.id", "business_projects.ledger_id"],
+            name="fk_business_document_lines_project",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(_DRAFT_LINE_PROFILE, name="ck_business_document_lines_profile"),
     )
 
     document_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    line_no: Mapped[int | None] = mapped_column(Integer)
+    description: Mapped[str | None] = mapped_column(String(2000))
+    asset_id: Mapped[str | None] = mapped_column(String(200))
+    quantity: Mapped[str | None] = mapped_column(String(39))
+    unit_price: Mapped[str | None] = mapped_column(String(40))
+    discount_amount: Mapped[str | None] = mapped_column(String(40))
+    tax_rate_percent: Mapped[str | None] = mapped_column(String(39))
+    category_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    category_kind: Mapped[str | None] = mapped_column(String(7))
+    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    recognition_date: Mapped[date | None] = mapped_column(Date)
+    category_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    project_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    net_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
+    total_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18))
