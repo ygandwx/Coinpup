@@ -4,7 +4,6 @@ from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 import pytest
-from coinpup_api.admin import create_admin
 from coinpup_api.business.models import BusinessParty
 from coinpup_api.business.schemas import (
     PartyCreate,
@@ -93,9 +92,8 @@ def test_stale_and_concurrent_edits_preserve_one_winner(catalog):
 def test_scope_and_archived_entity_protect_writes_without_hiding_reads(catalog):
     c = catalog
     row = c["create"](c["owner"], c["ledger"], c["payload"]())
-    other_owner = create_admin(
-        c["engine"], "fictional-other-owner", "fictional-owner-password-2026"
-    )
+    # The persisted administrator is a singleton; forged owner IDs must still be rejected.
+    unknown_owner = uuid4()
     other_ledger = (
         c["structure"]
         .create_entity(
@@ -105,7 +103,7 @@ def test_scope_and_archived_entity_protect_writes_without_hiding_reads(catalog):
         .ledger.id
     )
     before = snapshot(c)
-    for owner, ledger in ((other_owner, c["ledger"]), (c["owner"], other_ledger)):
+    for owner, ledger in ((unknown_owner, c["ledger"]), (c["owner"], other_ledger)):
         for action in (
             lambda owner=owner, ledger=ledger: c["get"](owner, ledger, row.id),
             lambda owner=owner, ledger=ledger: c["update"](
