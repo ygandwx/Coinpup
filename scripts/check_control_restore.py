@@ -1,16 +1,16 @@
 """Fictional control facts for the guarded disposable bundle checker, never business APIs."""
 
-from dataclasses import asdict
 from datetime import date
 from uuid import uuid4
 
+from coinpup_api.business.draft_schemas import DraftCreate
+from coinpup_api.business.drafts import DraftService
 from coinpup_api.business.models import (
     BusinessDocument,
     BusinessDocumentLine,
     BusinessParty,
     BusinessProject,
 )
-from coinpup_api.business.pricing import PriceInput, price_line
 from coinpup_api.business.schemas import PartyCreate, ProjectCreate
 from coinpup_api.business.service import BusinessService
 from coinpup_api.ledger.assets import get_asset
@@ -143,41 +143,57 @@ def seed_controls(engine, owner):
                 )
                 operations.append(operation)
     draft, draft_line = uuid4(), uuid4()
-    draft_values = dict(
+    draft_input = DraftCreate(
+        id=draft,
         document_kind="invoice",
-        state="draft",
         party_id=profiled_party,
         asset_id="USD",
         issue_date=date(2026, 10, 9),
         due_date=date(2026, 10, 20),
         notes="Fictional draft recovery 备注",
-        issuer_snapshot={"name": "Fictional issuer"},
-        party_snapshot={"name": profile["name"]},
+        lines=[
+            dict(
+                id=draft_line,
+                description="Fictional 恢复服务",
+                quantity="3.00",
+                unit_price="19.99",
+                discount_amount="9.97",
+                tax_rate_percent="8.2500",
+                category_id=categories["income"],
+                project_id=project,
+                recognition_date=date(2026, 9, 30),
+            )
+        ],
     )
-    with controls._transaction(owner, write=True) as session:
-        controls._ledger(session, owner, ledger, write=True)
-        session.add(BusinessDocument(id=draft, ledger_id=ledger, **draft_values))
-        session.flush()
-        source = PriceInput("3.00", "19.99", "9.97", "8.2500")
-        price = price_line(source, get_asset("USD"))
-        line_values = dict(
-            line_no=1,
-            description="Fictional 恢复服务",
-            asset_id="USD",
-            **asdict(source),
-            category_id=categories["income"],
-            category_kind="income",
-            project_id=project,
-            recognition_date=date(2026, 9, 30),
-            category_snapshot={"name": "Fictional income"},
-            project_snapshot={"name": "Fictional 恢复项目"},
-            net_amount=price.net.to_decimal(),
-            tax_amount=price.tax.to_decimal(),
-            total_amount=price.total.to_decimal(),
-        )
-        session.add(
-            BusinessDocumentLine(id=draft_line, document_id=draft, ledger_id=ledger, **line_values)
-        )
+    draft_response = DraftService(engine).create_draft(owner, ledger, draft_input)
+    draft_values = draft_response.model_dump(
+        exclude={
+            "id",
+            "ledger_id",
+            "version",
+            "created_at",
+            "updated_at",
+            "archived",
+            "lines",
+            "line_count",
+            "net_amount",
+            "tax_amount",
+            "total_amount",
+        }
+    )
+    line_values = draft_response.lines[0].model_dump(
+        exclude={
+            "id",
+            "document_id",
+            "ledger_id",
+            "version",
+            "created_at",
+            "updated_at",
+            "archived",
+        }
+    )
+    for name in ("net_amount", "tax_amount", "total_amount"):
+        line_values[name] = Amount.parse(line_values[name], get_asset("USD")).to_decimal()
     posting = PostingService(engine)
     cancellation = CancellationCreate(
         expected_version=1, reason="Fictional control recovery cancel"
@@ -191,6 +207,8 @@ def seed_controls(engine, owner):
     return dict(
         ledger=ledger,
         draft=draft,
+        draft_input=draft_input,
+        draft_response=draft_response,
         draft_line=draft_line,
         line_values=line_values,
         draft_values=draft_values,
@@ -256,6 +274,15 @@ def verify_controls(engine, owner, evidence):
         assert {key: line[key] for key in evidence["line_values"]} == evidence["line_values"]
         assert line["document_id"] == evidence["draft"] and line["ledger_id"] == ledger
         assert line["version"] == 1
+    drafts = DraftService(engine)
+    assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
+    try:
+        drafts.create_draft(owner, ledger, evidence["draft_input"])
+    except LedgerError as error:
+        assert error.code == "duplicate_record"
+    else:
+        raise AssertionError("Restored draft identity was recreated")
+    assert drafts.get_draft(owner, ledger, evidence["draft"]) == evidence["draft_response"]
     master = BusinessService(engine)
     for create, read, payload in (
         (
