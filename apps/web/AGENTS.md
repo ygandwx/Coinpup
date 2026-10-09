@@ -13,6 +13,7 @@
 - 通过 [api.ts](src/api.ts) 及对应业务请求模块调用同源 API，保留 Cookie、Origin、CSRF 和统一错误处理边界。CSRF token 只随当次请求传入。
 - 财务命令使用 [PendingCommandController](src/pending-command.ts)，票据确认使用 [PendingConfirmationController](src/pending-confirmations.ts)，原件上传使用 [pending-upload.ts](src/pending-upload.ts)，结账/重开使用 [PendingPeriodController](src/pending-period.ts)。资料编辑使用 [PendingMasterDataController](src/pending-business.ts) 与 [ADR0025](../../docs/architecture/decisions/0025-master-data-retry.md)。组件不得绕过控制器另建重试路径，或仅凭当前记录存在就自行判定本次修订成功。
 - 经营草稿使用 [PendingBusinessDraftController](src/pending-business-drafts.ts) 与 [ADR0031](../../docs/architecture/decisions/0031-business-draft-recovery.md)，冻结整单和资产精度；更新冲突不得凭相似内容判为成功。
+- 周期规则使用 [PendingRecurringController](src/pending-recurring.ts) 与 [ADR0034](../../docs/architecture/decisions/0034-recurring-rule-recovery.md)；保留原源版本和日历意图，后台生成推进版本也按显式冲突处理。
 - 提交前冻结所有者、账本、业务 ID、幂等键、原请求体；上传还要冻结预约 ID、元数据和原始 File。结果未知时重试原意图，不重新生成键或上传 ID，不取当前可编辑表单替换原请求。
 - 保留控制器的防重复点击、导航限制、会话恢复及迟到响应隔离。401 隐藏私人内容，同用户重新登录后手动恢复；更换用户或主动退出清理原意图。具体确认和冲突规则遵守 API 通用约定。
 - 原始文件、财务命令和会话凭据不得写入 localStorage、sessionStorage、IndexedDB、Cache Storage 等浏览器存储，也不得写入日志。语言偏好可以使用既有 locale 设置；网页内存意图不等同持久离线队列。
