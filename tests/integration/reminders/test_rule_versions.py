@@ -14,6 +14,7 @@ from coinpup_api.reminders.service import ReminderService
 from coinpup_api.sync.service import ChangeService
 
 from tests.integration.ledger.test_posting_service_database import financial_counts
+from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
 pytestmark = pytest.mark.integration
 

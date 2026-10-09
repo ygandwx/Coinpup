@@ -39,12 +39,17 @@ test("fictional reminder unknown creation survives double click, 401 and origina
             expect(response.status()).toBe(201);
             return route.abort("failed");
         }
-        if (bodies.length === 2)
-            return route.fulfill({
-                status: 401,
-                contentType: "application/json",
-                body: JSON.stringify({ detail: "unauthorized" }),
+        if (bodies.length === 2) {
+            // Revoke the server session; a forged 401 leaves a live cookie protected by login CSRF.
+            const session = await (await page.request.get("/api/v1/auth/session")).json();
+            const response = await page.request.post("/api/v1/auth/logout", {
+                headers: {
+                    Origin: new URL(page.url()).origin,
+                    "X-CSRF-Token": session.csrf_token,
+                },
             });
+            expect(response.status()).toBe(204);
+        }
         return route.continue();
     });
     await page.getByRole("button", { name: "Create event", exact: true }).evaluate((button) => {
