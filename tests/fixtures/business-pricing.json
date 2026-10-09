@@ -1,0 +1,396 @@
+{
+  "description": "Explicitly fictional cross-language pricing acceptance vectors; no real business data.",
+  "cases": [
+    {
+      "name": "Fictional discount and tax",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "3.00",
+          "unit_price": "19.99",
+          "discount_amount": "9.97",
+          "tax_rate_percent": "8.2500"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "50.00",
+            "tax_amount": "4.13",
+            "total_amount": "54.13"
+          }
+        ],
+        "net_amount": "50.00",
+        "tax_amount": "4.13",
+        "total_amount": "54.13"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 0",
+      "scale": 0,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "1",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "1",
+            "tax_amount": "1",
+            "total_amount": "2"
+          }
+        ],
+        "net_amount": "1",
+        "tax_amount": "1",
+        "total_amount": "2"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 2",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.01",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.01",
+            "tax_amount": "0.01",
+            "total_amount": "0.02"
+          }
+        ],
+        "net_amount": "0.01",
+        "tax_amount": "0.01",
+        "total_amount": "0.02"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 6",
+      "scale": 6,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.000001",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.000001",
+            "tax_amount": "0.000001",
+            "total_amount": "0.000002"
+          }
+        ],
+        "net_amount": "0.000001",
+        "tax_amount": "0.000001",
+        "total_amount": "0.000002"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 8",
+      "scale": 8,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.00000001",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.00000001",
+            "tax_amount": "0.00000001",
+            "total_amount": "0.00000002"
+          }
+        ],
+        "net_amount": "0.00000001",
+        "tax_amount": "0.00000001",
+        "total_amount": "0.00000002"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 12",
+      "scale": 12,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.000000000001",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.000000000001",
+            "tax_amount": "0.000000000001",
+            "total_amount": "0.000000000002"
+          }
+        ],
+        "net_amount": "0.000000000001",
+        "tax_amount": "0.000000000001",
+        "total_amount": "0.000000000002"
+      }
+    },
+    {
+      "name": "Fictional minimum unit half up 18",
+      "scale": 18,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.000000000000000001",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.000000000000000001",
+            "tax_amount": "0.000000000000000001",
+            "total_amount": "0.000000000000000002"
+          }
+        ],
+        "net_amount": "0.000000000000000001",
+        "tax_amount": "0.000000000000000001",
+        "total_amount": "0.000000000000000002"
+      }
+    },
+    {
+      "name": "Fictional per-line rounding",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.01",
+          "tax_rate_percent": "50"
+        },
+        {
+          "quantity": "0.5",
+          "unit_price": "0.01",
+          "tax_rate_percent": "50"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.01",
+            "tax_amount": "0.01",
+            "total_amount": "0.02"
+          },
+          {
+            "net_amount": "0.01",
+            "tax_amount": "0.01",
+            "total_amount": "0.02"
+          }
+        ],
+        "net_amount": "0.02",
+        "tax_amount": "0.02",
+        "total_amount": "0.04"
+      }
+    },
+    {
+      "name": "Fictional near-half 49.999999999999999999",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "0.01",
+          "tax_rate_percent": "49.999999999999999999"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.01",
+            "tax_amount": "0.00",
+            "total_amount": "0.01"
+          }
+        ],
+        "net_amount": "0.01",
+        "tax_amount": "0.00",
+        "total_amount": "0.01"
+      }
+    },
+    {
+      "name": "Fictional near-half 50.000000000000000001",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "0.01",
+          "tax_rate_percent": "50.000000000000000001"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.01",
+            "tax_amount": "0.01",
+            "total_amount": "0.02"
+          }
+        ],
+        "net_amount": "0.01",
+        "tax_amount": "0.01",
+        "total_amount": "0.02"
+      }
+    },
+    {
+      "name": "Fictional maximum exact value",
+      "scale": 18,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "99999999999999999999.999999999999999999"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "99999999999999999999.999999999999999999",
+            "tax_amount": "0.000000000000000000",
+            "total_amount": "99999999999999999999.999999999999999999"
+          }
+        ],
+        "net_amount": "99999999999999999999.999999999999999999",
+        "tax_amount": "0.000000000000000000",
+        "total_amount": "99999999999999999999.999999999999999999"
+      }
+    },
+    {
+      "name": "Fictional high bounded rate",
+      "scale": 18,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "0.000000000000000001",
+          "tax_rate_percent": "99999999999999999999"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.000000000000000001",
+            "tax_amount": "1.000000000000000000",
+            "total_amount": "1.000000000000000001"
+          }
+        ],
+        "net_amount": "0.000000000000000001",
+        "tax_amount": "1.000000000000000000",
+        "total_amount": "1.000000000000000001"
+      }
+    },
+    {
+      "name": "Fictional negative zero source",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "-0.00",
+          "discount_amount": "-0.00"
+        }
+      ],
+      "expected": {
+        "lines": [
+          {
+            "net_amount": "0.00",
+            "tax_amount": "0.00",
+            "total_amount": "0.00"
+          }
+        ],
+        "net_amount": "0.00",
+        "tax_amount": "0.00",
+        "total_amount": "0.00"
+      }
+    },
+    {
+      "name": "Fictional empty draft",
+      "scale": 2,
+      "lines": [],
+      "expected": {
+        "lines": [],
+        "net_amount": "0.00",
+        "tax_amount": "0.00",
+        "total_amount": "0.00"
+      }
+    },
+    {
+      "name": "Fictional discount before rounding",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_price": "0.01",
+          "discount_amount": "0.01"
+        }
+      ],
+      "error": "pricing_discount"
+    },
+    {
+      "name": "Fictional total overflow",
+      "scale": 0,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "99999999999999999999"
+        },
+        {
+          "quantity": "1",
+          "unit_price": "1"
+        }
+      ],
+      "error": "amount_range"
+    },
+    {
+      "name": "Fictional unit precision",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "0.001"
+        }
+      ],
+      "error": "amount_precision"
+    },
+    {
+      "name": "Fictional zero quantity",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "0",
+          "unit_price": "1"
+        }
+      ],
+      "error": "pricing_quantity"
+    },
+    {
+      "name": "Fictional negative price",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_price": "-1"
+        }
+      ],
+      "error": "pricing_price"
+    },
+    {
+      "name": "Fictional exponent quantity",
+      "scale": 2,
+      "lines": [
+        {
+          "quantity": "1e0",
+          "unit_price": "1"
+        }
+      ],
+      "error": "pricing_quantity"
+    }
+  ]
+}
