@@ -402,5 +402,5 @@ def test_scoped_migration_guards_data_logs_and_restores_empty_schema(ocr_structu
                 ),
                 {"pattern": "trg_%_change_log"},
             )
-            == 17  # Frozen OCR scope plus three reference and three period triggers.
+            == 18  # OCR scope plus three reference, three period and one project trigger.
         )

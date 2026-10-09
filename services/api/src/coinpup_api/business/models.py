@@ -69,6 +69,17 @@ class BusinessParty(ReferenceIdentity, Base):
     notes: Mapped[str | None] = mapped_column(String(2000))
 
 
+class BusinessProject(ReferenceIdentity, Base):
+    __tablename__ = "business_projects"
+    __table_args__ = (
+        *identity_constraints(__tablename__),
+        CheckConstraint("btrim(name) <> ''", name="ck_business_projects_name"),
+    )
+
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(2000))
+
+
 class BusinessDocument(ReferenceIdentity, Base):
     __tablename__ = "business_documents"
     __table_args__ = identity_constraints(__tablename__)
