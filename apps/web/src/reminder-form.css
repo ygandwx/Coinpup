@@ -1,0 +1,14 @@
+.reminder-form .field-wide {
+    grid-column: 1 / -1;
+}
+.reminder-form .form-actions {
+    flex-wrap: wrap;
+}
+.reminder-form .form-actions button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.reminder-form .help-text {
+    overflow-wrap: anywhere;
+}
