@@ -1,0 +1,35 @@
+.reminder-panel,
+.reminder-panel section,
+.reminder-panel article {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.reminder-panel .form-actions {
+    flex-wrap: wrap;
+    margin: 18px 0;
+}
+.reminder-panel button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.reminder-panel dl > div {
+    margin: 10px 0;
+    min-width: 0;
+}
+.reminder-panel dd {
+    margin: 4px 0 0;
+    white-space: pre-wrap;
+}
+.reminder-dates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+    gap: 12px;
+}
+.reminder-list-item {
+    padding: 18px 0;
+    border-bottom: 1px solid #dce2d3;
+}
+.reminder-notes {
+    white-space: pre-wrap;
+}
