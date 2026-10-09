@@ -9,6 +9,8 @@ from coinpup_api.business.models import (
     BusinessParty,
     BusinessProject,
 )
+from coinpup_api.business.schemas import PartyCreate, ProjectCreate
+from coinpup_api.business.service import BusinessService
 from coinpup_api.ledger.assets import get_asset
 from coinpup_api.ledger.control_accounts import ControlAccounts
 from coinpup_api.ledger.control_schemas import CONTROL_CLASSES
@@ -18,7 +20,7 @@ from coinpup_api.ledger.posting import PostingService
 from coinpup_api.ledger.posting_schemas import CancellationCreate
 from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_lines
 from coinpup_api.ledger.schemas import EntityCreate
-from coinpup_api.ledger.service import LedgerService
+from coinpup_api.ledger.service import LedgerError, LedgerService
 from sqlalchemy import insert, select
 
 
@@ -188,6 +190,29 @@ def verify_controls(engine, owner, evidence):
             project["name"] == "Fictional 恢复项目"
             and project["notes"] == "Fictional project notes"
         )
+    master = BusinessService(engine)
+    for create, read, payload in (
+        (
+            master.create_party,
+            master.get_party,
+            PartyCreate(id=evidence["profiled_party"], **evidence["profile"]),
+        ),
+        (
+            master.create_project,
+            master.get_project,
+            ProjectCreate(
+                id=evidence["project"], name="Fictional 恢复项目", notes="Fictional project notes"
+            ),
+        ),
+    ):
+        before = read(owner, ledger, payload.id)
+        try:
+            create(owner, ledger, payload)
+        except LedgerError as error:
+            assert error.code == "duplicate_record"
+        else:
+            raise AssertionError("Restored stable master-data identity was recreated")
+        assert read(owner, ledger, payload.id) == before
     assert controls.balances(owner, ledger) == evidence["expected"]
     assert LedgerService(engine).list_accounts(owner, ledger) == []
     assert posting.balances(owner, ledger) == []
