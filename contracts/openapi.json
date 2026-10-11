@@ -1827,7 +1827,10 @@
               "reminder_delivery_configs",
               "reminder_delivery_revisions",
               "business_confirmations",
-              "business_postings"
+              "business_postings",
+              "business_payments",
+              "business_allocations",
+              "business_allocation_lines"
             ],
             "title": "Entity Type",
             "type": "string"

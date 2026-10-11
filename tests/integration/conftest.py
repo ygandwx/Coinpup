@@ -112,10 +112,30 @@ def business_confirmation_migration(*, include_dependents=True):
 
 
 def business_accrual_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261011_0028_business_accruals.py"
+        )
+    )
+
+    def downgrade():
+        business_settlement_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        business_settlement_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def business_settlement_migration(*, include_dependents=True):
+    # Keep the raw-probe option for future activation; no dependent migration exists yet.
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261012_0029_business_settlements.py"
         )
     )
 
@@ -212,7 +232,7 @@ def restore_current_change_types(engine):
         )
         connection.exec_driver_sql(
             "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-            f"(entity_type IN ({business_confirmation_migration()['_ENTITY_TYPES']}))"
+            f"(entity_type IN ({business_settlement_migration()['_ENTITY_TYPES']}))"
         )
 
 
@@ -238,6 +258,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | reminder_migration()["_CHANGE_TRIGGER_SQL"]
             | delivery_config_migration()["_CHANGE_TRIGGER_SQL"]
             | business_confirmation_migration()["_CHANGE_TRIGGER_SQL"]
+            | business_settlement_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
