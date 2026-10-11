@@ -154,12 +154,6 @@ def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, n
 
 
 class BusinessSettlementService(FeeCommands, BalanceQueries, PostingCore):
-    def __init__(self, engine):
-        # Scope the default to these commands, before the first owner/lock query.
-        super().__init__(
-            None if engine is None else engine.execution_options(isolation_level="READ COMMITTED")
-        )
-
     def pay(self, owner_id, ledger_id, payload, key, *, raw_body=None):
         return self._execute(owner_id, ledger_id, payload, key, raw_body, payment=True)
 
@@ -169,7 +163,7 @@ class BusinessSettlementService(FeeCommands, BalanceQueries, PostingCore):
     def _execute(self, owner_id, ledger_id, payload, key, raw_body, *, payment):
         if not isinstance(key, str) or _IDEMPOTENCY_KEY.fullmatch(key) is None:
             raise LedgerError("invalid_idempotency_key", 422, "Use 1–128 visible ASCII characters.")
-        with self._transaction(owner_id, write=True) as session:
+        with self._transaction(owner_id, write=True, read_committed=True) as session:
             _, entity = self._locked_ledger(session, owner_id, ledger_id)
             receipt = session.get(CommandReceipt, (ledger_id, key))
             digest = (payment_hash_v2 if payment else allocation_hash_v2)(

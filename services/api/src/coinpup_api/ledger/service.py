@@ -74,7 +74,7 @@ class LedgerService:
         return self.engine
 
     @contextmanager
-    def _transaction(self, owner_id, *, read_only=False, write=False):
+    def _transaction(self, owner_id, *, read_only=False, write=False, read_committed=False):
         try:
             with Session(self.require_engine()) as session, session.begin():
                 if read_only:
@@ -82,6 +82,9 @@ class LedgerService:
                     session.execute(
                         text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                     )
+                elif read_committed:
+                    # New settlement writes need a fresh snapshot after waiting for the lock.
+                    session.execute(text("SET TRANSACTION ISOLATION LEVEL READ COMMITTED"))
                 if write:
                     # Order cursor allocation before the owner lookup or any business row lock.
                     acquire_write_lock(session)
