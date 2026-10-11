@@ -145,6 +145,7 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
             else:
                 c.exec_driver_sql(
                     "TRUNCATE TABLE business_postings, business_confirmations, "
+                    "business_allocation_lines, business_allocations, business_payments, "
                     "recurring_invoice_instances, recurring_invoice_rules, "
                     "journal_lines, business_document_lines, "
                     "business_documents, business_parties RESTRICT"

@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261011_0028",)
+        assert context.get_current_heads() == ("20261012_0029",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261011_0028",)
+        assert context.get_current_heads() == ("20261012_0029",)
 
 
 def confirmation_schema_migration():
@@ -296,6 +296,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
+                "business_allocation_lines, business_allocations, business_payments, "
                 "reminder_delivery_revisions, reminder_delivery_configs, "
                 "reminder_event_revisions, reminder_events, "
                 "recurring_invoice_instances, recurring_invoice_rules, "
