@@ -141,7 +141,8 @@
     white-space: nowrap;
 }
 .secondary-button,
-.business-confirmation-panel button:not(.primary-button) {
+.business-confirmation-panel button:not(.primary-button),
+.business-settlement-panel button:not(.primary-button) {
     border: 1px solid #d6ddcd;
     background: #ffffff60;
     border-radius: 9px;
@@ -151,7 +152,8 @@
     line-height: 1.4;
 }
 .secondary-button:hover,
-.business-confirmation-panel button:not(.primary-button):hover {
+.business-confirmation-panel button:not(.primary-button):hover,
+.business-settlement-panel button:not(.primary-button):hover {
     background: #edf1e5;
 }
 .business-main button:disabled {
@@ -1214,4 +1216,14 @@
 .confirmation-facts dd {
     margin: 0 0 12px;
     white-space: pre-wrap;
+}
+
+.business-settlement-panel {
+    overflow-wrap: anywhere;
+}
+.business-settlement-panel button[aria-pressed="true"] {
+    background: #e8eedf;
+}
+.business-settlement-panel > button {
+    margin-top: 12px;
 }
