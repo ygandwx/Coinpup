@@ -137,6 +137,9 @@ test("fictional completed confirmation cannot restore private intent after expli
             page.getByRole("heading", { name: "Parties and projects", exact: true }).first(),
         ).toBeVisible();
         await expect(page.locator(".business-confirmation-panel")).toHaveCount(0);
+        // Explicit logout clears the private ledger URL; select this test's ledger again.
+        await page.getByLabel("Ledger", { exact: true }).selectOption(data.entity.id);
+        await expect(page.getByLabel("Ledger", { exact: true })).toHaveValue(data.entity.id);
         await page.getByRole("button", { name: "Confirm documents", exact: true }).click();
         await expect(
             page.getByRole("button", { name: "Retry original confirmation", exact: true }),
