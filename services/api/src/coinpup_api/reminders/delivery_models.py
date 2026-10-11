@@ -1,4 +1,4 @@
-"""Prepared notification configuration model; requires its own reviewed migration."""
+"""Versioned delivery configuration and immutable captured history (ADR 0038)."""
 
 import uuid
 from datetime import date, datetime
@@ -83,8 +83,15 @@ class ReminderDeliveryConfig(Base):
             "EXTRACT(YEAR FROM planned_at AT TIME ZONE 'UTC') BETWEEN 1 AND 9999 AND "
             "planned_lead_days BETWEEN 0 AND 3660 AND planned_minute BETWEEN 0 AND 1439 AND "
             "resolved_minute BETWEEN planned_minute AND 1439 AND "
-            "btrim(planned_timezone) <> '' AND btrim(planned_tzdata_version) <> '')",
+            "planned_timezone ~ '^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$' AND "
+            "planned_timezone NOT IN ('localtime','posixrules') AND "
+            "planned_timezone NOT LIKE 'posix/%' AND planned_timezone NOT LIKE 'right/%' AND "
+            "btrim(planned_tzdata_version) <> '')",
             name="ck_reminder_delivery_config_plan_range",
+        ),
+        CheckConstraint(
+            "enabled = (blocked_reason IS DISTINCT FROM 'disabled')",
+            name="ck_reminder_delivery_config_enabled",
         ),
         CheckConstraint(
             "blocked_reason IS NOT NULL OR (enabled AND planned_at IS NOT NULL AND "
@@ -136,9 +143,9 @@ class ReminderDeliveryConfig(Base):
 
 
 class ReminderDeliveryConfigRevision(Base):
-    __tablename__ = "reminder_delivery_config_revisions"
+    __tablename__ = "reminder_delivery_revisions"
     __table_args__ = (
-        UniqueConstraint("id", "ledger_id", name="uq_reminder_delivery_config_revisions_id_ledger"),
+        UniqueConstraint("id", "ledger_id", name="uq_reminder_delivery_revisions_id_ledger"),
         UniqueConstraint(
             "config_id", "version", name="uq_reminder_delivery_config_revision_version"
         ),

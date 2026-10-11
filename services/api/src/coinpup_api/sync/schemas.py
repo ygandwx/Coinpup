@@ -56,6 +56,8 @@ EntityType = Literal[
     "recurring_invoice_instances",
     "reminder_events",
     "reminder_event_revisions",
+    "reminder_delivery_configs",
+    "reminder_delivery_revisions",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 

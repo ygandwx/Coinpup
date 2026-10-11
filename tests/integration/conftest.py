@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261010_0025",)
+        assert context.get_current_heads() == ("20261011_0026",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261010_0025",)
+        assert context.get_current_heads() == ("20261011_0026",)
 
 
 def confirmation_schema_migration():
@@ -97,10 +97,30 @@ def project_dimension_migration():
 
 
 def reminder_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261010_0025_reminder_history.py"
+        )
+    )
+
+    # Preserve the original probe; remove/reinstate only its empty new FK dependants.
+    def downgrade():
+        delivery_config_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        delivery_config_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def delivery_config_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261011_0026_reminder_delivery_config.py"
         )
     )
 
@@ -150,7 +170,7 @@ def restore_current_change_types(engine):
         )
         connection.exec_driver_sql(
             "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-            f"(entity_type IN ({reminder_migration()['_ENTITY_TYPES']}))"
+            f"(entity_type IN ({delivery_config_migration()['_ENTITY_TYPES']}))"
         )
 
 
@@ -174,6 +194,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | project_migration()["_CHANGE_TRIGGER_SQL"]
             | recurring_migration()["_CHANGE_TRIGGER_SQL"]
             | reminder_migration()["_CHANGE_TRIGGER_SQL"]
+            | delivery_config_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -211,6 +232,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, "
+                "reminder_delivery_revisions, reminder_delivery_configs, "
                 "reminder_event_revisions, reminder_events, "
                 "recurring_invoice_instances, recurring_invoice_rules, "
                 "command_receipts, opening_positions, journal_lines, journals, "
