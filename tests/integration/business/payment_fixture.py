@@ -1,6 +1,6 @@
 """Fictional committed payment facts and deliberate raw-SQL constraint probes."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from coinpup_api.business.models import BusinessParty
 from coinpup_api.business.settlement_hash import payment_hash_v2
@@ -67,6 +67,7 @@ def write(
     receipt_changes=None,
     change_rows=None,
     omit_payment=False,
+    initial_allocation=None,
 ):
     c.exec_driver_sql("SELECT pg_advisory_xact_lock(18945999704708432)")
     operation, journal = uuid4(), uuid4()
@@ -138,7 +139,7 @@ def write(
             fees=[f.model_dump(mode="json") for f in payload.fees],
             operation_id=operation,
             journal_id=journal,
-            initial_allocation_id=None,
+            initial_allocation_id=UUID(initial_allocation["id"]) if initial_allocation else None,
             created_by=s["owner"],
             idempotency_key=key,
         )
@@ -168,7 +169,7 @@ def write(
         ledger_id=s["ledger"],
         operation_id=operation,
         journal_id=journal,
-        initial_allocation=None,
+        initial_allocation=initial_allocation,
     ).model_dump(mode="json")
     receipt = dict(
         ledger_id=s["ledger"],
