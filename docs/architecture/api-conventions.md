@@ -34,7 +34,14 @@
 - 经营草稿使用 `/api/v1/ledgers/{ledger_id}/business-documents`：创建/列表、按ID读取、PUT完整保存和PATCH归档状态；具体字段由OpenAPI生成。均使用现有会话与CSRF边界，不产生分录或财务回执。
 - 创建使用稳定整单/行UUID；完整保存要求父expected_version及显式lines，移除用归档，保留行身份/序号；资料快照仅由服务器生成，更换引用或显式刷新才更新。未知提交保留原意图，不自动换ID/版本。来源：[ADR0029](decisions/0029-draft-create-read.md)、[ADR0030](decisions/0030-draft-edit.md)。
 - 草稿quantity、unit_price、discount_amount、tax_rate_percent是原始输入回显，保留其合法十进制拼写（含小数尾零、金额负零）；它们不适用上文金额输出规范化规则。派生净额、税额和合计仍按资产精度固定小数位，服务器按方案A重算。
-- 列表默认包含归档，按创建时间/ID升序分页，详情包含有效行；归档草稿可读，显式恢复后才可编辑。确认、结算及其永久回执由后续任务实现。
+- 草稿接口只服务draft记录；列表默认包含归档，按创建时间/ID升序分页，详情包含有效行。归档草稿可读，显式恢复后才可编辑；确认使用下述独立命令。
+
+## 经营单据确认
+
+- `POST /api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm`携带稳定确认UUID、expected_version及Idempotency-Key；客户端不能提交派生金额。按[ADR0039](decisions/0039-business-confirmation.md)原子确认全部有效行，成功201返回完整有序行/操作/凭证映射，旧五类财务接口不包含经营应计。
+- 回执使用永久账本键及v2原始JSON摘要；未知提交必须重放原键、原正文及源版本。原回执先于归档、停用、当前版本和期间检查；同键异意图409，已确认单据使用新键也返回409，不产生第二组应计。
+- `GET /business-documents/{document_id}/confirmation`在同一账本前缀下返回封存详情与原回执；`GET /business-confirmations`按确认时间/确认ID升序分页，默认100、最大200。列表批量取合计/资产，不加载整单快照；详情保留原输入及税额，读取不刷新资料快照。
+- 两类读取都保持账本归属、会话与no-store保护；已归档主体和停用资产的历史仍可读。接口不暴露内部快照JSON，确认、结算和原现金流水不能重复计入管理收支。
 
 ## 周期 Invoice 草稿
 

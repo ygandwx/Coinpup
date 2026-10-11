@@ -420,6 +420,399 @@
         "title": "BalanceResponse",
         "type": "object"
       },
+      "BusinessConfirmationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "maximum": 2147483646.0,
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expected_version"
+        ],
+        "title": "BusinessConfirmationCreate",
+        "type": "object"
+      },
+      "BusinessConfirmationDetail": {
+        "properties": {
+          "confirmation": {
+            "$ref": "#/components/schemas/BusinessConfirmationResponse"
+          },
+          "document": {
+            "$ref": "#/components/schemas/BusinessConfirmedDocument"
+          }
+        },
+        "required": [
+          "document",
+          "confirmation"
+        ],
+        "title": "BusinessConfirmationDetail",
+        "type": "object"
+      },
+      "BusinessConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "business_confirmation",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmationPosting"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Postings",
+            "type": "array"
+          },
+          "source_version": {
+            "maximum": 2147483646.0,
+            "minimum": 1.0,
+            "title": "Source Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "document_id",
+          "source_version",
+          "document_version",
+          "postings"
+        ],
+        "title": "BusinessConfirmationResponse",
+        "type": "object"
+      },
+      "BusinessConfirmedDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "confirmation_id": {
+            "format": "uuid",
+            "title": "Confirmation Id",
+            "type": "string"
+          },
+          "confirmed_at": {
+            "format": "date-time",
+            "title": "Confirmed At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "issuer_snapshot": {
+            "additionalProperties": true,
+            "title": "Issuer Snapshot",
+            "type": "object"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDraftLineResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "net_amount": {
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "party_snapshot": {
+            "additionalProperties": true,
+            "title": "Party Snapshot",
+            "type": "object"
+          },
+          "state": {
+            "const": "confirmed",
+            "title": "State",
+            "type": "string"
+          },
+          "tax_amount": {
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "updated_at",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "id",
+          "ledger_id",
+          "state",
+          "archived",
+          "issuer_snapshot",
+          "party_snapshot",
+          "line_count",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "confirmation_id",
+          "confirmed_at",
+          "lines"
+        ],
+        "title": "BusinessConfirmedDocument",
+        "type": "object"
+      },
+      "BusinessConfirmedSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "confirmation_id": {
+            "format": "uuid",
+            "title": "Confirmation Id",
+            "type": "string"
+          },
+          "confirmed_at": {
+            "format": "date-time",
+            "title": "Confirmed At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "issuer_snapshot": {
+            "additionalProperties": true,
+            "title": "Issuer Snapshot",
+            "type": "object"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "net_amount": {
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "party_snapshot": {
+            "additionalProperties": true,
+            "title": "Party Snapshot",
+            "type": "object"
+          },
+          "state": {
+            "const": "confirmed",
+            "title": "State",
+            "type": "string"
+          },
+          "tax_amount": {
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "updated_at",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "id",
+          "ledger_id",
+          "state",
+          "archived",
+          "issuer_snapshot",
+          "party_snapshot",
+          "line_count",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "confirmation_id",
+          "confirmed_at"
+        ],
+        "title": "BusinessConfirmedSummary",
+        "type": "object"
+      },
       "BusinessDraftArchive": {
         "additionalProperties": false,
         "properties": {
@@ -1562,6 +1955,40 @@
           "entry"
         ],
         "title": "ConfirmationCreate",
+        "type": "object"
+      },
+      "ConfirmationPosting": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_id": {
+            "format": "uuid",
+            "title": "Line Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_id",
+          "line_no",
+          "operation_id",
+          "journal_id"
+        ],
+        "title": "ConfirmationPosting",
         "type": "object"
       },
       "ConfirmationResponse": {
@@ -7588,6 +8015,77 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/business-confirmations": {
+      "get": {
+        "operationId": "list_confirmations_api_v1_ledgers__ledger_id__business_confirmations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessConfirmedSummary"
+                  },
+                  "title": "Response List Confirmations Api V1 Ledgers  Ledger Id  Business Confirmations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Confirmations",
+        "tags": [
+          "business confirmations"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/business-documents": {
       "get": {
         "operationId": "list_business_documents_api_v1_ledgers__ledger_id__business_documents_get",
@@ -7942,6 +8440,151 @@
         "summary": "Archive Business Document",
         "tags": [
           "business drafts"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm": {
+      "post": {
+        "description": "Retry unknown submissions with the original key, version, identity and JSON bytes.",
+        "operationId": "confirm_api_v1_ledgers__ledger_id__business_documents__document_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessConfirmationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessConfirmationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "business confirmations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirmation": {
+      "get": {
+        "operationId": "get_confirmation_api_v1_ledgers__ledger_id__business_documents__document_id__confirmation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessConfirmationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Confirmation",
+        "tags": [
+          "business confirmations"
         ]
       }
     },
