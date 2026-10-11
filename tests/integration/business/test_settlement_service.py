@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from coinpup_api.business.schemas import PartyUpdate, ProjectUpdate
 from coinpup_api.business.settlement_models import BusinessAllocationLine, BusinessPayment
+from coinpup_api.business.settlement_reads import BusinessSettlementReads
 from coinpup_api.business.settlement_schemas import BusinessAllocationCreate, BusinessPaymentCreate
 from coinpup_api.business.settlements import BusinessSettlementService
 from coinpup_api.ledger.models import Account, CommandReceipt, Journal
@@ -131,6 +132,10 @@ def test_two_hundred_members_are_complete_and_replay_without_writes(drafts):
     assert len(result.initial_allocation.postings) == 200
     before = snapshot(s)
     assert pay(s, body) == result
+    reads = BusinessSettlementReads(s["engine"])
+    assert reads.get_payment(s["owner"], s["ledger"], body.id).receipt == result
+    detail = reads.get_allocation(s["owner"], s["ledger"], result.initial_allocation.id)
+    assert len(detail.lines) == 200 and detail.receipt == result
     assert snapshot(s) == before
 
 

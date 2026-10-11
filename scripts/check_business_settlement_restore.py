@@ -9,6 +9,7 @@ from coinpup_api.business.draft_schemas import BusinessDraftCreate
 from coinpup_api.business.drafts import DraftService
 from coinpup_api.business.schemas import PartyCreate, PartyUpdate
 from coinpup_api.business.service import BusinessService
+from coinpup_api.business.settlement_reads import BusinessSettlementReads
 from coinpup_api.business.settlement_schemas import BusinessAllocationCreate, BusinessPaymentCreate
 from coinpup_api.business.settlements import BusinessSettlementService
 from coinpup_api.ledger.control_accounts import ControlAccounts
@@ -160,6 +161,24 @@ def seed_business_settlements(engine, owner):
     structure.update_entity(owner, entity.id, EntityUpdate(expected_version=1, archived=True))
     money = PostingService(engine).balances(owner, ledger)
     controls = ControlAccounts(engine).balances(owner, ledger)
+    reads = BusinessSettlementReads(engine)
+    groups = [
+        case["payload"].initial_allocation if case["method"] == "pay" else case["payload"]
+        for case in cases
+    ]
+    groups = [group for group in groups if group is not None]
+    readings = {
+        "get_payment": [
+            reads.get_payment(owner, ledger, case["payload"].id)
+            for case in cases
+            if case["method"] == "pay"
+        ],
+        "get_allocation": [reads.get_allocation(owner, ledger, group.id) for group in groups],
+        "document_capacity": [
+            reads.document_capacity(owner, ledger, identifier)
+            for identifier in {line.document_id for group in groups for line in group.lines}
+        ],
+    }
     if len(money) != 1 or money[0].amount != "988.00":
         raise RuntimeError("Fictional settlement cash and independent fees are inconsistent")
     if [(row.system_key, row.asset_id, row.amount) for row in controls if row.amount != "0.00"] != [
@@ -174,11 +193,16 @@ def seed_business_settlements(engine, owner):
         controls=controls,
         opening=opening,
         opening_result=opening_result,
+        readings=readings,
     )
 
 
 def verify_business_settlements(engine, evidence):
     owner, ledger = evidence["owner"], evidence["ledger"]
+    reads = BusinessSettlementReads(engine)
+    for method, saved in evidence["readings"].items():
+        if [getattr(reads, method)(owner, ledger, row.id) for row in saved] != saved:
+            raise RuntimeError("Restored fictional settlement details or capacity changed")
     if (
         PostingService(engine).balances(owner, ledger) != evidence["money"]
         or ControlAccounts(engine).balances(owner, ledger) != evidence["controls"]
