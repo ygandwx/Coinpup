@@ -402,5 +402,5 @@ def test_scoped_migration_guards_data_logs_and_restores_empty_schema(ocr_structu
                 ),
                 {"pattern": "trg_%_change_log"},
             )
-            == 24  # Previous 22 plus delivery configurations and immutable revisions (2).
+            == 26  # Previous 24 plus business confirmations and immutable posting membership (2).
         )

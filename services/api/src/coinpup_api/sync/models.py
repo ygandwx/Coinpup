@@ -42,7 +42,8 @@ class ChangeLog(Base):
             "'ledger_periods', 'ledger_period_audits', 'ledger_period_receipts', "
             "'business_projects', 'recurring_invoice_rules', 'recurring_invoice_instances', "
             "'reminder_events', 'reminder_event_revisions', "
-            "'reminder_delivery_configs', 'reminder_delivery_revisions')",
+            "'reminder_delivery_configs', 'reminder_delivery_revisions', "
+            "'business_confirmations', 'business_postings')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(
