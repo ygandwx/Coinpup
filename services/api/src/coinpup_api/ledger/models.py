@@ -264,7 +264,7 @@ class FinancialOperation(Versioned, Base):
         ),
         CheckConstraint(
             "kind IN ('opening', 'income', 'expense', 'transfer', 'exchange', "
-            "'invoice_accrual', 'bill_accrual')",
+            "'invoice_accrual', 'bill_accrual', 'payment')",
             name="ck_financial_operations_kind",
         ),
         CheckConstraint("version > 0", name="ck_financial_operations_version"),
