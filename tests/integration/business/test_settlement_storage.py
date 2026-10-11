@@ -1,4 +1,4 @@
-"""Fictional storage probes: no settlement can commit before dedicated kinds activate."""
+"""Fictional storage probes reject legacy operations and incomplete settlement groups."""
 
 from datetime import date
 from decimal import Decimal
