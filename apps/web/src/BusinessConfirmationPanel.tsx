@@ -131,7 +131,10 @@ export function BusinessConfirmationPanel({
     function close() {
         if (!controller.dismiss()) return;
         detailAbort.current?.abort();
-        if (receipt) setMode("confirmed");
+        if (receipt) {
+            setMode("confirmed");
+            setOffset(0);
+        }
         setTarget(null);
         setSelected(null);
         setSealed(null);
@@ -159,6 +162,7 @@ export function BusinessConfirmationPanel({
         }
     }
     async function retry() {
+        if (controller.getSnapshot().status !== "unknown") return;
         try {
             await controller.retry(session);
         } catch (caught) {

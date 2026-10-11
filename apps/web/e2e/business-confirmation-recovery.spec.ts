@@ -52,13 +52,19 @@ test("fictional confirmation replays exact intent after lost success and real 40
         page.getByRole("button", { name: "Retry original confirmation", exact: true }),
     ).toBeVisible();
     expect(bodies).toHaveLength(2);
-    await page.getByRole("button", { name: "Retry original confirmation", exact: true }).click();
+    await page
+        .getByRole("button", { name: "Retry original confirmation", exact: true })
+        .evaluate((button) => {
+            (button as HTMLButtonElement).click();
+            (button as HTMLButtonElement).click();
+        });
     await expect(
         page.getByText("Confirmed; original amounts and journal mappings are sealed.", {
             exact: true,
         }),
     ).toBeVisible();
     expect(bodies).toHaveLength(3);
+    await expect(page.locator(".business-confirmation-panel [role=alert]")).toHaveCount(0);
     expect(new Set(bodies).size).toBe(1);
     expect(new Set(keys).size).toBe(1);
     const detail = await api<BusinessConfirmationDetail>(page, "GET", `${data.base}/confirmation`);
