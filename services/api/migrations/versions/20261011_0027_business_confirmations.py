@@ -132,7 +132,7 @@ BEGIN
     IF member.id IS NULL OR document.state IS DISTINCT FROM 'confirmed'
        OR source.total_amount IS NULL OR source.total_amount <= 0 OR source.archived
        OR document.document_kind IS DISTINCT FROM
-           CASE required_kind WHEN 'invoice_accrual' THEN 'invoice' ELSE 'bill' END
+           (CASE required_kind WHEN 'invoice_accrual' THEN 'invoice' ELSE 'bill' END)
        OR operation.kind IS DISTINCT FROM required_kind
        OR operation.version <> 1 OR operation.status <> 'active'
        OR operation.current_journal_id <> header.id OR header.operation_version <> 1
