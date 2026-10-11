@@ -35,6 +35,8 @@ _EXCHANGE_V1_FIELDS = {
 _FEE_V1_FIELDS = {"account_id", "asset_id", "amount", "category_id"}
 _SPLIT_V1_FIELDS = {"category_id", "amount"}
 _ROUTES = {
+    "business_payment": "/api/v1/ledgers/{ledger_id}/business-payments",
+    "business_allocation": "/api/v1/ledgers/{ledger_id}/business-allocations",
     "confirm_document": "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm",
     "opening": "/api/v1/ledgers/{ledger_id}/opening-balances",
     "income": "/api/v1/ledgers/{ledger_id}/income",
