@@ -4,6 +4,7 @@ import json
 from uuid import uuid4
 
 from coinpup_api.business.confirmation_models import BusinessConfirmation
+from coinpup_api.business.confirmation_reads import BusinessConfirmationReads
 from coinpup_api.business.confirmation_schemas import BusinessConfirmationCreate
 from coinpup_api.business.confirmations import BusinessConfirmationService
 from coinpup_api.business.draft_schemas import BusinessDraftCreate
@@ -89,7 +90,15 @@ def seed_business_confirmations(engine, owner):
             )
         cases.append(
             dict(
-                document=document.id, payload=payload, key=key, raw=raw, result=result, proof=proof
+                document=document.id,
+                payload=payload,
+                key=key,
+                raw=raw,
+                result=result,
+                proof=proof,
+                detail=BusinessConfirmationReads(engine).get_confirmation(
+                    owner, ledger, document.id
+                ),
             )
         )
     structure.update_entity(owner, entity.id, EntityUpdate(expected_version=1, archived=True))
@@ -116,5 +125,6 @@ def verify_business_confirmations(engine, evidence):
                     BusinessConfirmation.id == case["payload"].id,
                 )
             )
-        if result != case["result"] or proof != case["proof"]:
+        detail = BusinessConfirmationReads(engine).get_confirmation(owner, ledger, case["document"])
+        if result != case["result"] or proof != case["proof"] or detail != case["detail"]:
             raise RuntimeError("Restored fictional business confirmation or v2 receipt changed")

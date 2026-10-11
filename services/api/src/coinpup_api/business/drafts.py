@@ -66,7 +66,7 @@ def _references(session, model, ledger_id, identifiers):
     return rows
 
 
-def _response(document, lines, asset):
+def _response(document, lines, asset, *, response_type=BusinessDraftResponse, **overrides):
     # Availability governs new input, not reading saved history.
     asset = replace(asset, enabled=True)
     price = price_document([_source(line) for line in lines], asset)
@@ -82,9 +82,14 @@ def _response(document, lines, asset):
                 **_fields(line, BusinessDraftLineResponse, **_amounts(calculated))
             )
         )
-    return BusinessDraftResponse(
+    return response_type(
         **_fields(
-            document, BusinessDraftResponse, lines=results, line_count=len(lines), **_amounts(price)
+            document,
+            response_type,
+            lines=results,
+            line_count=len(lines),
+            **_amounts(price),
+            **overrides,
         )
     )
 

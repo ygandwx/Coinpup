@@ -292,6 +292,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Confirmations */
+        get: operations["list_confirmations_api_v1_ledgers__ledger_id__business_confirmations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents": {
         parameters: {
             query?: never;
@@ -343,6 +360,43 @@ export interface paths {
         head?: never;
         /** Archive Business Document */
         patch: operations["archive_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__archive_patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm
+         * @description Retry unknown submissions with the original key, version, identity and JSON bytes.
+         */
+        post: operations["confirm_api_v1_ledgers__ledger_id__business_documents__document_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Confirmation */
+        get: operations["get_confirmation_api_v1_ledgers__ledger_id__business_documents__document_id__confirmation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/ledgers/{ledger_id}/business-parties": {
@@ -1374,6 +1428,210 @@ export interface components {
             /** Link Enabled */
             link_enabled: boolean;
         };
+        /** BusinessConfirmationCreate */
+        BusinessConfirmationCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** BusinessConfirmationDetail */
+        BusinessConfirmationDetail: {
+            confirmation: components["schemas"]["BusinessConfirmationResponse"];
+            document: components["schemas"]["BusinessConfirmedDocument"];
+        };
+        /** BusinessConfirmationResponse */
+        BusinessConfirmationResponse: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Version */
+            document_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_confirmation";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Postings */
+            postings: components["schemas"]["ConfirmationPosting"][];
+            /** Source Version */
+            source_version: number;
+        };
+        /** BusinessConfirmedDocument */
+        BusinessConfirmedDocument: {
+            /** Archived */
+            archived: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Confirmation Id
+             * Format: uuid
+             */
+            confirmation_id: string;
+            /**
+             * Confirmed At
+             * Format: date-time
+             */
+            confirmed_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Issuer Snapshot */
+            issuer_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Lines */
+            lines: components["schemas"]["BusinessDraftLineResponse"][];
+            /** Net Amount */
+            net_amount: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Party Snapshot */
+            party_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * State
+             * @constant
+             */
+            state: "confirmed";
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** BusinessConfirmedSummary */
+        BusinessConfirmedSummary: {
+            /** Archived */
+            archived: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Confirmation Id
+             * Format: uuid
+             */
+            confirmation_id: string;
+            /**
+             * Confirmed At
+             * Format: date-time
+             */
+            confirmed_at: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Issuer Snapshot */
+            issuer_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Net Amount */
+            net_amount: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Party Snapshot */
+            party_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * State
+             * @constant
+             */
+            state: "confirmed";
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
         /** BusinessDraftArchive */
         BusinessDraftArchive: {
             /** Archived */
@@ -1858,6 +2116,26 @@ export interface components {
              * Format: uuid
              */
             target_ledger_id: string;
+        };
+        /** ConfirmationPosting */
+        ConfirmationPosting: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /** Line No */
+            line_no: number;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
         };
         /** ConfirmationResponse */
         ConfirmationResponse: {
@@ -4539,6 +4817,40 @@ export interface operations {
             };
         };
     };
+    list_confirmations_api_v1_ledgers__ledger_id__business_confirmations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessConfirmedSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_business_documents_api_v1_ledgers__ledger_id__business_documents_get: {
         parameters: {
             query?: {
@@ -4706,6 +5018,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_v1_ledgers__ledger_id__business_documents__document_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessConfirmationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessConfirmationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_confirmation_api_v1_ledgers__ledger_id__business_documents__document_id__confirmation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessConfirmationDetail"];
                 };
             };
             /** @description Validation Error */
