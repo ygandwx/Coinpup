@@ -19,6 +19,7 @@ from check_business_confirmation_restore import (
     seed_business_confirmations,
     verify_business_confirmations,
 )
+from check_business_settlement_restore import seed_business_settlements, verify_business_settlements
 from check_control_restore import seed_controls, verify_controls
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_period_restore import seed_periods, verify_periods
@@ -344,6 +345,7 @@ def check_bundle_restore(source_url):
             periods = seed_periods(engine, owner)
             reminder = seed_reminders(engine, owner, ledger_a)
             business_confirmations = seed_business_confirmations(engine, owner)
+            business_settlements = seed_business_settlements(engine, owner)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -438,6 +440,7 @@ def check_bundle_restore(source_url):
             verify_periods(restored_engine, owner, periods)
             verify_reminders(restored_engine, reminder)
             verify_business_confirmations(restored_engine, business_confirmations)
+            verify_business_settlements(restored_engine, business_settlements)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
@@ -514,6 +517,10 @@ def check_bundle_restore(source_url):
             print("OCR queue intent/completion replay and independent human edit restored exactly.")
             print(
                 "Confirmed invoice/bill snapshots, gross balances and v2 receipts restored exactly."
+            )
+            print(
+                "Actual payments, independent fees, partial same/cross-asset allocations and "
+                "unapplied advances restored; original v2 receipts replay without any writes."
             )
             print(
                 "Period close/reopen/reclose state, audits and original v2 receipts "
