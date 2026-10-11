@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from alembic import op
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from coinpup_api.admin import create_admin
@@ -32,14 +33,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261011_0028",)
+        assert context.get_current_heads() == ("20261012_0029",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261011_0028",)
+        assert context.get_current_heads() == ("20261012_0029",)
 
 
 def confirmation_schema_migration():
@@ -54,7 +55,11 @@ def confirmation_schema_migration():
 def isolated_confirmation_schema(engine, action):
     with engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
+            if action == "downgrade":
+                business_settlement_migration()[action]()
             confirmation_schema_migration()[action]()
+            if action == "upgrade":
+                business_settlement_migration()[action]()
     if action == "upgrade":
         # An isolated frozen 0014 round trip must restore the current additive type list.
         restore_current_change_types(engine)
@@ -112,10 +117,30 @@ def business_confirmation_migration(*, include_dependents=True):
 
 
 def business_accrual_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261011_0028_business_accruals.py"
+        )
+    )
+
+    def downgrade():
+        business_settlement_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        business_settlement_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def business_settlement_migration(*, include_dependents=True):
+    # Keep the raw-probe option for future activation; no dependent migration exists yet.
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261012_0029_business_settlements.py"
         )
     )
 
@@ -159,12 +184,21 @@ def reminder_migration():
 
 
 def delivery_config_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261011_0026_reminder_delivery_config.py"
         )
     )
+
+    def upgrade():
+        frozen["upgrade"]()
+        connection = op.get_bind()
+        if connection.exec_driver_sql("SELECT to_regclass('public.business_payments')").scalar():
+            # An isolated older round trip must not erase the extant newer type registrations.
+            _restore_current_change_types(connection)
+
+    return frozen | {"upgrade": upgrade}
 
 
 def recurring_migration():
@@ -207,13 +241,15 @@ def restore_current_change_types(engine):
     # Isolated frozen OCR migrations replace the check with their historical type list.
     # Reinstate the current additive list only after the original probe completes.
     with engine.begin() as connection:
-        connection.exec_driver_sql(
-            "ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type"
-        )
-        connection.exec_driver_sql(
-            "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-            f"(entity_type IN ({business_confirmation_migration()['_ENTITY_TYPES']}))"
-        )
+        _restore_current_change_types(connection)
+
+
+def _restore_current_change_types(connection):
+    connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
+    connection.exec_driver_sql(
+        "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
+        f"(entity_type IN ({business_settlement_migration()['_ENTITY_TYPES']}))"
+    )
 
 
 def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
@@ -238,6 +274,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | reminder_migration()["_CHANGE_TRIGGER_SQL"]
             | delivery_config_migration()["_CHANGE_TRIGGER_SQL"]
             | business_confirmation_migration()["_CHANGE_TRIGGER_SQL"]
+            | business_settlement_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -275,6 +312,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
+                "business_allocation_lines, business_allocations, business_payments, "
                 "reminder_delivery_revisions, reminder_delivery_configs, "
                 "reminder_event_revisions, reminder_events, "
                 "recurring_invoice_instances, recurring_invoice_rules, "

@@ -43,7 +43,8 @@ class ChangeLog(Base):
             "'business_projects', 'recurring_invoice_rules', 'recurring_invoice_instances', "
             "'reminder_events', 'reminder_event_revisions', "
             "'reminder_delivery_configs', 'reminder_delivery_revisions', "
-            "'business_confirmations', 'business_postings')",
+            "'business_confirmations', 'business_postings', 'business_payments', "
+            "'business_allocations', 'business_allocation_lines')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

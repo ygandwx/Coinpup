@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from coinpup_api.business import confirmation_models as confirmation_models  # noqa: F401
 from coinpup_api.business import models as business_models  # noqa: F401
+from coinpup_api.business import settlement_models as settlement_models  # noqa: F401
 from coinpup_api.ledger import period_models as period_models  # noqa: F401
 from coinpup_api.models import Base
 from coinpup_api.reminders import delivery_models as reminder_delivery_models  # noqa: F401
