@@ -14,11 +14,13 @@ _DIMENSIONS = ("party_id", "counterparty_entity_id", "document_id", "document_li
 
 
 class ControlAccounts(LedgerService):
-    def ensure(self, session, owner_id, ledger_id, requirements):
+    def ensure(self, session, owner_id, ledger_id, requirements, *, lock_assets=None):
         """Join a business transaction before it locks assets; never commit or post money.
 
         The caller owns commit/rollback and its permanent command receipt. There is no
         public account-creation command for controls. Retrying adds no duplicate/version.
+        A command may supply its complete principal/fee/source asset set before any
+        control writes; extra locked assets do not create additional control links.
         """
         if not session.in_transaction():
             raise RuntimeError("Control acquisition requires a caller-owned transaction")
@@ -27,9 +29,13 @@ class ControlAccounts(LedgerService):
             key not in CONTROL_CLASSES or not ids for key, ids in requested.items()
         ):
             raise LedgerError("invalid_control", 422, "Use a known control identity and assets.")
+        required_assets = set().union(*requested.values())
+        asset_ids = required_assets if lock_assets is None else set(lock_assets)
+        if not required_assets.issubset(asset_ids):
+            raise LedgerError("invalid_control", 422, "Lock every requested control asset.")
         acquire_write_lock(session)
         self._ledger(session, owner_id, ledger_id, write=True)
-        self._assets(session, set().union(*requested.values()))
+        self._assets(session, asset_ids)
         accounts = {
             a.system_key: a
             for a in session.scalars(
