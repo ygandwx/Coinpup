@@ -133,7 +133,7 @@ def test_empty_round_trip_and_pending_history_downgrade_guard(ledger_setup):
     with pytest.raises(IntegrityError) as error, s["engine"].begin() as c:
         c.execute(insert(BusinessConfirmation).values(**values))
         with Operations.context(MigrationContext.configure(c)):
-            migration["downgrade"]()
+            business_confirmation_migration(include_dependents=False)["downgrade"]()
     assert error.value.orig.diag.constraint_name == "ck_business_confirmation_downgrade"
     assert snapshot(s) == before
 

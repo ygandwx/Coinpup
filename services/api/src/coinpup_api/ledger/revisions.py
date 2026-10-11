@@ -34,7 +34,7 @@ from coinpup_api.ledger.posting_storage import (
     prepare_journal_lines,
     prepare_reversal_lines,
 )
-from coinpup_api.ledger.readers import PostingReaders
+from coinpup_api.ledger.readers import LEGACY_OPERATION_KINDS, PostingReaders
 from coinpup_api.ledger.readers import operation_state as operation_state
 from coinpup_api.ledger.service import LedgerError, _not_found, _page, _version
 
@@ -208,6 +208,7 @@ class RevisionService(
                 .where(
                     FinancialOperation.id == operation_id,
                     FinancialOperation.ledger_id == ledger_id,
+                    FinancialOperation.kind.in_(LEGACY_OPERATION_KINDS),
                 )
                 .with_for_update()
             )
@@ -352,7 +353,9 @@ class RevisionService(
             self._ledger(session, owner_id, ledger_id)
             operation = session.scalar(
                 select(FinancialOperation).where(
-                    FinancialOperation.id == operation_id, FinancialOperation.ledger_id == ledger_id
+                    FinancialOperation.id == operation_id,
+                    FinancialOperation.ledger_id == ledger_id,
+                    FinancialOperation.kind.in_(LEGACY_OPERATION_KINDS),
                 )
             )
             if operation is None:

@@ -105,7 +105,7 @@ class BusinessDocument(ReferenceIdentity, Base):
             "AND issue_date IS NULL AND due_date IS NULL AND notes IS NULL "
             "AND issuer_snapshot IS NULL AND party_snapshot IS NULL) OR "
             "(document_kind IS NOT NULL AND document_kind IN ('invoice', 'bill') "
-            "AND state IS NOT NULL AND state = 'draft' AND party_id IS NOT NULL "
+            "AND state IS NOT NULL AND state IN ('draft', 'confirmed') AND party_id IS NOT NULL "
             "AND asset_id IS NOT NULL AND issue_date IS NOT NULL "
             "AND issuer_snapshot IS NOT NULL AND jsonb_typeof(issuer_snapshot) = 'object' "
             "AND party_snapshot IS NOT NULL AND jsonb_typeof(party_snapshot) = 'object')",
@@ -114,7 +114,7 @@ class BusinessDocument(ReferenceIdentity, Base):
     )
 
     document_kind: Mapped[str | None] = mapped_column(String(7))
-    state: Mapped[str | None] = mapped_column(String(5))
+    state: Mapped[str | None] = mapped_column(String(9))
     party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     asset_id: Mapped[str | None] = mapped_column(String(200))
     issue_date: Mapped[date | None] = mapped_column(Date)

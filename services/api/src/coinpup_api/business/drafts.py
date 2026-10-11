@@ -321,6 +321,7 @@ class DraftService(LedgerService):
             statement = select(BusinessDocument).where(
                 BusinessDocument.ledger_id == ledger_id,
                 BusinessDocument.document_kind.is_not(None),
+                BusinessDocument.state == "draft",
             )
             if not include_archived:
                 statement = statement.where(BusinessDocument.archived.is_(False))
