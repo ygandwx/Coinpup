@@ -1193,3 +1193,17 @@
 .master-records span {
     display: block;
 }
+.business-confirmation-panel {
+    overflow-wrap: anywhere;
+}
+.confirmation-facts {
+    display: grid;
+    gap: 4px;
+}
+.confirmation-facts dt {
+    font-weight: 600;
+}
+.confirmation-facts dd {
+    margin: 0 0 12px;
+    white-space: pre-wrap;
+}

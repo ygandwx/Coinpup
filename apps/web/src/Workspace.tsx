@@ -14,6 +14,8 @@ import type { PendingMasterDataController } from "./pending-business";
 import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
 import { RecurringPanel } from "./RecurringPanel";
+import { BusinessConfirmationPanel } from "./BusinessConfirmationPanel";
+import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { ReminderPanel } from "./ReminderPanel";
 import type { PendingReminderController } from "./pending-reminder";
 import type { PendingRecurringController } from "./pending-recurring";
@@ -60,6 +62,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "business-confirmations"
     | "drafts"
     | "recurring"
     | "reminders"
@@ -85,6 +88,7 @@ const views: View[] = [
     "periods",
     "masters",
     "drafts",
+    "business-confirmations",
     "recurring",
     "reminders",
     "categories",
@@ -321,6 +325,7 @@ export function BusinessWorkspace({
     drafts,
     recurring,
     reminders,
+    businessConfirmations,
     onUnauthorized,
 }: {
     session: Session;
@@ -335,6 +340,7 @@ export function BusinessWorkspace({
     drafts: PendingBusinessDraftController;
     recurring: PendingRecurringController;
     reminders: PendingReminderController;
+    businessConfirmations: PendingBusinessConfirmationController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -357,6 +363,17 @@ export function BusinessWorkspace({
     );
     const recurringRecoveryLedger = recurringLocked ? recurringState.plan?.ledgerId : undefined;
     const [recurringEditing, setRecurringEditing] = useState(false);
+    const businessConfirmation = useSyncExternalStore(
+        businessConfirmations.subscribe,
+        businessConfirmations.getSnapshot,
+    );
+    const businessConfirmationLocked = !["idle", "confirmed", "rejected"].includes(
+        businessConfirmation.status,
+    );
+    const businessRecoveryLedger = businessConfirmationLocked
+        ? businessConfirmation.plan?.ledgerId
+        : undefined;
+    const [businessConfirmationEditing, setBusinessConfirmationEditing] = useState(false);
     const reminderState = useSyncExternalStore(reminders.subscribe, reminders.getSnapshot);
     const reminderLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
         reminderState.status,
@@ -405,7 +422,9 @@ export function BusinessWorkspace({
         recurringLocked ||
         recurringEditing ||
         reminderLocked ||
-        reminderEditing;
+        reminderEditing ||
+        businessConfirmationLocked ||
+        businessConfirmationEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -445,6 +464,7 @@ export function BusinessWorkspace({
         masters: t("往来与项目", "Parties and projects"),
         drafts: t("经营草稿", "Business drafts"),
         recurring: t("周期Invoice", "Recurring invoices"),
+        "business-confirmations": t("单据确认", "Confirm documents"),
         reminders: t("提醒事项", "Reminder events"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
@@ -470,7 +490,8 @@ export function BusinessWorkspace({
             !masterLocked &&
             !draftLocked &&
             !recurringLocked &&
-            !reminderLocked
+            !reminderLocked &&
+            !businessConfirmationLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -489,6 +510,7 @@ export function BusinessWorkspace({
         draftLocked,
         recurringLocked,
         reminderLocked,
+        businessConfirmationLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -541,6 +563,15 @@ export function BusinessWorkspace({
             setView("periods");
         }
     }, [periodRecoveryLedger, entities]);
+
+    useEffect(() => {
+        if (!businessRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === businessRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("business-confirmations");
+        }
+    }, [businessRecoveryLedger, entities]);
 
     function failure(error: unknown) {
         if (error instanceof ApiError && error.kind === "unauthorized") onUnauthorizedRef.current();
@@ -860,6 +891,7 @@ export function BusinessWorkspace({
                                         drafts: "▤",
                                         recurring: "↻",
                                         reminders: "◷",
+                                        "business-confirmations": "✓",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -1046,7 +1078,8 @@ export function BusinessWorkspace({
                             view !== "files" &&
                             view !== "ocr" &&
                             view !== "recurring" &&
-                            view !== "reminders" && (
+                            view !== "reminders" &&
+                            view !== "business-confirmations" && (
                                 <label className="archive-toggle">
                                     <input
                                         type="checkbox"
@@ -1060,6 +1093,20 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "business-confirmations" && (
+                            <BusinessConfirmationPanel
+                                key={`${session.user.id}:${entity.ledger.id}`}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={businessConfirmations}
+                                assets={assets}
+                                archived={entity.archived}
+                                dataLoading={loading || ledgerLoading || !current}
+                                onUnauthorized={onUnauthorized}
+                                onEditing={setBusinessConfirmationEditing}
+                            />
                         )}
                         {view === "reminders" && (
                             <ReminderPanel
