@@ -156,7 +156,7 @@ BEGIN
         IF item.source_id IS NULL OR item.state IS DISTINCT FROM 'confirmed'
            OR item.party_id IS DISTINCT FROM payment.party_id
            OR item.document_kind IS DISTINCT FROM
-               CASE payment.direction WHEN 'receipt' THEN 'invoice' ELSE 'bill' END
+               (CASE payment.direction WHEN 'receipt' THEN 'invoice' ELSE 'bill' END)
            OR allocation.allocation_date < item.issue_date OR item.total_amount<=0
            OR item.payment_scale IS NULL OR item.document_scale IS NULL
            OR trunc(item.payment_amount,item.payment_scale) <> item.payment_amount
@@ -182,7 +182,7 @@ BEGIN
                WHERE line_id=item.document_line_id AND document_id=item.document_id
                    AND ledger_id=allocation.ledger_id)
            OR (SELECT count(*) FROM public.journal_lines WHERE journal_id=item.journal_id)
-               <> CASE WHEN same_asset THEN 2 ELSE 4 END
+               <> (CASE WHEN same_asset THEN 2 ELSE 4 END)
            OR EXISTS (SELECT 1 FROM public.journal_lines r WHERE r.journal_id=item.journal_id
                AND (r.component_no<>0 OR r.party_id IS DISTINCT FROM payment.party_id
                    OR r.counterparty_entity_id IS NOT NULL OR r.dimension_owner_id IS NOT NULL))
