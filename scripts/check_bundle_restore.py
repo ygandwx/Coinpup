@@ -15,6 +15,10 @@ from _bundle_archive import verified_bundle
 from _database_archive import ArchiveError, read_target, require_posix
 from backup_bundle import backup_bundle
 from check_backup_restore import change_state, snapshot, verify_change_continuation
+from check_business_confirmation_restore import (
+    seed_business_confirmations,
+    verify_business_confirmations,
+)
 from check_control_restore import seed_controls, verify_controls
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_period_restore import seed_periods, verify_periods
@@ -339,6 +343,7 @@ def check_bundle_restore(source_url):
             controls = seed_controls(engine, owner)
             periods = seed_periods(engine, owner)
             reminder = seed_reminders(engine, owner, ledger_a)
+            business_confirmations = seed_business_confirmations(engine, owner)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -432,6 +437,7 @@ def check_bundle_restore(source_url):
             verify_controls(restored_engine, owner, controls)
             verify_periods(restored_engine, owner, periods)
             verify_reminders(restored_engine, reminder)
+            verify_business_confirmations(restored_engine, business_confirmations)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
@@ -506,6 +512,9 @@ def check_bundle_restore(source_url):
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
             print("OCR queue intent/completion replay and independent human edit restored exactly.")
+            print(
+                "Confirmed invoice/bill snapshots, gross balances and v2 receipts restored exactly."
+            )
             print(
                 "Period close/reopen/reclose state, audits and original v2 receipts "
                 "restored exactly."
