@@ -174,6 +174,8 @@ CI 的 PostgreSQL 17、Node 24 和 Python 3.12 基础镜像使用固定摘要的
 
 升级时核对 Docker Hub 与 ECR 对应镜像清单摘要一致，同步更新 CI/浏览器覆盖的 PostgreSQL 引用和准备脚本的 Node/Python 映射，并通过迁移、浏览器及完整恢复检查。拉取失败仍使检查失败，不跳过测试。
 
+浏览器 CI 用 `prepare_browser_ci_image.py --pull` 预取这三个固定镜像：优先官方 ECR，失败或120秒超时后仅回退一次至 Docker Hub 官方同名、同摘要镜像；两处均失败即停止。成功后生成仅含 PostgreSQL 镜像选择的 `build/compose.browser-images.yaml`，追加至该任务的 `COMPOSE_FILE`，并将所选 Node/Python 引用写入生成 Dockerfile。后续迁移及恢复复用同一覆盖；本地默认不预取，不更改部署/OCR镜像，不需要登录或凭据。独立数据库任务的服务声明保持原固定 ECR 镜像。
+
 单元检查不需要 PostgreSQL：
 
 ```sh

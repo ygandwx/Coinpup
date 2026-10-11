@@ -133,7 +133,9 @@ jobs:
         run: python3 scripts/init_env.py
       - name: Start services
         run: |
-          python3 scripts/prepare_browser_ci_image.py
+          python3 scripts/prepare_browser_ci_image.py --pull
+          export COMPOSE_FILE="${COMPOSE_FILE}:${GITHUB_WORKSPACE}/build/compose.browser-images.yaml"
+          echo "COMPOSE_FILE=${COMPOSE_FILE}" >> "$GITHUB_ENV"
           docker compose up -d --build --wait
       - name: Apply migrations
         run: docker compose exec -T api python -m alembic upgrade head
