@@ -156,7 +156,8 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                     connection.exec_driver_sql("SELECT count(*) FROM journal_lines").scalar() == 0
                 )
                 connection.exec_driver_sql(
-                    "TRUNCATE TABLE recurring_invoice_instances, recurring_invoice_rules, "
+                    "TRUNCATE TABLE business_postings, business_confirmations, "
+                    "recurring_invoice_instances, recurring_invoice_rules, "
                     "journal_lines, business_document_lines, business_documents, "
                     "business_parties RESTRICT"
                 )

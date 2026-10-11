@@ -58,6 +58,8 @@ EntityType = Literal[
     "reminder_event_revisions",
     "reminder_delivery_configs",
     "reminder_delivery_revisions",
+    "business_confirmations",
+    "business_postings",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 

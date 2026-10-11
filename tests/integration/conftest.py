@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261011_0026",)
+        assert context.get_current_heads() == ("20261011_0027",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261011_0026",)
+        assert context.get_current_heads() == ("20261011_0027",)
 
 
 def confirmation_schema_migration():
@@ -70,10 +70,30 @@ def business_reference_migration():
 
 
 def draft_line_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261009_0023_draft_lines.py"
+        )
+    )
+
+    # Keep the frozen draft probe; remove/reinstate its empty new dependent schema first.
+    def downgrade():
+        business_confirmation_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        business_confirmation_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def business_confirmation_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261011_0027_business_confirmations.py"
         )
     )
 
@@ -170,7 +190,7 @@ def restore_current_change_types(engine):
         )
         connection.exec_driver_sql(
             "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-            f"(entity_type IN ({delivery_config_migration()['_ENTITY_TYPES']}))"
+            f"(entity_type IN ({business_confirmation_migration()['_ENTITY_TYPES']}))"
         )
 
 
@@ -195,6 +215,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | recurring_migration()["_CHANGE_TRIGGER_SQL"]
             | reminder_migration()["_CHANGE_TRIGGER_SQL"]
             | delivery_config_migration()["_CHANGE_TRIGGER_SQL"]
+            | business_confirmation_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -231,7 +252,7 @@ def structure_database(request):
             # RESTRICT rejects unexpected dependants; production utilities never do this.
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
-                "operation_file_links, stored_files, "
+                "operation_file_links, stored_files, business_postings, business_confirmations, "
                 "reminder_delivery_revisions, reminder_delivery_configs, "
                 "reminder_event_revisions, reminder_events, "
                 "recurring_invoice_instances, recurring_invoice_rules, "
