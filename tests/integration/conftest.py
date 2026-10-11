@@ -32,14 +32,14 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261011_0027",)
+        assert context.get_current_heads() == ("20261011_0028",)
         with Operations.context(context):
             if action == "downgrade":
                 confirmation_schema_migration()[action]()
             ocr_schema_migration()[action]()
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
-        assert context.get_current_heads() == ("20261011_0027",)
+        assert context.get_current_heads() == ("20261011_0028",)
 
 
 def confirmation_schema_migration():
@@ -89,11 +89,33 @@ def draft_line_migration():
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
-def business_confirmation_migration():
-    return runpy.run_path(
+def business_confirmation_migration(*, include_dependents=True):
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261011_0027_business_confirmations.py"
+        )
+    )
+
+    if not include_dependents:
+        return frozen
+
+    def downgrade():
+        business_accrual_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        business_accrual_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def business_accrual_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261011_0028_business_accruals.py"
         )
     )
 

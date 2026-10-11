@@ -21,6 +21,8 @@ from coinpup_api.ledger.posting_schemas import (
 )
 from coinpup_api.ledger.service import LedgerError, _not_found, _page
 
+LEGACY_OPERATION_KINDS = ("opening", "income", "expense", "transfer", "exchange")
+
 
 @dataclass(frozen=True)
 class _PostingBatch:
@@ -303,7 +305,9 @@ class PostingReaders:
             self._ledger(session, owner_id, ledger_id)
             operation = session.scalar(
                 select(FinancialOperation).where(
-                    FinancialOperation.id == operation_id, FinancialOperation.ledger_id == ledger_id
+                    FinancialOperation.id == operation_id,
+                    FinancialOperation.ledger_id == ledger_id,
+                    FinancialOperation.kind.in_(LEGACY_OPERATION_KINDS),
                 )
             )
             if operation is None:
@@ -335,7 +339,10 @@ class PostingReaders:
             )
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
-            statement = select(FinancialOperation).where(FinancialOperation.ledger_id == ledger_id)
+            statement = select(FinancialOperation).where(
+                FinancialOperation.ledger_id == ledger_id,
+                FinancialOperation.kind.in_(LEGACY_OPERATION_KINDS),
+            )
             if status != "all":
                 statement = statement.where(FinancialOperation.status == status)
             if order == "transaction_date" or from_date is not None or to_date is not None:
