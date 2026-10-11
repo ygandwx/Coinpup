@@ -140,7 +140,8 @@
     margin: 0;
     white-space: nowrap;
 }
-.secondary-button {
+.secondary-button,
+.business-confirmation-panel button:not(.primary-button) {
     border: 1px solid #d6ddcd;
     background: #ffffff60;
     border-radius: 9px;
@@ -149,7 +150,8 @@
     font-size: 12px;
     line-height: 1.4;
 }
-.secondary-button:hover {
+.secondary-button:hover,
+.business-confirmation-panel button:not(.primary-button):hover {
     background: #edf1e5;
 }
 .business-main button:disabled {
@@ -1192,4 +1194,24 @@
 .master-records strong,
 .master-records span {
     display: block;
+}
+.business-confirmation-panel {
+    overflow-wrap: anywhere;
+}
+.business-confirmation-panel > button {
+    margin-top: 12px;
+}
+.business-confirmation-panel button[aria-pressed="true"] {
+    background: #e8eedf;
+}
+.confirmation-facts {
+    display: grid;
+    gap: 4px;
+}
+.confirmation-facts dt {
+    font-weight: 600;
+}
+.confirmation-facts dd {
+    margin: 0 0 12px;
+    white-space: pre-wrap;
 }

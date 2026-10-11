@@ -13,6 +13,7 @@ import { PendingPeriodController } from "./pending-period";
 import { PendingMasterDataController } from "./pending-business";
 import { PendingBusinessDraftController } from "./pending-business-drafts";
 import { PendingRecurringController } from "./pending-recurring";
+import { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { PendingReminderController } from "./pending-reminder";
 import { OcrCopyController } from "./ocr-copy";
 
@@ -330,6 +331,7 @@ export function App() {
     const [masters] = useState(() => new PendingMasterDataController());
     const [drafts] = useState(() => new PendingBusinessDraftController());
     const [recurring] = useState(() => new PendingRecurringController());
+    const [businessConfirmations] = useState(() => new PendingBusinessConfirmationController());
     const [reminders] = useState(() => new PendingReminderController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
@@ -363,6 +365,7 @@ export function App() {
                     drafts.setOwner(String(session.user.id));
                     recurring.setOwner(String(session.user.id));
                     reminders.setOwner(String(session.user.id));
+                    businessConfirmations.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -379,6 +382,7 @@ export function App() {
                     drafts.setOwner(null);
                     recurring.setOwner(null);
                     reminders.setOwner(null);
+                    businessConfirmations.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -399,6 +403,7 @@ export function App() {
         drafts,
         recurring,
         reminders,
+        businessConfirmations,
     ]);
 
     useEffect(() => {
@@ -425,6 +430,7 @@ export function App() {
             drafts.setOwner(null, true);
             recurring.setOwner(null, true);
             reminders.setOwner(null, true);
+            businessConfirmations.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -438,6 +444,7 @@ export function App() {
                 drafts.setOwner(null, true);
                 recurring.setOwner(null, true);
                 reminders.setOwner(null, true);
+                businessConfirmations.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -487,6 +494,7 @@ export function App() {
                     drafts={drafts}
                     recurring={recurring}
                     reminders={reminders}
+                    businessConfirmations={businessConfirmations}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -498,6 +506,7 @@ export function App() {
                         drafts.setOwner(null);
                         recurring.setOwner(null);
                         reminders.setOwner(null);
+                        businessConfirmations.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -549,6 +558,7 @@ export function App() {
                                         drafts.setOwner(String(session.user.id));
                                         recurring.setOwner(String(session.user.id));
                                         reminders.setOwner(String(session.user.id));
+                                        businessConfirmations.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}
