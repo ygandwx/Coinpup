@@ -15,7 +15,8 @@ import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
 import { RecurringPanel } from "./RecurringPanel";
 import { BusinessConfirmationPanel } from "./BusinessConfirmationPanel";
-import { BusinessSettlementHistory } from "./BusinessSettlementHistory";
+import { BusinessSettlementPanel } from "./BusinessSettlementPanel";
+import type { PendingBusinessSettlementController } from "./pending-business-settlement";
 import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { ReminderPanel } from "./ReminderPanel";
 import type { PendingReminderController } from "./pending-reminder";
@@ -329,6 +330,7 @@ export function BusinessWorkspace({
     recurring,
     reminders,
     businessConfirmations,
+    settlements,
     onUnauthorized,
 }: {
     session: Session;
@@ -344,6 +346,7 @@ export function BusinessWorkspace({
     recurring: PendingRecurringController;
     reminders: PendingReminderController;
     businessConfirmations: PendingBusinessConfirmationController;
+    settlements: PendingBusinessSettlementController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -378,6 +381,9 @@ export function BusinessWorkspace({
         : undefined;
     const [businessConfirmationEditing, setBusinessConfirmationEditing] = useState(false);
     const [settlementEditing, setSettlementEditing] = useState(false);
+    const settlement = useSyncExternalStore(settlements.subscribe, settlements.getSnapshot);
+    const settlementLocked = !["idle", "confirmed", "rejected"].includes(settlement.status);
+    const settlementRecoveryLedger = settlementLocked ? settlement.plan?.ledgerId : undefined;
     const reminderState = useSyncExternalStore(reminders.subscribe, reminders.getSnapshot);
     const reminderLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
         reminderState.status,
@@ -429,7 +435,8 @@ export function BusinessWorkspace({
         reminderEditing ||
         businessConfirmationLocked ||
         businessConfirmationEditing ||
-        settlementEditing;
+        settlementEditing ||
+        settlementLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -497,7 +504,8 @@ export function BusinessWorkspace({
             !draftLocked &&
             !recurringLocked &&
             !reminderLocked &&
-            !businessConfirmationLocked
+            !businessConfirmationLocked &&
+            !settlementLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -517,6 +525,7 @@ export function BusinessWorkspace({
         recurringLocked,
         reminderLocked,
         businessConfirmationLocked,
+        settlementLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -578,6 +587,14 @@ export function BusinessWorkspace({
             setView("business-confirmations");
         }
     }, [businessRecoveryLedger, entities]);
+    useEffect(() => {
+        if (!settlementRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === settlementRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("business-settlements");
+        }
+    }, [settlementRecoveryLedger, entities]);
 
     function failure(error: unknown) {
         if (error instanceof ApiError && error.kind === "unauthorized") onUnauthorizedRef.current();
@@ -1103,13 +1120,20 @@ export function BusinessWorkspace({
                             </p>
                         )}
                         {view === "business-settlements" && (
-                            <BusinessSettlementHistory
+                            <BusinessSettlementPanel
                                 key={`${session.user.id}:${entity.ledger.id}`}
                                 ledgerId={entity.ledger.id}
                                 locale={locale}
                                 accounts={current?.accounts ?? []}
                                 onUnauthorized={onUnauthorized}
                                 onEditing={setSettlementEditing}
+                                session={session}
+                                controller={settlements}
+                                assets={assets}
+                                categories={current?.categories ?? []}
+                                archived={entity.archived}
+                                dataLoading={loading || ledgerLoading || !current}
+                                onSaved={reload}
                             />
                         )}
                         {view === "business-confirmations" && (

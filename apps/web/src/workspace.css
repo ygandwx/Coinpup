@@ -1227,3 +1227,15 @@
 .business-settlement-panel > button {
     margin-top: 12px;
 }
+
+/* The settlement workspace supplies the card; its history does not need a second one. */
+.business-settlement-workspace > .business-panel {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+}
+.business-settlement-workspace > .primary-button {
+    margin-bottom: 20px;
+}
