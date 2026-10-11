@@ -35,6 +35,7 @@ _EXCHANGE_V1_FIELDS = {
 _FEE_V1_FIELDS = {"account_id", "asset_id", "amount", "category_id"}
 _SPLIT_V1_FIELDS = {"category_id", "amount"}
 _ROUTES = {
+    "confirm_document": "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm",
     "opening": "/api/v1/ledgers/{ledger_id}/opening-balances",
     "income": "/api/v1/ledgers/{ledger_id}/income",
     "expense": "/api/v1/ledgers/{ledger_id}/expenses",
@@ -109,7 +110,7 @@ def _invalid_constant(value):
     raise ValueError("Non-finite JSON number")
 
 
-def _v2_hash(action, ledger_id, payload, raw_body, *, operation_id=None):
+def _v2_hash(action, ledger_id, payload, raw_body, *, operation_id=None, document_id=None):
     try:
         # HTTP always supplies actual cached bytes; typed internal callers retain fields_set.
         provided = (
@@ -127,6 +128,8 @@ def _v2_hash(action, ledger_id, payload, raw_body, *, operation_id=None):
         }
         if operation_id is not None:
             value["operation_id"] = str(operation_id)
+        if document_id is not None:
+            value["document_id"] = str(document_id)
         return _canonical_hash(value)
     except (ValueError, TypeError, RecursionError):
         raise LedgerError("invalid_request", 422, "The command body must be valid JSON.") from None
