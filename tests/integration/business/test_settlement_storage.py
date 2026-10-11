@@ -227,16 +227,17 @@ def test_empty_migration_round_trip_and_history_downgrade_guards(ledger_setup):
             if history == "row":
                 c.execute(insert(BusinessPayment).values(**payment))
             else:
-                c.execute(text("SELECT pg_advisory_xact_lock(18945999704708432)"))
+                # Isolate a historical notification via the real recording trigger; public
+                # settlement tables stay empty and no immutable/source guard is disabled.
+                c.exec_driver_sql(
+                    "CREATE TEMP TABLE business_payments(id uuid, ledger_id uuid, version int) "
+                    "ON COMMIT DROP; CREATE TRIGGER fictional_history AFTER INSERT ON "
+                    "pg_temp.business_payments FOR EACH ROW EXECUTE FUNCTION "
+                    "public.coinpup_record_change()"
+                )
                 c.execute(
-                    insert(ChangeLog).values(
-                        owner_id=s["owner"],
-                        ledger_id=s["ledger"],
-                        entity_type="business_payments",
-                        entity_id=str(uuid4()),
-                        entity_version=1,
-                        change_kind="upsert",
-                    )
+                    text("INSERT INTO pg_temp.business_payments VALUES (:id,:ledger,1)"),
+                    {"id": uuid4(), "ledger": s["ledger"]},
                 )
             with Operations.context(MigrationContext.configure(c)):
                 business_settlement_migration(include_dependents=False)["downgrade"]()
