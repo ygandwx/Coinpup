@@ -43,6 +43,13 @@
 - `GET /business-documents/{document_id}/confirmation`在同一账本前缀下返回封存详情与原回执；`GET /business-confirmations`按确认时间/确认ID升序分页，默认100、最大200。列表批量取合计/资产，不加载整单快照；详情保留原输入及税额，读取不刷新资料快照。
 - 两类读取都保持账本归属、会话与no-store保护；已归档主体和停用资产的历史仍可读。接口不暴露内部快照JSON，确认、结算和原现金流水不能重复计入管理收支。
 
+## 经营收付款与分摊
+
+- 同一账本前缀下，`POST /business-payments`原子创建实际收付款、独立费用及可空初始分摊；`POST /business-allocations`向既有付款追加明确源行应用。均要求原始JSON和永久Idempotency-Key，成功及重放返回201完整组回执；规则见[ADR0040](decisions/0040-business-settlement.md)。
+- 同币两种数量相等，跨币分别保存明确实际数量，不用行情推导。累计应用不超过付款本金或源行含税额；应用日不早于付款及各单据开票日，并检查开放期间。历史往来/项目/类别归档不改变封存维度；已有原回执先于当前可用性、容量和期间检查重放。
+- `GET /business-payments`与`GET /business-allocations`按创建时间/ID升序分页（默认100，最大200）；后者可按payment_id过滤。`/{id}`详情附原回执，初始分摊附父付款完整回执，后续分摊附独立回执。付款已用/未用为只读派生值，不以不可变行版本冒充余额版本。
+- `GET /business-documents/{document_id}/settlement`读取已确认单据逐行及整单原币已结/未结额，包含零源行；草稿不提供结算余量。所有读取使用同一只读快照、账本归属、会话与no-store，保留归档/停用历史；既有确认及普通财务接口不改变。未知提交不能凭当前余量认定成功，须重试原意图并验证完整原回执。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
