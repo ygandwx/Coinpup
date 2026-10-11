@@ -15,6 +15,7 @@ import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
 import { RecurringPanel } from "./RecurringPanel";
 import { BusinessConfirmationPanel } from "./BusinessConfirmationPanel";
+import { BusinessSettlementHistory } from "./BusinessSettlementHistory";
 import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { ReminderPanel } from "./ReminderPanel";
 import type { PendingReminderController } from "./pending-reminder";
@@ -63,6 +64,7 @@ import "./workspace.css";
 
 type View =
     | "business-confirmations"
+    | "business-settlements"
     | "drafts"
     | "recurring"
     | "reminders"
@@ -89,6 +91,7 @@ const views: View[] = [
     "masters",
     "drafts",
     "business-confirmations",
+    "business-settlements",
     "recurring",
     "reminders",
     "categories",
@@ -374,6 +377,7 @@ export function BusinessWorkspace({
         ? businessConfirmation.plan?.ledgerId
         : undefined;
     const [businessConfirmationEditing, setBusinessConfirmationEditing] = useState(false);
+    const [settlementEditing, setSettlementEditing] = useState(false);
     const reminderState = useSyncExternalStore(reminders.subscribe, reminders.getSnapshot);
     const reminderLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
         reminderState.status,
@@ -424,7 +428,8 @@ export function BusinessWorkspace({
         reminderLocked ||
         reminderEditing ||
         businessConfirmationLocked ||
-        businessConfirmationEditing;
+        businessConfirmationEditing ||
+        settlementEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -465,6 +470,7 @@ export function BusinessWorkspace({
         drafts: t("经营草稿", "Business drafts"),
         recurring: t("周期Invoice", "Recurring invoices"),
         "business-confirmations": t("单据确认", "Confirm documents"),
+        "business-settlements": t("经营收付", "Business settlements"),
         reminders: t("提醒事项", "Reminder events"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
@@ -892,6 +898,7 @@ export function BusinessWorkspace({
                                         recurring: "↻",
                                         reminders: "◷",
                                         "business-confirmations": "✓",
+                                        "business-settlements": "⇄",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -1079,7 +1086,8 @@ export function BusinessWorkspace({
                             view !== "ocr" &&
                             view !== "recurring" &&
                             view !== "reminders" &&
-                            view !== "business-confirmations" && (
+                            view !== "business-confirmations" &&
+                            view !== "business-settlements" && (
                                 <label className="archive-toggle">
                                     <input
                                         type="checkbox"
@@ -1093,6 +1101,16 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "business-settlements" && (
+                            <BusinessSettlementHistory
+                                key={`${session.user.id}:${entity.ledger.id}`}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                accounts={current?.accounts ?? []}
+                                onUnauthorized={onUnauthorized}
+                                onEditing={setSettlementEditing}
+                            />
                         )}
                         {view === "business-confirmations" && (
                             <BusinessConfirmationPanel
