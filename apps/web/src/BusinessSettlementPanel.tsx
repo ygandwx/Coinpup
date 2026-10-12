@@ -6,9 +6,14 @@ import type { Account, Asset, Category } from "./ledger-api";
 import type { Locale } from "./i18n";
 import { listMasterData } from "./business-api";
 import type { Party } from "./business-api";
-import type { BusinessPaymentCreate } from "./business-settlement-api";
+import type {
+    BusinessPaymentCreate,
+    BusinessPaymentDetail,
+    InitialAllocationCreate,
+} from "./business-settlement-api";
 import type { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { localDraftDate } from "./draft-fields";
+import { formatAmount } from "./money";
 import { paymentFieldError, allocationFieldError } from "./settlement-fields";
 import type { AllocationSource } from "./settlement-fields";
 import { BusinessAllocationFields } from "./BusinessAllocationFields";
@@ -50,6 +55,11 @@ export function BusinessSettlementPanel({
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
     const [fields, setFields] = useState<BusinessPaymentCreate | null>(null);
+    const [existing, setExisting] = useState<{
+        payment: BusinessPaymentDetail;
+        name: string | null;
+    } | null>(null);
+    const [allocation, setAllocation] = useState<InitialAllocationCreate | null>(null);
     const [sources, setSources] = useState<readonly AllocationSource[]>([]);
     const [parties, setParties] = useState<{
         ledger: string;
@@ -64,7 +74,7 @@ export function BusinessSettlementPanel({
         [historyRefresh, setHistoryRefresh] = useState(0);
     const callbacks = useRef({ onEditing, onUnauthorized, onSaved });
     callbacks.current = { onEditing, onUnauthorized, onSaved };
-    const open = !!fields || !!plan;
+    const open = !!fields || !!plan || !!existing;
     const needReferences = !!fields && !plan;
     const refs = {
         accounts,
@@ -135,10 +145,70 @@ export function BusinessSettlementPanel({
         setInvalid(false);
         setError(null);
     }
+    function beginAllocation(payment: BusinessPaymentDetail, name: string | null) {
+        if (archived || dataLoading || payment.ledger_id !== ledgerId || !controller.dismiss())
+            return;
+        setFields(null);
+        setExisting({ payment, name });
+        setSources([]);
+        setAllocation({ id: crypto.randomUUID(), allocation_date: localDraftDate(), lines: [] });
+        setReviewed(false);
+        setInvalid(false);
+        setError(null);
+    }
+    async function submitAllocation(event: FormEvent) {
+        event.preventDefault();
+        if (
+            !existing ||
+            !allocation ||
+            archived ||
+            dataLoading ||
+            !reviewed ||
+            controller.getSnapshot().plan
+        )
+            return;
+        if (allocationFieldError(allocation, existing.payment, sources, assets)) {
+            setInvalid(true);
+            return;
+        }
+        setInvalid(false);
+        setError(null);
+        const review: SettlementReviewData = {
+            payment: {
+                ledger_id: ledgerId,
+                party_id: existing.payment.party_id,
+                direction: existing.payment.direction,
+                asset_id: existing.payment.asset_id,
+                transaction_date: existing.payment.transaction_date,
+                unapplied_amount: existing.payment.unapplied_amount,
+            },
+            partyName: existing.name ?? existing.payment.party_id,
+            accountName:
+                accounts.find((row) => row.id === existing.payment.account_id)?.name ??
+                existing.payment.account_id,
+            feeLabels: [],
+            sources,
+        };
+        try {
+            await controller.start(
+                session,
+                ledgerId,
+                {
+                    kind: "allocation",
+                    body: { ...allocation, payment_id: existing.payment.id },
+                },
+                review,
+            );
+        } catch (caught) {
+            fail(caught);
+        }
+    }
     function close() {
         const saved = controller.getSnapshot().status === "confirmed";
         if (!controller.dismiss()) return;
         setFields(null);
+        setExisting(null);
+        setAllocation(null);
         setSources([]);
         setReviewed(false);
         setInvalid(false);
@@ -208,7 +278,11 @@ export function BusinessSettlementPanel({
         >
             {open ? (
                 <div className="business-settlement-panel">
-                    <h2>{t("实际收付款", "Actual payment")}</h2>
+                    <h2>
+                        {existing || plan?.kind === "allocation"
+                            ? t("追加分摊", "Apply existing payment")
+                            : t("实际收付款", "Actual payment")}
+                    </h2>
                     {plan ? (
                         <BusinessSettlementResult
                             pending={pending}
@@ -222,6 +296,86 @@ export function BusinessSettlementPanel({
                                 }
                             }}
                         />
+                    ) : existing && allocation ? (
+                        <form
+                            onSubmit={submitAllocation}
+                            aria-label={t("已有付款分摊", "Existing payment allocation")}
+                        >
+                            <dl className="confirmation-facts">
+                                <dt>{t("原收付款ID", "Original payment ID")}</dt>
+                                <dd>{existing.payment.id}</dd>
+                                <dt>
+                                    {t("往来单位（当前名称）", "Business party (current name)")}
+                                </dt>
+                                <dd>{existing.name ?? existing.payment.party_id}</dd>
+                                <dt>{t("交易日", "Transaction date")}</dt>
+                                <dd>{existing.payment.transaction_date}</dd>
+                                <dt>{t("原本金", "Original principal")}</dt>
+                                <dd>
+                                    {formatAmount(existing.payment.amount, locale)}{" "}
+                                    {existing.payment.asset_id}
+                                </dd>
+                                <dt>{t("原说明", "Original description")}</dt>
+                                <dd>{existing.payment.description || "—"}</dd>
+                            </dl>
+                            <p>
+                                {t("未分配原币数量", "Unapplied original quantity")}:{" "}
+                                {formatAmount(existing.payment.unapplied_amount, locale)}{" "}
+                                {existing.payment.asset_id}
+                            </p>
+                            <p className="help-text">
+                                {t(
+                                    "仅应用已有收付款，不会再次扣款或重新确认经营收支。",
+                                    "Apply an existing payment without another cash movement or recognizing income or expense again.",
+                                )}
+                            </p>
+                            <BusinessAllocationFields
+                                value={allocation}
+                                payment={existing.payment}
+                                sources={sources}
+                                assets={assets}
+                                locale={locale}
+                                locked={archived || dataLoading}
+                                onUnauthorized={onUnauthorized}
+                                onChange={(group, selected) => {
+                                    setAllocation(group);
+                                    setSources(selected);
+                                    setReviewed(false);
+                                }}
+                            />
+                            <label className="archive-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={reviewed}
+                                    disabled={archived || dataLoading}
+                                    onChange={(event) => setReviewed(event.target.checked)}
+                                />
+                                {t(
+                                    "已核对原收付款、所选源行、两侧数量和分摊日期。",
+                                    "I reviewed the original payment, source lines, both quantities and allocation date.",
+                                )}
+                            </label>
+                            {invalid && (
+                                <p role="alert">
+                                    {t(
+                                        "请检查源行、精确数量、未结余额和日期下界；期间须开放。",
+                                        "Check source lines, exact quantities, available balances and date lower bounds; the period must be open.",
+                                    )}
+                                </p>
+                            )}
+                            <div className="form-actions">
+                                <button
+                                    type="submit"
+                                    className="primary-button"
+                                    disabled={archived || dataLoading || !reviewed}
+                                >
+                                    {t("确认分摊", "Apply payment")}
+                                </button>
+                                <button type="button" onClick={close}>
+                                    {t("取消", "Cancel")}
+                                </button>
+                            </div>
+                        </form>
                     ) : (
                         fields && (
                             <form
@@ -379,6 +533,7 @@ export function BusinessSettlementPanel({
                         ledgerId={ledgerId}
                         locale={locale}
                         accounts={accounts}
+                        onAllocate={archived || dataLoading ? undefined : beginAllocation}
                         onEditing={setHistoryEditing}
                         onUnauthorized={onUnauthorized}
                     />

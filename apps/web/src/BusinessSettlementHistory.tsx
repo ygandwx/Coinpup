@@ -26,12 +26,14 @@ export function BusinessSettlementHistory({
     locale,
     accounts,
     onEditing,
+    onAllocate,
     onUnauthorized,
 }: {
     ledgerId: string;
     locale: Locale;
     accounts: Account[];
     onEditing: (value: boolean) => void;
+    onAllocate?: (payment: BusinessPaymentDetail, name: string | null) => void;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
@@ -262,6 +264,14 @@ export function BusinessSettlementHistory({
                                 </details>
                             </>
                         ))}
+                    {detail &&
+                        "direction" in detail &&
+                        onAllocate &&
+                        !/^0(?:\.0+)?$/u.test(detail.unapplied_amount) && (
+                            <button type="button" onClick={() => onAllocate(detail, partyName)}>
+                                {t("应用未分配款项", "Apply unapplied payment")}
+                            </button>
+                        )}
                     {error != null && <p role="alert">{businessError(error, locale)}</p>}
                     <button type="button" onClick={close}>
                         {t("返回收付列表", "Back to settlement list")}
