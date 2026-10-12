@@ -126,7 +126,7 @@ for (const direction of ["receipt", "payout"] as const)
         );
     });
 
-test("fictional payment replays the original intent after lost success, closed period and real 401", async ({
+test("fictional payment replays the original intent after lost success, entity archive, closed period and real 401", async ({
     page,
 }, info) => {
     test.setTimeout(90_000);
@@ -170,6 +170,10 @@ test("fictional payment replays the original intent after lost success, closed p
         expected_version: 1,
         closed_through: "2026-09-30",
         reason: "Fictional period closed after successful payment",
+    });
+    await api(page, "PATCH", `/api/v1/entities/${data.entity.id}`, {
+        expected_version: 1,
+        archived: true,
     });
     await page.setViewportSize({ width: 320, height: 1000 });
     await expectNoOverflow(page);
