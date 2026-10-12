@@ -125,6 +125,17 @@ for (const cross of [false, true])
                 .getByRole("button", { name: locale === "zh" ? "中文" : "English", exact: true })
                 .click();
             await expectNoOverflow(page);
+            expect(
+                await page
+                    .locator(".business-settlement-panel fieldset input:not([type=checkbox])")
+                    .evaluateAll((inputs) =>
+                        inputs.every((input) => {
+                            const bounds = input.getBoundingClientRect();
+                            const card = input.closest("fieldset")!.getBoundingClientRect();
+                            return bounds.left >= card.left + 4 && bounds.right <= card.right - 4;
+                        }),
+                    ),
+            ).toBe(true);
             await page.screenshot({
                 path: info.outputPath(`initial-${cross}-${locale}-${width}.png`),
                 fullPage: true,

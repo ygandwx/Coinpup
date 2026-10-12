@@ -168,17 +168,19 @@ export function BusinessAllocationFields({
                     "Apply partial amounts to up to 200 lines. The date must be on or after the payment and every issue date, in an open period. Balances are previews and are checked again when submitted.",
                 )}
             </p>
-            <label>
-                {t("分摊生效日", "Allocation date")}
-                <input
-                    type="date"
-                    required
-                    value={value.allocation_date}
-                    onChange={(event) =>
-                        onChange({ ...value, allocation_date: event.target.value }, sources)
-                    }
-                />
-            </label>
+            <div className="field">
+                <label>
+                    {t("分摊生效日", "Allocation date")}
+                    <input
+                        type="date"
+                        required
+                        value={value.allocation_date}
+                        onChange={(event) =>
+                            onChange({ ...value, allocation_date: event.target.value }, sources)
+                        }
+                    />
+                </label>
+            </div>
             <ol className="confirmation-lines">
                 {value.lines.map((line, index) => {
                     const source = sources[index],
@@ -191,50 +193,18 @@ export function BusinessAllocationFields({
                                 {source && amount(source.outstanding_amount, source.asset_id)}{" "}
                                 {t("未结", "outstanding")}
                             </p>
-                            <label>
-                                {same
-                                    ? t("分摊金额", "Allocation amount")
-                                    : t("付款侧数量", "Payment quantity")}{" "}
-                                ({payment.asset_id})
-                                <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    required
-                                    maxLength={40}
-                                    value={line.payment_amount}
-                                    onChange={(event) =>
-                                        onChange(
-                                            {
-                                                ...value,
-                                                lines: value.lines.map((row, position) =>
-                                                    position === index
-                                                        ? {
-                                                              ...row,
-                                                              payment_amount: event.target.value,
-                                                              ...(same
-                                                                  ? {
-                                                                        document_amount:
-                                                                            event.target.value,
-                                                                    }
-                                                                  : {}),
-                                                          }
-                                                        : row,
-                                                ),
-                                            },
-                                            sources,
-                                        )
-                                    }
-                                />
-                            </label>
-                            {!same && (
+                            <div className="field">
                                 <label>
-                                    {t("单据侧数量", "Document quantity")} ({source?.asset_id})
+                                    {same
+                                        ? t("分摊金额", "Allocation amount")
+                                        : t("付款侧数量", "Payment quantity")}{" "}
+                                    ({payment.asset_id})
                                     <input
                                         type="text"
                                         inputMode="decimal"
                                         required
                                         maxLength={40}
-                                        value={line.document_amount}
+                                        value={line.payment_amount}
                                         onChange={(event) =>
                                             onChange(
                                                 {
@@ -243,8 +213,14 @@ export function BusinessAllocationFields({
                                                         position === index
                                                             ? {
                                                                   ...row,
-                                                                  document_amount:
+                                                                  payment_amount:
                                                                       event.target.value,
+                                                                  ...(same
+                                                                      ? {
+                                                                            document_amount:
+                                                                                event.target.value,
+                                                                        }
+                                                                      : {}),
                                                               }
                                                             : row,
                                                     ),
@@ -254,6 +230,37 @@ export function BusinessAllocationFields({
                                         }
                                     />
                                 </label>
+                            </div>
+                            {!same && (
+                                <div className="field">
+                                    <label>
+                                        {t("单据侧数量", "Document quantity")} ({source?.asset_id})
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            required
+                                            maxLength={40}
+                                            value={line.document_amount}
+                                            onChange={(event) =>
+                                                onChange(
+                                                    {
+                                                        ...value,
+                                                        lines: value.lines.map((row, position) =>
+                                                            position === index
+                                                                ? {
+                                                                      ...row,
+                                                                      document_amount:
+                                                                          event.target.value,
+                                                                  }
+                                                                : row,
+                                                        ),
+                                                    },
+                                                    sources,
+                                                )
+                                            }
+                                        />
+                                    </label>
+                                </div>
                             )}
                             <button
                                 type="button"
