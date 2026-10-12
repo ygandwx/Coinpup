@@ -9,7 +9,9 @@ import type { Party } from "./business-api";
 import type { BusinessPaymentCreate } from "./business-settlement-api";
 import type { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { localDraftDate } from "./draft-fields";
-import { paymentFieldError } from "./settlement-fields";
+import { paymentFieldError, allocationFieldError } from "./settlement-fields";
+import type { AllocationSource } from "./settlement-fields";
+import { BusinessAllocationFields } from "./BusinessAllocationFields";
 import { businessError } from "./business-errors";
 import { BusinessPaymentFields } from "./BusinessPaymentFields";
 import { BusinessSettlementHistory } from "./BusinessSettlementHistory";
@@ -48,6 +50,7 @@ export function BusinessSettlementPanel({
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
     const [fields, setFields] = useState<BusinessPaymentCreate | null>(null);
+    const [sources, setSources] = useState<readonly AllocationSource[]>([]);
     const [parties, setParties] = useState<{
         ledger: string;
         rows: Party[];
@@ -115,6 +118,7 @@ export function BusinessSettlementPanel({
     }
     function begin() {
         if (archived || dataLoading || !controller.dismiss()) return;
+        setSources([]);
         setFields({
             id: crypto.randomUUID(),
             direction: "receipt",
@@ -135,6 +139,7 @@ export function BusinessSettlementPanel({
         const saved = controller.getSnapshot().status === "confirmed";
         if (!controller.dismiss()) return;
         setFields(null);
+        setSources([]);
         setReviewed(false);
         setInvalid(false);
         setError(null);
@@ -144,7 +149,19 @@ export function BusinessSettlementPanel({
     async function submit(event: FormEvent) {
         event.preventDefault();
         if (!fields || !ready || !reviewed || controller.getSnapshot().plan) return;
-        if (paymentFieldError(ledgerId, fields, refs)) {
+        const paymentContext = {
+            ledger_id: ledgerId,
+            party_id: fields.party_id,
+            direction: fields.direction,
+            asset_id: fields.asset_id,
+            transaction_date: fields.transaction_date,
+            unapplied_amount: fields.amount,
+        };
+        if (
+            paymentFieldError(ledgerId, fields, refs) ||
+            (fields.initial_allocation &&
+                allocationFieldError(fields.initial_allocation, paymentContext, sources, assets))
+        ) {
             setInvalid(true);
             return;
         }
@@ -169,7 +186,7 @@ export function BusinessSettlementPanel({
                 categoryName:
                     categories.find((row) => row.id === fee.category_id)?.name ?? fee.category_id,
             })),
-            sources: [],
+            sources,
         };
         try {
             await controller.start(session, ledgerId, { kind: "payment", body: fields }, review);
@@ -216,16 +233,70 @@ export function BusinessSettlementPanel({
                                     refs={refs}
                                     locale={locale}
                                     locked={dataLoading || archived}
-                                    identityLocked={false}
+                                    identityLocked={sources.length > 0}
                                     onChange={(value) => {
                                         setFields(value);
                                         setReviewed(false);
                                     }}
                                 />
+                                <label className="archive-toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!fields.initial_allocation}
+                                        disabled={!ready || !fields.party_id || !fields.asset_id}
+                                        onChange={(event) => {
+                                            setFields({
+                                                ...fields,
+                                                initial_allocation: event.target.checked
+                                                    ? {
+                                                          id: crypto.randomUUID(),
+                                                          allocation_date: fields.transaction_date,
+                                                          lines: [],
+                                                      }
+                                                    : null,
+                                            });
+                                            setSources([]);
+                                            setReviewed(false);
+                                        }}
+                                    />
+                                    {t(
+                                        "同时分摊到已确认单据",
+                                        "Allocate to confirmed documents atomically",
+                                    )}
+                                </label>
+                                {fields.initial_allocation && (
+                                    <BusinessAllocationFields
+                                        key={JSON.stringify([
+                                            ledgerId,
+                                            fields.party_id,
+                                            fields.direction,
+                                            fields.asset_id,
+                                        ])}
+                                        value={fields.initial_allocation}
+                                        sources={sources}
+                                        assets={assets}
+                                        payment={{
+                                            ledger_id: ledgerId,
+                                            party_id: fields.party_id,
+                                            direction: fields.direction,
+                                            asset_id: fields.asset_id,
+                                            transaction_date: fields.transaction_date,
+                                            unapplied_amount: fields.amount,
+                                        }}
+                                        locale={locale}
+                                        locked={!ready}
+                                        onUnauthorized={onUnauthorized}
+                                        onChange={(group, selected) => {
+                                            setFields({ ...fields, initial_allocation: group });
+                                            setSources(selected);
+                                            setReviewed(false);
+                                        }}
+                                    />
+                                )}
                                 <p className="help-text">
                                     {t(
-                                        "本次金额全部作为未分配的预收或预付保存。",
-                                        "This payment will be saved entirely as an unapplied advance or prepayment.",
+                                        "未分摊部分保留为预收或预付；勾选分摊时整笔一起保存，任何错误都不会留下部分付款。",
+                                        "The unapplied portion remains an advance or prepayment. Selected allocations and payment are saved together; any error rolls back the whole payment.",
                                     )}
                                 </p>
                                 {!ready && !referenceError && (
@@ -262,15 +333,15 @@ export function BusinessSettlementPanel({
                                         onChange={(event) => setReviewed(event.target.checked)}
                                     />
                                     {t(
-                                        "已核对收付方向、原币本金、账户和独立手续费。",
-                                        "I reviewed direction, original principal, account and separate fees.",
+                                        "已核对收付方向、原币本金、账户、独立手续费及所选分摊。",
+                                        "I reviewed direction, original principal, account, separate fees and selected allocations.",
                                     )}
                                 </label>
                                 {invalid && (
                                     <p role="alert">
                                         {t(
-                                            "请核对日期、正金额、资产精度、有效往来和账户，以及手续费分类。",
-                                            "Check dates, positive quantities, asset precision, active party and accounts, and expense categories for fees.",
+                                            "请核对日期、金额精度、有效往来和账户、手续费分类及所选单据未结余额。分摊日不得早于付款日和开票日。",
+                                            "Check dates, precision, active references, fee categories and selected outstanding amounts. Allocation cannot precede payment or issue dates.",
                                         )}
                                     </p>
                                 )}
