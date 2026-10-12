@@ -14,6 +14,7 @@ import { PendingMasterDataController } from "./pending-business";
 import { PendingBusinessDraftController } from "./pending-business-drafts";
 import { PendingRecurringController } from "./pending-recurring";
 import { PendingBusinessConfirmationController } from "./pending-business-confirmation";
+import { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { PendingReminderController } from "./pending-reminder";
 import { OcrCopyController } from "./ocr-copy";
 
@@ -332,6 +333,7 @@ export function App() {
     const [drafts] = useState(() => new PendingBusinessDraftController());
     const [recurring] = useState(() => new PendingRecurringController());
     const [businessConfirmations] = useState(() => new PendingBusinessConfirmationController());
+    const [settlements] = useState(() => new PendingBusinessSettlementController());
     const [reminders] = useState(() => new PendingReminderController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
@@ -366,6 +368,7 @@ export function App() {
                     recurring.setOwner(String(session.user.id));
                     reminders.setOwner(String(session.user.id));
                     businessConfirmations.setOwner(String(session.user.id));
+                    settlements.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -383,6 +386,7 @@ export function App() {
                     recurring.setOwner(null);
                     reminders.setOwner(null);
                     businessConfirmations.setOwner(null);
+                    settlements.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -404,6 +408,7 @@ export function App() {
         recurring,
         reminders,
         businessConfirmations,
+        settlements,
     ]);
 
     useEffect(() => {
@@ -431,6 +436,7 @@ export function App() {
             recurring.setOwner(null, true);
             reminders.setOwner(null, true);
             businessConfirmations.setOwner(null, true);
+            settlements.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -445,6 +451,7 @@ export function App() {
                 recurring.setOwner(null, true);
                 reminders.setOwner(null, true);
                 businessConfirmations.setOwner(null, true);
+                settlements.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -495,6 +502,7 @@ export function App() {
                     recurring={recurring}
                     reminders={reminders}
                     businessConfirmations={businessConfirmations}
+                    settlements={settlements}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -507,6 +515,7 @@ export function App() {
                         recurring.setOwner(null);
                         reminders.setOwner(null);
                         businessConfirmations.setOwner(null);
+                        settlements.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -559,6 +568,7 @@ export function App() {
                                         recurring.setOwner(String(session.user.id));
                                         reminders.setOwner(String(session.user.id));
                                         businessConfirmations.setOwner(String(session.user.id));
+                                        settlements.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}
