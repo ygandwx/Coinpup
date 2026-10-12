@@ -137,6 +137,15 @@ test("fictional two payments settle two documents with exact many-to-many alloca
         if (payment === "200.00") {
             await page.setViewportSize({ width: 320, height: 1000 });
             await expectNoOverflow(page);
+            expect(
+                await page
+                    .locator(".allocation-pagination button")
+                    .evaluateAll(
+                        (buttons) =>
+                            buttons.length === 3 &&
+                            buttons.every((button) => button.getBoundingClientRect().height <= 64),
+                    ),
+            ).toBe(true);
             await page.screenshot({
                 path: info.outputPath("later-many-to-many-en-320.png"),
                 fullPage: true,
