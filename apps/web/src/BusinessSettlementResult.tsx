@@ -57,6 +57,12 @@ export function BusinessSettlementResult({
                         <dd>{payment.description || "—"}</dd>
                     </>
                 )}
+                {"payment_id" in body && (
+                    <>
+                        <dt>{t("原收付款ID", "Original payment ID")}</dt>
+                        <dd>{body.payment_id}</dd>
+                    </>
+                )}
                 {group && (
                     <>
                         <dt>{t("分摊生效日", "Allocation date")}</dt>

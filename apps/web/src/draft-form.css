@@ -43,3 +43,19 @@
         padding: 10px;
     }
 }
+
+.allocation-pagination {
+    flex-wrap: wrap;
+}
+.allocation-pagination > * {
+    flex: 0 0 auto;
+}
+@media (max-width: 600px) {
+    .allocation-pagination {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .allocation-pagination button {
+        width: 100%;
+    }
+}

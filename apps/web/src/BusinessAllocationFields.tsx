@@ -345,7 +345,7 @@ export function BusinessAllocationFields({
                             )}
                         </p>
                     )}
-                    <div className="form-actions">
+                    <div className="form-actions allocation-pagination">
                         <button
                             type="button"
                             disabled={!rows || offset === 0}
