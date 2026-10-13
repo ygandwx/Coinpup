@@ -2,7 +2,7 @@ import type { BusinessSettlementSnapshot } from "./pending-business-settlement";
 import type { BusinessAllocationCreate, BusinessPaymentCreate } from "./business-settlement-api";
 import type { AllocationPayment, AllocationSource } from "./settlement-fields";
 import type { Locale } from "./i18n";
-import { businessError } from "./business-errors";
+import { settlementError } from "./settlement-errors";
 import { formatAmount } from "./money";
 
 export type SettlementReviewData = {
@@ -130,7 +130,7 @@ export function BusinessSettlementResult({
                 </p>
             )}
             {pending.status === "rejected" && (
-                <p role="alert">{businessError(pending.error, locale)}</p>
+                <p role="alert">{settlementError(pending.error, locale)}</p>
             )}
             {pending.status === "confirmed" && (
                 <p role="status">
