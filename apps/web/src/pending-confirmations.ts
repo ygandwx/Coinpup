@@ -39,6 +39,7 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 function valid(value: unknown, plan: FrozenConfirmation): value is ConfirmationReceipt {
     const body = JSON.parse(plan.bodyJson) as ConfirmationCreate;
+    if (body.entry.kind === "link_payment") return false;
     if (
         !record(value) ||
         value.intent_id !== body.intent_id ||
@@ -156,6 +157,9 @@ export class PendingConfirmationController {
                 )
                     throw new ApiError("server", null, "invalid_confirmation_batch");
                 body.intent_id = crypto.randomUUID();
+                if (body.entry.kind === "link_payment") {
+                    throw new ApiError("server", null, "payment_link_review_required");
+                }
                 if (body.entry.kind !== "link") body.entry.command.id ??= crypto.randomUUID();
                 return Object.freeze({
                     ownerId: String(session.user.id),

@@ -2627,6 +2627,7 @@
                 "expense": "#/components/schemas/ExpenseEntry",
                 "income": "#/components/schemas/IncomeEntry",
                 "link": "#/components/schemas/LinkEntry",
+                "link_payment": "#/components/schemas/LinkPaymentEntry",
                 "opening": "#/components/schemas/OpeningEntry",
                 "transfer": "#/components/schemas/TransferEntry"
               },
@@ -2650,6 +2651,9 @@
               },
               {
                 "$ref": "#/components/schemas/LinkEntry"
+              },
+              {
+                "$ref": "#/components/schemas/LinkPaymentEntry"
               }
             ],
             "title": "Entry"
@@ -5123,6 +5127,34 @@
         "title": "LinkEntry",
         "type": "object"
       },
+      "LinkPaymentEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "link_payment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "payment_id",
+          "expected_version"
+        ],
+        "title": "LinkPaymentEntry",
+        "type": "object"
+      },
       "LinkResponse": {
         "properties": {
           "archived": {
@@ -5930,6 +5962,69 @@
           "operation_status"
         ],
         "title": "PaymentEvidenceTarget",
+        "type": "object"
+      },
+      "PaymentLinkConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "link_payment",
+            "title": "Action",
+            "type": "string"
+          },
+          "draft_id": {
+            "format": "uuid",
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "draft_version": {
+            "maximum": 2147483647.0,
+            "minimum": 2.0,
+            "title": "Draft Version",
+            "type": "integer"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/BusinessPaymentResponse"
+          },
+          "target_file_id": {
+            "format": "uuid",
+            "title": "Target File Id",
+            "type": "string"
+          },
+          "target_ledger_id": {
+            "format": "uuid",
+            "title": "Target Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "draft_id",
+          "ledger_id",
+          "draft_version",
+          "action",
+          "target_ledger_id",
+          "target_file_id",
+          "payment",
+          "operation_version"
+        ],
+        "title": "PaymentLinkConfirmationResponse",
         "type": "object"
       },
       "PeriodChange": {
@@ -11705,7 +11800,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmationResponse"
+                  "discriminator": {
+                    "mapping": {
+                      "create": "#/components/schemas/ConfirmationResponse",
+                      "link": "#/components/schemas/ConfirmationResponse",
+                      "link_payment": "#/components/schemas/PaymentLinkConfirmationResponse"
+                    },
+                    "propertyName": "action"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ConfirmationResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PaymentLinkConfirmationResponse"
+                    }
+                  ],
+                  "title": "Response Get Confirmation Api V1 Ledgers  Ledger Id  Ocr Drafts  Draft Id  Confirmation Get"
                 }
               }
             },
@@ -11785,7 +11896,23 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConfirmationResponse"
+                  "discriminator": {
+                    "mapping": {
+                      "create": "#/components/schemas/ConfirmationResponse",
+                      "link": "#/components/schemas/ConfirmationResponse",
+                      "link_payment": "#/components/schemas/PaymentLinkConfirmationResponse"
+                    },
+                    "propertyName": "action"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ConfirmationResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PaymentLinkConfirmationResponse"
+                    }
+                  ],
+                  "title": "Response Confirm Api V1 Ledgers  Ledger Id  Ocr Drafts  Draft Id  Confirmations Post"
                 }
               }
             },

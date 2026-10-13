@@ -2586,7 +2586,7 @@ export interface components {
              */
             duplicate_ack?: boolean;
             /** Entry */
-            entry: components["schemas"]["OpeningEntry"] | components["schemas"]["IncomeEntry"] | components["schemas"]["ExpenseEntry"] | components["schemas"]["TransferEntry"] | components["schemas"]["ExchangeEntry"] | components["schemas"]["LinkEntry"];
+            entry: components["schemas"]["OpeningEntry"] | components["schemas"]["IncomeEntry"] | components["schemas"]["ExpenseEntry"] | components["schemas"]["TransferEntry"] | components["schemas"]["ExchangeEntry"] | components["schemas"]["LinkEntry"] | components["schemas"]["LinkPaymentEntry"];
             /** Expected Version */
             expected_version: number;
             /**
@@ -2628,7 +2628,7 @@ export interface components {
         /** ConfirmationResponse */
         ConfirmationResponse: {
             /**
-             * Action
+             * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             action: "create" | "link";
@@ -3655,6 +3655,21 @@ export interface components {
              */
             operation_id: string;
         };
+        /** LinkPaymentEntry */
+        LinkPaymentEntry: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "link_payment";
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+        };
         /** LinkResponse */
         LinkResponse: {
             /** Archived */
@@ -3965,6 +3980,44 @@ export interface components {
             /** Operation Version */
             operation_version: number;
             payment: components["schemas"]["BusinessPaymentDetail"];
+        };
+        /** PaymentLinkConfirmationResponse */
+        PaymentLinkConfirmationResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "link_payment";
+            /**
+             * Draft Id
+             * Format: uuid
+             */
+            draft_id: string;
+            /** Draft Version */
+            draft_version: number;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Operation Version */
+            operation_version: number;
+            payment: components["schemas"]["BusinessPaymentResponse"];
+            /**
+             * Target File Id
+             * Format: uuid
+             */
+            target_file_id: string;
+            /**
+             * Target Ledger Id
+             * Format: uuid
+             */
+            target_ledger_id: string;
         };
         /** PeriodChange */
         PeriodChange: {
@@ -6712,7 +6765,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmationResponse"];
+                    "application/json": components["schemas"]["ConfirmationResponse"] | components["schemas"]["PaymentLinkConfirmationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -6750,7 +6803,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfirmationResponse"];
+                    "application/json": components["schemas"]["ConfirmationResponse"] | components["schemas"]["PaymentLinkConfirmationResponse"];
                 };
             };
             /** @description Validation Error */

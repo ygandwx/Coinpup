@@ -600,7 +600,15 @@ export function OcrPanel({
                                 {t("放弃修改并重新加载", "Discard edits and reload")}
                             </button>
                         </div>
-                        {receipt && (
+                        {receipt?.action === "link_payment" && (
+                            <p>
+                                {t("确认时的付款关联", "Original payment link")}:{" "}
+                                {receipt.payment.id}
+                                {" · "}
+                                {t("操作版本", "Operation version")} {receipt.operation_version}
+                            </p>
+                        )}
+                        {receipt && receipt.action !== "link_payment" && (
                             <p>
                                 {t("确认时的入账回执", "Original confirmation receipt")}:{" "}
                                 {receipt.operation.id} ·{" "}

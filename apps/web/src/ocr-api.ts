@@ -7,7 +7,9 @@ export type DraftDetail = components["schemas"]["DraftDetail"];
 export type ReviewView = components["schemas"]["ReviewView"];
 export type ReviewUpdate = components["schemas"]["DraftReviewUpdate"];
 export type ConfirmationCreate = components["schemas"]["ConfirmationCreate"];
-export type ConfirmationReceipt = components["schemas"]["ConfirmationResponse"];
+export type ConfirmationReceipt =
+    | components["schemas"]["ConfirmationResponse"]
+    | components["schemas"]["PaymentLinkConfirmationResponse"];
 export type DuplicateConfirmation = components["schemas"]["DuplicateConfirmation"];
 type Page = { limit?: number; offset?: number };
 const root = (ledger: string) => `/api/v1/ledgers/${encodeURIComponent(ledger)}`;

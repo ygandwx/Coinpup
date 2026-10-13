@@ -35,7 +35,7 @@ class ConfirmationReadService(LedgerService):
             )
             if receipt is None:
                 raise _not_found()
-            return replay(receipt, receipt.request_hash)
+            return replay(receipt, receipt.request_hash, session)
 
     def list_duplicates(self, owner_id, ledger_id, draft_id):
         with self._transaction(owner_id, read_only=True) as session:

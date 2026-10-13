@@ -181,7 +181,7 @@ export function OcrDuplicateNotice({
     useEffect(() => {
         onChange({ ready: ready && (!matches.length || ack), acknowledged: ack });
     }, [ready, ack, matches.length, onChange]);
-    const command = action && action.kind !== "link" ? action.command : null;
+    const command = action && "command" in action ? action.command : null;
     const date = command?.transaction_date,
         asset = command && "asset_id" in command ? command.asset_id : "",
         amount = command && "amount" in command ? command.amount : "";
@@ -251,7 +251,14 @@ export function OcrDuplicateNotice({
                             </li>
                         ))}
                     </ul>
-                    {receipt && (
+                    {receipt?.action === "link_payment" && (
+                        <p>
+                            {t("历史付款关联", "Historical payment link")}: {receipt.payment.id}
+                            {" · "}
+                            {t("操作版本", "Operation version")} {receipt.operation_version}
+                        </p>
+                    )}
+                    {receipt && receipt.action !== "link_payment" && (
                         <p>
                             {t("历史金额", "Historical amount")}:{" "}
                             {"amount" in receipt.operation

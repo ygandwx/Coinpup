@@ -52,6 +52,8 @@
 
 已有付款的`/business-payments/{payment_id}/evidence-target`只读选择目标，单一快照返回完整原付款详情/初始分摊回执及当前操作版本/状态；保留归档历史和账本归属、会话、no-store，不读私有目录或取得写锁。既有付款GET/原回执不变；读取目标不代表本次OCR确认已成功。关联决定见[ADR0042](decisions/0042-payment-evidence-confirmation.md)。
 
+OCR确认增加明确`entry.kind="link_payment"`，选择已有付款和操作版本，只添加同内容原件证据；新action分支封存完整原付款回执/操作版本，旧create/link响应不补新字段。新请求仍逐项复核全部OCR字段并检查版本/有效状态；永久重放只比较不可变原付款、初始分摊与原回执，不依赖当前余额、归档、关闭期间或当前操作状态。未知结果重放原intent_id/完整正文；付款ID与操作ID分别校验，关联不新增资金、费用或分摊。字段以生成OpenAPI为准。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。

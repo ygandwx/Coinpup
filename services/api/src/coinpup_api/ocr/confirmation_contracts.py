@@ -19,6 +19,7 @@ from coinpup_api.ledger.schemas import Version
 from coinpup_api.ledger.service import LedgerError
 
 from .contracts import CANDIDATE_BYTES, InputModel, canonical_json
+from .payment_confirmation_contracts import LinkPaymentEntry, PaymentLinkConfirmationResponse
 from .review import HumanReview, ReviewPath
 
 
@@ -54,7 +55,13 @@ class LinkEntry(InputModel):
 
 
 Entry = Annotated[
-    OpeningEntry | IncomeEntry | ExpenseEntry | TransferEntry | ExchangeEntry | LinkEntry,
+    OpeningEntry
+    | IncomeEntry
+    | ExpenseEntry
+    | TransferEntry
+    | ExchangeEntry
+    | LinkEntry
+    | LinkPaymentEntry,
     Field(discriminator="kind"),
 ]
 
@@ -85,6 +92,11 @@ class ConfirmationResponse(BaseModel):
     operation: FinancialResponse
 
 
+ConfirmationResult = Annotated[
+    ConfirmationResponse | PaymentLinkConfirmationResponse, Field(discriminator="action")
+]
+
+
 def confirmation_request(ledger_id, draft_id, payload, raw_body=None):
     try:
         provided = (
@@ -111,7 +123,7 @@ def confirmation_request(ledger_id, draft_id, payload, raw_body=None):
 
 
 def command_assets(entry):
-    if entry.kind == "link":
+    if entry.kind in {"link", "link_payment"}:
         return []
     command = entry.command
     assets = {
