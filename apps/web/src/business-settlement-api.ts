@@ -11,6 +11,7 @@ export type BusinessPaymentDetail = components["schemas"]["BusinessPaymentDetail
 export type BusinessAllocationSummary = components["schemas"]["BusinessAllocationSummary"];
 export type BusinessAllocationDetail = components["schemas"]["BusinessAllocationDetail"];
 export type DocumentSettlementDetail = components["schemas"]["DocumentSettlementDetail"];
+export type PaymentEvidenceTarget = components["schemas"]["PaymentEvidenceTarget"];
 const base = (ledgerId: string) => `/api/v1/ledgers/${encodeURIComponent(ledgerId)}`;
 
 export const createBusinessPayment = (
@@ -69,5 +70,15 @@ export const getDocumentSettlement = (
 ): Promise<DocumentSettlementDetail> =>
     readJson(
         `${base(ledgerId)}/business-documents/${encodeURIComponent(documentId)}/settlement`,
+        signal,
+    );
+
+export const getPaymentEvidenceTarget = (
+    ledgerId: string,
+    paymentId: string,
+    signal?: AbortSignal,
+): Promise<PaymentEvidenceTarget> =>
+    readJson(
+        `${base(ledgerId)}/business-payments/${encodeURIComponent(paymentId)}/evidence-target`,
         signal,
     );

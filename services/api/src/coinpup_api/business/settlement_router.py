@@ -25,11 +25,14 @@ from coinpup_api.business.settlement_schemas import (
 from coinpup_api.business.settlements import BusinessSettlementService
 from coinpup_api.ledger.posting_router import raw_command_body
 from coinpup_api.ledger.service import LedgerError
+from coinpup_api.ocr.payment_confirmation_contracts import PaymentEvidenceTarget
+from coinpup_api.ocr.payment_confirmation_reads import PaymentEvidenceReadService
 
 
 def create_business_settlement_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessSettlementService(engine), BusinessSettlementReads(engine)
+    evidence = PaymentEvidenceReadService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -88,6 +91,13 @@ def create_business_settlement_router(settings, engine):
     @router.get("/business-payments/{payment_id}", response_model=BusinessPaymentDetail)
     def get_payment(ledger_id: UUID, payment_id: UUID, identity: reader):
         return execute(reads.get_payment, identity.id, ledger_id, payment_id)
+
+    @router.get(
+        "/business-payments/{payment_id}/evidence-target", response_model=PaymentEvidenceTarget
+    )
+    def payment_evidence_target(ledger_id: UUID, payment_id: UUID, identity: reader):
+        """Review exact original payment identity and current state without posting money."""
+        return execute(evidence.get_target, identity.id, ledger_id, payment_id)
 
     @router.get("/business-allocations", response_model=list[BusinessAllocationSummary])
     def list_allocations(

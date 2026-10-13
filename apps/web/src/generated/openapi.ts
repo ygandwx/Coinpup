@@ -528,6 +528,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-payments/{payment_id}/evidence-target": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Payment Evidence Target
+         * @description Review exact original payment identity and current state without posting money.
+         */
+        get: operations["payment_evidence_target_api_v1_ledgers__ledger_id__business_payments__payment_id__evidence_target_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-projects": {
         parameters: {
             query?: never;
@@ -3935,6 +3955,17 @@ export interface components {
             /** Tax Identifier */
             tax_identifier?: string | null;
         };
+        /** PaymentEvidenceTarget */
+        PaymentEvidenceTarget: {
+            /**
+             * Operation Status
+             * @enum {string}
+             */
+            operation_status: "active" | "cancelled";
+            /** Operation Version */
+            operation_version: number;
+            payment: components["schemas"]["BusinessPaymentDetail"];
+        };
         /** PeriodChange */
         PeriodChange: {
             /**
@@ -6001,6 +6032,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessPaymentDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    payment_evidence_target_api_v1_ledgers__ledger_id__business_payments__payment_id__evidence_target_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentEvidenceTarget"];
                 };
             };
             /** @description Validation Error */

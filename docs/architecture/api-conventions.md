@@ -50,6 +50,8 @@
 - `GET /business-payments`与`GET /business-allocations`按创建时间/ID升序分页（默认100，最大200）；后者可按payment_id过滤。`/{id}`详情附原回执，初始分摊附父付款完整回执，后续分摊附独立回执。付款已用/未用为只读派生值，不以不可变行版本冒充余额版本。
 - `GET /business-documents/{document_id}/settlement`读取已确认单据逐行及整单原币已结/未结额，包含零源行；草稿不提供结算余量。所有读取使用同一只读快照、账本归属、会话与no-store，保留归档/停用历史；既有确认及普通财务接口不改变。未知提交不能凭当前余量认定成功，须重试原意图并验证完整原回执。
 
+已有付款的`/business-payments/{payment_id}/evidence-target`只读选择目标，单一快照返回完整原付款详情/初始分摊回执及当前操作版本/状态；保留归档历史和账本归属、会话、no-store，不读私有目录或取得写锁。既有付款GET/原回执不变；读取目标不代表本次OCR确认已成功。关联决定见[ADR0042](decisions/0042-payment-evidence-confirmation.md)。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
