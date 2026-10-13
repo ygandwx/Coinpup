@@ -99,62 +99,65 @@ class BusinessSettlementReads(BusinessSettlementBalances):
     def get_payment(self, owner_id, ledger_id, payment_id):
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
-            saved = session.execute(
-                select(BusinessPayment, AssetRecord)
-                .join(AssetRecord, AssetRecord.asset_id == BusinessPayment.asset_id)
-                .where(BusinessPayment.id == payment_id, BusinessPayment.ledger_id == ledger_id)
-            ).one_or_none()
-            if saved is None:
-                raise _not_found()
-            row, record = saved
-            line = BusinessAllocationLine
-            applied = session.scalar(
-                select(func.sum(line.payment_amount)).where(
-                    line.ledger_id == ledger_id, line.payment_id == payment_id
+            return self._payment_detail(session, ledger_id, payment_id)
+
+    def _payment_detail(self, session, ledger_id, payment_id):
+        saved = session.execute(
+            select(BusinessPayment, AssetRecord)
+            .join(AssetRecord, AssetRecord.asset_id == BusinessPayment.asset_id)
+            .where(BusinessPayment.id == payment_id, BusinessPayment.ledger_id == ledger_id)
+        ).one_or_none()
+        if saved is None:
+            raise _not_found()
+        row, record = saved
+        line = BusinessAllocationLine
+        applied = session.scalar(
+            select(func.sum(line.payment_amount)).where(
+                line.ledger_id == ledger_id, line.payment_id == payment_id
+            )
+        )
+        try:
+            total, used, remaining = quantities(
+                row.amount,
+                applied if applied is not None else Decimal(0),
+                asset_definition(record),
+            )
+            fees = tuple(FeeResponse.model_validate(fee) for fee in row.fees)
+            if fees:
+                assets = {
+                    record.asset_id: asset_definition(record)
+                    for record in session.scalars(
+                        select(AssetRecord).where(
+                            AssetRecord.asset_id.in_({fee.asset_id for fee in fees})
+                        )
+                    )
+                }
+                if assets.keys() != {fee.asset_id for fee in fees}:
+                    raise integrity()
+                fees = tuple(
+                    fee.model_copy(
+                        update={
+                            "amount": Amount.from_decimal(
+                                Decimal(fee.amount), assets[fee.asset_id]
+                            ).to_string()
+                        }
+                    )
+                    for fee in fees
+                )
+            return BusinessPaymentDetail(
+                **_fields(
+                    row,
+                    BusinessPaymentDetail,
+                    amount=total,
+                    applied_amount=used,
+                    unapplied_amount=remaining,
+                    fee_count=len(fees),
+                    fees=fees,
+                    receipt=_payment_receipt(session, ledger_id, row),
                 )
             )
-            try:
-                total, used, remaining = quantities(
-                    row.amount,
-                    applied if applied is not None else Decimal(0),
-                    asset_definition(record),
-                )
-                fees = tuple(FeeResponse.model_validate(fee) for fee in row.fees)
-                if fees:
-                    assets = {
-                        record.asset_id: asset_definition(record)
-                        for record in session.scalars(
-                            select(AssetRecord).where(
-                                AssetRecord.asset_id.in_({fee.asset_id for fee in fees})
-                            )
-                        )
-                    }
-                    if assets.keys() != {fee.asset_id for fee in fees}:
-                        raise integrity()
-                    fees = tuple(
-                        fee.model_copy(
-                            update={
-                                "amount": Amount.from_decimal(
-                                    Decimal(fee.amount), assets[fee.asset_id]
-                                ).to_string()
-                            }
-                        )
-                        for fee in fees
-                    )
-                return BusinessPaymentDetail(
-                    **_fields(
-                        row,
-                        BusinessPaymentDetail,
-                        amount=total,
-                        applied_amount=used,
-                        unapplied_amount=remaining,
-                        fee_count=len(fees),
-                        fees=fees,
-                        receipt=_payment_receipt(session, ledger_id, row),
-                    )
-                )
-            except (ValidationError, MoneyError):
-                raise integrity() from None
+        except (ValidationError, MoneyError):
+            raise integrity() from None
 
     def get_allocation(self, owner_id, ledger_id, allocation_id):
         with self._transaction(owner_id, read_only=True) as session:

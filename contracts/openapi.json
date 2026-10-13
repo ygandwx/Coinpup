@@ -5904,6 +5904,34 @@
         "title": "PartyUpdate",
         "type": "object"
       },
+      "PaymentEvidenceTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Operation Status",
+            "type": "string"
+          },
+          "operation_version": {
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/BusinessPaymentDetail"
+          }
+        },
+        "required": [
+          "payment",
+          "operation_version",
+          "operation_status"
+        ],
+        "title": "PaymentEvidenceTarget",
+        "type": "object"
+      },
       "PeriodChange": {
         "additionalProperties": false,
         "properties": {
@@ -10218,6 +10246,60 @@
           }
         },
         "summary": "Get Payment",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-payments/{payment_id}/evidence-target": {
+      "get": {
+        "description": "Review exact original payment identity and current state without posting money.",
+        "operationId": "payment_evidence_target_api_v1_ledgers__ledger_id__business_payments__payment_id__evidence_target_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentEvidenceTarget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Payment Evidence Target",
         "tags": [
           "business settlements"
         ]
