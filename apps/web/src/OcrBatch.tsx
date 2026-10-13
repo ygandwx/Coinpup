@@ -114,7 +114,7 @@ export function OcrBatch({
                             <li key={item.input.draftId}>
                                 <span>
                                     {t("草稿", "Draft")} {item.number} ·{" "}
-                                    {action.kind === "link"
+                                    {action.kind === "link" || action.kind === "link_payment"
                                         ? t("关联已有流水", "Link existing entry")
                                         : `${"amount" in action.command ? action.command.amount : action.command.source_amount} ${"asset_id" in action.command ? action.command.asset_id : action.command.source_asset_id}`}{" "}
                                     ·{" "}

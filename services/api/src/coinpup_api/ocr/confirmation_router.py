@@ -12,7 +12,7 @@ from coinpup_api.ledger.posting_router import raw_command_body
 from coinpup_api.ledger.service import LedgerError
 
 from .confirmation import ConfirmationService
-from .confirmation_contracts import ConfirmationCreate, ConfirmationResponse
+from .confirmation_contracts import ConfirmationCreate, ConfirmationResult
 from .confirmation_reads import ConfirmationReadService, DuplicateConfirmation
 
 
@@ -34,7 +34,7 @@ def create_confirmation_router(settings, engine):
                 503, {"code": "ocr_unavailable", "message": "OCR is unavailable."}
             ) from None
 
-    @router.post("/{draft_id}/confirmations", response_model=ConfirmationResponse, status_code=201)
+    @router.post("/{draft_id}/confirmations", response_model=ConfirmationResult, status_code=201)
     def confirm(
         ledger_id: UUID,
         draft_id: UUID,
@@ -47,7 +47,7 @@ def create_confirmation_router(settings, engine):
             service.confirm, identity.id, ledger_id, draft_id, payload, raw_body=raw_body
         )
 
-    @router.get("/{draft_id}/confirmation", response_model=ConfirmationResponse)
+    @router.get("/{draft_id}/confirmation", response_model=ConfirmationResult)
     def get_confirmation(ledger_id: UUID, draft_id: UUID, identity: reader):
         """Read the historical receipt; unknown submissions should replay the original POST."""
         return execute(reads.get_confirmation, identity.id, ledger_id, draft_id)

@@ -13,6 +13,8 @@ from coinpup_api.ledger.service import LedgerError, LedgerService, _not_found, _
 from .confirmation_contracts import ConfirmationResponse, command_assets, confirmation_request
 from .contracts import CANDIDATE_BYTES, canonical_json
 from .models import OcrConfirmation
+from .payment_confirmation import payment_target, replay_payment
+from .payment_confirmation_contracts import PaymentLinkConfirmationResponse
 from .review import HumanReview, reviewed_fields, scoped_draft
 from .transactions import bind_commands
 
@@ -62,11 +64,13 @@ def source_files(session, owner_id, ledger_id, job, payload):
     return source, target
 
 
-def replay(receipt, digest):
+def replay(receipt, digest, session=None):
     if receipt.hash_version != 2:
         raise LedgerError("ocr_invalid_receipt", 503, "The confirmation receipt is inconsistent.")
     if receipt.request_hash != digest:
         raise LedgerError("idempotency_conflict", 409, "This intent was used for another request.")
+    if receipt.action == "link_payment":
+        return replay_payment(receipt, session)
     try:
         response = ConfirmationResponse.model_validate(receipt.response)
         if (
@@ -104,7 +108,7 @@ class ConfirmationService(LedgerService):
                 )
             )
             if receipt is not None:
-                return replay(receipt, digest)
+                return replay(receipt, digest, session)
             bound = bind_commands(
                 session,
                 owner_id,
@@ -142,50 +146,68 @@ class ConfirmationService(LedgerService):
                     "This source was confirmed before; review the duplicate warning.",
                 )
             entry = payload.entry
-            if entry.kind == "link":
-                operation = session.scalar(
-                    select(FinancialOperation)
-                    .where(
-                        FinancialOperation.id == entry.operation_id,
-                        FinancialOperation.ledger_id == payload.target_ledger_id,
-                    )
-                    .with_for_update()
+            if entry.kind == "link_payment":
+                financial, operation_version = payment_target(
+                    session, owner_id, payload.target_ledger_id, entry
                 )
-                if operation is None:
-                    raise _not_found()
-                _version(operation, entry.expected_version)
-                if operation.status != "active":
-                    raise LedgerError(
-                        "operation_cancelled", 409, "Choose an active financial operation."
-                    )
-                financial = PostingReaders._read_operation(session, operation)
+                operation_id = financial.operation_id
             else:
-                financial = bound.post(
-                    entry.kind,
-                    payload.target_ledger_id,
-                    entry.command,
-                    f"ocr:{ledger_id.hex}:{payload.intent_id.hex}",
-                    raw_body=canonical_json(original["entry"]["command"], CANDIDATE_BYTES).encode(
-                        "utf-8"
-                    ),
-                )
-            link = bound.link(payload.target_ledger_id, financial.id, target.id)
+                if entry.kind == "link":
+                    operation = session.scalar(
+                        select(FinancialOperation)
+                        .where(
+                            FinancialOperation.id == entry.operation_id,
+                            FinancialOperation.ledger_id == payload.target_ledger_id,
+                        )
+                        .with_for_update()
+                    )
+                    if operation is None:
+                        raise _not_found()
+                    _version(operation, entry.expected_version)
+                    if operation.status != "active":
+                        raise LedgerError(
+                            "operation_cancelled", 409, "Choose an active financial operation."
+                        )
+                    financial = PostingReaders._read_operation(session, operation)
+                else:
+                    financial = bound.post(
+                        entry.kind,
+                        payload.target_ledger_id,
+                        entry.command,
+                        f"ocr:{ledger_id.hex}:{payload.intent_id.hex}",
+                        raw_body=canonical_json(
+                            original["entry"]["command"], CANDIDATE_BYTES
+                        ).encode("utf-8"),
+                    )
+                operation_id, operation_version = financial.id, financial.version
+            link = bound.link(payload.target_ledger_id, operation_id, target.id)
             if link.archived:
                 raise LedgerError(
                     "file_link_archived",
                     409,
                     "Restore the existing evidence link before confirming.",
                 )
-            response = ConfirmationResponse(
+            values = dict(
                 intent_id=payload.intent_id,
                 draft_id=draft.id,
                 ledger_id=ledger_id,
                 draft_version=draft.version + 1,
-                action="link" if entry.kind == "link" else "create",
                 target_ledger_id=payload.target_ledger_id,
                 target_file_id=target.id,
-                operation=financial,
             )
+            if entry.kind == "link_payment":
+                response = PaymentLinkConfirmationResponse(
+                    **values,
+                    action="link_payment",
+                    payment=financial,
+                    operation_version=operation_version,
+                )
+            else:
+                response = ConfirmationResponse(
+                    **values,
+                    action="link" if entry.kind == "link" else "create",
+                    operation=financial,
+                )
             response_json = response.model_dump(mode="json")
             canonical_json(response_json, CANDIDATE_BYTES)
             session.add(
@@ -199,8 +221,9 @@ class ConfirmationService(LedgerService):
                     source_key=draft.source_key,
                     target_ledger_id=payload.target_ledger_id,
                     target_file_id=target.id,
-                    operation_id=financial.id,
-                    operation_version=financial.version,
+                    operation_id=operation_id,
+                    operation_version=operation_version,
+                    payment_id=financial.id if entry.kind == "link_payment" else None,
                     draft_version=draft.version,
                     action=response.action,
                     hash_version=2,

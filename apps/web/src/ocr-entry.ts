@@ -2,7 +2,7 @@ import type { Asset } from "./ledger-api";
 import type { ConfirmationCreate, ReviewView } from "./ocr-api";
 import type { PostingInput } from "./pending-command";
 
-export type Entry = Exclude<ConfirmationCreate["entry"], { kind: "link" }>;
+export type Entry = Exclude<ConfirmationCreate["entry"], { kind: "link" | "link_payment" }>;
 export type Action = ConfirmationCreate["entry"];
 function record(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);

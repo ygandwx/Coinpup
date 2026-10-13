@@ -52,14 +52,14 @@ export function OcrEntryForm({
     onEditing: (value: boolean) => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
-    const [kind, setKind] = useState<Action["kind"] | "">("");
+    const [kind, setKind] = useState<Exclude<Action["kind"], "link_payment"> | "">("");
     const [linkOpen, setLinkOpen] = useState(false);
     const [duplicates, setDuplicates] = useState({ ready: false, acknowledged: false });
     const [input, setInput] = useState<PostingInput | null>(null),
         [busy, setBusy] = useState(false);
     const action = savedAction(review.review.entry);
     const target = savedDestination(review.review.entry) ?? { ledger, file };
-    const entry = action?.kind === "link" ? null : action;
+    const entry = action && "command" in action ? action : null;
     const changedKind = !!kind && kind !== action?.kind;
     const complete = review.fields.every(
         (field) => !field.requires_confirmation || confirmed.includes(field.path),
@@ -78,7 +78,7 @@ export function OcrEntryForm({
             onSaved(next);
             setInput(null);
             setLinkOpen(false);
-            setKind(value.kind);
+            if (value.kind !== "link_payment") setKind(value.kind);
         } catch (error) {
             onError(error);
         } finally {
@@ -138,7 +138,7 @@ export function OcrEntryForm({
                     onError={onError}
                     onCancel={() => {
                         setLinkOpen(false);
-                        setKind(action?.kind ?? "");
+                        setKind(action?.kind === "link_payment" ? "" : (action?.kind ?? ""));
                     }}
                 />
             ) : input ? (
@@ -154,7 +154,7 @@ export function OcrEntryForm({
                     onSubmit={(value) => void save(preparedEntry(value))}
                     onCancel={() => {
                         setInput(null);
-                        setKind(action?.kind ?? "");
+                        setKind(action?.kind === "link_payment" ? "" : (action?.kind ?? ""));
                     }}
                 />
             ) : (
@@ -190,7 +190,11 @@ export function OcrEntryForm({
                         aria-label={t("选择入账类型", "Choose entry type")}
                         value={kind}
                         disabled={locked || busy}
-                        onChange={(event) => setKind(event.target.value as Action["kind"] | "")}
+                        onChange={(event) =>
+                            setKind(
+                                event.target.value as Exclude<Action["kind"], "link_payment"> | "",
+                            )
+                        }
                     >
                         <option value="">{t("请选择", "Choose")}</option>
                         {(

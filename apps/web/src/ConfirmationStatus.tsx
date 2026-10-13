@@ -71,7 +71,10 @@ export function ConfirmationStatus({
             <ul>
                 {state.receipts.map((receipt) => (
                     <li key={receipt.intent_id}>
-                        {t("已确认记录", "Confirmed record")}: {receipt.operation.id}
+                        {t("已确认记录", "Confirmed record")}:{" "}
+                        {receipt.action === "link_payment"
+                            ? receipt.payment.operation_id
+                            : receipt.operation.id}
                     </li>
                 ))}
             </ul>
