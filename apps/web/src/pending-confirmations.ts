@@ -1,7 +1,9 @@
 import { ApiError } from "./api";
 import type { Session } from "./api";
+import type { BusinessPaymentReceipt } from "./business-settlement-api";
 import { confirmDraft } from "./ocr-api";
 import type { ConfirmationCreate, ConfirmationReceipt } from "./ocr-api";
+import { sameOriginalPayment, validOriginalPayment } from "./payment-evidence-receipt";
 import { validReceipt } from "./pending-command";
 import type { PendingStatus } from "./pending-command";
 
@@ -9,12 +11,14 @@ export type ConfirmationInput = Readonly<{
     ledgerId: string;
     draftId: string;
     body: Omit<ConfirmationCreate, "intent_id">;
+    originalPayment?: BusinessPaymentReceipt;
 }>;
 export type FrozenConfirmation = Readonly<{
     ownerId: string;
     ledgerId: string;
     draftId: string;
     bodyJson: string;
+    originalPaymentJson?: string;
 }>;
 export type ConfirmationSnapshot = Readonly<{
     status: PendingStatus;
@@ -39,7 +43,6 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 function valid(value: unknown, plan: FrozenConfirmation): value is ConfirmationReceipt {
     const body = JSON.parse(plan.bodyJson) as ConfirmationCreate;
-    if (body.entry.kind === "link_payment") return false;
     if (
         !record(value) ||
         value.intent_id !== body.intent_id ||
@@ -47,7 +50,36 @@ function valid(value: unknown, plan: FrozenConfirmation): value is ConfirmationR
         value.ledger_id !== plan.ledgerId ||
         value.draft_version !== body.expected_version + 1 ||
         value.target_ledger_id !== body.target_ledger_id ||
-        value.target_file_id !== body.target_file_id ||
+        value.target_file_id !== body.target_file_id
+    )
+        return false;
+    if (body.entry.kind === "link_payment") {
+        return (
+            value.action === "link_payment" &&
+            Object.keys(value).every((key) =>
+                [
+                    "intent_id",
+                    "draft_id",
+                    "ledger_id",
+                    "draft_version",
+                    "action",
+                    "target_ledger_id",
+                    "target_file_id",
+                    "payment",
+                    "operation_version",
+                ].includes(key),
+            ) &&
+            value.operation_version === body.entry.expected_version &&
+            plan.originalPaymentJson !== undefined &&
+            sameOriginalPayment(
+                value.payment,
+                JSON.parse(plan.originalPaymentJson),
+                body.target_ledger_id,
+                body.entry.payment_id,
+            )
+        );
+    }
+    if (
         value.action !== (body.entry.kind === "link" ? "link" : "create") ||
         !record(value.operation)
     )
@@ -157,15 +189,28 @@ export class PendingConfirmationController {
                 )
                     throw new ApiError("server", null, "invalid_confirmation_batch");
                 body.intent_id = crypto.randomUUID();
+                let originalPaymentJson: string | undefined;
                 if (body.entry.kind === "link_payment") {
-                    throw new ApiError("server", null, "payment_link_review_required");
+                    if (
+                        !Number.isSafeInteger(body.entry.expected_version) ||
+                        body.entry.expected_version < 1 ||
+                        !validOriginalPayment(
+                            input.originalPayment,
+                            body.target_ledger_id,
+                            body.entry.payment_id,
+                        )
+                    )
+                        throw new ApiError("server", null, "payment_link_review_required");
+                    originalPaymentJson = JSON.stringify(input.originalPayment);
                 }
-                if (body.entry.kind !== "link") body.entry.command.id ??= crypto.randomUUID();
+                if (body.entry.kind !== "link" && body.entry.kind !== "link_payment")
+                    body.entry.command.id ??= crypto.randomUUID();
                 return Object.freeze({
                     ownerId: String(session.user.id),
                     ledgerId: input.ledgerId,
                     draftId: input.draftId,
                     bodyJson: JSON.stringify(body),
+                    ...(originalPaymentJson === undefined ? {} : { originalPaymentJson }),
                 });
             });
             this.uncertain = false;
