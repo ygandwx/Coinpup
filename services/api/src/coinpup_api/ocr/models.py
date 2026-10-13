@@ -180,6 +180,12 @@ class OcrConfirmation(Versioned, Base):
             name="fk_ocr_confirmations_operation",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["payment_id", "target_ledger_id"],
+            ["business_payments.id", "business_payments.ledger_id"],
+            name="fk_ocr_confirmations_payment",
+            ondelete="RESTRICT",
+        ),
         UniqueConstraint("draft_id", name="uq_ocr_confirmations_draft"),
         UniqueConstraint("ledger_id", "intent_id", name="uq_ocr_confirmations_ledger_intent"),
         CheckConstraint("hash_version = 2", name="ck_ocr_confirmations_hash_version"),
@@ -187,7 +193,13 @@ class OcrConfirmation(Versioned, Base):
         CheckConstraint(
             "draft_version > 0 AND operation_version > 0", name="ck_ocr_confirmations_versions"
         ),
-        CheckConstraint("action IN ('create', 'link')", name="ck_ocr_confirmations_action"),
+        CheckConstraint(
+            "action IN ('create', 'link', 'link_payment')", name="ck_ocr_confirmations_action"
+        ),
+        CheckConstraint(
+            "(action = 'link_payment') = (payment_id IS NOT NULL)",
+            name="ck_ocr_confirmations_payment",
+        ),
         *(
             CheckConstraint(
                 f"jsonb_typeof({column}) = 'object' AND octet_length({column}::text) <= 262144",
@@ -210,6 +222,7 @@ class OcrConfirmation(Versioned, Base):
     target_ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     target_file_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    payment_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     draft_version: Mapped[int] = mapped_column(Integer, nullable=False)
     operation_version: Mapped[int] = mapped_column(Integer, nullable=False)
     action: Mapped[str] = mapped_column(String(16), nullable=False)

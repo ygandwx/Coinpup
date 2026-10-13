@@ -155,8 +155,12 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 assert (
                     connection.exec_driver_sql("SELECT count(*) FROM journal_lines").scalar() == 0
                 )
+                assert (
+                    connection.exec_driver_sql("SELECT count(*) FROM ocr_confirmations").scalar()
+                    == 0
+                )
                 connection.exec_driver_sql(
-                    "TRUNCATE TABLE business_postings, business_confirmations, "
+                    "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
                     "business_allocation_lines, business_allocations, business_payments, "
                     "recurring_invoice_instances, recurring_invoice_rules, "
                     "journal_lines, business_document_lines, business_documents, "

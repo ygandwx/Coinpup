@@ -143,8 +143,9 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
             if history == "rows":
                 c.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             else:
+                assert c.exec_driver_sql("SELECT count(*) FROM ocr_confirmations").scalar() == 0
                 c.exec_driver_sql(
-                    "TRUNCATE TABLE business_postings, business_confirmations, "
+                    "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
                     "business_allocation_lines, business_allocations, business_payments, "
                     "recurring_invoice_instances, recurring_invoice_rules, "
                     "journal_lines, business_document_lines, "
