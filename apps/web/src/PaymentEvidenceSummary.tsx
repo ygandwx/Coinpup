@@ -11,6 +11,7 @@ export function PaymentEvidenceSummary({
     locale: Locale;
 }) {
     const payment = target.payment;
+    const accountName = accounts.find((row) => row.id === payment.account_id)?.name;
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     return (
         <>
@@ -26,9 +27,8 @@ export function PaymentEvidenceSummary({
                 </dd>
                 <dt>{t("资金账户", "Money account")}</dt>
                 <dd>
-                    {accounts.find((row) => row.id === payment.account_id)?.name ??
-                        payment.account_id}{" "}
-                    · {payment.account_id}
+                    {accountName ? `${accountName} · ` : ""}
+                    {payment.account_id}
                 </dd>
                 <dt>{t("往来单位 ID", "Party ID")}</dt>
                 <dd>{payment.party_id}</dd>
