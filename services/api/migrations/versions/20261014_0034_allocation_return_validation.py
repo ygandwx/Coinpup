@@ -184,7 +184,6 @@ BEGIN
            OR item.allocation_date < greatest(item.payment_date,item.issue_date)
            OR entry.return_date < item.allocation_date
            OR item.state IS DISTINCT FROM 'confirmed'
-           OR item.party_id IS DISTINCT FROM item.payment_party
            OR item.document_party IS DISTINCT FROM item.payment_party
            OR item.document_kind IS DISTINCT FROM
                (CASE item.direction WHEN 'receipt' THEN 'invoice' ELSE 'bill' END)

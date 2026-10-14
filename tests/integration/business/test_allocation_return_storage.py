@@ -2,7 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic.migration import MigrationContext
@@ -461,22 +461,28 @@ def test_valid_references_in_another_owned_ledger_cannot_cross_the_return_scope(
         "account": account,
         "expenses": [item for item in categories if item.kind == "expense"],
     }
-    payment, advance = payment_source(other, fee_count=0)
-    with s["engine"].begin() as c:
-        payment_write(c, other, payment, advance)
-    group["payment_id"] = payment.id
     if foreign_reference == "original_mapping":
-        group.update(
-            ledger_id=other["ledger"], idempotency_key="fictional-payment-" + str(payment.id)
-        )
-        member.update(ledger_id=other["ledger"], payment_id=payment.id)
-        values["operation"]["ledger_id"] = other["ledger"]
-        values["journal"]["ledger_id"] = other["ledger"]
-        values["journal_lines"] = [
-            row | {"ledger_id": other["ledger"]} for row in values["journal_lines"]
-        ]
+        foreign_facts = source(other)
+        with s["engine"].begin() as c:
+            foreign_allocation = write(
+                c,
+                other,
+                *foreign_facts,
+                payment_amount="110",
+                document_amount="110",
+            )
+        with s["engine"].connect() as c:
+            member["source_allocation_line_id"] = c.scalar(
+                select(BusinessAllocationLine.id).where(
+                    BusinessAllocationLine.allocation_id == UUID(foreign_allocation["id"])
+                )
+            )
         constraint = "fk_business_allocation_return_line_source"
     else:
+        payment, advance = payment_source(other, fee_count=0)
+        with s["engine"].begin() as c:
+            payment_write(c, other, payment, advance)
+        group["payment_id"] = payment.id
         constraint = "fk_business_allocation_return_payment"
     before = snapshot(s)
     with pytest.raises(IntegrityError) as error, s["engine"].begin() as c:
