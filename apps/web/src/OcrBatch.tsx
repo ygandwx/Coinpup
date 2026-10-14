@@ -3,11 +3,21 @@ import type { Session } from "./api";
 import type { Locale } from "./i18n";
 import type { Entity } from "./ledger-api";
 import { getDraftReview, getOcrDraft, listDraftDuplicates } from "./ocr-api";
-import { reviewedInput } from "./ocr-batch";
+import { reviewedInput, reviewedPaymentInput } from "./ocr-batch";
+import { getPaymentEvidenceTarget } from "./business-settlement-api";
+import type { PaymentEvidenceTarget } from "./business-settlement-api";
+import { PaymentEvidenceSummary } from "./PaymentEvidenceSummary";
 import type { ConfirmationInput, PendingConfirmationController } from "./pending-confirmations";
 
 export type BatchSelection = { id: string; number: number };
-type Item = { number: number; input: ConfirmationInput; duplicates: number; ack: boolean };
+type Item = {
+    number: number;
+    input: ConfirmationInput;
+    duplicates: number;
+    ack: boolean;
+    target: PaymentEvidenceTarget | null;
+    paymentReviewed: boolean;
+};
 export function OcrBatch({
     session,
     locale,
@@ -52,10 +62,22 @@ export function OcrBatch({
                 const review = await getDraftReview(ledger, row.id, abort.signal);
                 const detail = await getOcrDraft(ledger, row.id, abort.signal);
                 const duplicates = await listDraftDuplicates(ledger, row.id, abort.signal);
+                let input = reviewedInput(ledger, detail.file_id, review);
+                const target =
+                    input.body.entry.kind === "link_payment"
+                        ? await getPaymentEvidenceTarget(
+                              input.body.target_ledger_id,
+                              input.body.entry.payment_id,
+                              abort.signal,
+                          )
+                        : null;
                 if (abort.signal.aborted) return;
+                if (target) input = reviewedPaymentInput(input, target);
                 next.push({
                     number: row.number,
-                    input: reviewedInput(ledger, detail.file_id, review),
+                    input,
+                    target,
+                    paymentReviewed: target === null,
                     duplicates: duplicates.length,
                     ack: false,
                 });
@@ -73,7 +95,12 @@ export function OcrBatch({
         setItems(null);
     }
     async function submit() {
-        if (!items?.length || locked || items.some((item) => item.duplicates && !item.ack)) return;
+        if (
+            !items?.length ||
+            locked ||
+            items.some((item) => (item.duplicates && !item.ack) || !item.paymentReviewed)
+        )
+            return;
         const inputs = items.map((item) => ({
             ...item.input,
             body: { ...item.input.body, duplicate_ack: item.ack },
@@ -114,15 +141,49 @@ export function OcrBatch({
                             <li key={item.input.draftId}>
                                 <span>
                                     {t("草稿", "Draft")} {item.number} ·{" "}
-                                    {action.kind === "link" || action.kind === "link_payment"
-                                        ? t("关联已有流水", "Link existing entry")
-                                        : `${"amount" in action.command ? action.command.amount : action.command.source_amount} ${"asset_id" in action.command ? action.command.asset_id : action.command.source_asset_id}`}{" "}
+                                    {action.kind === "link_payment"
+                                        ? t("关联经营收付款", "Link business payment")
+                                        : action.kind === "link"
+                                          ? t("关联已有流水", "Link existing entry")
+                                          : `${"amount" in action.command ? action.command.amount : action.command.source_amount} ${"asset_id" in action.command ? action.command.asset_id : action.command.source_asset_id}`}{" "}
                                     ·{" "}
                                     {entities.find(
                                         (entity) =>
                                             entity.ledger.id === item.input.body.target_ledger_id,
                                     )?.name ?? t("目标账本不可用", "Destination unavailable")}
                                 </span>
+                                {item.target && (
+                                    <section>
+                                        <PaymentEvidenceSummary
+                                            target={item.target}
+                                            locale={locale}
+                                        />
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                checked={item.paymentReviewed}
+                                                disabled={locked}
+                                                onChange={(event) =>
+                                                    setItems((value) =>
+                                                        value!.map((row, position) =>
+                                                            position === index
+                                                                ? {
+                                                                      ...row,
+                                                                      paymentReviewed:
+                                                                          event.target.checked,
+                                                                  }
+                                                                : row,
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                            {t(
+                                                `已核对草稿 ${item.number} 的原付款及完整初始分摊`,
+                                                `Reviewed original payment and complete initial allocations for draft ${item.number}`,
+                                            )}
+                                        </label>
+                                    </section>
+                                )}
                                 {!!item.duplicates && (
                                     <label>
                                         <input
@@ -155,7 +216,9 @@ export function OcrBatch({
                     disabled={
                         locked ||
                         !items.length ||
-                        items.some((item) => item.duplicates > 0 && !item.ack)
+                        items.some(
+                            (item) => (item.duplicates > 0 && !item.ack) || !item.paymentReviewed,
+                        )
                     }
                     onClick={() => void submit()}
                 >
