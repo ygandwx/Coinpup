@@ -1,4 +1,5 @@
 import { ApiError } from "./api";
+import { validPaymentEvidenceTarget } from "./payment-evidence-receipt";
 import type { ReviewView } from "./ocr-api";
 import { savedAction, savedDestination } from "./ocr-entry";
 import type { ConfirmationInput } from "./pending-confirmations";
@@ -14,8 +15,6 @@ export function reviewedInput(ledger: string, file: string, review: ReviewView):
         )
     )
         throw new ApiError("server", 422, "ocr_batch_not_ready");
-    if (action.kind === "link_payment")
-        throw new ApiError("server", 422, "payment_link_review_required");
     const target = savedDestination(review.review.entry) ?? { ledger, file };
     return {
         ledgerId: ledger,
@@ -29,4 +28,17 @@ export function reviewedInput(ledger: string, file: string, review: ReviewView):
             entry: action,
         },
     };
+}
+
+export function reviewedPaymentInput(input: ConfirmationInput, target: unknown): ConfirmationInput {
+    const action = input.body.entry;
+    if (action.kind !== "link_payment") return input;
+    if (!validPaymentEvidenceTarget(target, input.body.target_ledger_id, action.payment_id))
+        throw new ApiError("server", 200, "invalid_response");
+    if (
+        target.operation_status !== "active" ||
+        target.operation_version !== action.expected_version
+    )
+        throw new ApiError("server", 409, "version_conflict");
+    return { ...input, originalPayment: JSON.parse(JSON.stringify(target.payment.receipt)) };
 }
