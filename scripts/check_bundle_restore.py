@@ -428,8 +428,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                # A fourth unique bank blob; its cross-ledger copy shares the same content.
-                if len(manifest["blobs"]) != 4 or manifest["stored_files"] != [
+                # Deduplication is ledger-scoped; each bank copy adds its own private blob.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 5.")
+                if len(manifest["blobs"]) != 5 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
