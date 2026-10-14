@@ -550,7 +550,8 @@ BEGIN
     END LOOP;
 END; $$;
 
-CREATE FUNCTION coinpup_validate_shape_allocation(journal_identifier uuid, common_result jsonb)
+CREATE OR REPLACE FUNCTION coinpup_validate_shape_allocation(
+    journal_identifier uuid, common_result jsonb)
 RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 BEGIN
     PERFORM public.coinpup_validate_business_allocation(
