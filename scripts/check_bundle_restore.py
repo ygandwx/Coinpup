@@ -22,6 +22,7 @@ from check_business_confirmation_restore import (
 from check_business_settlement_restore import seed_business_settlements, verify_business_settlements
 from check_control_restore import seed_controls, verify_controls
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
+from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
 from check_reminder_restore import seed_reminders, verify_reminders
 from restore_bundle import restore_bundle
@@ -340,6 +341,14 @@ def check_bundle_restore(source_url):
                 second["receipt"].file_id,
                 operation,
             )
+            payment_evidence = seed_payment_evidence(
+                engine,
+                owner,
+                service,
+                store,
+                fictional_pdf("Fictional bank statement 2026-09-30 USD 100.00"),
+                upload_fixture,
+            )
             ocr_ids = fictional_ocr_metadata(engine, owner, ledger_b, second["receipt"].file_id)
             controls = seed_controls(engine, owner)
             periods = seed_periods(engine, owner)
@@ -419,7 +428,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                if len(manifest["blobs"]) != 3 or manifest["stored_files"] != [
+                # Deduplication is ledger-scoped; each bank copy adds its own private blob.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 5.")
+                if len(manifest["blobs"]) != 5 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
@@ -441,10 +452,11 @@ def check_bundle_restore(source_url):
             verify_reminders(restored_engine, reminder)
             verify_business_confirmations(restored_engine, business_confirmations)
             verify_business_settlements(restored_engine, business_settlements)
+            verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
-            for fixture in (first, second, picture, duplicate):
+            for fixture in (first, second, picture, duplicate, *payment_evidence["originals"]):
                 file, key = restored_service.get_download(
                     owner, fixture["ledger"], fixture["receipt"].file_id
                 )
@@ -529,6 +541,12 @@ def check_bundle_restore(source_url):
             print(
                 "OCR five financial kinds and existing-operation link restored; original v2 "
                 "intents/receipts replay after archive/cancellation without changing any table."
+            )
+            print(
+                "Bank evidence links to one 100 USD payment from same/cross-ledger originals; "
+                "gross expense 100, bank deduction 100 and payable zero remain unchanged. "
+                "After restore, archived/closed-period original payment and evidence v2 replay "
+                "write no rows."
             )
             print(
                 "Expired OCR task reclaimed with a fresh generation/token; stale worker rejected."
