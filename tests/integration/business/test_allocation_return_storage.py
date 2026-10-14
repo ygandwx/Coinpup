@@ -23,6 +23,7 @@ from tests.integration.business.payment_fixture import write as payment_write
 from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.conftest import allocation_return_storage_migration
 from tests.integration.ledger.test_account_classes import snapshot
+from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
 pytestmark = pytest.mark.integration
 TABLES = (BusinessAllocationReturn, BusinessAllocationReturnLine)
