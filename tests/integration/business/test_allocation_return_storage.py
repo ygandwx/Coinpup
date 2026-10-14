@@ -11,6 +11,8 @@ from coinpup_api.business.allocation_return_models import (
     BusinessAllocationReturn,
     BusinessAllocationReturnLine,
 )
+from coinpup_api.business.draft_schemas import BusinessDraftCreate
+from coinpup_api.business.schemas import ProjectCreate
 from coinpup_api.business.settlement_models import BusinessAllocationLine
 from coinpup_api.ledger.assets import ASSETS
 from coinpup_api.ledger.models import CommandReceipt, FinancialOperation, Journal, JournalLine
@@ -462,6 +464,18 @@ def test_valid_references_in_another_owned_ledger_cannot_cross_the_return_scope(
         "expenses": [item for item in categories if item.kind == "expense"],
     }
     if foreign_reference == "original_mapping":
+        project = s["master"].create_project(
+            s["owner"],
+            other["ledger"],
+            ProjectCreate(id=uuid4(), name="Fictional foreign return project"),
+        )
+
+        def other_payload(**changes):
+            body = s["payload"](**changes).model_dump()
+            body["lines"][0]["project_id"] = project.id
+            return BusinessDraftCreate(**body)
+
+        other["payload"] = other_payload
         foreign_facts = source(other)
         with s["engine"].begin() as c:
             foreign_allocation = write(
