@@ -100,3 +100,31 @@ test("untyped persisted reviews cannot crash the form, and valid command snapsho
     ])
         assert.equal(savedEntry(value), null);
 });
+
+test("saved payment link retains exact reviewed identity and version, never a financial command", () => {
+    const action = {
+        kind: "link_payment",
+        payment_id: "33333333-3333-4333-8333-333333333333",
+        expected_version: 4,
+    };
+    assert.strictEqual(savedAction(action), action);
+    assert.equal(savedEntry(action), null);
+    const destination = {
+        ledger: "11111111-1111-4111-8111-111111111111",
+        file: "22222222-2222-4222-8222-222222222222",
+    };
+    assert.strictEqual(savedAction(destinationEntry(destination, action)), action);
+    assert.deepEqual(savedDestination(destinationEntry(destination, action)), destination);
+    for (const broken of [
+        { ...action, payment_id: "fictional-malformed" },
+        { ...action, payment_id: null },
+        { ...action, operation_id: "fictional-legacy" },
+        { ...action, command: {} },
+        { ...action, originalPayment: {} },
+        ...[0, -1, 1.5, "4", null, undefined, Infinity].map((expected_version) => ({
+            ...action,
+            expected_version,
+        })),
+    ])
+        assert.equal(savedAction(broken), null);
+});

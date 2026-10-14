@@ -14,6 +14,8 @@ export function reviewedInput(ledger: string, file: string, review: ReviewView):
         )
     )
         throw new ApiError("server", 422, "ocr_batch_not_ready");
+    if (action.kind === "link_payment")
+        throw new ApiError("server", 422, "payment_link_review_required");
     const target = savedDestination(review.review.entry) ?? { ledger, file };
     return {
         ledgerId: ledger,
