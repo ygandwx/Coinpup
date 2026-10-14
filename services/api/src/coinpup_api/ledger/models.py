@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from coinpup_api.business import allocation_return_models as allocation_return_models  # noqa: F401
 from coinpup_api.business import confirmation_models as confirmation_models  # noqa: F401
 from coinpup_api.business import models as business_models  # noqa: F401
 from coinpup_api.business import settlement_models as settlement_models  # noqa: F401
