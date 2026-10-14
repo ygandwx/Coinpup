@@ -12,6 +12,19 @@ export function savedAction(value: unknown): Action | null {
         if (!savedDestination(value)) return null;
         value = value.action;
     }
+    if (record(value) && value.kind === "link_payment") {
+        return typeof value.payment_id === "string" &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(
+                value.payment_id,
+            ) &&
+            Number.isSafeInteger(value.expected_version) &&
+            (value.expected_version as number) > 0 &&
+            Object.keys(value).every((key) =>
+                ["kind", "payment_id", "expected_version"].includes(key),
+            )
+            ? (value as Action)
+            : null;
+    }
     if (record(value) && value.kind === "link") {
         return typeof value.operation_id === "string" &&
             Number.isSafeInteger(value.expected_version) &&

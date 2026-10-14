@@ -4,6 +4,10 @@ import type { Locale } from "./i18n";
 export function ocrError(error: unknown, locale: Locale): string {
     const zh = locale === "zh";
     const code = error instanceof ApiError ? error.code : null;
+    if (code === "payment_link_review_required")
+        return zh
+            ? "请打开单行核对原付款，再确认关联。"
+            : "Open each row to review its original payment before confirming the link.";
     if (code === "ocr_batch_not_ready")
         return zh
             ? "所选草稿尚未全部准备好。请逐行复核字段并保存入账草稿后重试。"

@@ -13,7 +13,7 @@ registerHooks({
         );
     },
 });
-const { validOriginalPayment, sameOriginalPayment } =
+const { validOriginalPayment, sameOriginalPayment, validPaymentEvidenceTarget } =
     await import("../src/payment-evidence-receipt.ts");
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 const ledger = id(2),
@@ -102,5 +102,60 @@ test("foreign, malformed, extra, unordered or changed posting identities are rej
         const broken = structuredClone(original);
         change(broken);
         assert.equal(sameOriginalPayment(broken, original, ledger, payment), false);
+    }
+});
+
+test("read metadata rejects numeric money and malformed identities before human review", () => {
+    const value = {
+        operation_status: "active",
+        operation_version: 1,
+        payment: {
+            id: payment,
+            ledger_id: ledger,
+            receipt: receipt(),
+            account_id: id(9),
+            party_id: id(10),
+            direction: "payout",
+            asset_id: "USD",
+            amount: "9007199254740993.01",
+            applied_amount: "0",
+            unapplied_amount: "9007199254740993.01",
+            transaction_date: "2031-07-18",
+            description: "Fictional metadata only",
+            created_at: "2031-07-18T00:00:00Z",
+            fees: [],
+            fee_count: 0,
+        },
+    };
+    const original = structuredClone(value);
+    assert.equal(validPaymentEvidenceTarget(value, ledger, payment), true);
+    assert.deepEqual(value, original);
+    assert.equal(
+        validPaymentEvidenceTarget(
+            { ...value, operation_status: "cancelled", operation_version: 2 },
+            ledger,
+            payment,
+        ),
+        true,
+    );
+    for (const [key, broken] of Object.entries({
+        amount: 10,
+        applied_amount: "-1",
+        account_id: "foreign",
+        party_id: {},
+        transaction_date: "2031-02-30",
+        asset_id: "",
+        fees: [{}],
+        fee_count: 1,
+        direction: "expense",
+    })) {
+        assert.equal(
+            validPaymentEvidenceTarget(
+                { ...value, payment: { ...value.payment, [key]: broken } },
+                ledger,
+                payment,
+            ),
+            false,
+        );
     }
 });
