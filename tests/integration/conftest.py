@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261014_0033",)
+        assert context.get_current_heads() == ("20261014_0034",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261014_0033",)
+        assert context.get_current_heads() == ("20261014_0034",)
 
 
 def confirmation_schema_migration():
@@ -195,6 +195,15 @@ def allocation_return_storage_migration():
     )
 
 
+def allocation_return_validation_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261014_0034_allocation_return_validation.py"
+        )
+    )
+
+
 def business_allocation_migration():
     frozen = runpy.run_path(
         str(
@@ -205,6 +214,7 @@ def business_allocation_migration():
 
     # Preserve the frozen probes; remove/reinstate only their new FK dependent first/last.
     def downgrade():
+        allocation_return_validation_migration()["downgrade"]()
         allocation_return_storage_migration()["downgrade"]()
         payment_confirmation_migration()["downgrade"]()
         frozen["downgrade"]()
@@ -213,6 +223,7 @@ def business_allocation_migration():
         frozen["upgrade"]()
         payment_confirmation_migration()["upgrade"]()
         allocation_return_storage_migration()["upgrade"]()
+        allocation_return_validation_migration()["upgrade"]()
 
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
