@@ -9,6 +9,7 @@ import type { Party } from "./business-api";
 import type {
     BusinessPaymentCreate,
     BusinessPaymentDetail,
+    BusinessAllocationDetail,
     InitialAllocationCreate,
 } from "./business-settlement-api";
 import type { PendingBusinessSettlementController } from "./pending-business-settlement";
@@ -22,6 +23,11 @@ import { BusinessPaymentFields } from "./BusinessPaymentFields";
 import { BusinessSettlementHistory } from "./BusinessSettlementHistory";
 import { BusinessSettlementResult } from "./BusinessSettlementResult";
 import type { SettlementReviewData } from "./BusinessSettlementResult";
+import { BusinessAllocationReturnForm } from "./BusinessAllocationReturnForm";
+import type { ReturnEditor } from "./BusinessAllocationReturnForm";
+import { BusinessAllocationReturnHistory } from "./BusinessAllocationReturnHistory";
+import type { AllocationReturnCreate } from "./allocation-return-api";
+import type { AllocationReturnReview } from "./allocation-return-intent";
 import "./draft-form.css";
 
 export function BusinessSettlementPanel({
@@ -55,6 +61,8 @@ export function BusinessSettlementPanel({
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
     const [fields, setFields] = useState<BusinessPaymentCreate | null>(null);
+    const [returnEditor, setReturnEditor] = useState<ReturnEditor | null>(null);
+    const [returnsOpen, setReturnsOpen] = useState(false);
     const [existing, setExisting] = useState<{
         payment: BusinessPaymentDetail;
         name: string | null;
@@ -74,7 +82,7 @@ export function BusinessSettlementPanel({
         [historyRefresh, setHistoryRefresh] = useState(0);
     const callbacks = useRef({ onEditing, onUnauthorized, onSaved });
     callbacks.current = { onEditing, onUnauthorized, onSaved };
-    const open = !!fields || !!plan || !!existing;
+    const open = !!fields || !!plan || !!existing || !!returnEditor;
     const needReferences = !!fields && !plan;
     const refs = {
         accounts,
@@ -84,9 +92,9 @@ export function BusinessSettlementPanel({
     };
     const ready = parties?.ledger === ledgerId && !dataLoading && !archived;
     useEffect(() => {
-        callbacks.current.onEditing(open || historyEditing);
+        callbacks.current.onEditing(open || historyEditing || returnsOpen);
         return () => callbacks.current.onEditing(false);
-    }, [open, historyEditing]);
+    }, [open, historyEditing, returnsOpen]);
     useEffect(() => {
         if (pending.status === "auth-required") callbacks.current.onUnauthorized();
     }, [pending.status]);
@@ -156,6 +164,26 @@ export function BusinessSettlementPanel({
         setInvalid(false);
         setError(null);
     }
+    function beginReturn(allocation: BusinessAllocationDetail) {
+        if (archived || dataLoading || allocation.ledger_id !== ledgerId || !controller.dismiss())
+            return;
+        setReturnEditor({
+            id: crypto.randomUUID(),
+            allocationId: allocation.id,
+            paymentId: allocation.payment_id,
+            date:
+                localDraftDate() < allocation.allocation_date
+                    ? allocation.allocation_date
+                    : localDraftDate(),
+            reason: "",
+            amounts: {},
+            capacity: null,
+        });
+        setFields(null);
+        setExisting(null);
+        setAllocation(null);
+        setError(null);
+    }
     async function submitAllocation(event: FormEvent) {
         event.preventDefault();
         if (
@@ -209,6 +237,7 @@ export function BusinessSettlementPanel({
         setFields(null);
         setExisting(null);
         setAllocation(null);
+        setReturnEditor(null);
         setSources([]);
         setReviewed(false);
         setInvalid(false);
@@ -279,9 +308,11 @@ export function BusinessSettlementPanel({
             {open ? (
                 <div className="business-settlement-panel">
                     <h2>
-                        {existing || plan?.kind === "allocation"
-                            ? t("追加分摊", "Apply existing payment")
-                            : t("实际收付款", "Actual payment")}
+                        {returnEditor || plan?.kind === "return"
+                            ? t("分摊退回", "Return allocation")
+                            : existing || plan?.kind === "allocation"
+                              ? t("追加分摊", "Apply existing payment")
+                              : t("实际收付款", "Actual payment")}
                     </h2>
                     {plan ? (
                         <BusinessSettlementResult
@@ -291,10 +322,55 @@ export function BusinessSettlementPanel({
                             onClose={close}
                             onEdit={() => {
                                 if (controller.dismiss()) {
+                                    if (plan.kind === "return") {
+                                        const body = JSON.parse(
+                                            plan.bodyJson,
+                                        ) as AllocationReturnCreate;
+                                        const review = JSON.parse(
+                                            plan.reviewedJson,
+                                        ) as AllocationReturnReview;
+                                        setReturnEditor({
+                                            id: crypto.randomUUID(),
+                                            allocationId: review.capacity.id,
+                                            paymentId: body.payment_id,
+                                            date: body.return_date,
+                                            reason: body.reason,
+                                            amounts: Object.fromEntries(
+                                                body.lines.map((line) => [
+                                                    line.source_allocation_line_id,
+                                                    line.document_amount,
+                                                ]),
+                                            ),
+                                            capacity: null,
+                                        });
+                                    }
                                     setReviewed(false);
                                     setError(null);
                                 }
                             }}
+                        />
+                    ) : returnEditor ? (
+                        <BusinessAllocationReturnForm
+                            ledgerId={ledgerId}
+                            locale={locale}
+                            assets={assets}
+                            draft={returnEditor}
+                            disabled={archived || dataLoading}
+                            onChange={(update) =>
+                                setReturnEditor((value) => (value ? update(value) : value))
+                            }
+                            onSubmit={async (body, review) => {
+                                if (archived || dataLoading || controller.getSnapshot().plan)
+                                    return;
+                                await controller.start(
+                                    session,
+                                    ledgerId,
+                                    { kind: "return", body },
+                                    review,
+                                );
+                            }}
+                            onCancel={close}
+                            onUnauthorized={onUnauthorized}
                         />
                     ) : existing && allocation ? (
                         <form
@@ -516,6 +592,13 @@ export function BusinessSettlementPanel({
                     )}
                     {error != null && <p role="alert">{businessError(error, locale)}</p>}
                 </div>
+            ) : returnsOpen ? (
+                <BusinessAllocationReturnHistory
+                    ledgerId={ledgerId}
+                    locale={locale}
+                    onClose={() => setReturnsOpen(false)}
+                    onUnauthorized={onUnauthorized}
+                />
             ) : (
                 <>
                     {!historyEditing && (
@@ -528,12 +611,18 @@ export function BusinessSettlementPanel({
                             {t("新建收付款", "New payment")}
                         </button>
                     )}
+                    {!historyEditing && (
+                        <button type="button" onClick={() => setReturnsOpen(true)}>
+                            {t("分摊退回历史", "Allocation return history")}
+                        </button>
+                    )}
                     <BusinessSettlementHistory
                         key={historyRefresh}
                         ledgerId={ledgerId}
                         locale={locale}
                         accounts={accounts}
                         onAllocate={archived || dataLoading ? undefined : beginAllocation}
+                        onReturn={archived || dataLoading ? undefined : beginReturn}
                         onEditing={setHistoryEditing}
                         onUnauthorized={onUnauthorized}
                     />
