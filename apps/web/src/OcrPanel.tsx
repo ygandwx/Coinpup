@@ -545,8 +545,9 @@ export function OcrPanel({
                                             review.status === "confirmed"
                                         }
                                         onChange={(event) => {
+                                            const checked = event.currentTarget.checked;
                                             setConfirmed((value) =>
-                                                event.target.checked
+                                                checked
                                                     ? [...value, field.path]
                                                     : value.filter((path) => path !== field.path),
                                             );
