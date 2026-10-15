@@ -14,6 +14,7 @@ from uuid import uuid4
 from _bundle_archive import verified_bundle
 from _database_archive import ArchiveError, read_target, require_posix
 from backup_bundle import backup_bundle
+from check_allocation_return_restore import seed_allocation_returns, verify_allocation_returns
 from check_backup_restore import change_state, snapshot, verify_change_continuation
 from check_business_confirmation_restore import (
     seed_business_confirmations,
@@ -355,6 +356,7 @@ def check_bundle_restore(source_url):
             reminder = seed_reminders(engine, owner, ledger_a)
             business_confirmations = seed_business_confirmations(engine, owner)
             business_settlements = seed_business_settlements(engine, owner)
+            allocation_returns = seed_allocation_returns(engine, owner)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -452,6 +454,7 @@ def check_bundle_restore(source_url):
             verify_reminders(restored_engine, reminder)
             verify_business_confirmations(restored_engine, business_confirmations)
             verify_business_settlements(restored_engine, business_settlements)
+            verify_allocation_returns(restored_engine, allocation_returns)
             verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
@@ -533,6 +536,10 @@ def check_bundle_restore(source_url):
             print(
                 "Actual payments, independent fees, partial same/cross-asset allocations and "
                 "unapplied advances restored; original v2 receipts replay without any writes."
+            )
+            print(
+                "Partial/final same/cross-asset returns, released capacity and reapplications "
+                "restored; archived and closed original intents replay without any writes."
             )
             print(
                 "Period close/reopen/reclose state, audits and original v2 receipts "
