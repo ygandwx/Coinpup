@@ -276,3 +276,23 @@ def test_valid_fees_are_independent_and_refund_history_prevents_downgrade(drafts
             refund_validation_migration()["downgrade"]()
     assert error.value.orig.diag.constraint_name == "ck_business_refund_downgrade"
     assert snapshot(s) == before
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"amount": "0.00"}, {"amount": "0.010"}, {"amount": "0.02"}, {"extra": "fictional"}],
+)
+def test_fee_storage_cannot_bypass_positive_exact_shape_or_match_different_rows(drafts, change):
+    s = drafts
+    source = fixture(s)
+    fee = dict(
+        account_id=str(s["account"].id),
+        asset_id="USD",
+        amount="0.01",
+        category_id=str(s["expenses"][0].id),
+    )
+    before = snapshot(s)
+    with pytest.raises(IntegrityError) as error:
+        write(s, source, fees=[fee], mutation={"fees": [fee | change]})
+    assert error.value.orig.diag.constraint_name == "ck_business_refund_shape"
+    assert snapshot(s) == before
