@@ -156,8 +156,11 @@ export function BusinessAllocationReturnForm({
         }
     }
     return (
-        <form onSubmit={submit} aria-label={t("分摊退回", "Return allocation")}>
-            <h3>{t("分摊退回", "Return allocation")}</h3>
+        <form
+            className="allocation-return-form"
+            onSubmit={submit}
+            aria-label={t("分摊退回", "Return allocation")}
+        >
             <p>
                 {t(
                     "释放原分摊的已应用金额，保留原记录；资金和收入费用不会因此变化。真实退款另行登记。",
@@ -183,27 +186,35 @@ export function BusinessAllocationReturnForm({
                     <p>
                         {t("原分摊日", "Original allocation date")}: {capacity.allocation_date}
                     </p>
-                    <label>
-                        {t("退回生效日", "Return effective date")}
-                        <input
-                            type="date"
-                            required
-                            value={draft.date}
-                            min={capacity.allocation_date}
-                            disabled={disabled}
-                            onChange={(e) => edit((d) => ({ ...d, date: e.target.value }))}
-                        />
-                    </label>
-                    <label>
-                        {t("退回原因", "Return reason")}
-                        <textarea
-                            required
-                            maxLength={2000}
-                            value={draft.reason}
-                            disabled={disabled}
-                            onChange={(e) => edit((d) => ({ ...d, reason: e.target.value }))}
-                        />
-                    </label>
+                    <div className="form-grid">
+                        <div className="field">
+                            <label>
+                                {t("退回生效日", "Return effective date")}
+                                <input
+                                    type="date"
+                                    required
+                                    value={draft.date}
+                                    min={capacity.allocation_date}
+                                    disabled={disabled}
+                                    onChange={(e) => edit((d) => ({ ...d, date: e.target.value }))}
+                                />
+                            </label>
+                        </div>
+                        <div className="field">
+                            <label>
+                                {t("退回原因", "Return reason")}
+                                <textarea
+                                    required
+                                    maxLength={2000}
+                                    value={draft.reason}
+                                    disabled={disabled}
+                                    onChange={(e) =>
+                                        edit((d) => ({ ...d, reason: e.target.value }))
+                                    }
+                                />
+                            </label>
+                        </div>
+                    </div>
                     <ol className="confirmation-lines">
                         {capacity.lines.map((line) => {
                             const id = line.source_allocation_line_id,
@@ -245,24 +256,29 @@ export function BusinessAllocationReturnForm({
                                     </p>
                                     {selected && (
                                         <>
-                                            <label>
-                                                {t("本次退回单据金额", "Document amount to return")}
-                                                <input
-                                                    inputMode="decimal"
-                                                    required
-                                                    value={draft.amounts[id]}
-                                                    disabled={disabled}
-                                                    onChange={(e) =>
-                                                        edit((d) => ({
-                                                            ...d,
-                                                            amounts: {
-                                                                ...d.amounts,
-                                                                [id]: e.target.value,
-                                                            },
-                                                        }))
-                                                    }
-                                                />
-                                            </label>
+                                            <div className="field">
+                                                <label>
+                                                    {t(
+                                                        "本次退回单据金额",
+                                                        "Document amount to return",
+                                                    )}
+                                                    <input
+                                                        inputMode="decimal"
+                                                        required
+                                                        value={draft.amounts[id]}
+                                                        disabled={disabled}
+                                                        onChange={(e) =>
+                                                            edit((d) => ({
+                                                                ...d,
+                                                                amounts: {
+                                                                    ...d.amounts,
+                                                                    [id]: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </label>
+                                            </div>
                                             <p>
                                                 {t(
                                                     "本次退回付款金额（原比例）",

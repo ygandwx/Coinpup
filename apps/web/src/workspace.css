@@ -1239,3 +1239,20 @@
 .business-settlement-workspace > .primary-button {
     margin-bottom: 20px;
 }
+
+.allocation-return-form {
+    display: grid;
+    gap: 16px;
+}
+.allocation-return-form .confirmation-lines {
+    display: grid;
+    gap: 20px;
+    margin: 0;
+    padding-left: 24px;
+}
+.allocation-return-form .field {
+    margin-bottom: 0;
+}
+.allocation-return-form li .field {
+    margin-top: 12px;
+}
