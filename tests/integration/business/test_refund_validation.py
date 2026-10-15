@@ -197,7 +197,8 @@ def test_refund_rejects_changed_source_dates_or_header_atomically(drafts, change
 @pytest.mark.parametrize(
     "changes",
     [
-        {"amount": "19"},
+        # Keep prepared legs balanced, then corrupt only the stored same-asset quantity.
+        {"mutation": {"amount": Decimal("19")}},
         {"principal": "21", "amount": "21"},
         {"receipt_mutation": {"payment_amount": "19"}},
         {"asset": "EUR", "amount": "19.37", "missing_clearing": True},

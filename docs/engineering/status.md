@@ -18,8 +18,8 @@
 - 提醒配置存储#150及0026/changes/恢复已验证；双渠道任务、配置API及投递待实现。
 - T06-5：证据与分摊退回#179–197、退款契约#198、OCR勾选修复#199已验收。退款写入/贷项/更正取消未验收。
 - 0035退款存储#200已合入main e9521e9；修复隔离fixture后PR CI 38752160741四项通过（1220DB/158浏览器/完整恢复）。main CI 38754057721四项通过。
-- 开放PR #201：feat/t06-refund-validation-0036，远端a1edcc2/本地d4fbbc3；0036形状/容量约束，无新接口；fast通过、契约无变化、单head，CI 38756718163在运行。
-- 当前本地feat/t06-refund-capacity-ready/9cee23a，远端a153df1；净容量差异已接#201并通过fast，待前包合入后接最新main；工作树干净。
+- 开放PR #201：feat/t06-refund-validation-0036，远端861f425/本地fff10a6；0036形状/容量约束，无新接口；fast通过、契约无变化、单head，首轮DB 1240通过/1负例构造失败已修复；CI 38760597056在运行。
+- 当前本地feat/t06-refund-capacity-ready/9cee23a，远端a153df1；净容量已接#201并通过fast，已同步负例修复；待前包合入后接最新main。
 - 准备分支只取目标差异，不整支合并旧状态/契约；未注明远端的SHA为本地定位，异地读分支：
   - 事务feat/t06-refund-service-preparation：2bebf1c；旧命令边界测试feat/t06-refund-legacy-guard-preparation：远端7b204a5/本地f848e80（fast通过、26DB仅收集）；API feat/t06-refund-api-preparation：180f841。
   - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-protocol-package：a3d8794；表单feat/t06-refund-form-preparation：c43ed32；工作区feat/t06-refund-workspace-preparation：84b76af+e5175ae（6浏览器仅收集）。fast通过、网页包web通过；DB/浏览器未验收。
@@ -51,7 +51,7 @@
 
 ## 下一步
 
-1. 核对#201实时CI/审查；全绿才Squash并验证main，再从最新main接容量提交9cee23a，重建契约。#201的21项DB待CI；T06-5未完成。
+1. 核对#201实时CI/审查；全绿才Squash并验证main，再从最新main接容量提交9cee23a，重建契约。#201最新DB待CI；T06-5未完成。
 2. 按存储→约束→净容量/事务→API/网页/恢复接续准备提交，再做贷项、整单更正取消；守住旧接口/回执、精度、期间锁和不可变历史。
 3. 接续T06-6/7和T07–T11；提醒投递按ADR0038拆包，SMTP不持锁、未知不自动重发、旧备份恢复先暂停出站。T12延期，只维护必要契约，不以延期停止其他任务。
 4. HK/EE/NM日期公式未完整核验保持待确认；真实部署、凭据与发布仍另行授权。
