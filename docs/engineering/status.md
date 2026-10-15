@@ -14,14 +14,13 @@
 
 ## 正在进行
 
-- T06-1/2及周期草稿#107–137、提醒基础/协议#138–149已合入；Invoice计价A已实现。
+- T06-1–4及周期草稿已验收#107–177；计价A已实现，#177指定截图已复核。
 - 提醒配置/修订存储#150四项通过，迁移0026、变更日志与完整恢复已验证；双渠道任务和配置API未实现，投递未启用。
-- T06-3/4已验收：确认/收付/分摊及双语网页、恢复#151–177；#177两张指定失败截图已查看，原意图恢复通过。
-- T06-5：付款证据、分摊退回后端/API/恢复/双语网页#179–197已验收；退款ADR0044/契约/精确分录计划#198已合入main 01e6b58，尚无退款写入入口。main CI 38741618679四项通过。#198有1个OCR勾选用例重试通过；fix/ocr-reviewed-checkbox-snapshot修复延迟读取DOM状态，补勾选/取消断言；不调OCR质量。
-- 后续准备分支已推、未验收；从最新main摘对应提交，不合并旧status：
-  - 存储feat/t06-refund-storage-preparation：69543bd+9fa8480+a305bdc；约束feat/t06-refund-validation-preparation：be7991d（0036）。fast/web通过，DB尚未执行；生成契约基于新main重建。
-  - 净容量feat/t06-refund-capacity-preparation：350887f；事务feat/t06-refund-service-preparation：2bebf1c；API feat/t06-refund-api-preparation：180f841。fast通过，事务25项/API5项DB仅收集，API另通过web。
-  - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-web-protocol-preparation：e02917e。fast通过，协议web通过；DB/页面未验收。
+- T06-5：证据与分摊退回#179–197已验收；退款契约/精确计划#198、OCR勾选竞态修复#199已合入main 1b2ceba，main CI 38746022823四项通过。退款写入/贷项/更正取消未验收。
+- 当前feat/t06-refund-storage接续0035：不可变退款/退回引用表、变更日志、空历史降级与永久写入闸门；新接口未开放；PR #200首次CI三项通过，DB因隔离fixture遗漏新表而失败，补齐RESTRICT清理及通知登记后待重新验证。
+- 准备分支只取目标差异，不整支合并旧状态/契约；SHA为本地定位，异地读对应远端分支（协议标远端SHA）：
+  - 约束feat/t06-refund-validation-preparation：be7991d（0036）；净容量feat/t06-refund-capacity-preparation：350887f；事务feat/t06-refund-service-preparation：2bebf1c；API feat/t06-refund-api-preparation：180f841。
+  - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-protocol-package：a3d8794；表单feat/t06-refund-form-preparation：c43ed32；工作区feat/t06-refund-workspace-preparation：84b76af+e5175ae（6浏览器仅收集）。fast通过、网页包web通过；DB/浏览器未验收。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。chore/t05-3-ocr-stop保留未完全合入的历史交接内容。
 
 ## 任务状态
@@ -49,7 +48,7 @@
 
 ## 下一步
 
-1. 验证#198 main后完成OCR勾选修复包，随后接续退款存储；T06-5仍未完成。
+1. 完成当前0035存储包审查及CI，全绿才合入并核对main；T06-5仍未完成。
 2. 按存储→约束→净容量/事务→API/网页/恢复接续准备提交，再做贷项、整单更正取消；守住旧接口/回执、精度、期间锁和不可变历史。
 3. 接续T06-6/7和T07–T11；提醒投递按ADR0038拆包，SMTP不持锁、未知不自动重发、旧备份恢复先暂停出站。T12延期，只维护必要契约，不以延期停止其他任务。
 4. HK/EE/NM日期公式未完整核验保持待确认；真实部署、凭据与发布仍另行授权。持续开发，额度不足才保存准确交接。

@@ -146,6 +146,7 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 assert c.exec_driver_sql("SELECT count(*) FROM ocr_confirmations").scalar() == 0
                 c.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
+                    "business_refund_returns, business_refunds, "
                     "business_allocation_return_lines, business_allocation_returns, "
                     "business_allocation_lines, business_allocations, business_payments, "
                     "recurring_invoice_instances, recurring_invoice_rules, "

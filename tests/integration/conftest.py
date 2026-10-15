@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261014_0034",)
+        assert context.get_current_heads() == ("20261015_0035",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261014_0034",)
+        assert context.get_current_heads() == ("20261015_0035",)
 
 
 def confirmation_schema_migration():
@@ -204,6 +204,15 @@ def allocation_return_validation_migration():
     )
 
 
+def refund_storage_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261015_0035_business_refund_storage.py"
+        )
+    )
+
+
 def business_allocation_migration():
     frozen = runpy.run_path(
         str(
@@ -214,6 +223,7 @@ def business_allocation_migration():
 
     # Preserve the frozen probes; remove/reinstate only their new FK dependent first/last.
     def downgrade():
+        refund_storage_migration()["downgrade"]()
         allocation_return_validation_migration()["downgrade"]()
         allocation_return_storage_migration()["downgrade"]()
         payment_confirmation_migration()["downgrade"]()
@@ -224,6 +234,7 @@ def business_allocation_migration():
         payment_confirmation_migration()["upgrade"]()
         allocation_return_storage_migration()["upgrade"]()
         allocation_return_validation_migration()["upgrade"]()
+        refund_storage_migration()["upgrade"]()
 
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
@@ -331,7 +342,7 @@ def _restore_current_change_types(connection):
     connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
     connection.exec_driver_sql(
         "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-        f"(entity_type IN ({allocation_return_storage_migration()['_ENTITY_TYPES']}))"
+        f"(entity_type IN ({refund_storage_migration()['_ENTITY_TYPES']}))"
     )
 
 
@@ -359,6 +370,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | business_confirmation_migration()["_CHANGE_TRIGGER_SQL"]
             | business_settlement_migration()["_CHANGE_TRIGGER_SQL"]
             | allocation_return_storage_migration()["_CHANGE_TRIGGER_SQL"]
+            | refund_storage_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -396,6 +408,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
+                "business_refund_returns, business_refunds, "
                 "business_allocation_return_lines, business_allocation_returns, "
                 "business_allocation_lines, business_allocations, business_payments, "
                 "reminder_delivery_revisions, reminder_delivery_configs, "

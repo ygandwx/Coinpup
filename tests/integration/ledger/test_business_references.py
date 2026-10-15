@@ -161,6 +161,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 )
                 connection.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
+                    "business_refund_returns, business_refunds, "
                     "business_allocation_return_lines, business_allocation_returns, "
                     "business_allocation_lines, business_allocations, business_payments, "
                     "recurring_invoice_instances, recurring_invoice_rules, "
