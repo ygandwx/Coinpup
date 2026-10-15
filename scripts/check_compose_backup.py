@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/api/src"))
@@ -13,6 +14,15 @@ from coinpup_api.config import Settings  # noqa: E402
 from coinpup_api.database import Database  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
+
+
+def failure_location(error):
+    """Expose code locations, never exception text, SQL parameters or local values."""
+    frames = traceback.extract_tb(error.__traceback__)
+    locations = " -> ".join(
+        f"{Path(frame.filename).name}:{frame.lineno} ({frame.name})" for frame in frames
+    )
+    return f"{type(error).__name__} at {locations}"
 
 
 def main():
@@ -44,7 +54,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as error:
+        print(failure_location(error), file=sys.stderr)
         raise SystemExit(
             "Compose backup exercise failed; test databases retained for inspection"
         ) from None

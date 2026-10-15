@@ -1,3 +1,5 @@
+import type { RefundCreate, RefundReceipt } from "./refund-api";
+import { validRefundInput, validRefundReceipt } from "./refund-intent";
 import type {
     BusinessAllocationCreate,
     BusinessAllocationReceipt,
@@ -6,11 +8,16 @@ import type {
 } from "./business-settlement-api";
 import { validDraftDate } from "./draft-fields";
 import { parseAmount } from "./money";
+import type { AllocationReturnCreate, AllocationReturnReceipt } from "./allocation-return-api";
+import { validReturnInput, validReturnReceipt } from "./allocation-return-intent";
 
 export type SettlementInput =
     | { kind: "payment"; body: BusinessPaymentCreate }
-    | { kind: "allocation"; body: BusinessAllocationCreate };
-export type SettlementReceipt = BusinessPaymentReceipt | BusinessAllocationReceipt;
+    | { kind: "allocation"; body: BusinessAllocationCreate }
+    | { kind: "return"; body: AllocationReturnCreate }
+    | { kind: "refund"; body: RefundCreate };
+export type SettlementReceipt =
+    BusinessPaymentReceipt | BusinessAllocationReceipt | AllocationReturnReceipt | RefundReceipt;
 export type FrozenSettlement = Readonly<{
     ownerId: string;
     ledgerId: string;
@@ -63,6 +70,8 @@ function groupInput(value: unknown, standalone: boolean): boolean {
 
 export function validSettlementInput(ledgerId: string, input: SettlementInput): boolean {
     if (!uuid(ledgerId) || !record(input) || !record(input.body)) return false;
+    if (input.kind === "return") return validReturnInput(input.body);
+    if (input.kind === "refund") return validRefundInput(input.body);
     if (input.kind === "allocation") return groupInput(input.body, true);
     if (input.kind !== "payment") return false;
     const body = input.body;
@@ -170,6 +179,8 @@ export function validSettlementReceipt(
     plan: FrozenSettlement,
 ): value is SettlementReceipt {
     if (!record(value)) return false;
+    if (plan.kind === "return") return validReturnReceipt(value, plan);
+    if (plan.kind === "refund") return validRefundReceipt(value, plan);
     const body = JSON.parse(plan.bodyJson) as Record<string, unknown>;
     if (plan.kind === "allocation")
         return groupReceipt(value, body, plan.ledgerId, body.payment_id as string);

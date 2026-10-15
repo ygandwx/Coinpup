@@ -1,6 +1,10 @@
+import { createRefund } from "./refund-api";
+import { validRefundReview } from "./refund-intent";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { createBusinessAllocation, createBusinessPayment } from "./business-settlement-api";
+import { createAllocationReturn } from "./allocation-return-api";
+import { validReturnReview } from "./allocation-return-intent";
 import {
     freezeSettlementReceipt,
     validSettlementInput,
@@ -29,7 +33,11 @@ const transport: Transport = (session, plan) =>
               JSON.parse(plan.bodyJson),
               plan.key,
           )
-        : createBusinessAllocation(
+        : (plan.kind === "return"
+              ? createAllocationReturn
+              : plan.kind === "refund"
+                ? createRefund
+                : createBusinessAllocation)(
               session.csrf_token,
               plan.ledgerId,
               JSON.parse(plan.bodyJson),
@@ -111,6 +119,10 @@ export class PendingBusinessSettlementController {
             if (this.flight || !["idle", "confirmed", "rejected"].includes(this.state.status))
                 throw new ApiError("server", null, "pending_settlement_unresolved");
             if (!validSettlementInput(ledgerId, input))
+                throw new ApiError("server", null, "invalid_settlement_intent");
+            if (input.kind === "return" && !validReturnReview(ledgerId, input.body, reviewed))
+                throw new ApiError("server", null, "invalid_settlement_intent");
+            if (input.kind === "refund" && !validRefundReview(ledgerId, input.body, reviewed))
                 throw new ApiError("server", null, "invalid_settlement_intent");
             const bodyJson = JSON.stringify(input.body),
                 reviewedJson = JSON.stringify(reviewed === undefined ? input.body : reviewed);

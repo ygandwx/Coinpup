@@ -5,6 +5,26 @@ import type { Locale } from "./i18n";
 /** Definite rejections only; unknown submissions retain the original-request recovery UI. */
 export function settlementError(error: unknown, locale: Locale): string {
     const messages: Record<string, readonly [string, string]> = {
+        allocation_return_date: [
+            "退回日期不得早于原分摊生效日。",
+            "A return cannot precede the original allocation date.",
+        ],
+        allocation_return_exceeds_source: [
+            "退回超过原来源的当前可退数量。请返回列表，重新读取来源后核对。",
+            "The return exceeds current source capacity. Return to the list and reload the original source.",
+        ],
+        allocation_return_ratio: [
+            "付款侧数量与原分摊比例不符，请重新核对两侧金额。",
+            "The payment quantity does not match the original ratio. Review both amounts.",
+        ],
+        allocation_return_residual: [
+            "本次数量会使一侧余量归零而另一侧仍有余额。请调整数量或整行退回。",
+            "This amount would exhaust only one side. Adjust the amount or return the full remaining line.",
+        ],
+        settlement_inactive: [
+            "原收付款或分摊已变更，请返回列表核对当前记录。",
+            "The original payment or allocation changed. Return to the list and review its current record.",
+        ],
         amount_range: [
             "金额或最终账户余额超出支持范围。请核对本金和各项手续费。",
             "The amount or final account balance exceeds the supported range. Check principal and every fee.",
