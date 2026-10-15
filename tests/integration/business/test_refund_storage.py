@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.integration.business.test_allocation_return_service import setup_return, submit_return
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.conftest import refund_storage_migration
+from tests.integration.conftest import refund_storage_migration, refund_validation_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -181,8 +181,10 @@ def test_empty_refund_round_trip_and_historical_notifications_protect_downgrade(
     s = drafts
     migration = refund_storage_migration()
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
+        refund_validation_migration()["downgrade"]()
         migration["downgrade"]()
         migration["upgrade"]()
+        refund_validation_migration()["upgrade"]()
     before = snapshot(s)
     with pytest.raises(IntegrityError) as error, s["engine"].begin() as c:
         c.exec_driver_sql(

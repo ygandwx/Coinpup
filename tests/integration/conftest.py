@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261015_0035",)
+        assert context.get_current_heads() == ("20261015_0036",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261015_0035",)
+        assert context.get_current_heads() == ("20261015_0036",)
 
 
 def confirmation_schema_migration():
@@ -209,6 +209,15 @@ def refund_storage_migration():
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261015_0035_business_refund_storage.py"
+        )
+    )
+
+
+def refund_validation_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261015_0036_business_refund_validation.py"
         )
     )
 
