@@ -1657,6 +1657,8 @@ export interface components {
             ledger_id: string;
             /** Line Count */
             line_count: number;
+            /** Lines */
+            lines: components["schemas"]["AllocationReturnLineDetail"][];
             /** Payment Amount */
             payment_amount: string;
             /**
@@ -1686,6 +1688,54 @@ export interface components {
              * Format: uuid
              */
             source_allocation_line_id: string;
+        };
+        /** AllocationReturnLineDetail */
+        AllocationReturnLineDetail: {
+            /** Description */
+            description: string;
+            /** Document Amount */
+            document_amount: string;
+            /** Document Asset Id */
+            document_asset_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Line Id
+             * Format: uuid
+             */
+            document_line_id: string;
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Source Allocation Id
+             * Format: uuid
+             */
+            source_allocation_id: string;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
         };
         /** AllocationReturnPosting */
         AllocationReturnPosting: {

@@ -15,6 +15,7 @@ from coinpup_api.business.allocation_return_read_schemas import (
     AllocationReturnCapacity,
     AllocationReturnCapacityLine,
     AllocationReturnDetail,
+    AllocationReturnLineDetail,
     AllocationReturnSummary,
 )
 from coinpup_api.business.allocation_return_receipts import integrity, response_from_rows
@@ -81,11 +82,58 @@ def summaries(session, ledger_id, *, identifier=None, payment_id=None, limit=100
                             line_count=count,
                         )
                     ),
+                    asset,
                 )
             )
     except (MoneyError, ValidationError):
         raise integrity() from None
     return result
+
+
+def member_details(session, ledger_id, return_id, receipt, payment_asset):
+    source, line, document = BusinessAllocationLine, BusinessDocumentLine, BusinessDocument
+    rows = session.execute(
+        select(source, line.description, AssetRecord)
+        .select_from(Member)
+        .join(source, source.id == Member.source_allocation_line_id)
+        .join(line, line.id == source.document_line_id)
+        .join(document, document.id == source.document_id)
+        .join(AssetRecord, AssetRecord.asset_id == document.asset_id)
+        .where(
+            Member.return_id == return_id,
+            *(table.ledger_id == ledger_id for table in (Member, source, line, document)),
+        )
+        .order_by(Member.line_no)
+    ).all()
+    if len(rows) != len(receipt.postings):
+        raise integrity()
+    result = []
+    for (source, description, asset), posting in zip(rows, receipt.postings, strict=True):
+        if (
+            source.id != posting.source_allocation_line_id
+            or source.document_id != posting.document_id
+            or source.document_line_id != posting.document_line_id
+        ):
+            raise integrity()
+        result.append(
+            AllocationReturnLineDetail(
+                **(
+                    posting.model_dump()
+                    | dict(
+                        source_allocation_id=source.allocation_id,
+                        description=description,
+                        document_asset_id=asset.asset_id,
+                        payment_amount=Amount.from_decimal(
+                            Decimal(posting.payment_amount), asset_definition(payment_asset)
+                        ).to_string(),
+                        document_amount=Amount.from_decimal(
+                            Decimal(posting.document_amount), asset_definition(asset)
+                        ).to_string(),
+                    )
+                )
+            )
+        )
+    return tuple(result)
 
 
 class BusinessAllocationReturnReads(LedgerService):
@@ -95,7 +143,7 @@ class BusinessAllocationReturnReads(LedgerService):
             self._ledger(session, owner_id, ledger_id)
             return [
                 item
-                for _, item in summaries(
+                for _, item, _ in summaries(
                     session, ledger_id, payment_id=payment_id, limit=limit, offset=offset
                 )
             ]
@@ -106,7 +154,7 @@ class BusinessAllocationReturnReads(LedgerService):
             rows = summaries(session, ledger_id, identifier=return_id)
             if not rows:
                 raise _not_found()
-            group, summary = rows[0]
+            group, summary, payment_asset = rows[0]
             receipt = session.get(CommandReceipt, (ledger_id, group.idempotency_key))
             expected = response_from_rows(session, group.id)
             if (
@@ -120,8 +168,12 @@ class BusinessAllocationReturnReads(LedgerService):
                 original = BusinessAllocationReturnResponse.model_validate(receipt.response)
                 if original != expected:
                     raise integrity()
-                return AllocationReturnDetail(**summary.model_dump(), receipt=original)
-            except ValidationError:
+                return AllocationReturnDetail(
+                    **summary.model_dump(),
+                    receipt=original,
+                    lines=member_details(session, ledger_id, group.id, original, payment_asset),
+                )
+            except (ValidationError, MoneyError):
                 raise integrity() from None
 
     def capacity(self, owner_id, ledger_id, allocation_id):

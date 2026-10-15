@@ -477,6 +477,15 @@
             "title": "Line Count",
             "type": "integer"
           },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnLineDetail"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
           "payment_amount": {
             "maxLength": 40,
             "minLength": 1,
@@ -512,6 +521,7 @@
           "reason",
           "line_count",
           "created_at",
+          "lines",
           "receipt"
         ],
         "title": "AllocationReturnDetail",
@@ -552,6 +562,90 @@
           "document_amount"
         ],
         "title": "AllocationReturnLineCreate",
+        "type": "object"
+      },
+      "AllocationReturnLineDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "document_asset_id": {
+            "title": "Document Asset Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_line_id": {
+            "format": "uuid",
+            "title": "Document Line Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "source_allocation_id": {
+            "format": "uuid",
+            "title": "Source Allocation Id",
+            "type": "string"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_allocation_line_id",
+          "source_operation_id",
+          "document_id",
+          "document_line_id",
+          "payment_amount",
+          "document_amount",
+          "operation_id",
+          "journal_id",
+          "source_allocation_id",
+          "document_asset_id",
+          "description"
+        ],
+        "title": "AllocationReturnLineDetail",
         "type": "object"
       },
       "AllocationReturnPosting": {

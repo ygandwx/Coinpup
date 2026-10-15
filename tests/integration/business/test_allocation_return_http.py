@@ -51,9 +51,13 @@ def test_return_http_history_capacity_original_replay(
     detail = client.get(path + f"/{payload.id}").json()
     assert detail["receipt"] == receipt and detail["reason"] == payload.reason
     assert detail["line_count"] == 1
+    assert detail["lines"][0]["source_allocation_id"] == str(allocation.id)
+    assert detail["lines"][0]["document_asset_id"] == asset
+    assert detail["lines"][0]["document_amount"] == "20.00"
+    assert detail["lines"][0]["description"]
     assert detail["payment_amount"] == ("22.00" if asset == "EUR" else "20.00")
     listed = client.get(path + f"?payment_id={payment.id}").json()
-    assert listed == [{k: v for k, v in detail.items() if k != "receipt"}]
+    assert listed == [{k: v for k, v in detail.items() if k not in ("receipt", "lines")}]
     assert client.get(path + "?offset=1").json() == []
     assert client.get(path + f"?payment_id={uuid4()}").json() == []
     line = client.get(capacity).json()["lines"][0]

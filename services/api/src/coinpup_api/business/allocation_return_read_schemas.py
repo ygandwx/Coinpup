@@ -5,7 +5,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from coinpup_api.business.allocation_return_schemas import BusinessAllocationReturnResponse
+from coinpup_api.business.allocation_return_schemas import (
+    AllocationReturnPosting,
+    BusinessAllocationReturnResponse,
+)
 from coinpup_api.ledger.posting_schemas import QuantityText
 
 
@@ -47,5 +50,12 @@ class AllocationReturnSummary(BaseModel):
     created_at: datetime
 
 
+class AllocationReturnLineDetail(AllocationReturnPosting):
+    source_allocation_id: UUID
+    document_asset_id: str
+    description: str
+
+
 class AllocationReturnDetail(AllocationReturnSummary):
+    lines: tuple[AllocationReturnLineDetail, ...] = Field(min_length=1, max_length=200)
     receipt: BusinessAllocationReturnResponse
