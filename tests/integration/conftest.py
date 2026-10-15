@@ -204,6 +204,15 @@ def allocation_return_validation_migration():
     )
 
 
+def refund_storage_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261015_0035_business_refund_storage.py"
+        )
+    )
+
+
 def business_allocation_migration():
     frozen = runpy.run_path(
         str(

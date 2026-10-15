@@ -30,6 +30,7 @@ from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.conftest import (
     allocation_return_storage_migration,
     allocation_return_validation_migration,
+    refund_storage_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -509,11 +510,15 @@ def test_empty_round_trip_restores_guards_and_historical_notifications_block_dow
     s = drafts
     migration = allocation_return_storage_migration()
     validation = allocation_return_validation_migration()
+    refund_storage = refund_storage_migration()
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
+        # New refund references must unwind first; all original guard assertions remain.
+        refund_storage["downgrade"]()
         validation["downgrade"]()
         migration["downgrade"]()
         migration["upgrade"]()
         validation["upgrade"]()
+        refund_storage["upgrade"]()
     before = snapshot(s)
     with pytest.raises(IntegrityError) as error, s["engine"].begin() as c:
         # Record isolated fictional history through the real trigger; no guard is disabled.
