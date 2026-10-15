@@ -17,12 +17,12 @@
 - T06-1/2及周期草稿#107–137、提醒基础/协议#138–149已合入；Invoice计价A已实现。
 - 提醒配置/修订存储#150四项通过，迁移0026、变更日志与完整恢复已验证；双渠道任务和配置API未实现，投递未启用。
 - T06-3/4已验收：确认/收付/分摊及双语网页、恢复#151–177；#177两张指定失败截图已查看，原意图恢复通过。
-- T06-5：付款证据/退回约束/净统计#179–192、事务#193及API#194已合入main 9feb33a，main CI 38719233409四项通过。#195完整恢复发现changes响应枚举漏退回类型，正在补契约和防回归测试；不得将DB通过当作恢复验收。网页/退款/贷项/更正取消未完成。
+- T06-5：付款证据/退回约束/事务/API/完整恢复#179–195已合入main c7bfd8d；#195及main CI 38726968924四项通过。已修复退回changes类型遗漏。当前feat/t06-allocation-return-web-foundation接续网页协议与历史组件，未开放入口；退款/贷项/更正取消未完成。
 - 准备分支已推、未验收；从最新main摘对应提交，不合并旧status：
-  - 网页基础feat/t06-allocation-return-web-foundation-preparation：f858216/037be3d+cc97dc3，未挂载。
   - 网页提交/验收feat/t06-allocation-return-web-acceptance-preparation：01f2c30/6fc4f56+c799e08；fast/web通过，浏览器未跑。
   - 退款设计docs/t06-refund-design-preparation：aa67bdd/1dc750c；纯计划feat/t06-refund-plan-preparation：827dc34/f7a7461。
-  - 退款存储feat/t06-refund-storage-preparation：69543bd+9fa8480，已推；fast通过，DB未跑；写入禁用，待补changes类型。
+  - 退款分录feat/t06-refund-rows-preparation：本地b831c2f，已推；fast通过，未接写入。
+  - 退款存储feat/t06-refund-storage-preparation：69543bd+9fa8480+a305bdc，已推；fast/web通过，DB未跑，写入禁用。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。chore/t05-3-ocr-stop保留未完全合入的历史交接内容。
 
 ## 任务状态
@@ -50,7 +50,7 @@
 
 ## 下一步
 
-1. 核验main 6ef9ae7检查；完成当前退回事务包，再依次接续API、恢复、网页协议准备提交；补双语界面/真实浏览器验收。各包全绿后合入并核验main，跨币原比例/末次差额不变。
+1. 核验main c7bfd8d检查，完成当前网页基础包，再摘6fc4f56+c799e08接双语提交及六个浏览器场景，实际查看截图；各包全绿合入后核验main，T06-5仍未完成。
 2. 补退款/贷项ADR及实现、整单更正取消；守住旧接口/回执、精度、净容量、期间锁和不可变历史。
 3. 接续T06-6/7和T07–T11；提醒投递按ADR0038拆包，SMTP不持锁、未知不自动重发、旧备份恢复先暂停出站。T12延期，只维护必要契约，不以延期停止其他任务。
 4. HK/EE/NM日期公式未完整核验保持待确认；真实部署、凭据与发布仍另行授权。持续开发，额度不足才保存准确交接。
