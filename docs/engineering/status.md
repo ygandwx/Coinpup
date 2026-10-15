@@ -17,7 +17,7 @@
 - T06-1–4及周期草稿已验收#107–177；计价A已实现，#177指定截图已复核。
 - 提醒配置/修订存储#150四项通过，迁移0026、变更日志与完整恢复已验证；双渠道任务和配置API未实现，投递未启用。
 - T06-5：证据与分摊退回#179–197已验收；退款契约/精确计划#198、OCR勾选竞态修复#199已合入main 1b2ceba，main CI 38746022823四项通过。退款写入/贷项/更正取消未验收。
-- 当前feat/t06-refund-storage接续0035：不可变退款/退回引用表、变更日志、空历史降级与永久写入闸门；新接口尚未开放，待审查及CI。
+- 当前feat/t06-refund-storage接续0035：不可变退款/退回引用表、变更日志、空历史降级与永久写入闸门；新接口未开放；PR #200首次CI三项通过，DB因隔离fixture遗漏新表而失败，补齐RESTRICT清理及通知登记后待重新验证。
 - 准备分支只取目标差异，不整支合并旧状态/契约；SHA为本地定位，异地读对应远端分支（协议标远端SHA）：
   - 约束feat/t06-refund-validation-preparation：be7991d（0036）；净容量feat/t06-refund-capacity-preparation：350887f；事务feat/t06-refund-service-preparation：2bebf1c；API feat/t06-refund-api-preparation：180f841。
   - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-protocol-package：a3d8794；表单feat/t06-refund-form-preparation：c43ed32；工作区feat/t06-refund-workspace-preparation：84b76af+e5175ae（6浏览器仅收集）。fast通过、网页包web通过；DB/浏览器未验收。

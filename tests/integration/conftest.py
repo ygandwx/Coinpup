@@ -223,6 +223,7 @@ def business_allocation_migration():
 
     # Preserve the frozen probes; remove/reinstate only their new FK dependent first/last.
     def downgrade():
+        refund_storage_migration()["downgrade"]()
         allocation_return_validation_migration()["downgrade"]()
         allocation_return_storage_migration()["downgrade"]()
         payment_confirmation_migration()["downgrade"]()
@@ -233,6 +234,7 @@ def business_allocation_migration():
         payment_confirmation_migration()["upgrade"]()
         allocation_return_storage_migration()["upgrade"]()
         allocation_return_validation_migration()["upgrade"]()
+        refund_storage_migration()["upgrade"]()
 
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
@@ -368,6 +370,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | business_confirmation_migration()["_CHANGE_TRIGGER_SQL"]
             | business_settlement_migration()["_CHANGE_TRIGGER_SQL"]
             | allocation_return_storage_migration()["_CHANGE_TRIGGER_SQL"]
+            | refund_storage_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -405,6 +408,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
+                "business_refund_returns, business_refunds, "
                 "business_allocation_return_lines, business_allocation_returns, "
                 "business_allocation_lines, business_allocations, business_payments, "
                 "reminder_delivery_revisions, reminder_delivery_configs, "
