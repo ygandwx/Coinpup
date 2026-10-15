@@ -3,11 +3,13 @@
 import ast
 import runpy
 from pathlib import Path
+from typing import get_args
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from coinpup_api.business.refund_models import BusinessRefund, BusinessRefundReturn
 from coinpup_api.ledger import models as ledger_models  # noqa: F401
+from coinpup_api.sync.schemas import EntityType
 from sqlalchemy.dialects.postgresql import dialect
 from sqlalchemy.schema import CreateIndex, CreateTable
 
@@ -19,6 +21,7 @@ def test_refund_storage_is_frozen_and_matches_all_declared_tables_and_indexes():
     previous = runpy.run_path(str(path.with_name("20261014_0033_allocation_return_storage.py")))
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert len(set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])) == 34
+    assert set(get_args(EntityType)) == set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])
     frozen = " ".join(migration["_SCHEMA_SQL"].split())
     for model in (BusinessRefund, BusinessRefundReturn):
         statements = [CreateTable(model.__table__)]

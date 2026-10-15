@@ -2556,7 +2556,11 @@
               "business_postings",
               "business_payments",
               "business_allocations",
-              "business_allocation_lines"
+              "business_allocation_lines",
+              "business_allocation_returns",
+              "business_allocation_return_lines",
+              "business_refunds",
+              "business_refund_returns"
             ],
             "title": "Entity Type",
             "type": "string"
