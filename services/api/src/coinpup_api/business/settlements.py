@@ -8,7 +8,7 @@ from sqlalchemy import func, insert, select
 from coinpup_api.business.drafts import _references
 from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine, BusinessParty
 from coinpup_api.business.settlement_hash import allocation_hash_v2, payment_hash_v2
-from coinpup_api.business.settlement_models import BusinessAllocationLine, BusinessPayment
+from coinpup_api.business.settlement_models import BusinessPayment
 from coinpup_api.business.settlement_plan import (
     AllocationSource,
     PaymentSource,
@@ -26,6 +26,7 @@ from coinpup_api.business.settlement_schemas import (
     BusinessAllocationResponse,
     BusinessPaymentResponse,
 )
+from coinpup_api.business.settlement_totals import applied_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.commands.fees import FeeCommands
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
@@ -94,14 +95,7 @@ def source_rows(session, ledger_id, payload):
 def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, new_payment):
     asset = catalog[payment.asset_id]
     applied = (
-        None
-        if new_payment
-        else session.scalar(
-            select(func.sum(BusinessAllocationLine.payment_amount)).where(
-                BusinessAllocationLine.payment_id == payment.id,
-                BusinessAllocationLine.ledger_id == ledger_id,
-            )
-        )
+        None if new_payment else applied_totals(session, ledger_id, {payment.id}).get(payment.id)
     )
     amount = (
         Amount.parse(payment.amount, asset)
@@ -117,19 +111,7 @@ def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, n
         amount,
         Amount(asset, 0) if applied is None else Amount.from_decimal(applied, asset),
     )
-    totals = dict(
-        session.execute(
-            select(
-                BusinessAllocationLine.document_line_id,
-                func.sum(BusinessAllocationLine.document_amount),
-            )
-            .where(
-                BusinessAllocationLine.document_line_id.in_(sources),
-                BusinessAllocationLine.ledger_id == ledger_id,
-            )
-            .group_by(BusinessAllocationLine.document_line_id)
-        ).all()
-    )
+    totals = applied_totals(session, ledger_id, sources, by_document_line=True)
     inputs = {}
     for identifier, (document, line) in sources.items():
         definition = catalog[document.asset_id]

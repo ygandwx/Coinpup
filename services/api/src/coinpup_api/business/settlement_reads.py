@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from coinpup_api.business.drafts import _fields
 from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
@@ -27,6 +27,7 @@ from coinpup_api.business.settlement_schemas import (
     BusinessAllocationResponse,
     BusinessPaymentResponse,
 )
+from coinpup_api.business.settlement_totals import applied_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord, CommandReceipt
@@ -110,12 +111,7 @@ class BusinessSettlementReads(BusinessSettlementBalances):
         if saved is None:
             raise _not_found()
         row, record = saved
-        line = BusinessAllocationLine
-        applied = session.scalar(
-            select(func.sum(line.payment_amount)).where(
-                line.ledger_id == ledger_id, line.payment_id == payment_id
-            )
-        )
+        applied = applied_totals(session, ledger_id, {payment_id}).get(payment_id)
         try:
             total, used, remaining = quantities(
                 row.amount,

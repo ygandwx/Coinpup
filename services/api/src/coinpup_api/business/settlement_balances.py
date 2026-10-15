@@ -19,6 +19,7 @@ from coinpup_api.business.settlement_read_schemas import (
     DocumentSettlementDetail,
     DocumentSettlementLine,
 )
+from coinpup_api.business.settlement_totals import applied_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord
@@ -60,17 +61,7 @@ class BusinessSettlementBalances(LedgerService):
             ).all()
             if not rows:
                 return []
-            line = BusinessAllocationLine
-            applied = dict(
-                session.execute(
-                    select(line.payment_id, func.sum(line.payment_amount))
-                    .where(
-                        line.ledger_id == ledger_id,
-                        line.payment_id.in_([row.id for row, _, _ in rows]),
-                    )
-                    .group_by(line.payment_id)
-                ).all()
-            )
+            applied = applied_totals(session, ledger_id, [row.id for row, _, _ in rows])
             result = []
             try:
                 for row, asset, count in rows:
@@ -164,7 +155,7 @@ class BusinessSettlementBalances(LedgerService):
                 raise _not_found()
             document, asset_row = saved
             asset = asset_definition(asset_row)
-            source, mapping = BusinessDocumentLine, BusinessAllocationLine
+            source = BusinessDocumentLine
             rows = session.scalars(
                 select(source)
                 .where(
@@ -174,12 +165,8 @@ class BusinessSettlementBalances(LedgerService):
                 )
                 .order_by(source.line_no)
             ).all()
-            applied = dict(
-                session.execute(
-                    select(mapping.document_line_id, func.sum(mapping.document_amount))
-                    .where(mapping.ledger_id == ledger_id, mapping.document_id == document_id)
-                    .group_by(mapping.document_line_id)
-                ).all()
+            applied = applied_totals(
+                session, ledger_id, [row.id for row in rows], by_document_line=True
             )
             if not rows or not applied.keys() <= {row.id for row in rows}:
                 raise integrity()
