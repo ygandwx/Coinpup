@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from coinpup_api import __version__
 from coinpup_api.auth import create_auth_router
+from coinpup_api.business.allocation_return_router import create_allocation_return_router
 from coinpup_api.business.confirmation_router import create_business_confirmation_router
 from coinpup_api.business.draft_router import create_business_draft_router
 from coinpup_api.business.recurring_router import create_recurring_router
@@ -122,6 +123,7 @@ def create_app(
     )
     app.include_router(create_recurring_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_business_settlement_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_allocation_return_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_reminder_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_period_router(settings, getattr(probe, "engine", None)))
