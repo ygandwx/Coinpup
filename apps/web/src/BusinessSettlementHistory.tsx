@@ -28,6 +28,7 @@ export function BusinessSettlementHistory({
     onEditing,
     onAllocate,
     onReturn,
+    onRefund,
     onUnauthorized,
 }: {
     ledgerId: string;
@@ -36,6 +37,7 @@ export function BusinessSettlementHistory({
     onEditing: (value: boolean) => void;
     onAllocate?: (payment: BusinessPaymentDetail, name: string | null) => void;
     onReturn?: (allocation: BusinessAllocationDetail) => void;
+    onRefund?: (payment: BusinessPaymentDetail) => void;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
@@ -279,6 +281,11 @@ export function BusinessSettlementHistory({
                                 {t("应用未分配款项", "Apply unapplied payment")}
                             </button>
                         )}
+                    {detail && "direction" in detail && onRefund && (
+                        <button type="button" onClick={() => onRefund(detail)}>
+                            {t("登记此付款的退款", "Refund this payment")}
+                        </button>
+                    )}
                     {error != null && <p role="alert">{businessError(error, locale)}</p>}
                     <button type="button" onClick={close}>
                         {t("返回收付列表", "Back to settlement list")}
