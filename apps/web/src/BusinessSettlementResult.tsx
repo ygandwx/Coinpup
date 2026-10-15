@@ -4,6 +4,7 @@ import type { AllocationPayment, AllocationSource } from "./settlement-fields";
 import type { Locale } from "./i18n";
 import { settlementError } from "./settlement-errors";
 import { formatAmount } from "./money";
+import { BusinessAllocationReturnResult } from "./BusinessAllocationReturnResult";
 
 export type SettlementReviewData = {
     payment: AllocationPayment;
@@ -28,6 +29,16 @@ export function BusinessSettlementResult({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const plan = pending.plan;
     if (!plan) return null;
+    if (plan.kind === "return")
+        return (
+            <BusinessAllocationReturnResult
+                pending={pending}
+                locale={locale}
+                onRetry={onRetry}
+                onEdit={onEdit}
+                onClose={onClose}
+            />
+        );
     const review = JSON.parse(plan.reviewedJson) as SettlementReviewData;
     const body = JSON.parse(plan.bodyJson) as BusinessPaymentCreate | BusinessAllocationCreate;
     const payment = "direction" in body ? body : null;
