@@ -1,6 +1,6 @@
 # 当前项目状态
 
-最后更新：2026-10-15（Asia/Shanghai）。任务依赖和验收条件见[路线图](roadmap.md)；验证证据保存在对应PR。
+更新：2026-10-15。依赖见[路线图](roadmap.md)，证据见PR。
 
 ## 用户最新指示
 
@@ -17,10 +17,11 @@
 - T06-1/2及周期草稿#107–137、提醒基础/协议#138–149已合入；Invoice计价A已实现。
 - 提醒配置/修订存储#150四项通过，迁移0026、变更日志与完整恢复已验证；双渠道任务和配置API未实现，投递未启用。
 - T06-3/4已验收：确认/收付/分摊及双语网页、恢复#151–177；#177两张指定失败截图已查看，原意图恢复通过。
-- T06-5：付款证据、分摊退回后端/API/恢复/双语网页#179–197已合入main 9a0061d；#197四项CI与158浏览器场景通过，实际截图布局已修正复核。main CI 38736424813四项通过。当前feat/t06-refund-plan提交ADR0044/契约/分录计划，退款/贷项/整单更正取消尚未验收。
+- T06-5：付款证据、分摊退回后端/API/恢复/双语网页#179–197已验收；退款ADR0044/契约/精确分录计划#198已合入main 01e6b58，尚无退款写入入口。main CI 38741618679四项通过。#198有1个OCR勾选用例重试通过；fix/ocr-reviewed-checkbox-snapshot修复延迟读取DOM状态，补勾选/取消断言；不调OCR质量。
 - 后续准备分支已推、未验收；从最新main摘对应提交，不合并旧status：
-  - 存储feat/t06-refund-storage-preparation：69543bd+9fa8480+a305bdc；约束feat/t06-refund-validation-preparation：be7991d（0036）。fast/web通过，DB尚未执行；生成契约须基于新main重建。
-  - 净容量feat/t06-refund-capacity-preparation：350887f；事务feat/t06-refund-service-preparation：2bebf1c；API feat/t06-refund-api-preparation：180f841。均已推、fast通过；事务25项及API5项DB仅收集，API另通过web。
+  - 存储feat/t06-refund-storage-preparation：69543bd+9fa8480+a305bdc；约束feat/t06-refund-validation-preparation：be7991d（0036）。fast/web通过，DB尚未执行；生成契约基于新main重建。
+  - 净容量feat/t06-refund-capacity-preparation：350887f；事务feat/t06-refund-service-preparation：2bebf1c；API feat/t06-refund-api-preparation：180f841。fast通过，事务25项/API5项DB仅收集，API另通过web。
+  - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-web-protocol-preparation：e02917e。fast通过，协议web通过；DB/页面未验收。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。chore/t05-3-ocr-stop保留未完全合入的历史交接内容。
 
 ## 任务状态
@@ -48,7 +49,7 @@
 
 ## 下一步
 
-1. 完成当前退款契约/计划包审查及CI；退回子步骤已验收，T06-5仍未完成。
+1. 验证#198 main后完成OCR勾选修复包，随后接续退款存储；T06-5仍未完成。
 2. 按存储→约束→净容量/事务→API/网页/恢复接续准备提交，再做贷项、整单更正取消；守住旧接口/回执、精度、期间锁和不可变历史。
 3. 接续T06-6/7和T07–T11；提醒投递按ADR0038拆包，SMTP不持锁、未知不自动重发、旧备份恢复先暂停出站。T12延期，只维护必要契约，不以延期停止其他任务。
 4. HK/EE/NM日期公式未完整核验保持待确认；真实部署、凭据与发布仍另行授权。持续开发，额度不足才保存准确交接。

@@ -38,8 +38,10 @@ test("destination copy resumes the original upload after lost reply and login, t
     });
     await page.goto(`/?entity=${source.entity}&view=ocr`);
     await page.getByRole("button", { name: /^Draft 1 · Review needed$/u }).click();
-    for (const field of ["Total", "Currency", "Document date"])
+    for (const field of ["Total", "Currency", "Document date"]) {
         await page.getByLabel(`${field} · Reviewed`, { exact: true }).check();
+        await expect(page.getByLabel(`${field} · Reviewed`, { exact: true })).toBeChecked();
+    }
     await page.getByRole("button", { name: "Save review", exact: true }).click();
     await page.getByLabel("Choose entry type", { exact: true }).selectOption("expense");
     await page.getByRole("button", { name: "Use reviewed candidates", exact: true }).click();

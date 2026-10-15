@@ -35,6 +35,13 @@ test("fictional seeded OCR review uses real API and keeps selections across lang
     await expect(canvas).toBeVisible();
     const total = page.getByLabel("Total · Reviewed", { exact: true });
     await total.check();
+    const date = page.getByLabel("Document date · Reviewed", { exact: true });
+    await date.check();
+    await expect(date).toBeChecked();
+    await expect(total).toBeChecked();
+    await date.uncheck();
+    await expect(date).not.toBeChecked();
+    await expect(total).toBeChecked();
     for (const width of [1440, 375, 320]) {
         await page.setViewportSize({ width, height: 1000 });
         for (const language of ["zh", "en"]) {
