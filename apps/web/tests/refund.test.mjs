@@ -298,3 +298,48 @@ test("malformed receipt and a later capacity rejection never prove an unknown re
     assert.equal(c.getSnapshot().status, "unknown");
     assert.equal(c.dismiss(), false);
 });
+
+test("refund capacity belongs to the exact original payment and conserves principal before rendering", async () => {
+    const { validRefundCapacity } = await import("../src/refund-capacity.ts");
+    const original = fixture().review.capacity;
+    const payment = { ...original, direction: original.payment_direction };
+    assert(validRefundCapacity(ledger, payment, original));
+    for (const patch of [
+        { ledger_id: id(90) },
+        { id: id(90) },
+        { party_id: id(90) },
+        { asset_id: "EUR" },
+        { payment_direction: "receipt" },
+        { transaction_date: "2026-09-16" },
+        { expected_version: 0 },
+        { source_status: "invented" },
+        { amount: "101" },
+        { applied_amount: "-1" },
+        { refunded_amount: "1" },
+        { refundable_amount: "21" },
+        { refundable_amount: "-1" },
+        { refundable_amount: 20 },
+        { refundable_amount: "NaN" },
+    ])
+        assert.equal(validRefundCapacity(ledger, payment, { ...original, ...patch }), false);
+    for (const invalid of [null, [], false])
+        assert.equal(validRefundCapacity(ledger, payment, invalid), false);
+    assert.equal(validRefundCapacity(id(90), payment, original), false);
+    const enormous = {
+        ...original,
+        amount: "90071992547409930000",
+        applied_amount: "0",
+        refundable_amount: "90071992547409930000",
+    };
+    assert(validRefundCapacity(ledger, { ...payment, amount: enormous.amount }, enormous));
+});
+
+test("refund rejections have explicit bilingual guidance without exposing server text", async () => {
+    const { settlementError } = await import("../src/settlement-errors.ts");
+    for (const code of ["refund_date", "refund_amount_mismatch", "refund_exceeds_payment"]) {
+        const error = new ApiError("validation", 422, code);
+        assert.match(settlementError(error, "zh"), /退款/);
+        assert.match(settlementError(error, "en"), /refund/i);
+        assert.notEqual(settlementError(error, "zh"), settlementError(error, "en"));
+    }
+});
