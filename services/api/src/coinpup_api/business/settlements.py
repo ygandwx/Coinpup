@@ -26,7 +26,7 @@ from coinpup_api.business.settlement_schemas import (
     BusinessAllocationResponse,
     BusinessPaymentResponse,
 )
-from coinpup_api.business.settlement_totals import applied_totals
+from coinpup_api.business.settlement_totals import applied_totals, payment_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.commands.fees import FeeCommands
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
@@ -94,9 +94,12 @@ def source_rows(session, ledger_id, payload):
 
 def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, new_payment):
     asset = catalog[payment.asset_id]
-    applied = (
-        None if new_payment else applied_totals(session, ledger_id, {payment.id}).get(payment.id)
-    )
+    used = Amount(asset, 0)
+    if not new_payment:
+        totals = payment_totals(session, ledger_id, {payment.id}).get(payment.id)
+        if totals is not None:
+            # Refunds consume principal, while public applied_amount remains net applications.
+            used = sum((Amount.from_decimal(value, asset) for value in totals), used)
     amount = (
         Amount.parse(payment.amount, asset)
         if new_payment
@@ -109,7 +112,7 @@ def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, n
         payment.direction,
         payment.transaction_date,
         amount,
-        Amount(asset, 0) if applied is None else Amount.from_decimal(applied, asset),
+        used,
     )
     totals = applied_totals(session, ledger_id, sources, by_document_line=True)
     inputs = {}
