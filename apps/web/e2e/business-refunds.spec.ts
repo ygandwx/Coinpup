@@ -100,7 +100,40 @@ for (const [direction, asset, principal] of [
                 .getByLabel("Refund reason", { exact: true })
                 .fill("Fictional refund 中文 " + "reason ".repeat(12));
         }
+        let capacityReadFailed = false;
+        await page.route(
+            `**${data.ledger}/business-payments/${paid.id}/refund-capacity`,
+            (route) => {
+                if (!capacityReadFailed) {
+                    capacityReadFailed = true;
+                    return route.abort("failed");
+                }
+                return route.continue();
+            },
+        );
         await openRefund();
+        await expect(page.getByRole("alert")).toBeVisible();
+        await page.getByRole("button", { name: "Reload refundable capacity", exact: true }).click();
+        await expect(page.getByRole("form", { name: "Actual refund", exact: true })).toContainText(
+            "30.00 USD",
+        );
+        let writes = 0;
+        const submitted = (request: { method(): string; url(): string }) => {
+            if (request.method() === "POST" && request.url().endsWith("/business-refunds"))
+                writes += 1;
+        };
+        page.on("request", submitted);
+        await page.getByLabel("Actual refund quantity", { exact: true }).fill("0.001");
+        await page
+            .getByRole("checkbox", { name: "I reviewed original principal", exact: false })
+            .check();
+        await page.getByRole("button", { name: "Record actual refund", exact: true }).click();
+        await expect(page.getByRole("alert")).toContainText("both exact quantities");
+        expect(writes).toBe(0);
+        page.off("request", submitted);
+        await page
+            .getByLabel("Actual refund quantity", { exact: true })
+            .fill(asset === "EUR" ? "19.37" : "20");
         await page.getByRole("checkbox", { name: new RegExp(returnId, "u") }).check();
         await page.getByRole("button", { name: "Add fee", exact: true }).click();
         await page.getByLabel("Fee account", { exact: true }).selectOption(account.id);
