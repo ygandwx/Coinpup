@@ -226,7 +226,15 @@ def test_rejected_intents_roll_back_every_table(drafts, fault):
     if fault == "ledger":
         scope = (
             s["structure"]
-            .create_entity(s["owner"], EntityCreate(kind="personal", name="Fictional other ledger"))
+            .create_entity(
+                s["owner"],
+                EntityCreate(
+                    kind="personal",
+                    name="Fictional other ledger",
+                    base_asset_id="USD",
+                    template_key="personal_default",
+                ),
+            )
             .ledger.id
         )
     elif fault == "owner":
