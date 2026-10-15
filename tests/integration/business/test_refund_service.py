@@ -12,6 +12,7 @@ from coinpup_api.business.refunds import BusinessRefundService
 from coinpup_api.business.schemas import PartyUpdate
 from coinpup_api.business.settlement_reads import BusinessSettlementReads
 from coinpup_api.ledger.models import JournalLine
+from coinpup_api.ledger.posting_schemas import CancellationCreate
 from coinpup_api.ledger.schemas import AccountUpdate, AssetUpdate, EntityCreate, EntityUpdate
 from coinpup_api.ledger.service import LedgerError
 from sqlalchemy import func, select
@@ -278,4 +279,29 @@ def test_failure_after_posting_rolls_back_refund_references_journal_and_receipt(
     monkeypatch.setattr("coinpup_api.business.refunds.response_from_rows", fail)
     with pytest.raises(RuntimeError, match="fictional post-persistence"):
         refund(s, body)
+    assert snapshot(s) == before
+
+
+def test_refund_preserves_legacy_reads_and_cannot_be_cancelled_by_legacy_command(drafts):
+    s = drafts
+    _, _, body = setup_refund(s)
+    posting = s["posting"]
+    original = posting.list_operations(s["owner"], s["ledger"])
+    result = refund(s, body)
+    before = snapshot(s)
+    assert posting.list_operations(s["owner"], s["ledger"]) == original
+    for method in (posting.get_operation, posting.history):
+        with pytest.raises(LedgerError) as error:
+            method(s["owner"], s["ledger"], result.operation_id)
+        assert error.value.code == "not_found"
+    with pytest.raises(LedgerError) as error:
+        posting.cancel_operation(
+            s["owner"],
+            s["ledger"],
+            result.operation_id,
+            CancellationCreate(expected_version=1, reason="Fictional wrong command family"),
+            "fictional-legacy-refund-cancellation",
+        )
+    assert error.value.code == "not_found"
+    assert refund(s, body) == result
     assert snapshot(s) == before
