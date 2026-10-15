@@ -1,3 +1,5 @@
+import type { RefundCreate, RefundReceipt } from "./refund-api";
+import { validRefundInput, validRefundReceipt } from "./refund-intent";
 import type {
     BusinessAllocationCreate,
     BusinessAllocationReceipt,
@@ -12,9 +14,10 @@ import { validReturnInput, validReturnReceipt } from "./allocation-return-intent
 export type SettlementInput =
     | { kind: "payment"; body: BusinessPaymentCreate }
     | { kind: "allocation"; body: BusinessAllocationCreate }
-    | { kind: "return"; body: AllocationReturnCreate };
+    | { kind: "return"; body: AllocationReturnCreate }
+    | { kind: "refund"; body: RefundCreate };
 export type SettlementReceipt =
-    BusinessPaymentReceipt | BusinessAllocationReceipt | AllocationReturnReceipt;
+    BusinessPaymentReceipt | BusinessAllocationReceipt | AllocationReturnReceipt | RefundReceipt;
 export type FrozenSettlement = Readonly<{
     ownerId: string;
     ledgerId: string;
@@ -68,6 +71,7 @@ function groupInput(value: unknown, standalone: boolean): boolean {
 export function validSettlementInput(ledgerId: string, input: SettlementInput): boolean {
     if (!uuid(ledgerId) || !record(input) || !record(input.body)) return false;
     if (input.kind === "return") return validReturnInput(input.body);
+    if (input.kind === "refund") return validRefundInput(input.body);
     if (input.kind === "allocation") return groupInput(input.body, true);
     if (input.kind !== "payment") return false;
     const body = input.body;
@@ -176,6 +180,7 @@ export function validSettlementReceipt(
 ): value is SettlementReceipt {
     if (!record(value)) return false;
     if (plan.kind === "return") return validReturnReceipt(value, plan);
+    if (plan.kind === "refund") return validRefundReceipt(value, plan);
     const body = JSON.parse(plan.bodyJson) as Record<string, unknown>;
     if (plan.kind === "allocation")
         return groupReceipt(value, body, plan.ledgerId, body.payment_id as string);
