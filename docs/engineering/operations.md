@@ -174,7 +174,9 @@ CI 的 PostgreSQL 17、Node 24 和 Python 3.12 基础镜像使用固定摘要的
 
 升级时核对 Docker Hub 与 ECR 对应镜像清单摘要一致，同步更新 CI/浏览器覆盖的 PostgreSQL 引用和准备脚本的 Node/Python 映射，并通过迁移、浏览器及完整恢复检查。拉取失败仍使检查失败，不跳过测试。
 
-浏览器 CI 用 `prepare_browser_ci_image.py --pull` 预取这三个固定镜像：优先官方 ECR，失败或120秒超时后仅回退一次至 Docker Hub 官方同名、同摘要镜像；两处均失败即停止。成功后生成仅含 PostgreSQL 镜像选择的 `build/compose.browser-images.yaml`，追加至该任务的 `COMPOSE_FILE`，并将所选 Node/Python 引用写入生成 Dockerfile。后续迁移及恢复复用同一覆盖；本地默认不预取，不更改部署/OCR镜像，不需要登录或凭据。独立数据库任务的服务声明保持原固定 ECR 镜像。
+浏览器 CI 用 `prepare_browser_ci_image.py --pull` 预取这三个固定镜像：优先官方 ECR，失败或120秒超时后仅回退一次至 Docker Hub 官方同名、同摘要镜像；两处均失败即停止。成功后生成仅含 PostgreSQL 镜像选择的 `build/compose.browser-images.yaml`，追加至该任务的 `COMPOSE_FILE`，并将所选 Node/Python 引用写入生成 Dockerfile。后续迁移及恢复复用同一覆盖；本地默认不预取，不更改部署/OCR镜像，不需要登录或凭据。
+
+独立数据库 CI 在 checkout 后用 `python -m scripts.start_database_ci` 复用同一固定 PostgreSQL 摘要与双源拉取规则，健康检查成功才运行原 `check.py db` 全套检查。容器仅绑定 runner 回环地址，使用明确虚构凭据；`--stop` 始终清理专用容器和临时卷，不执行全局 prune。CLI 拒绝非 GitHub Actions 环境；两源拉取失败或数据库未就绪均使任务失败，不跳过测试。四项必需检查名称与触发规则不变。
 
 单元检查不需要 PostgreSQL：
 
