@@ -29,6 +29,10 @@
 - 更正保持业务 ID 和种类，完整冲销旧本金与全部费用再写入替代分录；取消只冲销，终止后不能重新激活。命令需要当前版本、非空原因和完整替代内容，替代内容不带业务 ID；期初账户/资产固定。来源：[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 原始分录、封存行和回执不可修改或删除；更正/取消保持连续版本链。旧账户、分类或资产失效后仍可精确冲销，替代内容的新引用须有效；历史按版本保留原因、执行人及精确有符号分录。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
 
+## 真实退款
+
+退款独立记录实际资金，不自动冲减经营收入/费用；贷项独立处理。新意图明确原付款版本、实际账户/资产数量、原资产本金及可选退回来源。当前可退本金接口是只读快照，不能代替永久v2原回执；历史详情逐项核对保存回执，未知提交只重试原键/原正文。无退款时旧付款读响应不变，有退款时仅可再分摊余额扣除已退款本金；净已应用量仍单列。规则见[ADR0044](decisions/0044-business-refunds.md)。
+
 ## 经营草稿
 
 - 经营草稿使用 `/api/v1/ledgers/{ledger_id}/business-documents`：创建/列表、按ID读取、PUT完整保存和PATCH归档状态；具体字段由OpenAPI生成。均使用现有会话与CSRF边界，不产生分录或财务回执。
