@@ -45,7 +45,8 @@ class ChangeLog(Base):
             "'reminder_delivery_configs', 'reminder_delivery_revisions', "
             "'business_confirmations', 'business_postings', 'business_payments', "
             "'business_allocations', 'business_allocation_lines', "
-            "'business_allocation_returns', 'business_allocation_return_lines')",
+            "'business_allocation_returns', 'business_allocation_return_lines', "
+            "'business_refunds', 'business_refund_returns')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

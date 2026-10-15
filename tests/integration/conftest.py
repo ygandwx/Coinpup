@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261014_0034",)
+        assert context.get_current_heads() == ("20261015_0035",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261014_0034",)
+        assert context.get_current_heads() == ("20261015_0035",)
 
 
 def confirmation_schema_migration():
@@ -204,6 +204,15 @@ def allocation_return_validation_migration():
     )
 
 
+def refund_storage_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261015_0035_business_refund_storage.py"
+        )
+    )
+
+
 def business_allocation_migration():
     frozen = runpy.run_path(
         str(
@@ -331,7 +340,7 @@ def _restore_current_change_types(connection):
     connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
     connection.exec_driver_sql(
         "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-        f"(entity_type IN ({allocation_return_storage_migration()['_ENTITY_TYPES']}))"
+        f"(entity_type IN ({refund_storage_migration()['_ENTITY_TYPES']}))"
     )
 
 

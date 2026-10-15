@@ -2919,7 +2919,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
