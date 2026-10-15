@@ -292,6 +292,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Returns */
+        get: operations["list_returns_api_v1_ledgers__ledger_id__business_allocation_returns_get"];
+        put?: never;
+        /**
+         * Create
+         * @description Release an explicit original application without moving funds or rewriting history.
+         */
+        post: operations["create_api_v1_ledgers__ledger_id__business_allocation_returns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-allocations": {
         parameters: {
             query?: never;
@@ -322,6 +360,26 @@ export interface paths {
         };
         /** Get Allocation */
         get: operations["get_allocation_api_v1_ledgers__ledger_id__business_allocations__allocation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-allocations/{allocation_id}/return-capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capacity
+         * @description A current snapshot for an explicit new intent; never an original receipt.
+         */
+        get: operations["capacity_api_v1_ledgers__ledger_id__business_allocations__allocation_id__return_capacity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1508,6 +1566,202 @@ export interface components {
              */
             operation_id: string;
         };
+        /** AllocationReturnCapacity */
+        AllocationReturnCapacity: {
+            /**
+             * Allocation Date
+             * Format: date
+             */
+            allocation_date: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Lines */
+            lines: components["schemas"]["AllocationReturnCapacityLine"][];
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+        };
+        /** AllocationReturnCapacityLine */
+        AllocationReturnCapacityLine: {
+            /** Description */
+            description: string;
+            /** Document Amount */
+            document_amount: string;
+            /** Document Asset Id */
+            document_asset_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Line Id
+             * Format: uuid
+             */
+            document_line_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /** Remaining Document Amount */
+            remaining_document_amount: string;
+            /** Remaining Payment Amount */
+            remaining_payment_amount: string;
+            /** Returned Document Amount */
+            returned_document_amount: string;
+            /** Returned Payment Amount */
+            returned_payment_amount: string;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Source Status */
+            source_status: string;
+        };
+        /** AllocationReturnDetail */
+        AllocationReturnDetail: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            receipt: components["schemas"]["BusinessAllocationReturnResponse"];
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+        };
+        /** AllocationReturnLineCreate */
+        AllocationReturnLineCreate: {
+            /** Document Amount */
+            document_amount: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+        };
+        /** AllocationReturnPosting */
+        AllocationReturnPosting: {
+            /** Document Amount */
+            document_amount: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Line Id
+             * Format: uuid
+             */
+            document_line_id: string;
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+        };
+        /** AllocationReturnSummary */
+        AllocationReturnSummary: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Line Count */
+            line_count: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+        };
         /** AssetCreate */
         AssetCreate: {
             /** Code */
@@ -1707,6 +1961,58 @@ export interface components {
             payment_id: string;
             /** Postings */
             postings: components["schemas"]["AllocationPosting"][];
+        };
+        /** BusinessAllocationReturnCreate */
+        BusinessAllocationReturnCreate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lines */
+            lines: components["schemas"]["AllocationReturnLineCreate"][];
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+        };
+        /** BusinessAllocationReturnResponse */
+        BusinessAllocationReturnResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_allocation_return";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Postings */
+            postings: components["schemas"]["AllocationReturnPosting"][];
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
         };
         /** BusinessAllocationSummary */
         BusinessAllocationSummary: {
@@ -5430,6 +5736,111 @@ export interface operations {
             };
         };
     };
+    list_returns_api_v1_ledgers__ledger_id__business_allocation_returns_get: {
+        parameters: {
+            query?: {
+                payment_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_ledgers__ledger_id__business_allocation_returns_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessAllocationReturnCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessAllocationReturnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_allocations_api_v1_ledgers__ledger_id__business_allocations_get: {
         parameters: {
             query?: {
@@ -5522,6 +5933,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessAllocationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capacity_api_v1_ledgers__ledger_id__business_allocations__allocation_id__return_capacity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnCapacity"];
                 };
             };
             /** @description Validation Error */
