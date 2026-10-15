@@ -69,21 +69,6 @@ jobs:
     name: PostgreSQL migrations and integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:17@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
-        env:
-          POSTGRES_DB: coinpup
-          POSTGRES_USER: coinpup
-          # Fictional credentials for this disposable CI database only.
-          POSTGRES_PASSWORD: test-only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U coinpup -d coinpup"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
@@ -103,7 +88,14 @@ jobs:
       - name: Install locked dependencies
         run: python -m pip install -r requirements-dev.lock
       - name: Run disposable database checks
-        run: python scripts/check.py db
+        # The pre-checkout service hook cannot use the existing official-image fallback.
+        # Start the identical pinned database after checkout, and retain every DB check.
+        run: |
+          python -m scripts.start_database_ci
+          python scripts/check.py db
+      - name: Remove disposable database
+        if: always()
+        run: python -m scripts.start_database_ci --stop
 
   container:
     name: Container, real browser login and backup restoration
