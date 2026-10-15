@@ -48,7 +48,7 @@ def payment_rows(service, session, ledger_id, payload, plan, controls, catalog):
     )
 
 
-def allocation_rows(ledger_id, party_id, plan, controls, sources, catalog):
+def allocation_rows(ledger_id, party_id, plan, controls, sources, catalog, *, description=None):
     groups = []
     for item in plan.lines:
         operation, journal = uuid4(), uuid4()
@@ -108,7 +108,9 @@ def allocation_rows(ledger_id, party_id, plan, controls, sources, catalog):
             PostingGroup(
                 operation,
                 journal,
-                sources[item.source.document_line_id][1].description,
+                sources[item.source.document_line_id][1].description
+                if description is None
+                else description,
                 tuple(rows),
                 tuple(prepare_journal_lines(rows, catalog)),
             )
