@@ -49,6 +49,8 @@
 
 ## 经营收付款与分摊
 
+- 分摊退回使用独立`POST /business-allocation-returns`和v2原意图；明确原分摊行、版本、日期、原因及两侧数量，不移动资金或改费用。`GET /business-allocations/{id}/return-capacity`提供同快照原数量/累计退回/可退数量及当前版本；只供创建新意图，不能证明旧提交成功。退回列表支持payment_id与默认100/最多200分页，按创建时间/ID升序；详情附原完整回执。容量/摘要按资产精度输出，退回原回执数量保留冻结数据库的18位字符串，不改写历史；客户端须按精确数值核对。所有读取保留归属、只读快照及no-store，原付款/分摊详情和回执不变。来源：[ADR0043](decisions/0043-allocation-returns.md)。
+
 - 同一账本前缀下，`POST /business-payments`原子创建实际收付款、独立费用及可空初始分摊；`POST /business-allocations`向既有付款追加明确源行应用。均要求原始JSON和永久Idempotency-Key，成功及重放返回201完整组回执；规则见[ADR0040](decisions/0040-business-settlement.md)。
 - 同币两种数量相等，跨币分别保存明确实际数量，不用行情推导。累计应用不超过付款本金或源行含税额；应用日不早于付款及各单据开票日，并检查开放期间。历史往来/项目/类别归档不改变封存维度；已有原回执先于当前可用性、容量和期间检查重放。
 - `GET /business-payments`与`GET /business-allocations`按创建时间/ID升序分页（默认100，最大200）；后者可按payment_id过滤。`/{id}`详情附原回执，初始分摊附父付款完整回执，后续分摊附独立回执。付款已用/未用为只读派生值，不以不可变行版本冒充余额版本。

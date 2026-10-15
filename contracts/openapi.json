@@ -302,6 +302,483 @@
         "title": "AllocationPosting",
         "type": "object"
       },
+      "AllocationReturnCapacity": {
+        "properties": {
+          "allocation_date": {
+            "format": "date",
+            "title": "Allocation Date",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnCapacityLine"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "payment_id",
+          "asset_id",
+          "allocation_date",
+          "lines"
+        ],
+        "title": "AllocationReturnCapacity",
+        "type": "object"
+      },
+      "AllocationReturnCapacityLine": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "document_asset_id": {
+            "title": "Document Asset Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_line_id": {
+            "format": "uuid",
+            "title": "Document Line Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "remaining_document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Remaining Document Amount",
+            "type": "string"
+          },
+          "remaining_payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Remaining Payment Amount",
+            "type": "string"
+          },
+          "returned_document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Returned Document Amount",
+            "type": "string"
+          },
+          "returned_payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Returned Payment Amount",
+            "type": "string"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          },
+          "source_status": {
+            "title": "Source Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_allocation_line_id",
+          "source_operation_id",
+          "expected_version",
+          "source_status",
+          "document_id",
+          "document_line_id",
+          "document_asset_id",
+          "description",
+          "payment_amount",
+          "document_amount",
+          "returned_payment_amount",
+          "returned_document_amount",
+          "remaining_payment_amount",
+          "remaining_document_amount"
+        ],
+        "title": "AllocationReturnCapacityLine",
+        "type": "object"
+      },
+      "AllocationReturnDetail": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnLineDetail"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/BusinessAllocationReturnResponse"
+          },
+          "return_date": {
+            "format": "date",
+            "title": "Return Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "payment_id",
+          "asset_id",
+          "payment_amount",
+          "return_date",
+          "reason",
+          "line_count",
+          "created_at",
+          "lines",
+          "receipt"
+        ],
+        "title": "AllocationReturnDetail",
+        "type": "object"
+      },
+      "AllocationReturnLineCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_allocation_line_id",
+          "expected_version",
+          "payment_amount",
+          "document_amount"
+        ],
+        "title": "AllocationReturnLineCreate",
+        "type": "object"
+      },
+      "AllocationReturnLineDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "document_asset_id": {
+            "title": "Document Asset Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_line_id": {
+            "format": "uuid",
+            "title": "Document Line Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "source_allocation_id": {
+            "format": "uuid",
+            "title": "Source Allocation Id",
+            "type": "string"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_allocation_line_id",
+          "source_operation_id",
+          "document_id",
+          "document_line_id",
+          "payment_amount",
+          "document_amount",
+          "operation_id",
+          "journal_id",
+          "source_allocation_id",
+          "document_asset_id",
+          "description"
+        ],
+        "title": "AllocationReturnLineDetail",
+        "type": "object"
+      },
+      "AllocationReturnPosting": {
+        "additionalProperties": false,
+        "properties": {
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_line_id": {
+            "format": "uuid",
+            "title": "Document Line Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_allocation_line_id",
+          "source_operation_id",
+          "document_id",
+          "document_line_id",
+          "payment_amount",
+          "document_amount",
+          "operation_id",
+          "journal_id"
+        ],
+        "title": "AllocationReturnPosting",
+        "type": "object"
+      },
+      "AllocationReturnSummary": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "line_count": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "return_date": {
+            "format": "date",
+            "title": "Return Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "payment_id",
+          "asset_id",
+          "payment_amount",
+          "return_date",
+          "reason",
+          "line_count",
+          "created_at"
+        ],
+        "title": "AllocationReturnSummary",
+        "type": "object"
+      },
       "AssetCreate": {
         "additionalProperties": false,
         "properties": {
@@ -750,6 +1227,99 @@
           "postings"
         ],
         "title": "BusinessAllocationResponse",
+        "type": "object"
+      },
+      "BusinessAllocationReturnCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnLineCreate"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "return_date": {
+            "format": "date",
+            "title": "Return Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "payment_id",
+          "return_date",
+          "reason",
+          "lines"
+        ],
+        "title": "BusinessAllocationReturnCreate",
+        "type": "object"
+      },
+      "BusinessAllocationReturnResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "business_allocation_return",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnPosting"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Postings",
+            "type": "array"
+          },
+          "return_date": {
+            "format": "date",
+            "title": "Return Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "payment_id",
+          "return_date",
+          "postings"
+        ],
+        "title": "BusinessAllocationReturnResponse",
         "type": "object"
       },
       "BusinessAllocationSummary": {
@@ -9522,6 +10092,227 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns": {
+      "get": {
+        "operationId": "list_returns_api_v1_ledgers__ledger_id__business_allocation_returns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "payment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AllocationReturnSummary"
+                  },
+                  "title": "Response List Returns Api V1 Ledgers  Ledger Id  Business Allocation Returns Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Returns",
+        "tags": [
+          "business settlements"
+        ]
+      },
+      "post": {
+        "description": "Release an explicit original application without moving funds or rewriting history.",
+        "operationId": "create_api_v1_ledgers__ledger_id__business_allocation_returns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessAllocationReturnCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessAllocationReturnResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}": {
+      "get": {
+        "operationId": "detail_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "return_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Return Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationReturnDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detail",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/business-allocations": {
       "get": {
         "operationId": "list_allocations_api_v1_ledgers__ledger_id__business_allocations_get",
@@ -9738,6 +10529,60 @@
           }
         },
         "summary": "Get Allocation",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-allocations/{allocation_id}/return-capacity": {
+      "get": {
+        "description": "A current snapshot for an explicit new intent; never an original receipt.",
+        "operationId": "capacity_api_v1_ledgers__ledger_id__business_allocations__allocation_id__return_capacity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "allocation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Allocation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationReturnCapacity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Capacity",
         "tags": [
           "business settlements"
         ]

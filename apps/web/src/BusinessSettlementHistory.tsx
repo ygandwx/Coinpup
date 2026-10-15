@@ -27,6 +27,7 @@ export function BusinessSettlementHistory({
     accounts,
     onEditing,
     onAllocate,
+    onReturn,
     onUnauthorized,
 }: {
     ledgerId: string;
@@ -34,6 +35,7 @@ export function BusinessSettlementHistory({
     accounts: Account[];
     onEditing: (value: boolean) => void;
     onAllocate?: (payment: BusinessPaymentDetail, name: string | null) => void;
+    onReturn?: (allocation: BusinessAllocationDetail) => void;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
@@ -209,6 +211,11 @@ export function BusinessSettlementHistory({
                         ) : (
                             <>
                                 <h3>{t("分摊详情", "Allocation details")}</h3>
+                                {onReturn && (
+                                    <button type="button" onClick={() => onReturn(detail)}>
+                                        {t("退回此分摊", "Return this allocation")}
+                                    </button>
+                                )}
                                 <dl className="confirmation-facts">
                                     <dt>{t("分摊生效日", "Allocation date")}</dt>
                                     <dd>{detail.allocation_date}</dd>

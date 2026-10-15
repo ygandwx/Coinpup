@@ -14,7 +14,7 @@
 - 财务命令使用 [PendingCommandController](src/pending-command.ts)，票据确认使用 [PendingConfirmationController](src/pending-confirmations.ts)，原件上传使用 [pending-upload.ts](src/pending-upload.ts)，结账/重开使用 [PendingPeriodController](src/pending-period.ts)。资料编辑使用 [PendingMasterDataController](src/pending-business.ts) 与 [ADR0025](../../docs/architecture/decisions/0025-master-data-retry.md)。组件不得绕过控制器另建重试路径，或仅凭当前记录存在就自行判定本次修订成功。
 - 经营草稿使用 [PendingBusinessDraftController](src/pending-business-drafts.ts) 与 [ADR0031](../../docs/architecture/decisions/0031-business-draft-recovery.md)，冻结整单和资产精度；更新冲突不得凭相似内容判为成功。
 - 经营单据确认使用 [PendingBusinessConfirmationController](src/pending-business-confirmation.ts) 与 [ADR0039](../../docs/architecture/decisions/0039-business-confirmation.md)，冻结已审阅版本与完整正金额行映射；只有原命令完整回执能证明成功，读取封存单据不能代替回执。
-- 经营收付款/分摊使用 [PendingBusinessSettlementController](src/pending-business-settlement.ts) 与 [ADR0040](../../docs/architecture/decisions/0040-business-settlement.md)，冻结完整原意图并校验全部源行回执；未知结果不能凭当前余额推断成功。
+- 经营收付款/分摊及退回使用 [PendingBusinessSettlementController](src/pending-business-settlement.ts) 与 [ADR0040](../../docs/architecture/decisions/0040-business-settlement.md)/[ADR0043](../../docs/architecture/decisions/0043-allocation-returns.md)，冻结完整原意图并校验全部源行回执；未知结果不能凭当前余额推断成功。退回同时冻结原来源/容量与资产精度；回执保留18位数量字符串，按BigInt精确数值比对，不改写原输入。
 - 周期规则使用 [PendingRecurringController](src/pending-recurring.ts) 与 [ADR0034](../../docs/architecture/decisions/0034-recurring-rule-recovery.md)；保留原源版本和日历意图，后台生成推进版本也按显式冲突处理。
 - 提交前冻结所有者、账本、业务 ID、幂等键、原请求体；上传还要冻结预约 ID、元数据和原始 File。结果未知时重试原意图，不重新生成键或上传 ID，不取当前可编辑表单替换原请求。
 - 保留控制器的防重复点击、导航限制、会话恢复及迟到响应隔离。401 隐藏私人内容，同用户重新登录后手动恢复；更换用户或主动退出清理原意图。具体确认和冲突规则遵守 API 通用约定。
