@@ -17,11 +17,11 @@
 - T06-1/2及周期草稿#107–137、提醒基础/协议#138–149已合入；Invoice计价A已实现。
 - 提醒配置/修订存储#150四项通过，迁移0026、变更日志与完整恢复已验证；双渠道任务和配置API未实现，投递未启用。
 - T06-3/4已验收：确认/收付/分摊及双语网页、恢复#151–177；#177两张指定失败截图已查看，原意图恢复通过。
-- T06-5：付款证据/退回约束/净统计#179–192、退回事务/v2回执#193已合入main 7d95654；#193四项通过（1198 DB），main CI 38714747774四项通过。当前feat/t06-allocation-return-api接续独立API/容量/历史；API/网页/恢复及退款/贷项/更正取消尚未验收，T06-5未完成。
-- 后续代码已推准备分支，均未验收；逐包从最新main只摘对应提交，不合并旧status：
-  - 恢复chore/t06-allocation-return-restore-preparation：远端a9b6b83/本地61d39ee。
-  - 网页协议feat/t06-allocation-return-web-protocol-preparation：9d5c3b6/33c5f74；页面feat/t06-allocation-return-web-ui-preparation：07dfa64/5e46b08+4fc8c23。
-  - 退款设计docs/t06-refund-design-preparation：aa67bdd/1dc750c；纯计划feat/t06-refund-plan-preparation：827dc34/f7a7461。准备代码本地检查通过，DB/浏览器未执行。
+- T06-5：付款证据/退回约束/净统计#179–192、退回事务#193及API#194已合入main 9feb33a；#194四项通过（1206 DB），main CI 38719233409四项通过。当前chore/t06-allocation-return-bundle补退回完整恢复验收；网页/退款/贷项/更正取消未完成，T06-5仍进行中。
+- 后续准备分支均已推送、未验收；从最新main只摘对应提交，不合并旧status：
+  - 网页基础feat/t06-allocation-return-web-foundation-preparation：远端f858216/本地037be3d+cc97dc3；协议与历史组件，无页面入口。
+  - 网页提交/验收feat/t06-allocation-return-web-acceptance-preparation：01f2c30/6fc4f56+c799e08；fast/web通过，6个浏览器场景仅收集，尚未执行。
+  - 退款设计docs/t06-refund-design-preparation：aa67bdd/1dc750c；纯计划feat/t06-refund-plan-preparation：827dc34/f7a7461，本地fast及37个聚焦测试通过，未接存储/API。
 - 仓库已公开（2026-10-08），尚未选择许可证（默认保留全部权利，由用户决定）。chore/t05-3-ocr-stop保留未完全合入的历史交接内容。
 
 ## 任务状态
