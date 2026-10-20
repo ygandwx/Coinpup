@@ -22,6 +22,7 @@ from check_business_confirmation_restore import (
 )
 from check_business_settlement_restore import seed_business_settlements, verify_business_settlements
 from check_control_restore import seed_controls, verify_controls
+from check_credit_restore import seed_credits, verify_credits
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
@@ -359,6 +360,7 @@ def check_bundle_restore(source_url):
             business_settlements = seed_business_settlements(engine, owner)
             allocation_returns = seed_allocation_returns(engine, owner)
             business_refunds = seed_refunds(engine, owner)
+            business_credits = seed_credits(engine, owner)
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -458,6 +460,7 @@ def check_bundle_restore(source_url):
             verify_business_settlements(restored_engine, business_settlements)
             verify_allocation_returns(restored_engine, allocation_returns)
             verify_refunds(restored_engine, business_refunds)
+            verify_credits(restored_engine, business_credits)
             verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
@@ -539,6 +542,10 @@ def check_bundle_restore(source_url):
             )
             print(
                 "Confirmed invoice/bill snapshots, gross balances and v2 receipts restored exactly."
+            )
+            print(
+                "Manual partial/final net and tax credits restored after explicit returns/refunds; "
+                "cash unchanged; original confirmation/settlement/credit receipts replay exactly."
             )
             print(
                 "Actual payments, independent fees, partial same/cross-asset allocations and "
