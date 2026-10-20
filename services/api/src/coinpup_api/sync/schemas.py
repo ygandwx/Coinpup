@@ -67,6 +67,8 @@ EntityType = Literal[
     "business_allocation_return_lines",
     "business_refunds",
     "business_refund_returns",
+    "business_credits",
+    "business_credit_lines",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 
