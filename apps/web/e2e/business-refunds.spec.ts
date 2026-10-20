@@ -139,7 +139,9 @@ for (const [direction, asset, principal] of [
         await page.getByLabel("Fee account", { exact: true }).selectOption(account.id);
         await page.getByLabel("Fee asset", { exact: true }).selectOption("USD");
         await page.getByLabel("Fee amount", { exact: true }).fill("0.25");
-        await page.getByLabel("Fee category", { exact: true }).selectOption(expense.id);
+        const feeCategory = page.getByLabel("Fee category", { exact: true });
+        await expect(feeCategory).toHaveAccessibleName("Fee category");
+        await feeCategory.selectOption(expense.id);
         for (const width of [1440, 375, 320])
             for (const locale of ["zh", "en"]) {
                 await page.setViewportSize({ width, height: 1000 });
@@ -159,6 +161,27 @@ for (const [direction, asset, principal] of [
                         exact: true,
                     }),
                 ).toHaveValue(asset === "EUR" ? "19.37" : "20");
+                await expect(
+                    page.getByRole("combobox", {
+                        name: locale === "zh" ? "手续费分类" : "Fee category",
+                        exact: true,
+                    }),
+                ).toHaveValue(expense.id);
+                if (width < 600)
+                    for (const [zh, en] of [
+                        ["上一页", "Previous page"],
+                        ["下一页", "Next page"],
+                        ["重读来源", "Reload references"],
+                        ["清除所选来源", "Clear selected references"],
+                    ]) {
+                        const button = page.getByRole("button", {
+                            name: locale === "zh" ? zh : en,
+                            exact: true,
+                        });
+                        const bounds = await button.boundingBox();
+                        expect(bounds).not.toBeNull();
+                        expect(bounds!.height).toBeLessThanOrEqual(80);
+                    }
                 await expectNoOverflow(page);
                 await page.screenshot({
                     path: info.outputPath(`refund-${direction}-${asset}-${locale}-${width}.png`),

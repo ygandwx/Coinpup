@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
 import type { Account, Asset, Category } from "./ledger-api";
@@ -46,6 +46,7 @@ export function BusinessRefundForm({
     onCancel: () => void;
     onUnauthorized: () => void;
 }) {
+    const prefix = useId();
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [error, setError] = useState<unknown>(null),
         [refresh, setRefresh] = useState(0);
@@ -286,7 +287,7 @@ export function BusinessRefundForm({
                     <p>
                         {t("已选来源数", "Selected references")}: {draft.selectedReturns.length}
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions allocation-pagination">
                         <button
                             type="button"
                             disabled={offset === 0}
@@ -340,9 +341,12 @@ export function BusinessRefundForm({
                                     })
                                 }
                             />
-                            <label className="field">
-                                {t("手续费分类", "Fee category")}
+                            <div className="field">
+                                <label htmlFor={`${prefix}-fee-category-${index}`}>
+                                    {t("手续费分类", "Fee category")}
+                                </label>
                                 <select
+                                    id={`${prefix}-fee-category-${index}`}
                                     required
                                     value={fee.category_id}
                                     onChange={(event) =>
@@ -370,7 +374,7 @@ export function BusinessRefundForm({
                                             </option>
                                         ))}
                                 </select>
-                            </label>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() =>
