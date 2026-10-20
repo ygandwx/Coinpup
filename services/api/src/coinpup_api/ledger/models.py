@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from coinpup_api.business import allocation_return_models as allocation_return_models  # noqa: F401
 from coinpup_api.business import confirmation_models as confirmation_models  # noqa: F401
+from coinpup_api.business import credit_models as credit_models  # noqa: F401
 from coinpup_api.business import models as business_models  # noqa: F401
 from coinpup_api.business import refund_models as refund_models  # noqa: F401
 from coinpup_api.business import settlement_models as settlement_models  # noqa: F401

@@ -144,8 +144,16 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 c.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             else:
                 assert c.exec_driver_sql("SELECT count(*) FROM ocr_confirmations").scalar() == 0
+                assert (
+                    c.exec_driver_sql(
+                        "SELECT (SELECT count(*) FROM business_credits) + "
+                        "(SELECT count(*) FROM business_credit_lines)"
+                    ).scalar()
+                    == 0
+                )
                 c.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
+                    "business_credit_lines, business_credits, "
                     "business_refund_returns, business_refunds, "
                     "business_allocation_return_lines, business_allocation_returns, "
                     "business_allocation_lines, business_allocations, business_payments, "
