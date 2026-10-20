@@ -60,6 +60,12 @@
 
 OCR确认增加明确`entry.kind="link_payment"`，选择已有付款和操作版本，只添加同内容原件证据；新action分支封存完整原付款回执/操作版本，旧create/link响应不补新字段。新请求仍逐项复核全部OCR字段并检查版本/有效状态；永久重放只比较不可变原付款、初始分摊与原回执，不依赖当前余额、归档、关闭期间或当前操作状态。未知结果重放原intent_id/完整正文；付款ID与操作ID分别校验，关联不新增资金、费用或分摊。字段以生成OpenAPI为准。
 
+## 独立贷项
+
+`POST /api/v1/ledgers/{ledger_id}/business-credits`按ADR0046接受明确原单据版本、日期及有序原行净额/税额，沿用Cookie/Origin/CSRF、永久账本键及原JSON的v2摘要。成功201为完整不可变组回执；不自动退款、退回分摊或改写原确认。未知提交重试原键和完整正文，归档/停用/期间关闭后仍重放原结果。
+
+同路径GET按`document_id`可选筛选，`limit`默认100、1–200，`offset`默认0、0–100000；稳定按created_at/id排序。`/{credit_id}`详情返回完整原回执。`/business-documents/{document_id}/credit-capacity`以同样分页提供原净/税/含税、累计贷净/税、净分摊、分别剩余净/税及可贷含税量；仅列已确认单据的正金额行，所有分页均在同一只读快照内，当前容量不代表旧提交成功。历史含归档资料，所有接口no-store且同账本鉴权；已有API和回执不补字段。列表每页4次SELECT，非空容量页6次SELECT（由集成测试验证），不随行数逐行查询。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
