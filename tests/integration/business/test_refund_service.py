@@ -3,6 +3,7 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
@@ -11,6 +12,8 @@ from coinpup_api.business.refund_schemas import BusinessRefundCreate
 from coinpup_api.business.refunds import BusinessRefundService
 from coinpup_api.business.schemas import PartyUpdate
 from coinpup_api.business.settlement_reads import BusinessSettlementReads
+from coinpup_api.business.settlement_schemas import BusinessAllocationCreate
+from coinpup_api.business.settlements import BusinessSettlementService
 from coinpup_api.ledger.models import JournalLine
 from coinpup_api.ledger.posting_schemas import CancellationCreate
 from coinpup_api.ledger.schemas import AccountUpdate, AssetUpdate, EntityCreate, EntityUpdate
@@ -305,3 +308,58 @@ def test_refund_preserves_legacy_reads_and_cannot_be_cancelled_by_legacy_command
     assert error.value.code == "not_found"
     assert refund(s, body) == result
     assert snapshot(s) == before
+
+
+@pytest.mark.parametrize("direction", ["receipt", "payout"])
+def test_refund_and_new_allocation_compete_for_the_same_released_principal(drafts, direction):
+    s = drafts
+    payment, paid, original, returned = setup_return(s, direction=direction)
+    released = submit_return(s, returned)
+    body = BusinessRefundCreate(
+        id=uuid4(),
+        payment_id=payment.id,
+        expected_version=1,
+        account_id=payment.account_id,
+        asset_id="USD",
+        amount="20",
+        payment_amount="20",
+        transaction_date="2026-10-02",
+        reason="Fictional competing refund",
+        allocation_return_ids=[released.id],
+    )
+    allocation = BusinessAllocationCreate.model_validate(
+        original.model_dump()
+        | {
+            "id": uuid4(),
+            "allocation_date": "2026-10-02",
+            "lines": [
+                original.lines[0].model_dump() | {"payment_amount": "20", "document_amount": "20"}
+            ],
+        }
+    )
+    ready = Barrier(2)
+
+    def execute(is_refund):
+        ready.wait(timeout=10)
+        try:
+            if is_refund:
+                return refund(s, body)
+            return BusinessSettlementService(s["engine"]).allocate(
+                s["owner"], s["ledger"], allocation, "fictional-competing-allocation"
+            )
+        except LedgerError as error:
+            return error
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        cash_result, allocation_result = list(pool.map(execute, (True, False)))
+    cash_won = not isinstance(cash_result, LedgerError)
+    rejected = allocation_result if cash_won else cash_result
+    accepted = cash_result if cash_won else allocation_result
+    assert not isinstance(accepted, LedgerError)
+    assert isinstance(rejected, LedgerError)
+    assert rejected.code == ("allocation_exceeds_payment" if cash_won else "refund_exceeds_payment")
+    current = BusinessSettlementReads(s["engine"]).get_payment(s["owner"], s["ledger"], payment.id)
+    assert current.applied_amount == ("80.00" if cash_won else "100.00")
+    assert current.unapplied_amount == "0.00" and current.receipt == paid
+    with s["engine"].connect() as c:
+        assert c.scalar(select(func.count()).select_from(BusinessRefund)) == int(cash_won)
