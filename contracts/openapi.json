@@ -1778,6 +1778,120 @@
         "title": "BusinessConfirmedSummary",
         "type": "object"
       },
+      "BusinessCreditCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "credit_date": {
+            "format": "date",
+            "title": "Credit Date",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreditLineCreate"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "expected_version",
+          "credit_date",
+          "reason",
+          "lines"
+        ],
+        "title": "BusinessCreditCreate",
+        "type": "object"
+      },
+      "BusinessCreditResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "credit_date": {
+            "format": "date",
+            "title": "Credit Date",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "business_credit",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/CreditPosting"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Postings",
+            "type": "array"
+          },
+          "source_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Source Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "document_id",
+          "source_version",
+          "asset_id",
+          "credit_date",
+          "postings"
+        ],
+        "title": "BusinessCreditResponse",
+        "type": "object"
+      },
       "BusinessDraftArchive": {
         "additionalProperties": false,
         "properties": {
@@ -3731,6 +3845,426 @@
           "replacement"
         ],
         "title": "CorrectionCreate",
+        "type": "object"
+      },
+      "CreditCapacity": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreditLineCapacity"
+            },
+            "maxItems": 200,
+            "title": "Lines",
+            "type": "array"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "expected_version",
+          "lines"
+        ],
+        "title": "CreditCapacity",
+        "type": "object"
+      },
+      "CreditDetail": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credit_date": {
+            "format": "date",
+            "title": "Credit Date",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/BusinessCreditResponse"
+          },
+          "source_version": {
+            "minimum": 1.0,
+            "title": "Source Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "document_id",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "credit_date",
+          "reason",
+          "created_at",
+          "source_version",
+          "receipt"
+        ],
+        "title": "CreditDetail",
+        "type": "object"
+      },
+      "CreditLineCapacity": {
+        "properties": {
+          "applied_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Applied Amount",
+            "type": "string"
+          },
+          "available_gross_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Available Gross Amount",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "credited_net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Credited Net Amount",
+            "type": "string"
+          },
+          "credited_tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Credited Tax Amount",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "remaining_net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Remaining Net Amount",
+            "type": "string"
+          },
+          "remaining_tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Remaining Tax Amount",
+            "type": "string"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Total Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_line_id",
+          "category_id",
+          "project_id",
+          "description",
+          "recognition_date",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "credited_net_amount",
+          "credited_tax_amount",
+          "applied_amount",
+          "remaining_net_amount",
+          "remaining_tax_amount",
+          "available_gross_amount"
+        ],
+        "title": "CreditLineCapacity",
+        "type": "object"
+      },
+      "CreditLineCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_line_id",
+          "net_amount",
+          "tax_amount",
+          "recognition_date"
+        ],
+        "title": "CreditLineCreate",
+        "type": "object"
+      },
+      "CreditPosting": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Total Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_line_id",
+          "source_operation_id",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "recognition_date",
+          "operation_id",
+          "journal_id"
+        ],
+        "title": "CreditPosting",
+        "type": "object"
+      },
+      "CreditSummary": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "credit_date": {
+            "format": "date",
+            "title": "Credit Date",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "document_id",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "credit_date",
+          "reason",
+          "created_at"
+        ],
+        "title": "CreditSummary",
         "type": "object"
       },
       "DocumentSettlementDetail": {
@@ -10661,6 +11195,227 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/business-credits": {
+      "get": {
+        "operationId": "list_credits_api_v1_ledgers__ledger_id__business_credits_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreditSummary"
+                  },
+                  "title": "Response List Credits Api V1 Ledgers  Ledger Id  Business Credits Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credits",
+        "tags": [
+          "business settlements"
+        ]
+      },
+      "post": {
+        "description": "Reduce the original classification without changing actual cash or old receipts.",
+        "operationId": "create_api_v1_ledgers__ledger_id__business_credits_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessCreditCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessCreditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}": {
+      "get": {
+        "operationId": "detail_api_v1_ledgers__ledger_id__business_credits__credit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detail",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/business-documents": {
       "get": {
         "operationId": "list_business_documents_api_v1_ledgers__ledger_id__business_documents_get",
@@ -11160,6 +11915,84 @@
         "summary": "Get Confirmation",
         "tags": [
           "business confirmations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/credit-capacity": {
+      "get": {
+        "description": "A current snapshot for an explicit new intent; never an original receipt.",
+        "operationId": "capacity_api_v1_ledgers__ledger_id__business_documents__document_id__credit_capacity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCapacity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Capacity",
+        "tags": [
+          "business settlements"
         ]
       }
     },

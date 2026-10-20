@@ -405,6 +405,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Credits */
+        get: operations["list_credits_api_v1_ledgers__ledger_id__business_credits_get"];
+        put?: never;
+        /**
+         * Create
+         * @description Reduce the original classification without changing actual cash or old receipts.
+         */
+        post: operations["create_api_v1_ledgers__ledger_id__business_credits_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_ledgers__ledger_id__business_credits__credit_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents": {
         parameters: {
             query?: never;
@@ -487,6 +525,26 @@ export interface paths {
         };
         /** Get Confirmation */
         get: operations["get_confirmation_api_v1_ledgers__ledger_id__business_documents__document_id__confirmation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/credit-capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capacity
+         * @description A current snapshot for an explicit new intent; never an original receipt.
+         */
+        get: operations["capacity_api_v1_ledgers__ledger_id__business_documents__document_id__credit_capacity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2362,6 +2420,64 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** BusinessCreditCreate */
+        BusinessCreditCreate: {
+            /**
+             * Credit Date
+             * Format: date
+             */
+            credit_date: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lines */
+            lines: components["schemas"]["CreditLineCreate"][];
+            /** Reason */
+            reason: string;
+        };
+        /** BusinessCreditResponse */
+        BusinessCreditResponse: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Credit Date
+             * Format: date
+             */
+            credit_date: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_credit";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Postings */
+            postings: components["schemas"]["CreditPosting"][];
+            /** Source Version */
+            source_version: number;
+        };
         /** BusinessDraftArchive */
         BusinessDraftArchive: {
             /** Archived */
@@ -3212,6 +3328,220 @@ export interface components {
             reason: string;
             /** Replacement */
             replacement: components["schemas"]["OpeningReplacement"] | components["schemas"]["IncomeReplacement"] | components["schemas"]["ExpenseReplacement"] | components["schemas"]["TransferReplacement"] | components["schemas"]["ExchangeReplacement"];
+        };
+        /** CreditCapacity */
+        CreditCapacity: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Lines */
+            lines: components["schemas"]["CreditLineCapacity"][];
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+        };
+        /** CreditDetail */
+        CreditDetail: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Credit Date
+             * Format: date
+             */
+            credit_date: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Reason */
+            reason: string;
+            receipt: components["schemas"]["BusinessCreditResponse"];
+            /** Source Version */
+            source_version: number;
+        };
+        /** CreditLineCapacity */
+        CreditLineCapacity: {
+            /** Applied Amount */
+            applied_amount: string;
+            /** Available Gross Amount */
+            available_gross_amount: string;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /** Credited Net Amount */
+            credited_net_amount: string;
+            /** Credited Tax Amount */
+            credited_tax_amount: string;
+            /** Description */
+            description: string;
+            /** Net Amount */
+            net_amount: string;
+            /** Project Id */
+            project_id: string | null;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Remaining Net Amount */
+            remaining_net_amount: string;
+            /** Remaining Tax Amount */
+            remaining_tax_amount: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+        };
+        /** CreditLineCreate */
+        CreditLineCreate: {
+            /** Net Amount */
+            net_amount: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+            /** Tax Amount */
+            tax_amount: string;
+        };
+        /** CreditPosting */
+        CreditPosting: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /** Net Amount */
+            net_amount: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+        };
+        /** CreditSummary */
+        CreditSummary: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Credit Date
+             * Format: date
+             */
+            credit_date: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Reason */
+            reason: string;
         };
         /** DocumentSettlementDetail */
         DocumentSettlementDetail: {
@@ -6380,6 +6710,111 @@ export interface operations {
             };
         };
     };
+    list_credits_api_v1_ledgers__ledger_id__business_credits_get: {
+        parameters: {
+            query?: {
+                document_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_ledgers__ledger_id__business_credits_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessCreditCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessCreditResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_ledgers__ledger_id__business_credits__credit_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_business_documents_api_v1_ledgers__ledger_id__business_documents_get: {
         parameters: {
             query?: {
@@ -6618,6 +7053,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessConfirmationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capacity_api_v1_ledgers__ledger_id__business_documents__document_id__credit_capacity_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditCapacity"];
                 };
             };
             /** @description Validation Error */
