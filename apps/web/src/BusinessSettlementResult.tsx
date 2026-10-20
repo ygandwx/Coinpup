@@ -28,7 +28,7 @@ export function BusinessSettlementResult({
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const plan = pending.plan;
-    if (!plan) return null;
+    if (!plan || plan.kind === "refund") return null; // Refund review has its own surface.
     if (plan.kind === "return")
         return (
             <BusinessAllocationReturnResult
