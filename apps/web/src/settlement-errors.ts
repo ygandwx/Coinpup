@@ -5,6 +5,18 @@ import type { Locale } from "./i18n";
 /** Definite rejections only; unknown submissions retain the original-request recovery UI. */
 export function settlementError(error: unknown, locale: Locale): string {
     const messages: Record<string, readonly [string, string]> = {
+        refund_date: [
+            "退款日不得早于原付款日或所选退回日。",
+            "A refund cannot precede the original payment or selected returns.",
+        ],
+        refund_amount_mismatch: [
+            "同资产的实际退款数量与退还原本金必须相等。",
+            "For the same asset, actual refund and original principal quantities must match.",
+        ],
+        refund_exceeds_payment: [
+            "退款超过当前可退本金。请重新读取来源与余量，明确核对后再提交。",
+            "The refund exceeds current refundable principal. Reload its source and capacity, then review before submitting.",
+        ],
         allocation_return_date: [
             "退回日期不得早于原分摊生效日。",
             "A return cannot precede the original allocation date.",

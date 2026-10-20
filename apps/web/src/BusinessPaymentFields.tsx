@@ -4,12 +4,13 @@ import type { PaymentReferences } from "./settlement-fields";
 import type { Locale } from "./i18n";
 
 type MoneyFields = { account_id: string; asset_id: string; amount: string };
-function PaymentMoneyFields({
+export function PaymentMoneyFields({
     value,
     refs,
     locale,
     fee,
     identityLocked,
+    amountLabel,
     onChange,
 }: {
     value: MoneyFields;
@@ -17,6 +18,7 @@ function PaymentMoneyFields({
     locale: Locale;
     fee: boolean;
     identityLocked?: boolean;
+    amountLabel?: string;
     onChange: (value: MoneyFields) => void;
 }) {
     const prefix = useId();
@@ -81,7 +83,7 @@ function PaymentMoneyFields({
             </div>
             <div className="field">
                 <label htmlFor={`${prefix}-amount`}>
-                    {fee ? t("手续费金额", "Fee amount") : t("本金", "Principal")}
+                    {amountLabel ?? (fee ? t("手续费金额", "Fee amount") : t("本金", "Principal"))}
                 </label>
                 <input
                     id={`${prefix}-amount`}
