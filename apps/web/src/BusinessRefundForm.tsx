@@ -123,6 +123,7 @@ export function BusinessRefundForm({
     const amount = (value: string, asset: string) => `${formatAmount(value, locale)} ${asset}`;
     return (
         <form
+            className="refund-form"
             aria-label={t("实际退款", "Actual refund")}
             onSubmit={(event) => {
                 event.preventDefault();

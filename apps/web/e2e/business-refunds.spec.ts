@@ -166,7 +166,11 @@ for (const [direction, asset, principal] of [
                         exact: true,
                     }),
                 ).toHaveValue(expense.id);
-                if (width < 600)
+                if (width < 600) {
+                    for (const actions of await page
+                        .locator(".refund-form .allocation-pagination")
+                        .all())
+                        await expect(actions).toHaveCSS("display", "grid");
                     for (const [zh, en] of [
                         ["上一页", "Previous page"],
                         ["下一页", "Next page"],
@@ -184,6 +188,7 @@ for (const [direction, asset, principal] of [
                         expect(bounds!.height).toBeLessThanOrEqual(80);
                         expect(bounds!.width).toBeGreaterThan(120);
                     }
+                }
                 await expectNoOverflow(page);
                 await page.screenshot({
                     path: info.outputPath(`refund-${direction}-${asset}-${locale}-${width}.png`),
