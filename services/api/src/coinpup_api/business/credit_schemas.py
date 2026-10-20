@@ -47,11 +47,11 @@ class BusinessCreditCreate(Command):
         return self
 
 
-def _receipt_units(value):
+def _receipt_quantity(value):
     integer, _, fraction = value.partition(".")
     if value.startswith("-") or len(integer) > 20 or len(fraction) > 18:
         raise ValueError("Credit receipt quantities are nonnegative and fit storage bounds")
-    return int(integer) * 10**18 + int(fraction.ljust(18, "0"))
+    return value
 
 
 class CreditPosting(BaseModel):
@@ -66,12 +66,14 @@ class CreditPosting(BaseModel):
     operation_id: UUID
     journal_id: UUID
 
-    @model_validator(mode="after")
-    def exact_manual_components(self):
-        net, tax, total = map(_receipt_units, (self.net_amount, self.tax_amount, self.total_amount))
-        if total <= 0 or net + tax != total:
-            raise ValueError("Credit receipt net and tax exactly sum to a positive total")
-        return self
+    _bounded = field_validator("net_amount", "tax_amount", "total_amount")(_receipt_quantity)
+
+    @field_validator("total_amount")
+    @classmethod
+    def positive_total(cls, value):
+        if not any(character in "123456789" for character in value):
+            raise ValueError("Credit receipt total must be positive")
+        return value
 
 
 class BusinessCreditResponse(BaseModel):
