@@ -174,3 +174,27 @@ def test_capacity_migration_empty_roundtrip_restores_exact_refund_validator(draf
     assert snapshot(s) == before
     assert pay(s, body) == saved
     assert snapshot(s) == before
+
+
+def test_capacity_downgrade_rejects_credit_notification_history_without_rows(drafts):
+    s = drafts
+    migration = credit_capacity_migration()
+    before = snapshot(s)
+    with pytest.raises(IntegrityError) as failure, s["engine"].begin() as connection:
+        assert connection.scalar(text("SELECT count(*) FROM public.business_credits")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM public.business_credit_lines")) == 0
+        connection.exec_driver_sql(
+            "CREATE TEMP TABLE business_credits(id uuid, ledger_id uuid, version int) "
+            "ON COMMIT DROP; "
+            "CREATE TRIGGER fictional_credit_capacity_history AFTER INSERT "
+            "ON pg_temp.business_credits FOR EACH ROW "
+            "EXECUTE FUNCTION public.coinpup_record_change()"
+        )
+        connection.execute(
+            text("INSERT INTO pg_temp.business_credits VALUES (:id,:ledger,1)"),
+            {"id": uuid4(), "ledger": s["ledger"]},
+        )
+        with Operations.context(MigrationContext.configure(connection)):
+            migration["downgrade"]()
+    assert failure.value.orig.diag.constraint_name == "ck_business_credit_downgrade"
+    assert snapshot(s) == before
