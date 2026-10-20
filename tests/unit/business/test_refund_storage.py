@@ -21,7 +21,7 @@ def test_refund_storage_is_frozen_and_matches_all_declared_tables_and_indexes():
     previous = runpy.run_path(str(path.with_name("20261014_0033_allocation_return_storage.py")))
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert len(set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])) == 34
-    assert set(get_args(EntityType)) == set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])
+    assert set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"]) <= set(get_args(EntityType))
     frozen = " ".join(migration["_SCHEMA_SQL"].split())
     for model in (BusinessRefund, BusinessRefundReturn):
         statements = [CreateTable(model.__table__)]
