@@ -1,5 +1,6 @@
 """Atomic payment and allocation commands with permanent original-intent receipts."""
 
+from decimal import Decimal
 from types import SimpleNamespace
 
 from pydantic import ValidationError
@@ -26,7 +27,7 @@ from coinpup_api.business.settlement_schemas import (
     BusinessAllocationResponse,
     BusinessPaymentResponse,
 )
-from coinpup_api.business.settlement_totals import applied_totals, payment_totals
+from coinpup_api.business.settlement_totals import document_totals, payment_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.commands.fees import FeeCommands
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
@@ -114,11 +115,22 @@ def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, n
         amount,
         used,
     )
-    totals = applied_totals(session, ledger_id, sources, by_document_line=True)
+    totals = document_totals(session, ledger_id, sources)
     inputs = {}
     for identifier, (document, line) in sources.items():
         definition = catalog[document.asset_id]
-        total = totals.get(identifier)
+        totals_row = totals.get(identifier, (Decimal(0), Decimal(0), Decimal(0)))
+        applied, net, tax = (Amount.from_decimal(value, definition) for value in totals_row)
+        if (
+            applied.minor_units < 0
+            or net.minor_units < 0
+            or tax.minor_units < 0
+            or net > Amount.from_decimal(line.net_amount, definition)
+            or tax > Amount.from_decimal(line.tax_amount, definition)
+        ):
+            raise MoneyError(
+                "settlement_integrity", "The stored document capacity is inconsistent."
+            )
         inputs[identifier] = AllocationSource(
             document.id,
             line.id,
@@ -127,7 +139,8 @@ def allocation_plan(session, ledger_id, payment, payload, sources, catalog, *, n
             document.document_kind,
             document.issue_date,
             Amount.from_decimal(line.total_amount, definition),
-            Amount(definition, 0) if total is None else Amount.from_decimal(total, definition),
+            # Credits consume source capacity; public applied_amount still means settlements.
+            applied + net + tax,
             line.project_id,
         )
     request = (
