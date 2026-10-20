@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
 import type { Account, Asset, Category } from "./ledger-api";
@@ -18,7 +18,7 @@ export type RefundEditor = {
     payment: BusinessPaymentDetail;
     body: RefundCreate;
     capacity: RefundCapacity | null;
-    selectedReturns: AllocationReturnSummary[];
+    selectedReturns: RefundReview["returns"];
 };
 
 export function BusinessRefundForm({
@@ -46,6 +46,7 @@ export function BusinessRefundForm({
     onCancel: () => void;
     onUnauthorized: () => void;
 }) {
+    const prefix = useId();
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [error, setError] = useState<unknown>(null),
         [refresh, setRefresh] = useState(0);
@@ -122,6 +123,7 @@ export function BusinessRefundForm({
     const amount = (value: string, asset: string) => `${formatAmount(value, locale)} ${asset}`;
     return (
         <form
+            className="refund-form"
             aria-label={t("实际退款", "Actual refund")}
             onSubmit={(event) => {
                 event.preventDefault();
@@ -217,15 +219,16 @@ export function BusinessRefundForm({
                         "For the same asset, both quantities must match. For different assets, enter both actual quantities explicitly; no conversion is inferred.",
                     )}
                 </p>
-                <label className="field">
-                    {t("退款原因", "Refund reason")}
+                <div className="field">
+                    <label htmlFor={`${prefix}-reason`}>{t("退款原因", "Refund reason")}</label>
                     <textarea
+                        id={`${prefix}-reason`}
                         required
                         maxLength={2000}
                         value={body.reason}
                         onChange={(event) => update({ ...body, reason: event.target.value })}
                     />
-                </label>
+                </div>
                 <fieldset>
                     <legend>
                         {t(
@@ -286,7 +289,7 @@ export function BusinessRefundForm({
                     <p>
                         {t("已选来源数", "Selected references")}: {draft.selectedReturns.length}
                     </p>
-                    <div className="form-actions">
+                    <div className="form-actions allocation-pagination">
                         <button
                             type="button"
                             disabled={offset === 0}
@@ -340,9 +343,12 @@ export function BusinessRefundForm({
                                     })
                                 }
                             />
-                            <label className="field">
-                                {t("手续费分类", "Fee category")}
+                            <div className="field">
+                                <label htmlFor={`${prefix}-fee-category-${index}`}>
+                                    {t("手续费分类", "Fee category")}
+                                </label>
                                 <select
+                                    id={`${prefix}-fee-category-${index}`}
                                     required
                                     value={fee.category_id}
                                     onChange={(event) =>
@@ -370,7 +376,7 @@ export function BusinessRefundForm({
                                             </option>
                                         ))}
                                 </select>
-                            </label>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() =>
@@ -417,7 +423,7 @@ export function BusinessRefundForm({
                         )}
                     </p>
                 )}
-                <div className="form-actions">
+                <div className="form-actions allocation-pagination">
                     <button
                         className="primary-button"
                         type="submit"

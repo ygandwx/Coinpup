@@ -4,6 +4,7 @@ import type { AllocationPayment, AllocationSource } from "./settlement-fields";
 import type { Locale } from "./i18n";
 import { settlementError } from "./settlement-errors";
 import { formatAmount } from "./money";
+import { BusinessRefundResult } from "./BusinessRefundResult";
 import { BusinessAllocationReturnResult } from "./BusinessAllocationReturnResult";
 
 export type SettlementReviewData = {
@@ -28,7 +29,17 @@ export function BusinessSettlementResult({
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const plan = pending.plan;
-    if (!plan || plan.kind === "refund") return null; // Refund review has its own surface.
+    if (!plan) return null;
+    if (plan.kind === "refund")
+        return (
+            <BusinessRefundResult
+                pending={pending}
+                locale={locale}
+                onRetry={onRetry}
+                onEdit={onEdit}
+                onClose={onClose}
+            />
+        );
     if (plan.kind === "return")
         return (
             <BusinessAllocationReturnResult

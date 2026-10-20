@@ -58,4 +58,11 @@
     .allocation-pagination button {
         width: 100%;
     }
+    .refund-form .allocation-pagination {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .refund-form .allocation-pagination button {
+        width: 100%;
+    }
 }
