@@ -213,7 +213,7 @@ def test_refund_rejects_inconsistent_amount_capacity_receipt_or_balance(drafts, 
     assert snapshot(s) == before
 
 
-def test_refunded_principal_cannot_be_refunded_or_allocated_again(drafts):
+def test_refunded_principal_cannot_be_refunded_or_allocated_again(drafts, monkeypatch):
     s = drafts
     source = fixture(s)
     write(s, source, principal="10", amount="10", omit_reference=True)
@@ -231,6 +231,11 @@ def test_refunded_principal_cannot_be_refunded_or_allocated_again(drafts):
                 original.lines[0].model_dump() | {"payment_amount": "1", "document_amount": "1"}
             ],
         }
+    )
+    # Forge an outdated app snapshot to retain the independent database capacity assertion.
+    monkeypatch.setattr(
+        "coinpup_api.business.settlements.payment_totals",
+        lambda *args: {source[0].id: (Decimal("80"), Decimal("0"))},
     )
     with pytest.raises(LedgerError) as error:
         BusinessSettlementService(s["engine"]).allocate(

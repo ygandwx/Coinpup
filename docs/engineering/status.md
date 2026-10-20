@@ -17,9 +17,8 @@
 - T06-1–4及周期草稿已验收#107–177。
 - 提醒配置存储#150及0026/changes/恢复已验证；双渠道任务、配置API及投递待实现。
 - T06-5：证据与分摊退回#179–197、退款契约#198、OCR勾选修复#199已验收。退款写入/贷项/更正取消未验收。
-- main 367d8d6（#201/0036）及CI 38762828728四项通过；1241DB/158浏览器/完整恢复已验收。
-- 净容量PR #202待验收，未合入：本地fast 8/8，CI四项成功，但浏览器1项重试通过；trace定位预览加载导致复核框移位。
-- #203 fix/ocr-preview-layout：固定预览区域；首轮CI旧158浏览器通过，新8项误用单据Total样本查找Amount失败。已改用流水样本，断言保留，待重验。
+- #201/0036已验收。#203已合入main ac91bb0：PR CI 39431116439四项通过，1241DB/166浏览器无重试/完整恢复；10张截图已查看。main CI 39433387409检查中。
+- #202 fix/t06-refund-net-capacity：仅a153df1的7文件净容量差异，保留0036/旧回执。原CI有1项预览重试，现合并最新main修复重验；无迁移/接口变化，未合入。
 - 准备分支只取目标差异，不整支合并旧状态/契约；未注明远端的SHA为本地定位，异地读分支：
   - 事务feat/t06-refund-service-preparation：2bebf1c；旧命令边界feat/t06-refund-legacy-guard-preparation：远端c404350/本地a443885；API feat/t06-refund-api-preparation：180f841。含双向退款/分摊竞争；fast通过，28事务DB仅收集。
   - 恢复feat/t06-refund-recovery-preparation：e1fc3f9；网页协议feat/t06-refund-protocol-package：a3d8794；表单feat/t06-refund-form-preparation：c43ed32；工作区feat/t06-refund-workspace-preparation：84b76af+e5175ae（6浏览器仅收集）。fast通过、网页包web通过；DB/浏览器未验收。
@@ -51,7 +50,7 @@
 
 ## 下一步
 
-1. 先验收预览布局修复（保留所有原测试，不加重试），合入并复核main；再合并main到#202并重验，四项全绿/审查通过后Squash并复核main。
+1. 核对main ac91bb0检查及#202合并main后的完整CI；全绿/审查后Squash并复核main，不改写已推送历史。
 2. 从已验证main逐包提取退款事务2bebf1c、旧命令边界f848e80及竞争测试a443885（远端c404350），再API→完整恢复→网页协议/表单/工作区。准备代码未验收，不整支合并。
 3. 接续贷项纯计划、整单更正取消及T06-6/7，再推进T07–T11；T06-5未完成。提醒投递按ADR0038，SMTP不持锁，未知不自动重发，旧备份恢复先暂停出站。
 4. 两工作树已有保存点保留；继续按依赖逐包推进。HK/EE/NM公式待核验；生产/凭据/权限/发布另行授权，T12客户端延期。

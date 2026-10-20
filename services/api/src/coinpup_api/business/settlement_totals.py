@@ -1,9 +1,38 @@
 """Exact net applications in one query, without multiplying joined source rows."""
 
-from sqlalchemy import func, select, union_all
+from sqlalchemy import func, literal, select, union_all
 
 from coinpup_api.business.allocation_return_models import BusinessAllocationReturnLine
+from coinpup_api.business.refund_models import BusinessRefund
 from coinpup_api.business.settlement_models import BusinessAllocationLine
+
+
+def payment_totals(session, ledger_id, identifiers):
+    """Keep net applications and refunded principal distinct in one bounded page query."""
+    if not identifiers:
+        return {}
+    source, returned, refund = BusinessAllocationLine, BusinessAllocationReturnLine, BusinessRefund
+    statements = [
+        select(
+            table.payment_id.label("identity"),
+            applied.label("applied"),
+            refunded.label("refunded"),
+        ).where(table.ledger_id == ledger_id, table.payment_id.in_(identifiers))
+        for table, applied, refunded in (
+            (source, source.payment_amount, literal(0)),
+            (returned, -returned.payment_amount, literal(0)),
+            (refund, literal(0), refund.payment_amount),
+        )
+    ]
+    entries = union_all(*statements).subquery()
+    return {
+        identifier: (applied, refunded)
+        for identifier, applied, refunded in session.execute(
+            select(
+                entries.c.identity, func.sum(entries.c.applied), func.sum(entries.c.refunded)
+            ).group_by(entries.c.identity)
+        )
+    }
 
 
 def applied_totals(session, ledger_id, identifiers, *, by_document_line=False):
