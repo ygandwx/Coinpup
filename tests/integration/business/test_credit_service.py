@@ -22,6 +22,7 @@ from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_period_transactions import change as change_period
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
+from tests.integration.ledger.test_revision_service_database import correction, expense
 
 pytestmark = pytest.mark.integration
 
@@ -278,9 +279,10 @@ def test_second_group_write_failure_rolls_back_first_group_and_notifications(dra
     assert snapshot(s) == before
 
 
-def test_credit_operations_cannot_use_old_single_operation_cancellation(drafts):
+@pytest.mark.parametrize("kind", ["invoice", "bill"])
+def test_credit_operations_cannot_use_old_single_operation_cancellation(drafts, kind):
     s = drafts
-    _, _, _, payload = setup_credit(s)
+    _, _, _, payload = setup_credit(s, kind, count=2)
     result = credit(s, payload)
     before = snapshot(s)
     for posting in result.postings:
@@ -293,4 +295,30 @@ def test_credit_operations_cannot_use_old_single_operation_cancellation(drafts):
                 "fictional-old-credit-cancel",
             )
         assert failure.value.status == 404
+    assert snapshot(s) == before
+
+
+@pytest.mark.parametrize("kind", ["invoice", "bill"])
+def test_credit_members_cannot_enter_old_correction_or_read_contracts(drafts, kind):
+    s = drafts
+    _, _, _, payload = setup_credit(s, kind, count=2)
+    result = credit(s, payload)
+    replacement = correction(expense(s, "1"), "expense")
+    before = snapshot(s)
+    for posting in result.postings:
+        for read in (s["posting"].get_operation, s["posting"].history):
+            with pytest.raises(LedgerError) as failure:
+                read(s["owner"], s["ledger"], posting.operation_id)
+            assert failure.value.status == 404
+        with pytest.raises(LedgerError) as failure:
+            s["posting"].correct_operation(
+                s["owner"],
+                s["ledger"],
+                posting.operation_id,
+                replacement,
+                "fictional-old-credit-correction",
+            )
+        assert failure.value.status == 404
+    assert snapshot(s) == before
+    assert credit(s, payload) == result
     assert snapshot(s) == before
