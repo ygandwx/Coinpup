@@ -218,15 +218,16 @@ export function BusinessRefundForm({
                         "For the same asset, both quantities must match. For different assets, enter both actual quantities explicitly; no conversion is inferred.",
                     )}
                 </p>
-                <label className="field">
-                    {t("退款原因", "Refund reason")}
+                <div className="field">
+                    <label htmlFor={`${prefix}-reason`}>{t("退款原因", "Refund reason")}</label>
                     <textarea
+                        id={`${prefix}-reason`}
                         required
                         maxLength={2000}
                         value={body.reason}
                         onChange={(event) => update({ ...body, reason: event.target.value })}
                     />
-                </label>
+                </div>
                 <fieldset>
                     <legend>
                         {t(

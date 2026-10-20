@@ -151,11 +151,10 @@ for (const [direction, asset, principal] of [
                         exact: true,
                     })
                     .click();
-                await expect(
-                    page.getByLabel(locale === "zh" ? "退款原因" : "Refund reason", {
-                        exact: true,
-                    }),
-                ).toHaveValue(/Fictional refund 中文/u);
+                const reasonLabel = locale === "zh" ? "退款原因" : "Refund reason";
+                const reasonField = page.getByLabel(reasonLabel, { exact: true });
+                await expect(reasonField).toHaveAccessibleName(reasonLabel);
+                await expect(reasonField).toHaveValue(/Fictional refund 中文/u);
                 await expect(
                     page.getByLabel(locale === "zh" ? "实际退款数量" : "Actual refund quantity", {
                         exact: true,
