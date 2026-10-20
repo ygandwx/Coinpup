@@ -11,7 +11,8 @@ for (const locale of ["zh", "en"] as const) {
             await page.setViewportSize({ width, height: 1000 });
             await page.addInitScript(() => localStorage.setItem("coinpup.locale", "en"));
             await login(page);
-            const fixture = seed();
+            // Statement rows expose Amount; the one-document fixture exposes Total.
+            const fixture = seed(false, undefined, 3);
             let release = () => {};
             const gate = new Promise<void>((resolve) => {
                 release = resolve;
