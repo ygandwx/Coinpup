@@ -77,7 +77,11 @@ export function OriginalPreview({
         };
     }, [document, page]);
     return (
-        <section className="ocr-preview" aria-label={t("原件预览", "Original preview")}>
+        <section
+            className="ocr-preview"
+            aria-label={t("原件预览", "Original preview")}
+            tabIndex={0}
+        >
             <h4>{t("原件预览", "Original preview")}</h4>
             {failed ? (
                 <p role="alert">
