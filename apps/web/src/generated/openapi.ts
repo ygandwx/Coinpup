@@ -606,6 +606,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-payments/{payment_id}/refund-capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capacity
+         * @description A current snapshot for an explicit new intent; never an original receipt.
+         */
+        get: operations["capacity_api_v1_ledgers__ledger_id__business_payments__payment_id__refund_capacity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-projects": {
         parameters: {
             query?: never;
@@ -640,6 +660,44 @@ export interface paths {
         head?: never;
         /** Update Project */
         patch: operations["update_project_api_v1_ledgers__ledger_id__business_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Refunds */
+        get: operations["list_refunds_api_v1_ledgers__ledger_id__business_refunds_get"];
+        put?: never;
+        /**
+         * Create
+         * @description Record actual cash independently; preserve classification and the original payment.
+         */
+        post: operations["create_api_v1_ledgers__ledger_id__business_refunds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_ledgers__ledger_id__business_refunds__refund_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/ledgers/{ledger_id}/categories": {
@@ -2806,6 +2864,98 @@ export interface components {
             /** Unapplied Amount */
             unapplied_amount: string;
         };
+        /** BusinessRefundCreate */
+        BusinessRefundCreate: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Allocation Return Ids */
+            allocation_return_ids?: string[];
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** BusinessRefundResponse */
+        BusinessRefundResponse: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Allocation Return Ids */
+            allocation_return_ids: string[];
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Fees */
+            fees: components["schemas"]["RefundFeeReceipt"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_refund";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
         /** CancellationCreate */
         CancellationCreate: {
             /** Expected Version */
@@ -4669,6 +4819,174 @@ export interface components {
             source_document_id?: string | null;
             /** Source Version */
             source_version?: number | null;
+        };
+        /** RefundCapacity */
+        RefundCapacity: {
+            /** Amount */
+            amount: string;
+            /** Applied Amount */
+            applied_amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /**
+             * Payment Direction
+             * @enum {string}
+             */
+            payment_direction: "receipt" | "payout";
+            /** Refundable Amount */
+            refundable_amount: string;
+            /** Refunded Amount */
+            refunded_amount: string;
+            /** Source Status */
+            source_status: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** RefundDetail */
+        RefundDetail: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Direction
+             * @enum {string}
+             */
+            payment_direction: "receipt" | "payout";
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            receipt: components["schemas"]["BusinessRefundResponse"];
+            /** Source Version */
+            source_version: number;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** RefundFeeReceipt */
+        RefundFeeReceipt: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+        };
+        /** RefundSummary */
+        RefundSummary: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Payment Amount */
+            payment_amount: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Direction
+             * @enum {string}
+             */
+            payment_direction: "receipt" | "payout";
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
         };
         /** ReminderCreate */
         ReminderCreate: {
@@ -6623,6 +6941,38 @@ export interface operations {
             };
         };
     };
+    capacity_api_v1_ledgers__ledger_id__business_payments__payment_id__refund_capacity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundCapacity"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_projects_api_v1_ledgers__ledger_id__business_projects_get: {
         parameters: {
             query?: {
@@ -6752,6 +7102,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_refunds_api_v1_ledgers__ledger_id__business_refunds_get: {
+        parameters: {
+            query?: {
+                payment_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_ledgers__ledger_id__business_refunds_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessRefundCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessRefundResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_ledgers__ledger_id__business_refunds__refund_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundDetail"];
                 };
             };
             /** @description Validation Error */

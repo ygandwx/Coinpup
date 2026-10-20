@@ -2794,6 +2794,194 @@
         "title": "BusinessPaymentSummary",
         "type": "object"
       },
+      "BusinessRefundCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "allocation_return_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Allocation Return Ids",
+            "type": "array"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "payment_id",
+          "expected_version",
+          "account_id",
+          "asset_id",
+          "amount",
+          "payment_amount",
+          "transaction_date",
+          "reason"
+        ],
+        "title": "BusinessRefundCreate",
+        "type": "object"
+      },
+      "BusinessRefundResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "allocation_return_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Allocation Return Ids",
+            "type": "array"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/RefundFeeReceipt"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "business_refund",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_asset_id": {
+            "title": "Payment Asset Id",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "payment_id",
+          "operation_id",
+          "journal_id",
+          "account_id",
+          "asset_id",
+          "amount",
+          "payment_asset_id",
+          "payment_amount",
+          "transaction_date",
+          "allocation_return_ids",
+          "fees"
+        ],
+        "title": "BusinessRefundResponse",
+        "type": "object"
+      },
       "CancellationCreate": {
         "additionalProperties": false,
         "properties": {
@@ -7307,6 +7495,319 @@
         "title": "RecurringRuleUpdate",
         "type": "object"
       },
+      "RefundCapacity": {
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "applied_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Applied Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "payment_direction": {
+            "enum": [
+              "receipt",
+              "payout"
+            ],
+            "title": "Payment Direction",
+            "type": "string"
+          },
+          "refundable_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Refundable Amount",
+            "type": "string"
+          },
+          "refunded_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Refunded Amount",
+            "type": "string"
+          },
+          "source_status": {
+            "title": "Source Status",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "party_id",
+          "payment_direction",
+          "asset_id",
+          "transaction_date",
+          "expected_version",
+          "source_status",
+          "amount",
+          "applied_amount",
+          "refunded_amount",
+          "refundable_amount"
+        ],
+        "title": "RefundCapacity",
+        "type": "object"
+      },
+      "RefundDetail": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_asset_id": {
+            "title": "Payment Asset Id",
+            "type": "string"
+          },
+          "payment_direction": {
+            "enum": [
+              "receipt",
+              "payout"
+            ],
+            "title": "Payment Direction",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/BusinessRefundResponse"
+          },
+          "source_version": {
+            "minimum": 1.0,
+            "title": "Source Version",
+            "type": "integer"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "payment_id",
+          "party_id",
+          "payment_direction",
+          "account_id",
+          "asset_id",
+          "amount",
+          "payment_asset_id",
+          "payment_amount",
+          "transaction_date",
+          "reason",
+          "created_at",
+          "source_version",
+          "receipt"
+        ],
+        "title": "RefundDetail",
+        "type": "object"
+      },
+      "RefundFeeReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "asset_id",
+          "amount",
+          "category_id"
+        ],
+        "title": "RefundFeeReceipt",
+        "type": "object"
+      },
+      "RefundSummary": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "payment_asset_id": {
+            "title": "Payment Asset Id",
+            "type": "string"
+          },
+          "payment_direction": {
+            "enum": [
+              "receipt",
+              "payout"
+            ],
+            "title": "Payment Direction",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "payment_id",
+          "party_id",
+          "payment_direction",
+          "account_id",
+          "asset_id",
+          "amount",
+          "payment_asset_id",
+          "payment_amount",
+          "transaction_date",
+          "reason",
+          "created_at"
+        ],
+        "title": "RefundSummary",
+        "type": "object"
+      },
       "ReminderCreate": {
         "additionalProperties": false,
         "properties": {
@@ -11249,6 +11750,60 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/business-payments/{payment_id}/refund-capacity": {
+      "get": {
+        "description": "A current snapshot for an explicit new intent; never an original receipt.",
+        "operationId": "capacity_api_v1_ledgers__ledger_id__business_payments__payment_id__refund_capacity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundCapacity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Capacity",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/business-projects": {
       "get": {
         "operationId": "list_projects_api_v1_ledgers__ledger_id__business_projects_get",
@@ -11524,6 +12079,227 @@
         "summary": "Update Project",
         "tags": [
           "business master data"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-refunds": {
+      "get": {
+        "operationId": "list_refunds_api_v1_ledgers__ledger_id__business_refunds_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "payment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RefundSummary"
+                  },
+                  "title": "Response List Refunds Api V1 Ledgers  Ledger Id  Business Refunds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Refunds",
+        "tags": [
+          "business settlements"
+        ]
+      },
+      "post": {
+        "description": "Record actual cash independently; preserve classification and the original payment.",
+        "operationId": "create_api_v1_ledgers__ledger_id__business_refunds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessRefundCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessRefundResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}": {
+      "get": {
+        "operationId": "detail_api_v1_ledgers__ledger_id__business_refunds__refund_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "refund_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Refund Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detail",
+        "tags": [
+          "business settlements"
         ]
       }
     },

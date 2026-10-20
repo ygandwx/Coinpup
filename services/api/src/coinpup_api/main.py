@@ -18,6 +18,7 @@ from coinpup_api.business.allocation_return_router import create_allocation_retu
 from coinpup_api.business.confirmation_router import create_business_confirmation_router
 from coinpup_api.business.draft_router import create_business_draft_router
 from coinpup_api.business.recurring_router import create_recurring_router
+from coinpup_api.business.refund_router import create_refund_router
 from coinpup_api.business.router import create_business_router
 from coinpup_api.business.settlement_router import create_business_settlement_router
 from coinpup_api.config import Settings
@@ -124,6 +125,7 @@ def create_app(
     app.include_router(create_recurring_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_business_settlement_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_allocation_return_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_refund_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_reminder_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_period_router(settings, getattr(probe, "engine", None)))
