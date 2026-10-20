@@ -36,5 +36,5 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
         elif isinstance(node, ast.Import):
             raise AssertionError("Migration imports runtime code")
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261021_0038"]
+    assert scripts.get_heads() == ["20261021_0039"]
     assert scripts.get_revision("20261021_0037").down_revision == "20261015_0036"
