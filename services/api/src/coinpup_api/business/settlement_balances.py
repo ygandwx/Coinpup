@@ -19,7 +19,7 @@ from coinpup_api.business.settlement_read_schemas import (
     DocumentSettlementDetail,
     DocumentSettlementLine,
 )
-from coinpup_api.business.settlement_totals import applied_totals, payment_totals
+from coinpup_api.business.settlement_totals import document_totals, payment_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord
@@ -31,18 +31,25 @@ def integrity():
     return LedgerError("settlement_integrity", 503, "The stored settlement is inconsistent.")
 
 
-def quantities(total, applied, asset, *, refunded=Decimal(0)):
+def quantities(total, applied, asset, *, refunded=Decimal(0), credited=Decimal(0)):
     principal = Amount.from_decimal(total, asset)
     allocated = Amount.from_decimal(applied, asset)
     returned = Amount.from_decimal(refunded, asset)
-    if not 0 <= allocated.minor_units <= principal.minor_units or not (
-        0 <= returned.minor_units <= principal.minor_units - allocated.minor_units
+    credit = Amount.from_decimal(credited, asset)
+    if (
+        not 0 <= allocated.minor_units <= principal.minor_units
+        or not (0 <= returned.minor_units <= principal.minor_units - allocated.minor_units)
+        or not (
+            0
+            <= credit.minor_units
+            <= principal.minor_units - allocated.minor_units - returned.minor_units
+        )
     ):
         raise integrity()
     return (
         principal.to_string(),
         allocated.to_string(),
-        (principal - allocated - returned).to_string(),
+        (principal - allocated - returned - credit).to_string(),
     )
 
 
@@ -173,19 +180,30 @@ class BusinessSettlementBalances(LedgerService):
                 )
                 .order_by(source.line_no)
             ).all()
-            applied = applied_totals(
-                session, ledger_id, [row.id for row in rows], by_document_line=True
-            )
-            if not rows or not applied.keys() <= {row.id for row in rows}:
+            totals = document_totals(session, ledger_id, [row.id for row in rows])
+            if not rows or not totals.keys() <= {row.id for row in rows}:
                 raise integrity()
             try:
                 lines = []
-                total_units = applied_units = 0
+                total_units = applied_units = credited_units = 0
                 for row in rows:
-                    used = applied.get(row.id, Decimal(0))
-                    total, allocated, outstanding = quantities(row.total_amount, used, asset)
+                    used, net, tax = totals.get(row.id, (Decimal(0), Decimal(0), Decimal(0)))
+                    net_credit = Amount.from_decimal(net, asset)
+                    tax_credit = Amount.from_decimal(tax, asset)
+                    credit = net_credit + tax_credit
+                    if (
+                        net_credit.minor_units < 0
+                        or tax_credit.minor_units < 0
+                        or net_credit > Amount.from_decimal(row.net_amount, asset)
+                        or tax_credit > Amount.from_decimal(row.tax_amount, asset)
+                    ):
+                        raise integrity()
+                    total, allocated, outstanding = quantities(
+                        row.total_amount, used, asset, credited=credit.to_decimal()
+                    )
                     total_units += Amount.from_decimal(row.total_amount, asset).minor_units
                     applied_units += Amount.from_decimal(used, asset).minor_units
+                    credited_units += credit.minor_units
                     lines.append(
                         DocumentSettlementLine(
                             id=row.id,
@@ -203,7 +221,9 @@ class BusinessSettlementBalances(LedgerService):
                     asset_id=document.asset_id,
                     total_amount=Amount(asset, total_units).to_string(),
                     applied_amount=Amount(asset, applied_units).to_string(),
-                    outstanding_amount=Amount(asset, total_units - applied_units).to_string(),
+                    outstanding_amount=Amount(
+                        asset, total_units - applied_units - credited_units
+                    ).to_string(),
                     lines=tuple(lines),
                 )
             except (MoneyError, ValidationError):
