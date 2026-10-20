@@ -10,7 +10,7 @@ from alembic.operations import Operations
 from coinpup_api.business.confirmation_models import BusinessPosting
 from coinpup_api.business.models import BusinessDocument
 from coinpup_api.business.settlement_balances import BusinessSettlementBalances
-from coinpup_api.business.settlement_totals import document_totals
+from coinpup_api.business.settlement_totals import applied_totals, document_totals
 from sqlalchemy import event, select, text
 from sqlalchemy.exc import IntegrityError
 
@@ -106,11 +106,29 @@ def test_database_allocation_cannot_use_gross_capacity_reserved_by_credit(
     assert snapshot(s) == before
 
 
-def test_no_credit_settlement_json_is_unchanged_and_query_count_stays_bounded(drafts):
+@pytest.mark.parametrize(
+    "applied,outstanding", [("0.00", "100.00"), ("60.00", "40.00"), ("100.00", "0.00")]
+)
+def test_no_credit_settlement_json_is_unchanged_and_query_count_stays_bounded(
+    drafts, monkeypatch, applied, outstanding
+):
     s = drafts
     body, group = prepared(s, initial=False)
     pay(s, body)
     source = group.lines[0]
+    if applied != "0.00":
+        allocate(
+            s,
+            group.model_copy(
+                update={
+                    "lines": [
+                        source.model_copy(
+                            update={"payment_amount": applied, "document_amount": applied}
+                        )
+                    ]
+                }
+            ),
+        )
     reads = BusinessSettlementBalances(s["engine"])
     statements = []
 
@@ -128,21 +146,49 @@ def test_no_credit_settlement_json_is_unchanged_and_query_count_stays_bounded(dr
         party_id=str(s["party"].id),
         asset_id="USD",
         total_amount="100.00",
-        applied_amount="0.00",
-        outstanding_amount="100.00",
+        applied_amount=applied,
+        outstanding_amount=outstanding,
         lines=[
             dict(
                 id=str(source.document_line_id),
                 line_no=1,
                 project_id=str(s["project"].id),
                 total_amount="100.00",
-                applied_amount="0.00",
-                outstanding_amount="100.00",
+                applied_amount=applied,
+                outstanding_amount=outstanding,
             )
         ],
     )
-    assert len([sql for sql in statements if sql.startswith("SELECT")]) == 5
+    current_selects = [sql for sql in statements if sql.startswith("SELECT")]
+    # The shared owner lookup was present before this migration: one authentication
+    # SELECT plus five business SELECTs, not five SELECTs for the complete request.
+    assert len(current_selects) == 6
+    assert sum("FROM administrators " in sql for sql in current_selects) == 1
     assert not any("pg_advisory" in sql or "command_receipts" in sql for sql in statements)
+
+    def previous_totals(session, ledger_id, identifiers):
+        return {
+            identifier: (amount, Decimal(0), Decimal(0))
+            for identifier, amount in applied_totals(
+                session, ledger_id, identifiers, by_document_line=True
+            ).items()
+        }
+
+    # Exercise the unchanged pre-credit aggregate, rather than widening the query
+    # budget without a measured baseline. Its zero credit components are explicit.
+    monkeypatch.setattr("coinpup_api.business.settlement_balances.document_totals", previous_totals)
+    statements.clear()
+    event.listen(s["engine"], "before_cursor_execute", record)
+    try:
+        previous = reads.document_capacity(s["owner"], s["ledger"], source.document_id)
+    finally:
+        event.remove(s["engine"], "before_cursor_execute", record)
+    previous_selects = [sql for sql in statements if sql.startswith("SELECT")]
+    assert previous.model_dump(mode="json") == result.model_dump(mode="json")
+    assert len(previous_selects) == len(current_selects) == 6
+    assert previous_selects[:-1] == current_selects[:-1]
+    assert "business_credit_lines" not in previous_selects[-1]
+    assert "business_credit_lines" in current_selects[-1]
 
 
 def test_capacity_migration_empty_roundtrip_restores_exact_refund_validator(drafts):
