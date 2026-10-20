@@ -422,7 +422,7 @@ export function BusinessRefundForm({
                         )}
                     </p>
                 )}
-                <div className="form-actions">
+                <div className="form-actions allocation-pagination">
                     <button
                         className="primary-button"
                         type="submit"

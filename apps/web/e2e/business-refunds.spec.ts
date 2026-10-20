@@ -172,6 +172,8 @@ for (const [direction, asset, principal] of [
                         ["下一页", "Next page"],
                         ["重读来源", "Reload references"],
                         ["清除所选来源", "Clear selected references"],
+                        ["登记实际退款", "Record actual refund"],
+                        ["取消", "Cancel"],
                     ]) {
                         const button = page.getByRole("button", {
                             name: locale === "zh" ? zh : en,
@@ -180,6 +182,7 @@ for (const [direction, asset, principal] of [
                         const bounds = await button.boundingBox();
                         expect(bounds).not.toBeNull();
                         expect(bounds!.height).toBeLessThanOrEqual(80);
+                        expect(bounds!.width).toBeGreaterThan(120);
                     }
                 await expectNoOverflow(page);
                 await page.screenshot({
