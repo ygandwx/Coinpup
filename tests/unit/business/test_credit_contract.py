@@ -2,12 +2,16 @@
 
 import copy
 import json
+from dataclasses import replace
 from decimal import localcontext
 from uuid import uuid4
 
 import pytest
 from coinpup_api.business.credit_hash import credit_hash_v2
+from coinpup_api.business.credit_receipts import validate_credit_receipt_amounts
 from coinpup_api.business.credit_schemas import BusinessCreditCreate, BusinessCreditResponse
+from coinpup_api.ledger.assets import ASSETS, AssetDefinition
+from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.idempotency import _v2_hash
 from coinpup_api.ledger.service import LedgerError
 from pydantic import ValidationError
@@ -127,6 +131,7 @@ def test_complete_receipt_preserves_18_place_strings_and_is_immutable():
     with localcontext() as context:
         context.prec = 1
         parsed = BusinessCreditResponse.model_validate(saved)
+        assert validate_credit_receipt_amounts(parsed, ASSETS["USD"]) is parsed
     assert parsed.model_dump(mode="json") == saved
     with pytest.raises(ValidationError):
         parsed.source_version = 3
@@ -135,24 +140,27 @@ def test_complete_receipt_preserves_18_place_strings_and_is_immutable():
 
 
 @pytest.mark.parametrize(
-    "net,tax,total",
+    "asset,net,tax,total",
     [
-        ("0", "0.01", "0.010000000000000000"),
-        ("0.01", "0", "0.01"),
-        ("0", "0.000000000000000001", "0.000000000000000001"),
+        ("USD", "0", "0.01", "0.010000000000000000"),
+        ("USD", "0.01", "0", "0.01"),
+        ("ETH", "0", "0.000000000000000001", "0.000000000000000001"),
         (
+            "ETH",
             "99999999999999999999.999999999999999998",
             "0.000000000000000001",
             "99999999999999999999.999999999999999999",
         ),
     ],
 )
-def test_receipt_zero_side_and_extremes_are_exact(net, tax, total):
+def test_receipt_zero_side_and_extremes_are_exact(asset, net, tax, total):
     saved = response()
+    saved["asset_id"] = asset
     saved["postings"][0] |= dict(net_amount=net, tax_amount=tax, total_amount=total)
     with localcontext() as context:
         context.prec = 1
         parsed = BusinessCreditResponse.model_validate(saved)
+        assert validate_credit_receipt_amounts(parsed, ASSETS[asset]) is parsed
     assert parsed.postings[0].total_amount == total
 
 
@@ -162,7 +170,6 @@ def test_receipt_zero_side_and_extremes_are_exact(net, tax, total):
         ("net_amount", "-1"),
         ("tax_amount", "-0.00"),
         ("total_amount", "0"),
-        ("total_amount", "19.99"),
         ("net_amount", "100000000000000000000"),
         ("tax_amount", "0.0000000000000000001"),
         ("net_amount", 17.23),
@@ -176,6 +183,42 @@ def test_receipt_rejects_bad_components_dates_and_missing_positions(field, value
     saved["postings"][0][field] = value
     with pytest.raises(ValidationError):
         BusinessCreditResponse.model_validate(saved)
+
+
+def test_receipt_rejects_mismatched_components_with_the_complete_asset():
+    saved = response()
+    saved["postings"][0]["total_amount"] = "19.99"
+    with pytest.raises(MoneyError) as failure:
+        validate_credit_receipt_amounts(BusinessCreditResponse.model_validate(saved), ASSETS["USD"])
+    assert failure.value.code == "credit_integrity"
+
+
+@pytest.mark.parametrize("asset", [ASSETS["EUR"], None])
+def test_receipt_asset_must_match_its_actual_catalogue_definition(asset):
+    with pytest.raises(MoneyError) as failure:
+        validate_credit_receipt_amounts(BusinessCreditResponse.model_validate(response()), asset)
+    assert failure.value.code == "credit_integrity"
+
+
+def test_disabled_historical_asset_still_validates_the_unchanged_receipt():
+    saved = BusinessCreditResponse.model_validate(response())
+    assert validate_credit_receipt_amounts(saved, replace(ASSETS["USD"], enabled=False)) is saved
+
+
+def test_storage_padding_does_not_allow_precision_above_the_actual_asset():
+    saved = response()
+    saved["postings"][0] |= dict(net_amount="19.999", tax_amount="0.001", total_amount="20")
+    with pytest.raises(MoneyError) as failure:
+        validate_credit_receipt_amounts(BusinessCreditResponse.model_validate(saved), ASSETS["USD"])
+    assert failure.value.code == "amount_precision"
+
+
+def test_custom_token_receipt_uses_the_full_definition_without_enabling_it():
+    saved = response()
+    token = AssetDefinition("USDC", "token", 6, "fictionalnet", "fictional-token", enabled=False)
+    saved["asset_id"] = token.asset_id
+    parsed = BusinessCreditResponse.model_validate(saved)
+    assert validate_credit_receipt_amounts(parsed, token) is parsed
 
 
 @pytest.mark.parametrize(
