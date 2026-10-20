@@ -19,7 +19,7 @@ from coinpup_api.business.settlement_read_schemas import (
     DocumentSettlementDetail,
     DocumentSettlementLine,
 )
-from coinpup_api.business.settlement_totals import applied_totals
+from coinpup_api.business.settlement_totals import applied_totals, payment_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord
@@ -31,12 +31,19 @@ def integrity():
     return LedgerError("settlement_integrity", 503, "The stored settlement is inconsistent.")
 
 
-def quantities(total, applied, asset):
+def quantities(total, applied, asset, *, refunded=Decimal(0)):
     principal = Amount.from_decimal(total, asset)
     allocated = Amount.from_decimal(applied, asset)
-    if not 0 <= allocated.minor_units <= principal.minor_units:
+    returned = Amount.from_decimal(refunded, asset)
+    if not 0 <= allocated.minor_units <= principal.minor_units or not (
+        0 <= returned.minor_units <= principal.minor_units - allocated.minor_units
+    ):
         raise integrity()
-    return principal.to_string(), allocated.to_string(), (principal - allocated).to_string()
+    return (
+        principal.to_string(),
+        allocated.to_string(),
+        (principal - allocated - returned).to_string(),
+    )
 
 
 class BusinessSettlementBalances(LedgerService):
@@ -61,12 +68,13 @@ class BusinessSettlementBalances(LedgerService):
             ).all()
             if not rows:
                 return []
-            applied = applied_totals(session, ledger_id, [row.id for row, _, _ in rows])
+            totals = payment_totals(session, ledger_id, [row.id for row, _, _ in rows])
             result = []
             try:
                 for row, asset, count in rows:
+                    applied, refunded = totals.get(row.id, (Decimal(0), Decimal(0)))
                     total, used, remaining = quantities(
-                        row.amount, applied.get(row.id, Decimal(0)), asset_definition(asset)
+                        row.amount, applied, asset_definition(asset), refunded=refunded
                     )
                     result.append(
                         BusinessPaymentSummary(

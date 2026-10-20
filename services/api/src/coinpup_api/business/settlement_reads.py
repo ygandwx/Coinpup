@@ -27,7 +27,7 @@ from coinpup_api.business.settlement_schemas import (
     BusinessAllocationResponse,
     BusinessPaymentResponse,
 )
-from coinpup_api.business.settlement_totals import applied_totals
+from coinpup_api.business.settlement_totals import payment_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord, CommandReceipt
@@ -111,12 +111,15 @@ class BusinessSettlementReads(BusinessSettlementBalances):
         if saved is None:
             raise _not_found()
         row, record = saved
-        applied = applied_totals(session, ledger_id, {payment_id}).get(payment_id)
+        applied, refunded = payment_totals(session, ledger_id, {payment_id}).get(
+            payment_id, (Decimal(0), Decimal(0))
+        )
         try:
             total, used, remaining = quantities(
                 row.amount,
-                applied if applied is not None else Decimal(0),
+                applied,
                 asset_definition(record),
+                refunded=refunded,
             )
             fees = tuple(FeeResponse.model_validate(fee) for fee in row.fees)
             if fees:
