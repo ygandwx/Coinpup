@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
@@ -15,13 +16,14 @@ from coinpup_api.business.credit_receipts import validate_credit_receipt_amounts
 from coinpup_api.business.credit_schemas import BusinessCreditResponse
 from coinpup_api.business.settlement_balances import BusinessSettlementBalances
 from coinpup_api.business.settlement_models import BusinessAllocationLine
-from coinpup_api.business.settlement_schemas import BusinessPaymentCreate
+from coinpup_api.business.settlement_schemas import BusinessAllocationCreate, BusinessPaymentCreate
 from coinpup_api.ledger.assets import ASSETS
 from coinpup_api.ledger.common import PostingCore
 from coinpup_api.ledger.control_accounts import ControlAccounts
 from coinpup_api.ledger.models import CommandReceipt, FinancialOperation, Journal, JournalLine
 from coinpup_api.ledger.money import Amount
 from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_lines
+from coinpup_api.ledger.service import LedgerError
 from coinpup_api.sync.locking import acquire_write_lock
 from sqlalchemy import func, insert, select, text
 from sqlalchemy.exc import IntegrityError
@@ -30,7 +32,7 @@ from sqlalchemy.orm import Session
 from tests.integration.business.test_allocation_return_service import submit_return
 from tests.integration.business.test_confirmation_service import prepare, submit
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.business.test_settlement_service import pay
+from tests.integration.business.test_settlement_service import allocate, pay
 from tests.integration.conftest import credit_validation_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -274,6 +276,59 @@ def test_concurrent_credits_cannot_consume_the_same_original_net_capacity(drafts
         assert connection.scalar(select(func.count()).select_from(BusinessCredit)) == 1
 
 
+def test_credit_and_allocation_cannot_concurrently_consume_the_same_capacity(drafts):
+    s = drafts
+    original = source(s)
+    document = original[0]
+    payment = BusinessPaymentCreate(
+        id=uuid4(),
+        direction="receipt",
+        party_id=document.party_id,
+        account_id=s["account"].id,
+        asset_id="USD",
+        amount="110",
+        transaction_date=document.issue_date,
+        description="Fictional concurrent capacity",
+    )
+    paid = pay(s, payment)
+    group = BusinessAllocationCreate(
+        id=uuid4(),
+        payment_id=payment.id,
+        allocation_date=document.issue_date,
+        lines=[
+            dict(
+                document_id=document.id,
+                document_line_id=document.lines[0].id,
+                payment_amount="60",
+                document_amount="60",
+            )
+        ],
+    )
+    barrier = Barrier(2)
+
+    def attempt(credit):
+        barrier.wait(timeout=15)
+        try:
+            return write(s, original, net="60", tax="0") if credit else allocate(s, group)
+        except IntegrityError as error:
+            assert credit and error.orig.diag.constraint_name == "ck_business_credit_shape"
+        except LedgerError as error:
+            assert not credit and error.code == "allocation_exceeds_document"
+        return None
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(attempt, [True, False]))
+    assert sum(row is not None for row in results) == 1
+    current = BusinessSettlementBalances(s["engine"]).document_capacity(
+        s["owner"], s["ledger"], document.id
+    )
+    assert current.outstanding_amount == "50.00"
+    assert current.applied_amount == ("0.00" if results[0] is not None else "60.00")
+    before = snapshot(s)
+    assert pay(s, payment) == paid
+    assert snapshot(s) == before
+
+
 def test_credit_requires_explicit_return_of_already_settled_capacity(drafts):
     s = drafts
     original = source(s)
@@ -358,4 +413,28 @@ def test_credit_history_blocks_downgrade_and_empty_history_restores_original_dis
         with Operations.context(MigrationContext.configure(connection)):
             migration["downgrade"]()
     assert error.value.orig.diag.constraint_name == "ck_business_credit_downgrade"
+    assert snapshot(s) == before
+
+
+def test_credit_validation_downgrade_rejects_notification_only_history(drafts):
+    s = drafts
+    migration = credit_validation_migration()
+    before = snapshot(s)
+    with pytest.raises(IntegrityError) as failure, s["engine"].begin() as connection:
+        assert connection.scalar(text("SELECT count(*) FROM public.business_credits")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM public.business_credit_lines")) == 0
+        connection.exec_driver_sql(
+            "CREATE TEMP TABLE business_credits(id uuid, ledger_id uuid, version int) "
+            "ON COMMIT DROP; "
+            "CREATE TRIGGER fictional_credit_validation_history AFTER INSERT "
+            "ON pg_temp.business_credits FOR EACH ROW "
+            "EXECUTE FUNCTION public.coinpup_record_change()"
+        )
+        connection.execute(
+            text("INSERT INTO pg_temp.business_credits VALUES (:id,:ledger,1)"),
+            {"id": uuid4(), "ledger": s["ledger"]},
+        )
+        with Operations.context(MigrationContext.configure(connection)):
+            migration["downgrade"]()
+    assert failure.value.orig.diag.constraint_name == "ck_business_credit_downgrade"
     assert snapshot(s) == before
