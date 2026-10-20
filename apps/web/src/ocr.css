@@ -50,6 +50,13 @@
 .ocr-evidence {
     min-width: 0;
 }
+.ocr-preview {
+    /* Loading, rendering and page controls must not move review checkboxes mid-click. */
+    block-size: min(65vh, 40rem);
+    min-block-size: 16rem;
+    overflow: auto;
+    overflow-anchor: none;
+}
 .ocr-preview canvas {
     max-width: 100%;
     height: auto;
