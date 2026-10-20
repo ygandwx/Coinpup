@@ -30,7 +30,9 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
         for c in FinancialOperation.__table__.constraints
         if c.name == "ck_financial_operations_kind"
     )
-    assert str(constraint.sqltext) == migration["_KINDS"]
+    current = runpy.run_path(str(versions / "20261021_0039_business_credit_validation.py"))
+    assert current["_OLD_KINDS"] == migration["_KINDS"]
+    assert str(constraint.sqltext) == current["_KINDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261021_0038"]
+    assert scripts.get_heads() == ["20261021_0039"]
     assert scripts.get_revision("20261015_0036").down_revision == "20261015_0035"
