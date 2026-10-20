@@ -28,6 +28,12 @@ import type { ReturnEditor } from "./BusinessAllocationReturnForm";
 import { BusinessAllocationReturnHistory } from "./BusinessAllocationReturnHistory";
 import type { AllocationReturnCreate } from "./allocation-return-api";
 import type { AllocationReturnReview } from "./allocation-return-intent";
+import { BusinessRefundForm } from "./BusinessRefundForm";
+import type { RefundEditor } from "./BusinessRefundForm";
+import type { RefundCreate } from "./refund-api";
+import type { RefundReview } from "./refund-intent";
+import { getBusinessPayment } from "./business-settlement-api";
+import { BusinessRefundHistory } from "./BusinessRefundHistory";
 import "./draft-form.css";
 
 export function BusinessSettlementPanel({
@@ -63,6 +69,8 @@ export function BusinessSettlementPanel({
     const [fields, setFields] = useState<BusinessPaymentCreate | null>(null);
     const [returnEditor, setReturnEditor] = useState<ReturnEditor | null>(null);
     const [returnsOpen, setReturnsOpen] = useState(false);
+    const [refundEditor, setRefundEditor] = useState<RefundEditor | null>(null);
+    const [refundsOpen, setRefundsOpen] = useState(false);
     const [existing, setExisting] = useState<{
         payment: BusinessPaymentDetail;
         name: string | null;
@@ -82,7 +90,7 @@ export function BusinessSettlementPanel({
         [historyRefresh, setHistoryRefresh] = useState(0);
     const callbacks = useRef({ onEditing, onUnauthorized, onSaved });
     callbacks.current = { onEditing, onUnauthorized, onSaved };
-    const open = !!fields || !!plan || !!existing || !!returnEditor;
+    const open = !!fields || !!plan || !!existing || !!returnEditor || !!refundEditor;
     const needReferences = !!fields && !plan;
     const refs = {
         accounts,
@@ -92,9 +100,9 @@ export function BusinessSettlementPanel({
     };
     const ready = parties?.ledger === ledgerId && !dataLoading && !archived;
     useEffect(() => {
-        callbacks.current.onEditing(open || historyEditing || returnsOpen);
+        callbacks.current.onEditing(open || historyEditing || returnsOpen || refundsOpen);
         return () => callbacks.current.onEditing(false);
-    }, [open, historyEditing, returnsOpen]);
+    }, [open, historyEditing, returnsOpen, refundsOpen]);
     useEffect(() => {
         if (pending.status === "auth-required") callbacks.current.onUnauthorized();
     }, [pending.status]);
@@ -231,6 +239,49 @@ export function BusinessSettlementPanel({
             fail(caught);
         }
     }
+    function beginRefund(payment: BusinessPaymentDetail) {
+        if (archived || dataLoading || !controller.dismiss()) return;
+        setError(null);
+        setRefundEditor({
+            payment,
+            capacity: null,
+            selectedReturns: [],
+            body: {
+                id: crypto.randomUUID(),
+                payment_id: payment.id,
+                expected_version: 1,
+                account_id: payment.account_id,
+                asset_id: payment.asset_id,
+                amount: "",
+                payment_amount: "",
+                transaction_date: localDraftDate(),
+                reason: "",
+                allocation_return_ids: [],
+                fees: [],
+            },
+        });
+    }
+    async function editRefund() {
+        if (!plan || plan.kind !== "refund") return;
+        try {
+            const body = JSON.parse(plan.bodyJson) as RefundCreate;
+            const review = JSON.parse(plan.reviewedJson) as RefundReview;
+            const payment = await getBusinessPayment(ledgerId, body.payment_id);
+            if (controller.getSnapshot().plan !== plan) return;
+            if (payment.id !== body.payment_id || payment.ledger_id !== ledgerId)
+                throw new ApiError("server", 200, "invalid_response");
+            if (!controller.dismiss()) return;
+            setRefundEditor({
+                payment,
+                capacity: null,
+                selectedReturns: review.returns,
+                body: { ...body, id: crypto.randomUUID() },
+            });
+            setError(null);
+        } catch (caught) {
+            if (controller.getSnapshot().plan === plan) fail(caught);
+        }
+    }
     function close() {
         const saved = controller.getSnapshot().status === "confirmed";
         if (!controller.dismiss()) return;
@@ -238,6 +289,7 @@ export function BusinessSettlementPanel({
         setExisting(null);
         setAllocation(null);
         setReturnEditor(null);
+        setRefundEditor(null);
         setSources([]);
         setReviewed(false);
         setInvalid(false);
@@ -308,11 +360,13 @@ export function BusinessSettlementPanel({
             {open ? (
                 <div className="business-settlement-panel">
                     <h2>
-                        {returnEditor || plan?.kind === "return"
-                            ? t("分摊退回", "Return allocation")
-                            : existing || plan?.kind === "allocation"
-                              ? t("追加分摊", "Apply existing payment")
-                              : t("实际收付款", "Actual payment")}
+                        {refundEditor || plan?.kind === "refund"
+                            ? t("实际退款", "Actual refund")
+                            : returnEditor || plan?.kind === "return"
+                              ? t("分摊退回", "Return allocation")
+                              : existing || plan?.kind === "allocation"
+                                ? t("追加分摊", "Apply existing payment")
+                                : t("实际收付款", "Actual payment")}
                     </h2>
                     {plan ? (
                         <BusinessSettlementResult
@@ -321,6 +375,10 @@ export function BusinessSettlementPanel({
                             onRetry={retry}
                             onClose={close}
                             onEdit={() => {
+                                if (plan.kind === "refund") {
+                                    void editRefund();
+                                    return;
+                                }
                                 if (controller.dismiss()) {
                                     if (plan.kind === "return") {
                                         const body = JSON.parse(
@@ -348,6 +406,35 @@ export function BusinessSettlementPanel({
                                     setError(null);
                                 }
                             }}
+                        />
+                    ) : refundEditor ? (
+                        <BusinessRefundForm
+                            ledgerId={ledgerId}
+                            locale={locale}
+                            accounts={accounts}
+                            assets={assets}
+                            categories={categories}
+                            draft={refundEditor}
+                            disabled={archived || dataLoading}
+                            onChange={(update) =>
+                                setRefundEditor((value) => (value ? update(value) : value))
+                            }
+                            onSubmit={async (body, review) => {
+                                if (archived || dataLoading || controller.getSnapshot().plan)
+                                    return;
+                                try {
+                                    await controller.start(
+                                        session,
+                                        ledgerId,
+                                        { kind: "refund", body },
+                                        review,
+                                    );
+                                } catch (caught) {
+                                    fail(caught);
+                                }
+                            }}
+                            onCancel={close}
+                            onUnauthorized={onUnauthorized}
                         />
                     ) : returnEditor ? (
                         <BusinessAllocationReturnForm
@@ -592,6 +679,13 @@ export function BusinessSettlementPanel({
                     )}
                     {error != null && <p role="alert">{businessError(error, locale)}</p>}
                 </div>
+            ) : refundsOpen ? (
+                <BusinessRefundHistory
+                    ledgerId={ledgerId}
+                    locale={locale}
+                    onClose={() => setRefundsOpen(false)}
+                    onUnauthorized={onUnauthorized}
+                />
             ) : returnsOpen ? (
                 <BusinessAllocationReturnHistory
                     ledgerId={ledgerId}
@@ -616,6 +710,11 @@ export function BusinessSettlementPanel({
                             {t("分摊退回历史", "Allocation return history")}
                         </button>
                     )}
+                    {!historyEditing && (
+                        <button type="button" onClick={() => setRefundsOpen(true)}>
+                            {t("实际退款历史", "Actual refund history")}
+                        </button>
+                    )}
                     <BusinessSettlementHistory
                         key={historyRefresh}
                         ledgerId={ledgerId}
@@ -623,6 +722,7 @@ export function BusinessSettlementPanel({
                         accounts={accounts}
                         onAllocate={archived || dataLoading ? undefined : beginAllocation}
                         onReturn={archived || dataLoading ? undefined : beginReturn}
+                        onRefund={archived || dataLoading ? undefined : beginRefund}
                         onEditing={setHistoryEditing}
                         onUnauthorized={onUnauthorized}
                     />

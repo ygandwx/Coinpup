@@ -18,7 +18,7 @@ export type RefundEditor = {
     payment: BusinessPaymentDetail;
     body: RefundCreate;
     capacity: RefundCapacity | null;
-    selectedReturns: AllocationReturnSummary[];
+    selectedReturns: RefundReview["returns"];
 };
 
 export function BusinessRefundForm({
