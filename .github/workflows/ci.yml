@@ -68,7 +68,8 @@ jobs:
   database:
     name: PostgreSQL migrations and integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Full database checks can exceed 20 minutes; retain every test and cleanup step.
+    timeout-minutes: 30
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
