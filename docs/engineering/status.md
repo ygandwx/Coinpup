@@ -16,7 +16,7 @@
 
 - T06-5退款/退回与贷项创建的事务、API、完整恢复、双语网页及独立性已验收合入（#202–221）。#220的60图、#221的8图均逐张查看；整单更正取消尚未实现，T06-5未完成。
 - #222设计/纯成员计划、#223上传超时测试竞态、#224完整请求/200回执及v2摘要已验收合入。main cbfd93f/CI42217095277四绿，1352DB、182浏览器及完整恢复实际通过，无flaky；源全集最多200，400仅纯计划/契约理论边界。
-- 当前feat/t06-credit-revision-headers从上述main提取9b2dadd：0040不可变修订头、通知目录、关闭写闸和旧探针适配，612有效行及重生成契约；fast8/8、web7/7及审查通过，32DB仅收集，四项CI待执行，无可用修订入口。
+- 当前#225/feat/t06-credit-revision-headers：0040不可变头、通知目录、关闭闸和探针适配；本地fast/web及审查通过，首轮DB3失败/1381通过。已修复快照查询绑定及两处RESTRICT清单遗漏，待复验；32新增DB须全过，无可用修订入口。
 - 可恢复准备目标（只提目标，不整支合并）：feat/t06-credit-revision-members-preparation的0041 1c5e178；后续0042投影170c306、0043事实32c817a、0044过渡a2439c3、0045回执181290f、0046容量1ba907d。
 - 0047关闭态通知/操作头守卫已备份feat/t06-credit-final-wiring-preparation@8175fdf（本地09915fc），507行。0041至0047均fast/审查通过，48/19/34/21/49/19/12DB仅收集。0048组合已备份feat/t06-credit-lifecycle-preparation@93ded04（本地7bf0a2a），761行、fast/审查通过、22DB仅收集；均未正式验收。
 - 新200重放适配已备份feat/t06-credit-revision-replay-preparation@b24d1ec（本地849c4a3），546行；修复测试竞态后fast通过，16DB仅收集。纯分录组装已备份feat/t06-credit-revision-lines-preparation@f9b9a62（本地cdb8acf），681行，fast/审查通过；均只提目标，不带依赖旧状态，未正式验收事务。

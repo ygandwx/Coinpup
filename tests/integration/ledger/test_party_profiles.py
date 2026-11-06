@@ -147,13 +147,14 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 assert (
                     c.exec_driver_sql(
                         "SELECT (SELECT count(*) FROM business_credits) + "
-                        "(SELECT count(*) FROM business_credit_lines)"
+                        "(SELECT count(*) FROM business_credit_lines) + "
+                        "(SELECT count(*) FROM business_credit_revisions)"
                     ).scalar()
                     == 0
                 )
                 c.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
-                    "business_credit_lines, business_credits, "
+                    "business_credit_revisions, business_credit_lines, business_credits, "
                     "business_refund_returns, business_refunds, "
                     "business_allocation_return_lines, business_allocation_returns, "
                     "business_allocation_lines, business_allocations, business_payments, "

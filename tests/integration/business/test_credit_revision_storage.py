@@ -178,10 +178,13 @@ def test_revision_group_version_and_ledger_key_are_unique(revision, duplicate):
 
 
 def definitions(connection):
-    return connection.exec_driver_sql(
-        "SELECT pg_get_functiondef(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid=p.pronamespace "
-        "WHERE n.nspname='public' AND p.proname LIKE 'coinpup_%' ORDER BY p.proname,p.proargtypes"
+    return connection.execute(
+        text(
+            "SELECT pg_get_functiondef(p.oid) FROM pg_proc p "
+            "JOIN pg_namespace n ON n.oid=p.pronamespace "
+            "WHERE n.nspname='public' AND p.proname LIKE :prefix ORDER BY p.proname,p.proargtypes"
+        ),
+        {"prefix": "coinpup_%"},
     ).scalars().all(), connection.exec_driver_sql(
         "SELECT pg_get_triggerdef(t.oid) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
         "JOIN pg_namespace n ON n.oid=c.relnamespace "
