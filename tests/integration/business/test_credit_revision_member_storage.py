@@ -261,7 +261,14 @@ def test_empty_member_schema_round_trip_preserves_header_gate_and_old_receipts(r
         assert functions == [
             body
             for body in old_definitions[0]
-            if "coinpup_check_credit_revision_member" not in body.split("\n", 1)[0]
+            if not any(
+                name in body.split("\n", 1)[0]
+                for name in (
+                    "coinpup_check_credit_revision_member",
+                    "coinpup_credit_posting_facts",
+                    "coinpup_current_credit_lines",
+                )
+            )
         ]
         migration["upgrade"]()
         assert definitions(connection) == old_definitions
