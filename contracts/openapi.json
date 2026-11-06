@@ -3434,7 +3434,8 @@
               "business_refunds",
               "business_refund_returns",
               "business_credits",
-              "business_credit_lines"
+              "business_credit_lines",
+              "business_credit_revisions"
             ],
             "title": "Entity Type",
             "type": "string"
