@@ -19,8 +19,8 @@
 - #215原子贷项事务、#216 API、#217专属完整恢复均已审查合入，PR/main四绿。24个新增事务DB、3个HTTP场景及空目标bundle实际通过；1352DB、172浏览器，旧回执/changes零写入，旧82路径/144schema不变。证据见对应PR。
 - #218网页原意图协议、#219中英手填表单均已审查合入，PR/main四绿，证据见PR。
 - #220贷项工作区已审查合入c87e0a4；CI42188296445四绿，1352DB、178浏览器及完整恢复通过，新增60张截图逐张查看无问题。main CI42191022214四绿。
-- 当前chore/t06-credit-refund-independence从c87e0a4仅提取928afee的4个场景，本地fast/web通过，浏览器仅收集，待正式CI及看图；生产代码不变。逐包从最新main提取，禁止整支带回旧契约/缺失修复。
-- 隔离修订准备feat/t06-credit-revision-head-preparation已备份：ADR0047目标bf6814f、纯计划b706554、关闭写闸的0040头存储db5085c。fast/web通过，32DB仅收集；未开放功能/正式验收，不整支合并。
+- #221独立性4场景已实际通过且8图逐张查看；首轮CI四绿但既有手机历史用例1次flaky，trace证实旧页消耗单次503。当前chore/t06-credit-refund-independence修复故障注入竞态，保留所有断言/超时，本地fast/web通过，待新CI；未合入。
+- 隔离修订准备已备份：head-preparation的ADR0047 bf6814f/纯计划b706554/0040 db5085c；members-preparation的0041 1c5e178（均feat/t06-credit-revision-前缀）。fast/web及审查通过，32+48DB仅收集；闸保持关闭，不整支合并。
 - 隔离契约准备feat/t06-credit-revision-contract-preparation：本地f9c5222/远端acea315，73新unit及fast通过（该树无网页依赖）；仅schema/v2摘要，无写入口，待从最新main提取及正式验收。
 - 仓库已恢复公开；无许可证（保留全部权利）。
 
@@ -49,7 +49,7 @@
 
 ## 下一步
 
-1. main c87e0a4已四绿；完成当前4个独立性场景四项CI及看图，审查后Squash并验证main。
+1. main c87e0a4已四绿；完成#221故障注入修正的fast/web、新四项CI及证据复核，审查后Squash并验证main。
 2. 从最新main逐包提取已备份的修订ADR、纯计划、契约及头存储；重生成契约，保留探针，最多一个迁移PR。准备/收集不等于验收。
 3. 完成整单更正取消及T06-6/7、T07–T11；贷项子步骤不等于T06-5完成。
 4. HK/EE/NM公式仍待核验；T09投递配置服务/API及双渠道未实现。生产/凭据/权限/发布另行授权，T12客户端延期。

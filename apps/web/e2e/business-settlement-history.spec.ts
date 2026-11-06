@@ -161,13 +161,16 @@ test("fictional history preserves archived references and recovers a failed page
         archived: true,
     });
     let writes = 0,
-        failed = false;
+        unavailable = true,
+        failures = 0;
     page.on("request", (request) => {
         if (request.url().includes("business-payments") && request.method() !== "GET") writes++;
     });
     await page.route(`**${data.ledger}/business-payments?*`, async (route) => {
-        if (!failed) {
-            failed = true;
+        // The old page can finish mounting while reload starts; keep the outage
+        // active until the new page has visibly reported it.
+        if (unavailable) {
+            failures++;
             await route.fulfill({
                 status: 503,
                 json: { detail: { code: "business_unavailable" } },
@@ -177,8 +180,11 @@ test("fictional history preserves archived references and recovers a failed page
     await page.reload();
     const panel = page.locator(".business-settlement-panel");
     await expect(panel.getByRole("alert")).toBeVisible();
+    expect(failures).toBeGreaterThan(0);
+    unavailable = false;
     await panel.getByRole("button", { name: "Refresh list" }).click();
     await panel.getByRole("button", { name: "View details" }).click();
+    await expect(panel.getByRole("alert")).toHaveCount(0);
     await expect(panel).toContainText("Fictional saved party 中文");
     await expect(panel).toContainText(data.account.name);
     expect(writes).toBe(0);
