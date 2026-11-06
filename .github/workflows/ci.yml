@@ -72,6 +72,8 @@ jobs:
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
+      # A slow test prints its threads without interrupting setup, calls or teardown.
+      PYTEST_ADDOPTS: "-vv --durations=20 -o faulthandler_timeout=60"
     steps:
       - name: Check out source
         uses: actions/checkout@v4
