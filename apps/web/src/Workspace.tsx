@@ -15,6 +15,8 @@ import { MasterPanel } from "./MasterPanel";
 import { BusinessDraftPanel } from "./BusinessDraftPanel";
 import { RecurringPanel } from "./RecurringPanel";
 import { BusinessConfirmationPanel } from "./BusinessConfirmationPanel";
+import { BusinessCreditPanel } from "./BusinessCreditPanel";
+import type { PendingBusinessCreditController } from "./pending-business-credit";
 import { BusinessSettlementPanel } from "./BusinessSettlementPanel";
 import type { PendingBusinessSettlementController } from "./pending-business-settlement";
 import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
@@ -66,6 +68,7 @@ import "./workspace.css";
 type View =
     | "business-confirmations"
     | "business-settlements"
+    | "business-credits"
     | "drafts"
     | "recurring"
     | "reminders"
@@ -93,6 +96,7 @@ const views: View[] = [
     "drafts",
     "business-confirmations",
     "business-settlements",
+    "business-credits",
     "recurring",
     "reminders",
     "categories",
@@ -331,6 +335,7 @@ export function BusinessWorkspace({
     reminders,
     businessConfirmations,
     settlements,
+    credits,
     onUnauthorized,
 }: {
     session: Session;
@@ -347,6 +352,7 @@ export function BusinessWorkspace({
     reminders: PendingReminderController;
     businessConfirmations: PendingBusinessConfirmationController;
     settlements: PendingBusinessSettlementController;
+    credits: PendingBusinessCreditController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -380,6 +386,10 @@ export function BusinessWorkspace({
         ? businessConfirmation.plan?.ledgerId
         : undefined;
     const [businessConfirmationEditing, setBusinessConfirmationEditing] = useState(false);
+    const credit = useSyncExternalStore(credits.subscribe, credits.getSnapshot);
+    const creditLocked = !["idle", "confirmed", "rejected"].includes(credit.status);
+    const creditRecoveryLedger = creditLocked ? credit.plan?.ledgerId : undefined;
+    const [creditEditing, setCreditEditing] = useState(false);
     const [settlementEditing, setSettlementEditing] = useState(false);
     const settlement = useSyncExternalStore(settlements.subscribe, settlements.getSnapshot);
     const settlementLocked = !["idle", "confirmed", "rejected"].includes(settlement.status);
@@ -436,7 +446,9 @@ export function BusinessWorkspace({
         businessConfirmationLocked ||
         businessConfirmationEditing ||
         settlementEditing ||
-        settlementLocked;
+        settlementLocked ||
+        creditLocked ||
+        creditEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -478,6 +490,7 @@ export function BusinessWorkspace({
         recurring: t("周期Invoice", "Recurring invoices"),
         "business-confirmations": t("单据确认", "Confirm documents"),
         "business-settlements": t("经营收付", "Business settlements"),
+        "business-credits": t("贷项", "Credits"),
         reminders: t("提醒事项", "Reminder events"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
@@ -505,7 +518,8 @@ export function BusinessWorkspace({
             !recurringLocked &&
             !reminderLocked &&
             !businessConfirmationLocked &&
-            !settlementLocked
+            !settlementLocked &&
+            !creditLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -526,6 +540,7 @@ export function BusinessWorkspace({
         reminderLocked,
         businessConfirmationLocked,
         settlementLocked,
+        creditLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -595,6 +610,14 @@ export function BusinessWorkspace({
             setView("business-settlements");
         }
     }, [settlementRecoveryLedger, entities]);
+    useEffect(() => {
+        if (!creditRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === creditRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("business-credits");
+        }
+    }, [creditRecoveryLedger, entities]);
 
     function failure(error: unknown) {
         if (error instanceof ApiError && error.kind === "unauthorized") onUnauthorizedRef.current();
@@ -916,6 +939,7 @@ export function BusinessWorkspace({
                                         reminders: "◷",
                                         "business-confirmations": "✓",
                                         "business-settlements": "⇄",
+                                        "business-credits": "↩",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -1104,7 +1128,8 @@ export function BusinessWorkspace({
                             view !== "recurring" &&
                             view !== "reminders" &&
                             view !== "business-confirmations" &&
-                            view !== "business-settlements" && (
+                            view !== "business-settlements" &&
+                            view !== "business-credits" && (
                                 <label className="archive-toggle">
                                     <input
                                         type="checkbox"
@@ -1118,6 +1143,22 @@ export function BusinessWorkspace({
                             <p className="help-text" role="status">
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
+                        )}
+                        {view === "business-credits" && (
+                            <BusinessCreditPanel
+                                key={`${session.user.id}:${entity.ledger.id}`}
+                                ledgerId={entity.ledger.id}
+                                locale={locale}
+                                session={session}
+                                controller={credits}
+                                assets={assets}
+                                categories={current?.categories ?? []}
+                                archived={entity.archived}
+                                dataLoading={loading || ledgerLoading || !current}
+                                onEditing={setCreditEditing}
+                                onUnauthorized={onUnauthorized}
+                                onSaved={reload}
+                            />
                         )}
                         {view === "business-settlements" && (
                             <BusinessSettlementPanel
