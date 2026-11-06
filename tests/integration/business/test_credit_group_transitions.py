@@ -244,7 +244,14 @@ def test_unknown_group_is_rejected_and_empty_migration_roundtrip_preserves_old_d
         assert remaining == [
             body
             for body in functions
-            if "coinpup_validate_credit_group_transitions" not in body.split("\n", 1)[0]
+            if not any(
+                name in body.split("\n", 1)[0]
+                for name in (
+                    "coinpup_validate_credit_group_transitions",
+                    "coinpup_business_credit_revision_response",
+                    "coinpup_validate_credit_revision_receipt",
+                )
+            )
         ]
         assert old_triggers == triggers
         migration["upgrade"]()

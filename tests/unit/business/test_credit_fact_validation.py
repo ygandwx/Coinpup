@@ -32,5 +32,5 @@ def test_fact_checks_are_frozen_leaf_functions_and_keep_the_single_migration_cha
             assert node.module == "alembic"
         assert not isinstance(node, ast.Import)
     assert ScriptDirectory.from_config(Config(str(root / "alembic.ini"))).get_heads() == [
-        "20261106_0044"
+        "20261106_0045"
     ]

@@ -324,6 +324,8 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
                 for name in (
                     "coinpup_validate_credit_origin_facts",
                     "coinpup_validate_credit_group_transitions",
+                    "coinpup_business_credit_revision_response",
+                    "coinpup_validate_credit_revision_receipt",
                     "coinpup_validate_credit_posting_fact",
                     "coinpup_credit_posting_facts",
                     "coinpup_current_credit_lines",
