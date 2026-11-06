@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import os
-import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import anyio
@@ -90,17 +90,68 @@ def test_disconnect_cleans_partial_file(store):
     assert not list((store.root / "staging").iterdir())
 
 
-def test_timeout_cleans_partial_file(store):
+def controlled_timeout(monkeypatch, store, *, expired=False):
+    original = anyio.fail_after
+    scopes = []
+
+    @contextmanager
+    def deadline(seconds):
+        assert seconds == store.timeout_seconds
+        # Keep real cancellation/TimeoutError semantics, controlling only when the deadline passes.
+        with original(None) as scope:
+            scopes.append(scope)
+            if expired:
+                scope.deadline = anyio.current_time()
+            yield scope
+
+    monkeypatch.setattr(anyio, "fail_after", deadline)
+    return scopes
+
+
+def test_timeout_cleans_partial_file(store, monkeypatch):
     store.timeout_seconds = 0.01
+    scopes = controlled_timeout(monkeypatch, store)
+    original_write, written = store._write, []
+
+    def tracked_write(stream, digest, chunk):
+        original_write(stream, digest, chunk)
+        stream.flush()
+        written.append((stream.tell(), digest.hexdigest()))
+
+    monkeypatch.setattr(store, "_write", tracked_write)
 
     async def slow():
         yield PDF[:5]
-        await anyio.sleep(1)
-        yield PDF[5:]
+        assert written == [(5, hashlib.sha256(PDF[:5]).hexdigest())]
+        partial = list((store.root / "staging").iterdir())
+        assert len(partial) == 1 and partial[0].read_bytes() == PDF[:5]
+        scopes[0].deadline = anyio.current_time()
+        await anyio.lowlevel.checkpoint()
+        pytest.fail("The expired real deadline did not interrupt the partial upload")
 
-    with pytest.raises(FileStoreError, match="upload_timeout"):
+    with pytest.raises(FileStoreError, match="upload_timeout") as error:
         asyncio.run(store.stage(slow(), len(PDF)))
+    assert error.value.status_code == 408
+    assert len(scopes) == 1 and scopes[0].cancel_called and scopes[0].cancelled_caught
     assert not list((store.root / "staging").iterdir())
+    assert not (store.root / "blobs").exists()
+
+
+def test_deadline_before_stage_creation_leaves_no_files(store, monkeypatch):
+    scopes = controlled_timeout(monkeypatch, store, expired=True)
+    original_new_stage, created = store._new_stage, []
+
+    def tracked_stage(token):
+        created.append(token)
+        return original_new_stage(token)
+
+    monkeypatch.setattr(store, "_new_stage", tracked_stage)
+    with pytest.raises(FileStoreError, match="upload_timeout") as error:
+        stage(store)
+    assert error.value.status_code == 408
+    assert len(scopes) == 1 and scopes[0].cancel_called and scopes[0].cancelled_caught
+    assert created == []
+    assert not store.root.exists()
 
 
 def test_disk_write_failure_is_generic_and_cleans_stage(store, monkeypatch):
@@ -146,16 +197,30 @@ def test_close_failure_always_cleans_stage_and_never_leaks_os_error(
 
 def test_deadline_is_rechecked_after_non_interruptible_file_flush(store, monkeypatch):
     store.timeout_seconds = 0.1
-    original = store._finish
+    scopes = controlled_timeout(monkeypatch, store)
+    original, progress = store._finish, []
 
-    def slow_finish(stream):
-        time.sleep(0.15)
+    def expire():
+        scopes[0].deadline = anyio.current_time()
+        progress.append("deadline")
+
+    def expired_finish(stream):
+        progress.append("entered")
+        assert stream.tell() == len(PDF)
+        # Cancellation is scheduled on the event loop, while the real worker still must finish.
+        anyio.from_thread.run_sync(expire)
         original(stream)
+        assert os.fstat(stream.fileno()).st_size == len(PDF)
+        progress.append("finished")
 
-    monkeypatch.setattr(store, "_finish", slow_finish)
-    with pytest.raises(FileStoreError, match="upload_timeout"):
+    monkeypatch.setattr(store, "_finish", expired_finish)
+    with pytest.raises(FileStoreError, match="upload_timeout") as error:
         stage(store)
+    assert error.value.status_code == 408
+    assert progress == ["entered", "deadline", "finished"]
+    assert len(scopes) == 1 and scopes[0].cancel_called and scopes[0].cancelled_caught
     assert not list((store.root / "staging").iterdir())
+    assert not (store.root / "blobs").exists()
 
 
 @pytest.mark.parametrize("mode", ["length", "digest", "missing"])
