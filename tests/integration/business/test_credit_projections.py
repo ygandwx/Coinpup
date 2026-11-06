@@ -321,7 +321,12 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
             for body in functions
             if not any(
                 name in body.split("\n", 1)[0]
-                for name in ("coinpup_credit_posting_facts", "coinpup_current_credit_lines")
+                for name in (
+                    "coinpup_validate_credit_origin_facts",
+                    "coinpup_validate_credit_posting_fact",
+                    "coinpup_credit_posting_facts",
+                    "coinpup_current_credit_lines",
+                )
             )
         ]
         assert old_triggers == triggers
