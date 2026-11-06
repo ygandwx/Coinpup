@@ -1,4 +1,4 @@
-"""Typed, ledger-bounded SQL projections; no financial validator or current caller is replaced."""
+"""Typed, ledger-bounded canonical history and current credit projections."""
 
 from sqlalchemy import Date, Integer, Numeric, Text, Uuid, cast, column, func, select
 from sqlalchemy.dialects.postgresql import ARRAY

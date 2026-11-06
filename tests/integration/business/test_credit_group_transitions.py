@@ -10,7 +10,10 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.integration.business.credit_transition_fixture import group, transition
 from tests.integration.business.test_credit_projections import gated
-from tests.integration.business.test_credit_revision_storage import definitions
+from tests.integration.business.test_credit_revision_storage import (
+    definitions,
+    previous_capacity_definitions,
+)
 from tests.integration.business.test_credit_service import credit
 from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.conftest import credit_group_migration
@@ -238,12 +241,13 @@ def test_unknown_group_is_rejected_and_empty_migration_roundtrip_preserves_old_d
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
+        previous, _ = previous_capacity_definitions(connection)
         migration = credit_group_migration()
         migration["downgrade"]()
         remaining, old_triggers = definitions(connection)
         assert remaining == [
             body
-            for body in functions
+            for body in previous
             if not any(
                 name in body.split("\n", 1)[0]
                 for name in (

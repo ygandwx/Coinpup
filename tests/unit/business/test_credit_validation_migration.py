@@ -29,5 +29,5 @@ def test_credit_dispatch_and_empty_downgrade_preserve_all_previous_shapes():
             assert node.module == "alembic"
         assert not isinstance(node, ast.Import)
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261106_0045"]
+    assert scripts.get_heads() == ["20261106_0046"]
     assert scripts.get_revision("20261021_0039").down_revision == "20261021_0038"
