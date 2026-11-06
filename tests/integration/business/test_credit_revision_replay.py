@@ -1,4 +1,4 @@
-"""Pending fixed-version replay reads only; the financial revision gate still rejects commit."""
+"""Committed fixed-version replay survives later revisions and unavailable references."""
 
 from copy import deepcopy
 from datetime import date
@@ -8,13 +8,13 @@ import pytest
 from coinpup_api.business.credit_revision_hash import credit_revision_hash_v2
 from coinpup_api.business.credit_revision_receipts import replay_revision, response_from_rows
 from coinpup_api.business.credit_revision_schemas import CreditRevisionResponse
-from coinpup_api.ledger.models import AssetRecord, CommandReceipt, Entity
+from coinpup_api.ledger.models import CommandReceipt
+from coinpup_api.ledger.schemas import AssetUpdate, EntityUpdate
 from coinpup_api.ledger.service import LedgerError
-from sqlalchemy import event, update
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from tests.integration.business.credit_transition_fixture import group
-from tests.integration.business.test_credit_projections import gated
 from tests.integration.business.test_credit_revision_receipts import (
     candidate,
     content,
@@ -22,7 +22,7 @@ from tests.integration.business.test_credit_revision_receipts import (
 )
 from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.ledger.test_account_classes import snapshot
-from tests.integration.ledger.test_period_schema import write_period
+from tests.integration.ledger.test_period_transactions import change as change_period
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 from tests.unit.business.test_credit_revision_replay import intent
 
@@ -63,11 +63,10 @@ def test_fixed_original_intents_remain_read_only_after_later_members_cancel_and_
     s = drafts
     state = group(s, kind=kind)
     a, b, c = state["source_ids"]
-    before = snapshot(s)
-    with s["engine"].connect() as connection:
-        transaction = connection.begin()
-        commands = []
-        for index, sources in enumerate(([a, c], [b, c], None)):
+    commands = []
+    for index, sources in enumerate(([a, c], [b, c], None)):
+        # Each version must pass every deferred financial constraint at actual commit.
+        with s["engine"].begin() as connection:
             commands.append(
                 command(
                     connection,
@@ -83,22 +82,17 @@ def test_fixed_original_intents_remain_read_only_after_later_members_cancel_and_
                     ),
                 )
             )
-        if closed:
-            write_period(connection, s, new=date(2026, 11, 6))
-            connection.exec_driver_sql(
-                "SET CONSTRAINTS tr_ledger_periods_history, tr_ledger_period_audits_history, "
-                "tr_ledger_period_receipts_history IMMEDIATE"
-            )
-            connection.execute(
-                update(AssetRecord)
-                .where(AssetRecord.asset_id == "USD")
-                .values(enabled=False, version=AssetRecord.version + 1)
-            )
-            connection.execute(
-                update(Entity)
-                .where(Entity.id == s["entity"].id)
-                .values(archived=True, version=Entity.version + 1)
-            )
+    if closed:
+        change_period(s, cutoff="2026-11-06")
+        s["structure"].update_asset(
+            s["owner"], "USD", AssetUpdate(expected_version=1, enabled=False)
+        )
+        s["structure"].update_entity(
+            s["owner"], s["entity"].id, EntityUpdate(expected_version=1, archived=True)
+        )
+    before = snapshot(s)
+    with s["engine"].begin() as connection:
+        connection.exec_driver_sql("SET TRANSACTION READ ONLY")
         unchanged = content(connection)
         with Session(bind=connection) as session:
             for saved in commands:
@@ -116,8 +110,6 @@ def test_fixed_original_intents_remain_read_only_after_later_members_cancel_and_
                     replay(session, saved, digest=wrong_digest)
                 assert failure.value.code == "idempotency_conflict"
         assert content(connection) == unchanged
-        gated(connection)
-        transaction.rollback()
     assert snapshot(s) == before
 
 
@@ -195,7 +187,8 @@ def test_adapter_rejects_mismatched_receipt_or_scope_without_any_writes(drafts, 
             if conflict:
                 assert statements == []
         assert content(connection) == unchanged
-        gated(connection)
+        # Roll back the negative probe's pending rows. The adapter's exact error above,
+        # rather than an unrelated historical closed gate, proves rejection.
         transaction.rollback()
     assert snapshot(s) == before
 
@@ -203,10 +196,11 @@ def test_adapter_rejects_mismatched_receipt_or_scope_without_any_writes(drafts, 
 def test_same_digest_with_different_validated_payload_cannot_claim_stored_amounts(drafts):
     s = drafts
     state = group(s)
-    before = snapshot(s)
-    with s["engine"].connect() as connection:
-        transaction = connection.begin()
+    with s["engine"].begin() as connection:
         saved = command(connection, state, list(state["current"]))
+    before = snapshot(s)
+    with s["engine"].begin() as connection:
+        connection.exec_driver_sql("SET TRANSACTION READ ONLY")
         response, payload, _, digest, key = saved
         bad = payload.model_copy(
             update={
@@ -234,26 +228,24 @@ def test_same_digest_with_different_validated_payload_cannot_claim_stored_amount
             )
         assert failure.value.code == "credit_revision_integrity"
         assert content(connection) == unchanged
-        gated(connection)
-        transaction.rollback()
     assert snapshot(s) == before
 
 
 def test_missing_fixed_sql_projection_maps_only_its_known_shape_failure(drafts):
     s = drafts
     state = group(s)
-    before = snapshot(s)
-    with s["engine"].connect() as connection:
-        transaction = connection.begin()
+    with s["engine"].begin() as connection:
         saved = command(connection, state, list(state["current"]))
+    before = snapshot(s)
+    with s["engine"].begin() as connection:
+        connection.exec_driver_sql("SET TRANSACTION READ ONLY")
         unchanged = content(connection)
         with Session(bind=connection) as session:
             with pytest.raises(LedgerError) as failure, session.begin_nested():
                 response_from_rows(session, uuid4())
             assert (failure.value.code, failure.value.status) == ("credit_revision_integrity", 503)
-            # The SQL error rolls back its savepoint, not the caller's pending facts.
+            # The SQL error rolls back its savepoint; committed history remains readable
+            # in the same outer read-only transaction.
             assert replay(session, saved) == saved[0]
         assert content(connection) == unchanged
-        gated(connection)
-        transaction.rollback()
     assert snapshot(s) == before
