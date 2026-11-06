@@ -14,6 +14,12 @@ from coinpup_api.business.credit_read_schemas import (
     CreditSummary,
 )
 from coinpup_api.business.credit_reads import BusinessCreditReads
+from coinpup_api.business.credit_revision_schemas import (
+    CreditCancellationCreate,
+    CreditCorrectionCreate,
+    CreditRevisionResponse,
+)
+from coinpup_api.business.credit_revisions import BusinessCreditRevisionService
 from coinpup_api.business.credit_schemas import (
     BusinessCreditCreate,
     BusinessCreditResponse,
@@ -26,6 +32,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_credit_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessCreditService(engine), BusinessCreditReads(engine)
+    revisions = BusinessCreditRevisionService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -62,6 +69,54 @@ def create_credit_router(settings, engine):
         """Reduce the original classification without changing actual cash or old receipts."""
         return execute(
             service.create, identity.id, ledger_id, payload, idempotency_key, raw_body=raw_body
+        )
+
+    @router.post(
+        "/business-credits/{credit_id}/corrections",
+        response_model=CreditRevisionResponse,
+        status_code=200,
+    )
+    def correct(
+        ledger_id: UUID,
+        credit_id: UUID,
+        payload: CreditCorrectionCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Replace the complete current group; replay the original key and unchanged body."""
+        return execute(
+            revisions.correct,
+            identity.id,
+            ledger_id,
+            credit_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
+        )
+
+    @router.post(
+        "/business-credits/{credit_id}/cancellations",
+        response_model=CreditRevisionResponse,
+        status_code=200,
+    )
+    def cancel(
+        ledger_id: UUID,
+        credit_id: UUID,
+        payload: CreditCancellationCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Reverse every current member without a refund or alteration of old receipts."""
+        return execute(
+            revisions.cancel,
+            identity.id,
+            ledger_id,
+            credit_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
         )
 
     @router.get("/business-credits", response_model=list[CreditSummary])

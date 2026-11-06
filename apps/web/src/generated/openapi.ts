@@ -443,6 +443,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/cancellations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel
+         * @description Reverse every current member without a refund or alteration of old receipts.
+         */
+        post: operations["cancel_api_v1_ledgers__ledger_id__business_credits__credit_id__cancellations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct
+         * @description Replace the complete current group; replay the original key and unchanged body.
+         */
+        post: operations["correct_api_v1_ledgers__ledger_id__business_credits__credit_id__corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents": {
         parameters: {
             query?: never;
@@ -3329,6 +3369,13 @@ export interface components {
             /** Replacement */
             replacement: components["schemas"]["OpeningReplacement"] | components["schemas"]["IncomeReplacement"] | components["schemas"]["ExpenseReplacement"] | components["schemas"]["TransferReplacement"] | components["schemas"]["ExchangeReplacement"];
         };
+        /** CreditCancellationCreate */
+        CreditCancellationCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
         /** CreditCapacity */
         CreditCapacity: {
             /** Asset Id */
@@ -3362,6 +3409,14 @@ export interface components {
              * Format: uuid
              */
             party_id: string;
+        };
+        /** CreditCorrectionCreate */
+        CreditCorrectionCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["CreditReplacement"];
         };
         /** CreditDetail */
         CreditDetail: {
@@ -3500,6 +3555,125 @@ export interface components {
             tax_amount: string;
             /** Total Amount */
             total_amount: string;
+        };
+        /** CreditReplacement */
+        CreditReplacement: {
+            /**
+             * Credit Date
+             * Format: date
+             */
+            credit_date: string;
+            /** Lines */
+            lines: components["schemas"]["CreditLineCreate"][];
+            /** Reason */
+            reason: string;
+        };
+        /** CreditRevisionMember */
+        CreditRevisionMember: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "correct" | "cancel";
+            /** Journal Id */
+            journal_id: string | null;
+            /** Line No */
+            line_no: number | null;
+            /** Net Amount */
+            net_amount: string | null;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
+            /** Previous Journal Id */
+            previous_journal_id: string | null;
+            /** Previous Line No */
+            previous_line_no: number | null;
+            /** Previous Net Amount */
+            previous_net_amount: string | null;
+            /** Previous Operation Version */
+            previous_operation_version: number | null;
+            /** Previous Recognition Date */
+            previous_recognition_date: string | null;
+            /** Previous Tax Amount */
+            previous_tax_amount: string | null;
+            /** Previous Total Amount */
+            previous_total_amount: string | null;
+            /** Recognition Date */
+            recognition_date: string | null;
+            /** Reversal Journal Id */
+            reversal_journal_id: string | null;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Tax Amount */
+            tax_amount: string | null;
+            /** Total Amount */
+            total_amount: string | null;
+        };
+        /** CreditRevisionResponse */
+        CreditRevisionResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "correct" | "cancel";
+            /** Asset Id */
+            asset_id: string;
+            /** Credit Date */
+            credit_date: string | null;
+            /**
+             * Credit Id
+             * Format: uuid
+             */
+            credit_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_credit_revision";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Members */
+            members: components["schemas"]["CreditRevisionMember"][];
+            /**
+             * Previous Credit Date
+             * Format: date
+             */
+            previous_credit_date: string;
+            /** Previous Credit Reason */
+            previous_credit_reason: string;
+            /** Previous Version */
+            previous_version: number;
+            /** Reason */
+            reason: string;
+            /** Replacement Reason */
+            replacement_reason: string | null;
+            /**
+             * Revision Id
+             * Format: uuid
+             */
+            revision_id: string;
+            /** Version */
+            version: number;
         };
         /** CreditSummary */
         CreditSummary: {
@@ -6802,6 +6976,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreditDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_ledgers__ledger_id__business_credits__credit_id__cancellations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditCancellationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_api_v1_ledgers__ledger_id__business_credits__credit_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditCorrectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditRevisionResponse"];
                 };
             };
             /** @description Validation Error */
