@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.integration.business.test_credit_service import credit, setup_credit
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.conftest import credit_revision_migration
+from tests.integration.conftest import credit_current_capacity_migration, credit_revision_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -193,6 +193,15 @@ def definitions(connection):
     ).scalars().all()
 
 
+def previous_capacity_definitions(connection):
+    """Read the actual frozen pre-current layer without changing the final round-trip baseline."""
+    migration = credit_current_capacity_migration()
+    migration["downgrade"]()
+    result = definitions(connection)
+    migration["upgrade"]()
+    return result
+
+
 def test_empty_revision_round_trip_preserves_existing_credit_receipts_and_financial_sql(revision):
     s, _, request, original = revision
     before = snapshot(s)
@@ -202,11 +211,12 @@ def test_empty_revision_round_trip_preserves_existing_credit_receipts_and_financ
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
+        previous, _ = previous_capacity_definitions(connection)
         migration["downgrade"]()
         remaining, _ = definitions(connection)
         assert remaining == [
             definition
-            for definition in functions
+            for definition in previous
             if not any(
                 name in definition.split("\n", 1)[0]
                 for name in (

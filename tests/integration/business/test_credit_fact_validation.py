@@ -17,7 +17,10 @@ from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 
 from tests.integration.business.test_credit_revision_member_storage import member
-from tests.integration.business.test_credit_revision_storage import definitions
+from tests.integration.business.test_credit_revision_storage import (
+    definitions,
+    previous_capacity_definitions,
+)
 from tests.integration.business.test_credit_revision_storage import revision as revision
 from tests.integration.business.test_credit_service import credit, setup_credit
 from tests.integration.business.test_draft_service import drafts as drafts
@@ -370,12 +373,13 @@ def test_empty_fact_migration_round_trip_preserves_all_original_functions_and_re
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
+        previous, _ = previous_capacity_definitions(connection)
         migration = credit_fact_migration()
         migration["downgrade"]()
         assert definitions(connection) == (
             [
                 body
-                for body in functions
+                for body in previous
                 if not any(
                     name in body.split("\n", 1)[0]
                     for name in (

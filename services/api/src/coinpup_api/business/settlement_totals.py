@@ -3,7 +3,7 @@
 from sqlalchemy import func, literal, select, union_all
 
 from coinpup_api.business.allocation_return_models import BusinessAllocationReturnLine
-from coinpup_api.business.credit_models import BusinessCreditLine
+from coinpup_api.business.credit_projections import current_credit_lines
 from coinpup_api.business.refund_models import BusinessRefund
 from coinpup_api.business.settlement_models import BusinessAllocationLine
 
@@ -12,11 +12,8 @@ def document_totals(session, ledger_id, identifiers):
     """Keep net settlements and manual credit components separate in one bounded query."""
     if not identifiers:
         return {}
-    source, returned, credit = (
-        BusinessAllocationLine,
-        BusinessAllocationReturnLine,
-        BusinessCreditLine,
-    )
+    source, returned = BusinessAllocationLine, BusinessAllocationReturnLine
+    credit = current_credit_lines(ledger_id, identifiers).c
     positive = select(
         source.document_line_id.label("identity"),
         source.document_amount.label("applied"),
@@ -36,9 +33,7 @@ def document_totals(session, ledger_id, identifiers):
             source.document_line_id.in_(identifiers),
         )
     )
-    credits = select(credit.source_line_id, literal(0), credit.net_amount, credit.tax_amount).where(
-        credit.ledger_id == ledger_id, credit.source_line_id.in_(identifiers)
-    )
+    credits = select(credit.source_line_id, literal(0), credit.net_amount, credit.tax_amount)
     entries = union_all(positive, negative, credits).subquery()
     return {
         identifier: (applied, net, tax)

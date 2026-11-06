@@ -188,7 +188,7 @@ def test_no_credit_settlement_json_is_unchanged_and_query_count_stays_bounded(
     assert len(previous_selects) == len(current_selects) == 6
     assert previous_selects[:-1] == current_selects[:-1]
     assert "business_credit_lines" not in previous_selects[-1]
-    assert "business_credit_lines" in current_selects[-1]
+    assert "coinpup_current_credit_lines" in current_selects[-1]
 
 
 def test_capacity_migration_empty_roundtrip_restores_exact_refund_validator(drafts):
@@ -216,7 +216,7 @@ def test_capacity_migration_empty_roundtrip_restores_exact_refund_validator(draf
                 "'coinpup_validate_business_allocation(uuid)'::regprocedure)"
             )
         )
-        assert "business_credit_lines" in current and "business_refunds" in current
+        assert "coinpup_current_credit_lines" in current and "business_refunds" in current
     assert snapshot(s) == before
     assert pay(s, body) == saved
     assert snapshot(s) == before
