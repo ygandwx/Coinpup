@@ -3960,6 +3960,210 @@
         "title": "CreditCorrectionCreate",
         "type": "object"
       },
+      "CreditCurrent": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "credit_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Date"
+          },
+          "credit_id": {
+            "format": "uuid",
+            "title": "Credit Id",
+            "type": "string"
+          },
+          "credit_reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Reason"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/CreditCurrentMember"
+            },
+            "maxItems": 200,
+            "title": "Members",
+            "type": "array"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "revision_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Reason"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "credit_id",
+          "ledger_id",
+          "document_id",
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "version",
+          "status",
+          "revision_id",
+          "revision_reason",
+          "credit_date",
+          "credit_reason",
+          "members"
+        ],
+        "title": "CreditCurrent",
+        "type": "object"
+      },
+      "CreditCurrentMember": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "operation_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Total Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_line_id",
+          "source_operation_id",
+          "operation_id",
+          "operation_version",
+          "journal_id",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "recognition_date"
+        ],
+        "title": "CreditCurrentMember",
+        "type": "object"
+      },
       "CreditDetail": {
         "properties": {
           "asset_id": {
@@ -12046,6 +12250,60 @@
           }
         },
         "summary": "Correct",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/current": {
+      "get": {
+        "description": "Read the complete current group; this never proves an unknown command result.",
+        "operationId": "current_api_v1_ledgers__ledger_id__business_credits__credit_id__current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCurrent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current",
         "tags": [
           "business settlements"
         ]
