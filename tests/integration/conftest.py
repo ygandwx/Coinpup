@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261106_0043",)
+        assert context.get_current_heads() == ("20261106_0044",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261106_0043",)
+        assert context.get_current_heads() == ("20261106_0044",)
 
 
 def confirmation_schema_migration():
@@ -213,13 +213,32 @@ def refund_storage_migration():
     )
 
 
-def credit_fact_migration():
+def credit_group_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261106_0044_credit_group_transitions.py"
+        )
+    )
+
+
+def credit_fact_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261106_0043_credit_fact_validation.py"
         )
     )
+
+    def downgrade():
+        credit_group_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        credit_group_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def credit_projection_migration():

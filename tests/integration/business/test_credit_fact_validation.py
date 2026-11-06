@@ -380,6 +380,7 @@ def test_empty_fact_migration_round_trip_preserves_all_original_functions_and_re
                     name in body.split("\n", 1)[0]
                     for name in (
                         "coinpup_validate_credit_origin_facts",
+                        "coinpup_validate_credit_group_transitions",
                         "coinpup_validate_credit_posting_fact",
                     )
                 )
