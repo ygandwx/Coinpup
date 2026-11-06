@@ -22,7 +22,8 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert len(set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])) == 36
     assert set(get_args(EntityType)) == (
-        set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"]) | {"business_credit_revisions"}
+        set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])
+        | {"business_credit_revisions", "business_credit_revision_members"}
     )
     frozen = " ".join(migration["_SCHEMA_SQL"].split())
     for model in (BusinessCredit, BusinessCreditLine):
@@ -38,5 +39,5 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
         elif isinstance(node, ast.Import):
             raise AssertionError("Migration imports runtime code")
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261106_0040"]
+    assert scripts.get_heads() == ["20261106_0041"]
     assert scripts.get_revision("20261021_0037").down_revision == "20261015_0036"

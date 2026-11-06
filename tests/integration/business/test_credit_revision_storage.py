@@ -210,6 +210,7 @@ def test_empty_revision_round_trip_preserves_existing_credit_receipts_and_financ
                     "coinpup_guard_credit_revision",
                     "coinpup_validate_credit_revision",
                     "coinpup_check_credit_revision",
+                    "coinpup_check_credit_revision_member",
                 )
             )
         ]
