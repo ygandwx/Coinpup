@@ -21,6 +21,15 @@ export type FrozenCreditRevision = FrozenCredit &
         action: CreditRevisionAction;
         creditId: string;
     }>;
+export function isCreditRevisionPlan(plan: FrozenCredit | null): plan is FrozenCreditRevision {
+    return (
+        plan !== null &&
+        "action" in plan &&
+        (plan.action === "correct" || plan.action === "cancel") &&
+        "creditId" in plan &&
+        typeof plan.creditId === "string"
+    );
+}
 // Python str.strip includes NEL and separators U+001C..001F, but preserves BOM.
 export function stripCreditRevisionReason(value: string): string {
     const space = (char: string) =>
