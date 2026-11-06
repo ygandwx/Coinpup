@@ -22,7 +22,10 @@ from sqlalchemy import event, insert, select, text
 from sqlalchemy.exc import IntegrityError
 
 from tests.integration.business.test_credit_revision_member_storage import member
-from tests.integration.business.test_credit_revision_storage import definitions
+from tests.integration.business.test_credit_revision_storage import (
+    definitions,
+    previous_capacity_definitions,
+)
 from tests.integration.business.test_credit_revision_storage import revision as revision
 from tests.integration.business.test_credit_service import credit, setup_credit
 from tests.integration.business.test_draft_service import drafts as drafts
@@ -240,8 +243,10 @@ def test_candidate_scope_includes_new_sources_absent_from_original_credit(drafts
             )
             == []
         )
-        # Existing readers are deliberately not wired to incomplete projected revisions.
-        assert document_totals(connection, s["ledger"], [source.line_id]) == {}
+        # Current capacity now shares the projection, but the candidate still cannot commit.
+        assert document_totals(connection, s["ledger"], [source.line_id]) == {
+            source.line_id: (Decimal("0"), Decimal("1"), Decimal("0"))
+        }
         gated(connection)
         transaction.rollback()
     assert snapshot(s) == before
@@ -305,6 +310,7 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
+        previous, _ = previous_capacity_definitions(connection)
         assert (
             connection.exec_driver_sql(
                 "SELECT provolatile, prosecdef, proconfig FROM pg_proc p "
@@ -318,7 +324,7 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
         remaining, old_triggers = definitions(connection)
         assert remaining == [
             body
-            for body in functions
+            for body in previous
             if not any(
                 name in body.split("\n", 1)[0]
                 for name in (
