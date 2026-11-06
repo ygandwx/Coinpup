@@ -307,6 +307,7 @@ def test_empty_member_schema_round_trip_preserves_header_gate_and_old_receipts(r
                 for name in (
                     "coinpup_check_credit_revision_member",
                     "coinpup_validate_credit_origin_facts",
+                    "coinpup_validate_credit_group_transitions",
                     "coinpup_validate_credit_posting_fact",
                     "coinpup_credit_posting_facts",
                     "coinpup_current_credit_lines",

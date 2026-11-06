@@ -215,6 +215,7 @@ def test_empty_revision_round_trip_preserves_existing_credit_receipts_and_financ
                     "coinpup_check_credit_revision",
                     "coinpup_check_credit_revision_member",
                     "coinpup_validate_credit_origin_facts",
+                    "coinpup_validate_credit_group_transitions",
                     "coinpup_validate_credit_posting_fact",
                     "coinpup_credit_posting_facts",
                     "coinpup_current_credit_lines",
