@@ -12,6 +12,7 @@ import { isCreditRevisionPlan } from "./credit-revision-intent";
 import type { PendingBusinessCreditController } from "./pending-business-credit";
 import { BusinessCreditForm } from "./BusinessCreditForm";
 import { BusinessCreditResult } from "./BusinessCreditResult";
+import { BusinessCreditRevisionPanel } from "./BusinessCreditRevisionPanel";
 import { creditError } from "./credit-errors";
 import { localDraftDate } from "./draft-fields";
 import { formatAmount } from "./money";
@@ -45,6 +46,15 @@ export function BusinessCreditPanel({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
+    const scope = `${session.user.id}/${ledgerId}`;
+    const [revisionTarget, setRevisionTarget] = useState<{ scope: string; id: string } | null>(
+        null,
+    );
+    const revisionCredit = isCreditRevisionPlan(plan)
+        ? plan.creditId
+        : revisionTarget?.scope === scope
+          ? revisionTarget.id
+          : null;
     const [mode, setMode] = useState<"sources" | "history">("sources");
     const [offset, setOffset] = useState(0),
         [refresh, setRefresh] = useState(0);
@@ -61,7 +71,7 @@ export function BusinessCreditPanel({
     const callbacks = useRef({ onEditing, onUnauthorized, onSaved, assets });
     callbacks.current = { onEditing, onUnauthorized, onSaved, assets };
     const key = `${ledgerId}/${mode}/${target ?? offset}`;
-    const open = !!target || !!plan;
+    const open = !!target || !!plan || !!revisionCredit;
     useEffect(() => {
         callbacks.current.onEditing(open);
         return () => callbacks.current.onEditing(false);
@@ -70,7 +80,7 @@ export function BusinessCreditPanel({
         if (pending.status === "auth-required") callbacks.current.onUnauthorized();
     }, [pending.status]);
     useEffect(() => {
-        if (plan || (mode === "sources" && target)) return;
+        if (plan || revisionCredit || (mode === "sources" && target)) return;
         const abort = new AbortController();
         async function read() {
             if (target) {
@@ -105,8 +115,8 @@ export function BusinessCreditPanel({
             else setFailure({ key, error: caught });
         });
         return () => abort.abort();
-    }, [ledgerId, mode, offset, target, key, refresh, plan]);
-    const needsSource = mode === "sources" && !!target && !plan && !dataLoading;
+    }, [ledgerId, mode, offset, target, key, refresh, plan, revisionCredit]);
+    const needsSource = mode === "sources" && !!target && !plan && !revisionCredit && !dataLoading;
     useEffect(() => {
         if (!needsSource || !target) return;
         const abort = new AbortController();
@@ -197,7 +207,30 @@ export function BusinessCreditPanel({
     return (
         <section className="credit-form" aria-label={t("贷项", "Credits")}>
             <h2>{t("贷项", "Credits")}</h2>
-            {plan ? (
+            {revisionCredit ? (
+                <BusinessCreditRevisionPanel
+                    key={`${scope}/${revisionCredit}`}
+                    ledgerId={ledgerId}
+                    creditId={revisionCredit}
+                    session={session}
+                    locale={locale}
+                    controller={controller}
+                    assets={assets}
+                    categories={categories}
+                    archived={archived}
+                    dataLoading={dataLoading}
+                    onUnauthorized={onUnauthorized}
+                    onKeepTarget={() => setRevisionTarget({ scope, id: revisionCredit })}
+                    onBack={() => {
+                        setRevisionTarget(null);
+                        setMode("history");
+                        setTarget(revisionCredit);
+                        setError(null);
+                        setRefresh((value) => value + 1);
+                    }}
+                    onSaved={() => callbacks.current.onSaved()}
+                />
+            ) : plan ? (
                 !isCreditRevisionPlan(plan) && (
                     <BusinessCreditResult
                         pending={pending}
@@ -280,6 +313,12 @@ export function BusinessCreditPanel({
                         )
                     ) : data?.detail ? (
                         <>
+                            <button
+                                type="button"
+                                onClick={() => setRevisionTarget({ scope, id: data.detail!.id })}
+                            >
+                                {t("当前状态与更正取消", "Current state and credit revisions")}
+                            </button>
                             <p>
                                 {data.detail.credit_date} · {data.detail.reason}
                             </p>
