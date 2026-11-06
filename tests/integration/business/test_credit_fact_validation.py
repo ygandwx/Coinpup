@@ -381,6 +381,8 @@ def test_empty_fact_migration_round_trip_preserves_all_original_functions_and_re
                     for name in (
                         "coinpup_validate_credit_origin_facts",
                         "coinpup_validate_credit_group_transitions",
+                        "coinpup_business_credit_revision_response",
+                        "coinpup_validate_credit_revision_receipt",
                         "coinpup_validate_credit_posting_fact",
                     )
                 )
