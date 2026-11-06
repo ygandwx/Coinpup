@@ -16,9 +16,11 @@ from tests.integration.business.test_credit_service import credit, setup_credit
 
 def group(s, *, kind="invoice", count=3, selected=2):
     document, _, confirmed, request = setup_credit(s, kind, count=count)
-    original = credit(s, request.model_copy(update={"lines": request.lines[:selected]}))
+    request = request.model_copy(update={"lines": request.lines[:selected]})
+    original = credit(s, request)
     return dict(
         original=original,
+        request=request,
         source_operations={row.line_id: row.operation_id for row in confirmed.postings},
         source_ids=[row.id for row in document.lines],
         current={
@@ -39,6 +41,7 @@ def transition(
     header_changes=None,
     member_changes=None,
     journal_changes=None,
+    posting_line_changes=None,
     keep_head=False,
 ):
     original, old = state["original"], state["current"]
@@ -127,7 +130,7 @@ def transition(
                     description=header["credit_reason"],
                     revision_reason=header["revision_reason"] if prior else None,
                 ),
-                line_changes={"document_line_id": source},
+                line_changes={"document_line_id": source} | (posting_line_changes or {}),
             )
         if prior:
             copy_posting(
