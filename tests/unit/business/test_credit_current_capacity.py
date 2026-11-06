@@ -16,16 +16,22 @@ def test_current_capacity_keeps_exact_frozen_shape_and_refund_checks():
         migration["_OLD_CREDIT"]
         == credit["_VALIDATION"].split("CREATE FUNCTION coinpup_validate_shape_credit")[0]
     )
-    for target, count in (("ALLOCATION", 1), ("CREDIT", 3)):
+    for target in ("ALLOCATION", "CREDIT"):
         old, current = migration["_OLD_" + target], migration["_" + target]
-        assert old.count(migration["_" + target + "_SOURCE"]) == count
-        assert current.count(migration["_" + target + "_CURRENT"]) == count
-        assert (
-            current.replace(
-                migration["_" + target + "_CURRENT"], migration["_" + target + "_SOURCE"]
-            )
-            == old
-        )
+        assert current.count("public.coinpup_current_credit_lines(") == 1
+        assert "WITH credit_totals AS MATERIALIZED (" in current
+        assert "GROUP BY c.source_line_id" in current
+        assert "LEFT JOIN credit_totals credits" in current
+        assert "credits.total_amount AS current_credit_total" in current
+        assert "ARRAY[item." not in current
+        for source, replacement in reversed(migration["_" + target + "_REPLACEMENTS"]):
+            assert current.count(replacement) == 1
+            current = current.replace(replacement, source)
+        assert current == old  # All old IF positions, errors, refund and NULL semantics are frozen.
+    assert "coalesce(item.current_credit_total,0)" in migration["_ALLOCATION"]
+    for component in ("net", "tax", "total"):
+        assert f"credits.{component}_amount AS current_credit_{component}" in migration["_CREDIT"]
+        assert f"coalesce(item.current_credit_{component}" not in migration["_CREDIT"]
     assert migration["down_revision"] == "20261106_0045"
     assert "item.operation_version IS DISTINCT FROM 1" in migration["_CREDIT"]
     assert "item.status IS DISTINCT FROM 'active'" in migration["_CREDIT"]

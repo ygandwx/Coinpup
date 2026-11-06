@@ -278,25 +278,62 @@ END; $$;
 
 """
 
-_ALLOCATION_SOURCE = (
-    "FROM public.business_credit_lines c\n"
-    "                 WHERE c.source_line_id=item.document_line_id\n"
-    "                   AND c.ledger_id=allocation.ledger_id"
-)
-_ALLOCATION_CURRENT = (
-    "FROM public.coinpup_current_credit_lines(\n"
-    "                 allocation.ledger_id,ARRAY[item.document_line_id]) c"
-)
-_CREDIT_SOURCE = (
-    "FROM public.business_credit_lines c\n"
-    "               WHERE c.source_line_id=item.source_line_id AND c.ledger_id=entry.ledger_id"
-)
-_CREDIT_CURRENT = (
-    "FROM public.coinpup_current_credit_lines(\n"
-    "               entry.ledger_id,ARRAY[item.source_line_id]) c"
-)
-_ALLOCATION = _OLD_ALLOCATION.replace(_ALLOCATION_SOURCE, _ALLOCATION_CURRENT)
-_CREDIT = _OLD_CREDIT.replace(_CREDIT_SOURCE, _CREDIT_CURRENT)
+# Each validator projects all requested sources once; LEFT JOIN preserves empty SUM semantics.
+_ALLOCATION_REPLACEMENTS = [
+    (
+        "FOR item IN SELECT l.*,",
+        """FOR item IN WITH credit_totals AS MATERIALIZED (
+        SELECT c.source_line_id, sum(c.total_amount) AS total_amount
+        FROM public.coinpup_current_credit_lines(allocation.ledger_id,ARRAY(
+            SELECT document_line_id FROM public.business_allocation_lines
+            WHERE allocation_id=allocation.id)) c GROUP BY c.source_line_id
+    ) SELECT l.*, credits.total_amount AS current_credit_total,""",
+    ),
+    (
+        "WHERE l.allocation_id=allocation.id LOOP",
+        """LEFT JOIN credit_totals credits
+          ON credits.source_line_id=l.document_line_id
+        WHERE l.allocation_id=allocation.id LOOP""",
+    ),
+    (
+        """(SELECT coalesce(sum(c.total_amount),0) FROM public.business_credit_lines c
+                 WHERE c.source_line_id=item.document_line_id
+                   AND c.ledger_id=allocation.ledger_id)""",
+        "coalesce(item.current_credit_total,0)",
+    ),
+]
+_CREDIT_REPLACEMENTS = [
+    (
+        "FOR item IN SELECT l.*,",
+        """FOR item IN WITH credit_totals AS MATERIALIZED (
+        SELECT c.source_line_id, sum(c.net_amount) AS net_amount,
+            sum(c.tax_amount) AS tax_amount, sum(c.total_amount) AS total_amount
+        FROM public.coinpup_current_credit_lines(entry.ledger_id,ARRAY(
+            SELECT source_line_id FROM public.business_credit_lines WHERE credit_id=entry.id)) c
+        GROUP BY c.source_line_id
+    ) SELECT l.*, credits.net_amount AS current_credit_net,
+        credits.tax_amount AS current_credit_tax, credits.total_amount AS current_credit_total,""",
+    ),
+    (
+        "WHERE l.credit_id=entry.id LOOP",
+        """LEFT JOIN credit_totals credits
+          ON credits.source_line_id=l.source_line_id
+        WHERE l.credit_id=entry.id LOOP""",
+    ),
+]
+for component in ("net", "tax", "total"):
+    _CREDIT_REPLACEMENTS.append(
+        (
+            f"""(SELECT sum(c.{component}_amount) FROM public.business_credit_lines c
+               WHERE c.source_line_id=item.source_line_id AND c.ledger_id=entry.ledger_id)""",
+            f"item.current_credit_{component}",
+        )
+    )
+_ALLOCATION, _CREDIT = _OLD_ALLOCATION, _OLD_CREDIT
+for source, current in _ALLOCATION_REPLACEMENTS:
+    _ALLOCATION = _ALLOCATION.replace(source, current)
+for source, current in _CREDIT_REPLACEMENTS:
+    _CREDIT = _CREDIT.replace(source, current)
 
 
 def upgrade():
