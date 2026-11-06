@@ -13,6 +13,7 @@ import type { CreditRevisionEditor } from "./credit-revision-review-loader";
 import { checkedCreditCurrent, loadCreditRevisionEditor } from "./credit-revision-review-loader";
 import { BusinessCreditRevisionForm } from "./BusinessCreditRevisionForm";
 import { BusinessCreditRevisionResult } from "./BusinessCreditRevisionResult";
+import { BusinessCreditRevisionHistoryPanel } from "./BusinessCreditRevisionHistoryPanel";
 import { creditRevisionError } from "./credit-revision-errors";
 
 export function BusinessCreditRevisionPanel({
@@ -64,6 +65,7 @@ export function BusinessCreditRevisionPanel({
         null,
     );
     const [editor, setEditor] = useState<CreditRevisionEditor | null>(null);
+    const [history, setHistory] = useState<{ documentId: string; assetId: string } | null>(null);
     const [busy, setBusy] = useState(false);
     const [readyRequest, setReadyRequest] = useState<typeof request | null>(null);
     const sourceReady = readyRequest === request;
@@ -83,7 +85,7 @@ export function BusinessCreditRevisionPanel({
         };
     }, [request]);
     useEffect(() => {
-        if (pending.plan || pending.status === "auth-required" || editor) return;
+        if (pending.plan || pending.status === "auth-required" || editor || history) return;
         const abort = new AbortController();
         getCreditCurrent(ledgerId, creditId, abort.signal)
             .then((value) => {
@@ -100,7 +102,7 @@ export function BusinessCreditRevisionPanel({
                 else setFailure({ request, error });
             });
         return () => abort.abort();
-    }, [ledgerId, creditId, request, pending.plan, pending.status, editor]);
+    }, [ledgerId, creditId, request, pending.plan, pending.status, editor, history]);
     function fail(error: unknown) {
         if (!active.current || latest.current.request !== request) return;
         if (error instanceof ApiError && error.status === 401) latest.current.onUnauthorized();
@@ -249,6 +251,28 @@ export function BusinessCreditRevisionPanel({
                         {t("放弃编辑，返回当前状态", "Discard edits and return to current state")}
                     </button>
                 </>
+            ) : history ? (
+                <>
+                    <BusinessCreditRevisionHistoryPanel
+                        ledgerId={ledgerId}
+                        creditId={creditId}
+                        documentId={history.documentId}
+                        assetId={history.assetId}
+                        session={session}
+                        locale={locale}
+                        available
+                        onUnauthorized={onUnauthorized}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setHistory(null);
+                            setRefresh((value) => value + 1);
+                        }}
+                    >
+                        {t("返回当前状态", "Back to current state")}
+                    </button>
+                </>
             ) : (
                 <>
                     {current ? (
@@ -273,6 +297,19 @@ export function BusinessCreditRevisionPanel({
                                     "Current state cannot prove the outcome of an unknown request. Original creation details and receipts remain unchanged.",
                                 )}
                             </p>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => {
+                                    setHistory({
+                                        documentId: current.document_id,
+                                        assetId: current.asset_id,
+                                    });
+                                    setFailure(null);
+                                }}
+                            >
+                                {t("查看版本历史", "View version history")}
+                            </button>
                             {current.status === "active" && (
                                 <div className="form-actions">
                                     <button
