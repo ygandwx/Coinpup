@@ -23,6 +23,7 @@ from check_business_confirmation_restore import (
 from check_business_settlement_restore import seed_business_settlements, verify_business_settlements
 from check_control_restore import seed_controls, verify_controls
 from check_credit_restore import seed_credits, verify_credits
+from check_credit_revision_restore import seed_credit_revisions, verify_credit_revisions
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
@@ -361,6 +362,14 @@ def check_bundle_restore(source_url):
             allocation_returns = seed_allocation_returns(engine, owner)
             business_refunds = seed_refunds(engine, owner)
             business_credits = seed_credits(engine, owner)
+            credit_revisions = seed_credit_revisions(
+                engine,
+                owner,
+                service,
+                store,
+                fictional_pdf("Fictional credit revision evidence 2026-11-04 USD 20.00"),
+                upload_fixture,
+            )
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -434,9 +443,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                # Deduplication is ledger-scoped; each bank copy adds its own private blob.
-                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 5.")
-                if len(manifest["blobs"]) != 5 or manifest["stored_files"] != [
+                # Ledger-scoped bank copies plus one revision-born member's private PDF.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 6.")
+                if len(manifest["blobs"]) != 6 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
@@ -461,11 +470,19 @@ def check_bundle_restore(source_url):
             verify_allocation_returns(restored_engine, allocation_returns)
             verify_refunds(restored_engine, business_refunds)
             verify_credits(restored_engine, business_credits)
+            verify_credit_revisions(restored_engine, credit_revisions)
             verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
             blob_names = set((restored_storage / "blobs").iterdir())
-            for fixture in (first, second, picture, duplicate, *payment_evidence["originals"]):
+            for fixture in (
+                first,
+                second,
+                picture,
+                duplicate,
+                *payment_evidence["originals"],
+                *credit_revisions["originals"],
+            ):
                 file, key = restored_service.get_download(
                     owner, fixture["ledger"], fixture["receipt"].file_id
                 )
@@ -546,6 +563,11 @@ def check_bundle_restore(source_url):
             print(
                 "Manual partial/final net and tax credits restored after explicit returns/refunds; "
                 "cash unchanged; original confirmation/settlement/credit receipts replay exactly."
+            )
+            print(
+                "Complete invoice/bill credit revisions and terminal cancellation restored; "
+                "original 201 and every historical 200 replay with no table or change-page writes. "
+                "Private evidence for a cancelled revision-born member remains ledger-isolated."
             )
             print(
                 "Actual payments, independent fees, partial same/cross-asset allocations and "
