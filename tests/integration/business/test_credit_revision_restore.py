@@ -41,6 +41,14 @@ def test_closed_archived_credit_revisions_and_new_member_files_replay_without_an
     }
     with s["engine"].connect() as connection:
         for case in evidence["groups"]:
+            observed = case["expected"]
+            assert observed["api_current"]["status"] == (
+                "cancelled" if case is invoice else "active"
+            )
+            assert [row["version"] for row in observed["api_history"]] == [1, 2, 3, 4]
+            assert observed["api_revisions"] == tuple(
+                item["result"].model_dump(mode="json") for item in case["revisions"]
+            )
             assert (
                 connection.scalar(select(Entity.archived).where(Entity.id == case["entity"]))
                 == case["archived"]

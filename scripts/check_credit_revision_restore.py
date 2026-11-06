@@ -11,6 +11,8 @@ from coinpup_api.business.confirmation_schemas import BusinessConfirmationCreate
 from coinpup_api.business.confirmations import BusinessConfirmationService
 from coinpup_api.business.credit_reads import BusinessCreditReads
 from coinpup_api.business.credit_revision_current import read_current_credit
+from coinpup_api.business.credit_revision_history_reads import BusinessCreditHistory
+from coinpup_api.business.credit_revision_reads import BusinessCreditRevisionReads
 from coinpup_api.business.credit_revision_receipts import response_from_rows
 from coinpup_api.business.credit_revision_schemas import (
     CreditCancellationCreate,
@@ -51,8 +53,17 @@ def invoke(service, method, owner, ledger, case, identifier=None):
 
 
 def observations(engine, owner, case):
-    """All helper reads use an authorized read-only snapshot; command replay is separate."""
+    """Quiescent restore checks; each public service owns its authorized read-only snapshot."""
     ledger, original = case["ledger"], case["credit"]["result"]
+    api_current = BusinessCreditRevisionReads(engine).current(owner, ledger, original.id)
+    history = BusinessCreditHistory(engine)
+    api_history = history.list_history(owner, ledger, original.id, limit=200)
+    api_revisions = tuple(
+        history.get_revision(owner, ledger, original.id, item["result"].revision_id).model_dump(
+            mode="json"
+        )
+        for item in case["revisions"]
+    )
     structure = LedgerService(engine)
     with structure._transaction(owner, read_only=True) as session:
         structure._ledger(session, owner, ledger)
@@ -97,6 +108,9 @@ def observations(engine, owner, case):
             fixed=fixed,
             operations=operations,
             notifications=notifications,
+            api_current=api_current.model_dump(mode="json"),
+            api_history=tuple(entry.model_dump(mode="json") for entry in api_history),
+            api_revisions=api_revisions,
         )
 
 
@@ -239,6 +253,47 @@ def seed_group(engine, owner, kind, files, store, pdf, upload):
         ),
     )
     expected = observations(engine, owner, case)
+    api_current = expected["api_current"]
+    if (
+        (api_current["credit_id"], api_current["ledger_id"], api_current["document_id"])
+        != (str(original.id), str(ledger), str(document.id))
+        or api_current["version"] != expected["version"]
+        or (api_current["status"] == "cancelled") != expected["cancelled"]
+        or [
+            (
+                row["source_line_id"],
+                row["operation_id"],
+                row["operation_version"],
+                row["journal_id"],
+            )
+            for row in api_current["members"]
+        ]
+        != [
+            (
+                str(row["source_line_id"]),
+                str(row["operation_id"]),
+                row["operation_version"],
+                str(row["journal_id"]),
+            )
+            for row in expected["facts"]
+        ]
+        or [
+            (row["version"], row["action"], row["revision_id"], row["reason"])
+            for row in expected["api_history"]
+        ]
+        != [(1, "create", None, creation["payload"].reason)]
+        + [
+            (
+                item["result"].version,
+                item["action"],
+                str(item["result"].revision_id),
+                item["result"].reason,
+            )
+            for item in revisions
+        ]
+        or expected["api_revisions"] != expected["fixed"]
+    ):
+        raise RuntimeError("Public credit reads differ from the complete group or frozen receipts")
     if expected["version"] != 4 or expected["notifications"] != (
         (1, "upsert"),
         (2, "upsert"),
