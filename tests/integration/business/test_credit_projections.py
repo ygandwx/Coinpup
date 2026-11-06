@@ -310,7 +310,7 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
-        previous, _ = previous_capacity_definitions(connection)
+        previous, previous_triggers = previous_capacity_definitions(connection)
         assert (
             connection.exec_driver_sql(
                 "SELECT provolatile, prosecdef, proconfig FROM pg_proc p "
@@ -338,7 +338,7 @@ def test_empty_projection_migration_keeps_original_sql_and_receipts_exact(revisi
                 )
             )
         ]
-        assert old_triggers == triggers
+        assert old_triggers == previous_triggers
         migration["upgrade"]()
         assert definitions(connection) == (functions, triggers)
     assert credit(s, request) == original

@@ -486,7 +486,7 @@ def test_unknown_identifiers_and_empty_roundtrip_preserve_old_functions_and_orig
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
-        previous, _ = previous_capacity_definitions(connection)
+        previous, previous_triggers = previous_capacity_definitions(connection)
         migration = credit_receipt_migration()
         migration["downgrade"]()
         assert definitions(connection) == (
@@ -495,7 +495,7 @@ def test_unknown_identifiers_and_empty_roundtrip_preserve_old_functions_and_orig
                 for body in previous
                 if not any(name in body.split("\n", 1)[0] for name in FUNCTIONS)
             ],
-            triggers,
+            previous_triggers,
         )
         migration["upgrade"]()
         assert definitions(connection) == (functions, triggers)
