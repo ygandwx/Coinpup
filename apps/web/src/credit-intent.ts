@@ -17,15 +17,15 @@ export type FrozenCredit = Readonly<{
     bodyJson: string;
     reviewedJson: string;
 }>;
-const record = (v: unknown): v is Record<string, unknown> =>
+export const record = (v: unknown): v is Record<string, unknown> =>
     v !== null && typeof v === "object" && !Array.isArray(v);
-const uuid = (v: unknown): v is string =>
+export const uuid = (v: unknown): v is string =>
     typeof v === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(v);
-const keys = (v: Record<string, unknown>, names: string[]) =>
+export const keys = (v: Record<string, unknown>, names: string[]) =>
     Object.keys(v).every((key) => names.includes(key));
-const date = (v: unknown): v is string => typeof v === "string" && validDraftDate(v);
-const quantity = (v: unknown, scale: number): bigint => {
+export const date = (v: unknown): v is string => typeof v === "string" && validDraftDate(v);
+export const quantity = (v: unknown, scale: number): bigint => {
     if (typeof v !== "string" || !Number.isInteger(scale) || scale < 0 || scale > 18)
         throw new Error("Invalid quantity");
     const amount = parseAmount(v, scale);
