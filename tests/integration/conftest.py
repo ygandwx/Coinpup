@@ -33,7 +33,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261106_0040",)
+        assert context.get_current_heads() == ("20261106_0041",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +42,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261106_0040",)
+        assert context.get_current_heads() == ("20261106_0041",)
 
 
 def confirmation_schema_migration():
@@ -213,13 +213,32 @@ def refund_storage_migration():
     )
 
 
-def credit_revision_migration():
+def credit_revision_member_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261106_0041_credit_revision_members.py"
+        )
+    )
+
+
+def credit_revision_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261106_0040_credit_revision_headers.py"
         )
     )
+
+    def downgrade():
+        credit_revision_member_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        credit_revision_member_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def credit_validation_migration():
@@ -430,7 +449,7 @@ def _restore_current_change_types(connection):
     connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
     connection.exec_driver_sql(
         "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-        f"(entity_type IN ({credit_revision_migration()['_ENTITY_TYPES']}))"
+        f"(entity_type IN ({credit_revision_member_migration()['_ENTITY_TYPES']}))"
     )
 
 
@@ -461,6 +480,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | refund_storage_migration()["_CHANGE_TRIGGER_SQL"]
             | credit_storage_migration()["_CHANGE_TRIGGER_SQL"]
             | credit_revision_migration()["_CHANGE_TRIGGER_SQL"]
+            | credit_revision_member_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -498,7 +518,8 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
-                "business_credit_revisions, business_credit_lines, business_credits, "
+                "business_credit_revision_members, business_credit_revisions, "
+                "business_credit_lines, business_credits, "
                 "business_refund_returns, business_refunds, "
                 "business_allocation_return_lines, business_allocation_returns, "
                 "business_allocation_lines, business_allocations, business_payments, "
