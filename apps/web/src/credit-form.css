@@ -1,0 +1,29 @@
+.credit-form {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.credit-form > fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.credit-form .check-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 18px;
+}
+.credit-form .check-row input {
+    flex: none;
+    width: auto;
+}
+@media (max-width: 600px) {
+    .credit-form .form-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .credit-form .form-actions > button {
+        width: 100%;
+    }
+}
