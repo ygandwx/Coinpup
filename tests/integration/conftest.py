@@ -2,6 +2,7 @@
 
 import os
 import runpy
+from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -33,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261106_0047",)
+        assert context.get_current_heads() == ("20261106_0048",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -42,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261106_0047",)
+        assert context.get_current_heads() == ("20261106_0048",)
 
 
 def confirmation_schema_migration():
@@ -213,13 +214,37 @@ def refund_storage_migration():
     )
 
 
-def credit_revision_guards_migration():
+_CREDIT_HISTORY_LAYER = ContextVar("credit_history_layer", default=False)
+
+
+def credit_lifecycle_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261106_0048_credit_revision_lifecycle.py"
+        )
+    )
+
+
+def credit_revision_guards_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261106_0047_credit_revision_guards.py"
         )
     )
+
+    def downgrade():
+        if not _CREDIT_HISTORY_LAYER.get():
+            credit_lifecycle_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        if not _CREDIT_HISTORY_LAYER.get():
+            credit_lifecycle_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def credit_current_capacity_migration():
@@ -680,9 +705,36 @@ def structure_database(request):
         == "test_scoped_migration_guards_data_logs_and_restores_empty_schema"
         and request.node.path == Path(__file__).parent / "ocr/test_ocr_schema.py"
     )
+    credit_history = request.node.path.parent == Path(
+        __file__
+    ).parent / "business" and request.node.path.stem in {
+        "test_credit_revision_storage",
+        "test_credit_revision_member_storage",
+        "test_credit_projections",
+        "test_credit_fact_validation",
+        "test_credit_group_transitions",
+        "test_credit_revision_receipts",
+        "test_credit_current_capacity",
+        "test_credit_revision_guards",
+    }
+    credit_token = None
+    credit_definitions = None
     try:
         change_trigger_registration(database.engine)
         cleanup()
+        if credit_history:
+            from tests.integration.business.test_credit_revision_storage import definitions
+
+            with (
+                database.engine.begin() as connection,
+                Operations.context(MigrationContext.configure(connection)),
+            ):
+                assert MigrationContext.configure(connection).get_current_heads() == (
+                    "20261106_0048",
+                )
+                credit_definitions = definitions(connection)
+                credit_lifecycle_migration()["downgrade"]()
+            credit_token = _CREDIT_HISTORY_LAYER.set(True)
         owner = create_admin(
             database.engine, "structure-test-admin", "fictional-structure-password-2026"
         )
@@ -697,6 +749,19 @@ def structure_database(request):
             confirmation_detached = True
         yield database.engine, owner
     finally:
+        if credit_token is not None:
+            try:
+                with (
+                    database.engine.begin() as connection,
+                    Operations.context(MigrationContext.configure(connection)),
+                ):
+                    credit_lifecycle_migration()["upgrade"]()
+                    assert MigrationContext.configure(connection).get_current_heads() == (
+                        "20261106_0048",
+                    )
+                    assert definitions(connection) == credit_definitions
+            finally:
+                _CREDIT_HISTORY_LAYER.reset(credit_token)
         if ocr_detached:
             isolated_ocr_schema(database.engine, "upgrade")
         elif confirmation_detached:
