@@ -373,7 +373,7 @@ def test_empty_fact_migration_round_trip_preserves_all_original_functions_and_re
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
-        previous, _ = previous_capacity_definitions(connection)
+        previous, previous_triggers = previous_capacity_definitions(connection)
         migration = credit_fact_migration()
         migration["downgrade"]()
         assert definitions(connection) == (
@@ -391,7 +391,7 @@ def test_empty_fact_migration_round_trip_preserves_all_original_functions_and_re
                     )
                 )
             ],
-            triggers,
+            previous_triggers,
         )
         migration["upgrade"]()
         assert definitions(connection) == (functions, triggers)

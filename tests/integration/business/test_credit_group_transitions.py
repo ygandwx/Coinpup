@@ -241,7 +241,7 @@ def test_unknown_group_is_rejected_and_empty_migration_roundtrip_preserves_old_d
         Operations.context(MigrationContext.configure(connection)),
     ):
         functions, triggers = definitions(connection)
-        previous, _ = previous_capacity_definitions(connection)
+        previous, previous_triggers = previous_capacity_definitions(connection)
         migration = credit_group_migration()
         migration["downgrade"]()
         remaining, old_triggers = definitions(connection)
@@ -257,7 +257,7 @@ def test_unknown_group_is_rejected_and_empty_migration_roundtrip_preserves_old_d
                 )
             )
         ]
-        assert old_triggers == triggers
+        assert old_triggers == previous_triggers
         migration["upgrade"]()
         assert definitions(connection) == (functions, triggers)
         validate(connection, state["original"].id)
