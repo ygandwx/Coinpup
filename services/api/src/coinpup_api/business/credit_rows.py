@@ -12,6 +12,22 @@ from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_line
 
 def credit_rows(ledger_id, document, request, plan, account_id, catalog):
     operation_id, journal_id = uuid4(), uuid4()
+    return credit_rows_for_identity(
+        ledger_id,
+        document,
+        request,
+        plan,
+        account_id,
+        catalog,
+        operation_id=operation_id,
+        journal_id=journal_id,
+    )
+
+
+def credit_rows_for_identity(
+    ledger_id, document, request, plan, account_id, catalog, *, operation_id, journal_id
+):
+    """Reuse the existing two rows when a correction retains its operation identity."""
     scope = dict(
         journal_id=journal_id,
         ledger_id=ledger_id,
