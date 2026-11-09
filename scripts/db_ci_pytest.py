@@ -1,12 +1,17 @@
 """Opt-in CI plugin for the unchanged tests/integration -m integration selection."""
 
+import faulthandler
 import json
 import os
+import sys
 from pathlib import Path
+from threading import Timer
 
 import pytest
 
 from scripts.db_ci_manifest import check_part, github_sha, partition_for
+
+SLOW_TEST_SECONDS = 60
 
 
 def pytest_configure(config):
@@ -27,14 +32,18 @@ def pytest_configure(config):
     path = Path(destination)
     if path.exists():
         raise pytest.UsageError(f"DB check report already exists: {path}")
-    config.pluginmanager.register(DatabasePartition(int(part), sha, path))
+    # Keep the original stderr across per-test fd capture.
+    diagnostic = os.fdopen(os.dup(sys.__stderr__.fileno()), "w", encoding="utf-8")
+    config.add_cleanup(diagnostic.close)
+    config.pluginmanager.register(DatabasePartition(int(part), sha, path, diagnostic))
 
 
 class DatabasePartition:
-    def __init__(self, part, sha, destination):
+    def __init__(self, part, sha, destination, diagnostic):
         self.part = part
         self.sha = sha
         self.destination = destination
+        self.diagnostic = diagnostic
         self.manifest = []
         self.events = []
         self.collection_errors = []
@@ -56,6 +65,25 @@ class DatabasePartition:
             (keep if partition_for(item.nodeid) == self.part else other).append(item)
         config.hook.pytest_deselected(items=other)
         items[:] = keep
+
+    def dump_slow_test(self, nodeid):
+        print(
+            f"Slow PostgreSQL test after {SLOW_TEST_SECONDS}s: {nodeid}",
+            file=self.diagnostic,
+            flush=True,
+        )
+        # A Python thread holds the GIL during synchronous frame traversal on CPython 3.12.
+        faulthandler.dump_traceback(file=self.diagnostic, all_threads=True)
+
+    @pytest.hookimpl(wrapper=True)
+    def pytest_runtest_protocol(self, item):
+        timer = Timer(SLOW_TEST_SECONDS, self.dump_slow_test, (item.nodeid,))
+        timer.start()
+        try:
+            return (yield)
+        finally:
+            timer.cancel()
+            timer.join()
 
     def pytest_collectreport(self, report):
         if not report.passed:
