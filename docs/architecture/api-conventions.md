@@ -66,6 +66,10 @@ OCR确认增加明确`entry.kind="link_payment"`，选择已有付款和操作�
 
 同路径GET按`document_id`可选筛选，`limit`默认100、1–200，`offset`默认0、0–100000；稳定按created_at/id排序。`/{credit_id}`详情返回完整原回执。`/business-documents/{document_id}/credit-capacity`以同样分页提供原净/税/含税、累计贷净/税、净分摊、分别剩余净/税及可贷含税量；仅列已确认单据的正金额行，所有分页均在同一只读快照内，当前容量不代表旧提交成功。历史含归档资料，所有接口no-store且同账本鉴权；已有API和回执不补字段。服务层列表每页4次SELECT，非空容量页6次SELECT（含管理员存在性校验，不含HTTP会话验证；由集成测试验证），不随行数逐行查询。
 
+`POST /business-credits/{credit_id}/corrections`提交前一组expected_version、修订reason及完整非空replacement；`/cancellations`提交前一组版本和原因，整组终态取消。按[ADR0047](decisions/0047-credit-group-revisions.md)保留原组、全部旧回执及成员操作历史，新增成员使用新操作v1；普通财务更正、取消和历史入口仍不接受这些子操作。两命令均沿用会话、Origin/CSRF、账本键和绑定路径组ID的原JSON v2，成功及重放返回完整固定200（含全部前后成员及凭证映射），不自动退款或改写原201。
+
+原键优先于当前组版本、取消终态、归档、停用及期间检查；未知结果只能重试原键/原正文，当前容量或原详情不能证明本次修订成功。新意图检查全部原日期及替代日期，期间关闭需先显式重开。现有`/{credit_id}`仍返回不可变创建详情，不代表当前修订状态；接口字段以生成OpenAPI为准，全部响应no-store。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
