@@ -65,17 +65,19 @@ jobs:
       - run: npm run test:unit
       - run: npm run build
 
-  database:
-    name: PostgreSQL migrations and integration tests
+  database-parts:
+    name: PostgreSQL integration partition ${{ matrix.part }}
     runs-on: ubuntu-latest
-    # Full-suite progress has exceeded 30 minutes; allow bounded completion headroom.
-    # Keep every test, per-test assertion, diagnostic and cleanup step unchanged.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1]
     timeout-minutes: 40
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
       # A slow test prints its threads without interrupting setup, calls or teardown.
-      PYTEST_ADDOPTS: "-vv --durations=20 -o faulthandler_timeout=60"
+      PYTEST_ADDOPTS: "-vv --durations=20 -o faulthandler_timeout=60 -p scripts.db_ci_pytest"
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -93,13 +95,57 @@ jobs:
         run: python -m pip install -r requirements-dev.lock
       - name: Run disposable database checks
         # The pre-checkout service hook cannot use the existing official-image fallback.
-        # Start the identical pinned database after checkout, and retain every DB check.
+        # Each partition has its own database and exercises the complete migration round trip.
+        env:
+          COINPUP_DB_CI_PART: ${{ matrix.part }}
+          COINPUP_DB_CI_REPORT: ${{ runner.temp }}/part-${{ matrix.part }}.json
         run: |
           python -m scripts.start_database_ci
           python scripts/check.py db
       - name: Remove disposable database
         if: always()
         run: python -m scripts.start_database_ci --stop
+      - name: Save partition test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-ci-part-${{ matrix.part }}
+          path: ${{ runner.temp }}/part-${{ matrix.part }}.json
+          if-no-files-found: error
+          retention-days: 3
+          overwrite: true
+
+  database:
+    name: PostgreSQL migrations and integration tests
+    needs: database-parts
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both database partitions to succeed
+        env:
+          PARTS_RESULT: ${{ needs.database-parts.result }}
+        run: test "$PARTS_RESULT" = success
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: db-ci-part-0
+          path: ${{ runner.temp }}/db-ci-part-0
+      - uses: actions/download-artifact@v4
+        with:
+          name: db-ci-part-1
+          path: ${{ runner.temp }}/db-ci-part-1
+      - name: Verify complete integration test execution
+        run: >-
+          python -m scripts.db_ci_manifest verify
+          "$RUNNER_TEMP/db-ci-part-0/part-0.json"
+          "$RUNNER_TEMP/db-ci-part-1/part-1.json"
 
   container:
     name: Container, real browser login and backup restoration
