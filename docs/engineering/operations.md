@@ -180,7 +180,9 @@ CI 的 PostgreSQL 17、Node 24 和 Python 3.12 基础镜像使用固定摘要的
 
 浏览器 CI 用 `prepare_browser_ci_image.py --pull` 预取这三个固定镜像：优先官方 ECR，失败或120秒超时后仅回退一次至 Docker Hub 官方同名、同摘要镜像；两处均失败即停止。成功后生成仅含 PostgreSQL 镜像选择的 `build/compose.browser-images.yaml`，追加至该任务的 `COMPOSE_FILE`，并将所选 Node/Python 引用写入生成 Dockerfile。后续迁移及恢复复用同一覆盖；本地默认不预取，不更改部署/OCR镜像，不需要登录或凭据。
 
-独立数据库 CI 在 checkout 后用 `python -m scripts.start_database_ci` 复用同一固定 PostgreSQL 摘要与双源拉取规则，健康检查成功才运行原 `check.py db` 全套检查。容器仅绑定 runner 回环地址，使用明确虚构凭据；`--stop` 始终清理专用容器和临时卷，不执行全局 prune。CLI 拒绝非 GitHub Actions 环境；两源拉取失败或数据库未就绪均使任务失败，不跳过测试。四项必需检查名称与触发规则不变。
+数据库 CI 分成两个独立的 Ubuntu runner。各自在 checkout 后用 `python -m scripts.start_database_ci` 按固定摘要及双源拉取规则启动 PostgreSQL 17，健康检查成功后运行 `python scripts/check.py db`。两个分区都真实执行升级、空库降级、再次升级及模型一致性检查，然后各自执行所分配的集成测试。每个分区限时 40 分钟，失败时另一个继续。容器仅绑定 runner 回环地址，使用虚构凭据，结束时清理该容器和临时卷。启动脚本只在 GitHub Actions 中运行，镜像拉取或就绪失败会使该分区失败。
+
+两个分区分别上传本次提交的测试清单与执行结果，保存三天。重跑单个分区会替换该次工作流内的同名报告。四项必需检查沿用原名称和触发规则，其中 `PostgreSQL migrations and integration tests` 在两个分区成功后核对同次运行、同一 SHA 的报告，并验证完整收集范围内每个 nodeid 恰好执行一次且通过。任一分区失败、跳过、取消或报告缺失都无法通过。容器任务仍独立验证真实浏览器与空目标备份恢复。
 
 单元检查不需要 PostgreSQL：
 
