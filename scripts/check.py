@@ -3,6 +3,7 @@
 import argparse
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -175,7 +176,13 @@ def run_steps(steps: list[Step], root: Path, skipped: list[str]) -> int:
                 stdout=subprocess.DEVNULL if step.discard_stdout else None,
                 check=False,
             )
-            exit_code = result.returncode if result.returncode > 0 else int(result.returncode != 0)
+            exit_code = result.returncode
+            if os.name == "posix" and exit_code < 0:
+                signum = -exit_code
+                print(f"Child returncode {exit_code}, signal {signum} ({signal.strsignal(signum)})")
+                exit_code = 128 + signum
+            elif exit_code < 0:
+                exit_code = 1
         except OSError as error:
             print(f"Could not start check: {error}", flush=True)
             exit_code = 1

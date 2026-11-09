@@ -1,6 +1,7 @@
 """The check entry point must retain coverage and refuse implicit database targets."""
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -252,3 +253,15 @@ def test_changed_generated_types_fail_before_lint_or_build(monkeypatch, tmp_path
         ["fictional-npm.cmd", "--prefix", "apps/web", "run", "gen:api"],
         ["fictional-git.exe", "diff", "--exit-code", "apps/web/src/generated"],
     ]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX wait status")
+def test_signalled_child_reports_raw_wait_result_and_shell_status(tmp_path, capsys):
+    import signal
+
+    command = [sys.executable, "-c", "import os,signal;os.kill(os.getpid(),signal.SIGTERM)"]
+    assert checks.run_steps([checks.Step("Child", command)], tmp_path, []) == 128 + signal.SIGTERM
+    assert (
+        f"Child returncode {-signal.SIGTERM}, signal {int(signal.SIGTERM)}"
+        in capsys.readouterr().out
+    )

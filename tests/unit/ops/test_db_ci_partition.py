@@ -240,3 +240,23 @@ def test_partition_uses_module_sha256_low_bit_and_never_param_or_class_names():
     ]:
         with pytest.raises(ValueError):
             partition_for(invalid)
+
+
+def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_phases(tmp_path):
+    modules = suite(tmp_path)
+    (tmp_path / "conftest.py").write_text(
+        "from scripts import db_ci_pytest\ndb_ci_pytest.SLOW_TEST_SECONDS = 0.05\n"
+    )
+    file = modules / "test_first.py"
+    file.write_text(
+        "import pytest, time\n@pytest.mark.integration\n"
+        "def test_slow(): time.sleep(0.25)\n"
+        "@pytest.mark.integration\ndef test_fast(): pass\n"
+    )
+    node = "tests/integration/test_first.py::test_slow"
+    part = partition_for(node)
+    result, destination = run_part(tmp_path, part)
+    assert result.returncode == 0, result.stderr
+    assert f"Slow PostgreSQL test after 0.05s: {node}" in result.stderr
+    assert "in test_slow" in result.stderr
+    check_part(json.loads(destination.read_text()), part, SHA)

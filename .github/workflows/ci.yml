@@ -77,7 +77,7 @@ jobs:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
       # A slow test prints its threads without interrupting setup, calls or teardown.
-      PYTEST_ADDOPTS: "-vv --durations=20 -o faulthandler_timeout=60 -p scripts.db_ci_pytest"
+      PYTEST_ADDOPTS: "-vv --durations=20 -p scripts.db_ci_pytest"
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -101,7 +101,31 @@ jobs:
           COINPUP_DB_CI_REPORT: ${{ runner.temp }}/part-${{ matrix.part }}.json
         run: |
           python -m scripts.start_database_ci
-          python scripts/check.py db
+          /usr/bin/time -v python scripts/check.py db 2> >(tee "$RUNNER_TEMP/db-stderr.log" >&2)
+      - name: Capture failed partition diagnostics
+        if: failure()
+        run: |
+          group=$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)
+          for metric in memory.events memory.max memory.peak; do
+            file="/sys/fs/cgroup${group%/}/$metric"
+            if test -r "$file"; then echo "$metric"; cat "$file"; fi
+          done
+          df -h "$RUNNER_TEMP"
+          if docker container inspect coinpup-ci-postgres >/dev/null 2>&1; then
+            docker inspect --format 'PostgreSQL status={{.State.Status}} OOMKilled={{.State.OOMKilled}} exit={{.State.ExitCode}}' coinpup-ci-postgres
+            docker exec coinpup-ci-postgres pg_isready -U coinpup -d coinpup
+            docker exec coinpup-ci-postgres psql -X -U coinpup -d coinpup -c \
+              "SELECT deadlocks, temp_files, temp_bytes, sessions_fatal, sessions_killed FROM pg_stat_database WHERE datname = current_database()"
+          fi
+      - name: Save failed partition stderr
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-stderr-part-${{ matrix.part }}
+          path: ${{ runner.temp }}/db-stderr.log
+          retention-days: 3
+          overwrite: true
+          if-no-files-found: ignore
       - name: Remove disposable database
         if: always()
         run: python -m scripts.start_database_ci --stop
