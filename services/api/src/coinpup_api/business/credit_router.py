@@ -14,6 +14,8 @@ from coinpup_api.business.credit_read_schemas import (
     CreditSummary,
 )
 from coinpup_api.business.credit_reads import BusinessCreditReads
+from coinpup_api.business.credit_revision_read_schemas import CreditCurrent
+from coinpup_api.business.credit_revision_reads import BusinessCreditRevisionReads
 from coinpup_api.business.credit_revision_schemas import (
     CreditCancellationCreate,
     CreditCorrectionCreate,
@@ -33,6 +35,7 @@ def create_credit_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessCreditService(engine), BusinessCreditReads(engine)
     revisions = BusinessCreditRevisionService(engine)
+    revision_reads = BusinessCreditRevisionReads(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -139,6 +142,11 @@ def create_credit_router(settings, engine):
     @router.get("/business-credits/{credit_id}", response_model=CreditDetail)
     def detail(ledger_id: UUID, credit_id: UUID, identity: reader):
         return execute(reads.get_credit, identity.id, ledger_id, credit_id)
+
+    @router.get("/business-credits/{credit_id}/current", response_model=CreditCurrent)
+    def current(ledger_id: UUID, credit_id: UUID, identity: reader):
+        """Read the complete current group; this never proves an unknown command result."""
+        return execute(revision_reads.current, identity.id, ledger_id, credit_id)
 
     @router.get(
         "/business-documents/{document_id}/credit-capacity",

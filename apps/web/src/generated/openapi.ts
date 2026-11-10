@@ -483,6 +483,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current
+         * @description Read the complete current group; this never proves an unknown command result.
+         */
+        get: operations["current_api_v1_ledgers__ledger_id__business_credits__credit_id__current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents": {
         parameters: {
             query?: never;
@@ -3417,6 +3437,91 @@ export interface components {
             /** Reason */
             reason: string;
             replacement: components["schemas"]["CreditReplacement"];
+        };
+        /** CreditCurrent */
+        CreditCurrent: {
+            /** Asset Id */
+            asset_id: string;
+            /** Credit Date */
+            credit_date: string | null;
+            /**
+             * Credit Id
+             * Format: uuid
+             */
+            credit_id: string;
+            /** Credit Reason */
+            credit_reason: string | null;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Members */
+            members: components["schemas"]["CreditCurrentMember"][];
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Revision Reason */
+            revision_reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /** Version */
+            version: number;
+        };
+        /** CreditCurrentMember */
+        CreditCurrentMember: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /** Net Amount */
+            net_amount: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
         };
         /** CreditDetail */
         CreditDetail: {
@@ -7054,6 +7159,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreditRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_api_v1_ledgers__ledger_id__business_credits__credit_id__current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditCurrent"];
                 };
             };
             /** @description Validation Error */
