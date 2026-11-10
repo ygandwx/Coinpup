@@ -503,6 +503,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Credit History
+         * @description Page version metadata; load complete members only for a selected revision.
+         */
+        get: operations["credit_history_api_v1_ledgers__ledger_id__business_credits__credit_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-credits/{credit_id}/revisions/{revision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revision Detail
+         * @description Return the original permanent 200, independently of today's group state.
+         */
+        get: operations["revision_detail_api_v1_ledgers__ledger_id__business_credits__credit_id__revisions__revision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents": {
         parameters: {
             query?: never;
@@ -3567,6 +3607,25 @@ export interface components {
             receipt: components["schemas"]["BusinessCreditResponse"];
             /** Source Version */
             source_version: number;
+        };
+        /** CreditHistoryEntry */
+        CreditHistoryEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "correct" | "cancel";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Reason */
+            reason: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Version */
+            version: number;
         };
         /** CreditLineCapacity */
         CreditLineCapacity: {
@@ -7191,6 +7250,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreditCurrent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    credit_history_api_v1_ledgers__ledger_id__business_credits__credit_id__history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                credit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditHistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revision_detail_api_v1_ledgers__ledger_id__business_credits__credit_id__revisions__revision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                credit_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditRevisionResponse"];
                 };
             };
             /** @description Validation Error */

@@ -14,6 +14,8 @@ from coinpup_api.business.credit_read_schemas import (
     CreditSummary,
 )
 from coinpup_api.business.credit_reads import BusinessCreditReads
+from coinpup_api.business.credit_revision_history_reads import BusinessCreditHistory
+from coinpup_api.business.credit_revision_history_schemas import CreditHistoryEntry
 from coinpup_api.business.credit_revision_read_schemas import CreditCurrent
 from coinpup_api.business.credit_revision_reads import BusinessCreditRevisionReads
 from coinpup_api.business.credit_revision_schemas import (
@@ -36,6 +38,7 @@ def create_credit_router(settings, engine):
     service, reads = BusinessCreditService(engine), BusinessCreditReads(engine)
     revisions = BusinessCreditRevisionService(engine)
     revision_reads = BusinessCreditRevisionReads(engine)
+    history = BusinessCreditHistory(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -147,6 +150,27 @@ def create_credit_router(settings, engine):
     def current(ledger_id: UUID, credit_id: UUID, identity: reader):
         """Read the complete current group; this never proves an unknown command result."""
         return execute(revision_reads.current, identity.id, ledger_id, credit_id)
+
+    @router.get("/business-credits/{credit_id}/history", response_model=list[CreditHistoryEntry])
+    def credit_history(
+        ledger_id: UUID,
+        credit_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+    ):
+        """Page version metadata; load complete members only for a selected revision."""
+        return execute(
+            history.list_history, identity.id, ledger_id, credit_id, limit=limit, offset=offset
+        )
+
+    @router.get(
+        "/business-credits/{credit_id}/revisions/{revision_id}",
+        response_model=CreditRevisionResponse,
+    )
+    def revision_detail(ledger_id: UUID, credit_id: UUID, revision_id: UUID, identity: reader):
+        """Return the original permanent 200, independently of today's group state."""
+        return execute(history.get_revision, identity.id, ledger_id, credit_id, revision_id)
 
     @router.get(
         "/business-documents/{document_id}/credit-capacity",
