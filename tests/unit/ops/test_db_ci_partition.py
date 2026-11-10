@@ -227,7 +227,7 @@ def test_evidence_requires_both_distinct_files_at_the_expected_sha(good, tmp_pat
     assert aggregate(paths, sha="b4" * 20).returncode != 0
 
 
-def test_partition_uses_module_sha256_low_bit_and_never_param_or_class_names():
+def test_default_partition_uses_module_sha256_low_bit_and_never_param_or_class_names():
     for path, expected in [("test_first", 0), ("test_other", 1)]:
         for suffix in ["test_short", "TestGroup::test_case[with::param]", "test_param[ü]"]:
             assert partition_for(f"tests/integration/{path}.py::{suffix}") == expected
@@ -240,6 +240,13 @@ def test_partition_uses_module_sha256_low_bit_and_never_param_or_class_names():
     ]:
         with pytest.raises(ValueError):
             partition_for(invalid)
+
+
+@pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
+def test_expensive_credit_scenarios_share_both_runners_by_complete_module(suffix):
+    for name, expected in [("boundaries", 0), ("history", 0), ("current", 1), ("reads", 1)]:
+        node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
+        assert partition_for(node) == expected
 
 
 def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_phases(tmp_path):

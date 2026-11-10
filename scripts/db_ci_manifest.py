@@ -7,6 +7,13 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
+# Full 200-line corrections are expensive on real PostgreSQL. Keep these two modules
+# apart from the current-group and current-HTTP read suites that hash to partition 1.
+_PART_ZERO_MODULES = {
+    "tests/integration/business/test_credit_revision_boundaries.py",
+    "tests/integration/business/test_credit_revision_history.py",
+}
+
 
 def github_sha():
     sha = os.environ.get("GITHUB_SHA", "")
@@ -28,6 +35,8 @@ def partition_for(nodeid):
         or ".." in path.parts
     ):
         raise ValueError(f"Invalid repository-relative integration node ID: {nodeid!r}")
+    if module in _PART_ZERO_MODULES:
+        return 0
     return hashlib.sha256(module.encode("utf-8")).digest()[-1] & 1
 
 
