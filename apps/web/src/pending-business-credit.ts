@@ -1,22 +1,52 @@
 import { ApiError } from "./api";
 import type { Session } from "./api";
-import { createCredit } from "./credit-api";
-import type { CreditCreate, CreditReceipt } from "./credit-api";
-import { validCreditReview, validCreditReceipt, freezeCreditReceipt } from "./credit-intent";
+import { cancelCredit, correctCredit, createCredit } from "./credit-api";
+import type {
+    CreditCancellation,
+    CreditCorrection,
+    CreditCreate,
+    CreditReceipt,
+    CreditRevisionReceipt,
+} from "./credit-api";
+import {
+    validCreditReview,
+    validCreditReceipt,
+    freezeCreditReceipt,
+    freezeCreditValue,
+} from "./credit-intent";
 import type { FrozenCredit } from "./credit-intent";
+import { isCreditRevisionPlan, validCreditRevisionReview } from "./credit-revision-intent";
+import type { CreditRevisionAction, FrozenCreditRevision } from "./credit-revision-intent";
+import { validCreditRevisionReceipt } from "./credit-revision-receipt";
 import type { DeepReadonly } from "./settlement-intent";
 import type { PendingStatus } from "./pending-command";
 export type BusinessCreditSnapshot = Readonly<{
     status: PendingStatus;
-    plan: FrozenCredit | null;
+    plan: FrozenCredit | FrozenCreditRevision | null;
     receipt: DeepReadonly<CreditReceipt> | null;
+    revisionReceipt: DeepReadonly<CreditRevisionReceipt> | null;
     error: ApiError | null;
 }>;
 type Transport = (session: Session, plan: FrozenCredit) => Promise<unknown>;
-const transport: Transport = (session, plan) =>
-    createCredit(session.csrf_token, plan.ledgerId, JSON.parse(plan.bodyJson), plan.key);
+const transport: Transport = (session, plan) => {
+    if (isCreditRevisionPlan(plan))
+        return (plan.action === "correct" ? correctCredit : cancelCredit)(
+            session.csrf_token,
+            plan.ledgerId,
+            plan.creditId,
+            JSON.parse(plan.bodyJson),
+            plan.key,
+        );
+    return createCredit(session.csrf_token, plan.ledgerId, JSON.parse(plan.bodyJson), plan.key);
+};
 const idle = (): BusinessCreditSnapshot =>
-    Object.freeze({ status: "idle", plan: null, receipt: null, error: null });
+    Object.freeze({
+        status: "idle",
+        plan: null,
+        receipt: null,
+        revisionReceipt: null,
+        error: null,
+    });
 
 export class PendingBusinessCreditController {
     private state = idle();
@@ -129,6 +159,45 @@ export class PendingBusinessCreditController {
             return Promise.reject(error);
         }
     }
+    startRevision(
+        session: Session,
+        ledgerId: string,
+        creditId: string,
+        action: CreditRevisionAction,
+        input: CreditCorrection | CreditCancellation,
+        reviewed?: unknown,
+    ): Promise<void> {
+        try {
+            this.authorized(session);
+            if (this.flight || !["idle", "confirmed", "rejected"].includes(this.state.status))
+                throw new ApiError("server", null, "pending_credit_unresolved");
+            if (!validCreditRevisionReview(ledgerId, creditId, action, input, reviewed))
+                throw new ApiError("server", null, "invalid_credit_intent");
+            const bodyJson = JSON.stringify(input),
+                reviewedJson = JSON.stringify(reviewed);
+            if (typeof reviewedJson !== "string") throw new Error("Invalid review snapshot");
+            this.uncertain = false;
+            this.state = Object.freeze({
+                ...idle(),
+                plan: Object.freeze({
+                    ownerId: this.owner!,
+                    ledgerId,
+                    creditId,
+                    action,
+                    key: crypto.randomUUID(),
+                    bodyJson,
+                    reviewedJson,
+                }),
+            });
+            return this.send(session);
+        } catch (error) {
+            return Promise.reject(
+                error instanceof ApiError
+                    ? error
+                    : new ApiError("server", null, "invalid_credit_intent"),
+            );
+        }
+    }
     private send(session: Session): Promise<void> {
         const generation = this.generation,
             plan = this.state.plan!;
@@ -141,13 +210,21 @@ export class PendingBusinessCreditController {
                 }
                 const result = await this.io(session, plan);
                 if (generation !== this.generation) return;
-                if (!validCreditReceipt(result, plan))
-                    throw new ApiError("server", 201, "invalid_response");
+                let saved: Pick<BusinessCreditSnapshot, "receipt" | "revisionReceipt">;
+                if (isCreditRevisionPlan(plan)) {
+                    if (!validCreditRevisionReceipt(result, plan))
+                        throw new ApiError("server", 200, "invalid_response");
+                    saved = { receipt: null, revisionReceipt: freezeCreditValue(result) };
+                } else {
+                    if (!validCreditReceipt(result, plan))
+                        throw new ApiError("server", 201, "invalid_response");
+                    saved = { receipt: freezeCreditReceipt(result), revisionReceipt: null };
+                }
                 this.uncertain = false;
                 this.publish({
                     ...this.state,
                     status: "confirmed",
-                    receipt: freezeCreditReceipt(result),
+                    ...saved,
                     error: null,
                 });
             } catch (caught) {

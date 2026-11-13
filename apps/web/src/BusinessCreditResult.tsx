@@ -1,6 +1,7 @@
 import type { BusinessCreditSnapshot } from "./pending-business-credit";
 import type { CreditCreate } from "./credit-api";
 import type { CreditReview } from "./credit-intent";
+import { isCreditRevisionPlan } from "./credit-revision-intent";
 import type { Locale } from "./i18n";
 import { formatAmount, sumAmounts } from "./money";
 import { creditError } from "./credit-errors";
@@ -20,7 +21,7 @@ export function BusinessCreditResult({
     onClose: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
-    if (!pending.plan) return null;
+    if (!pending.plan || isCreditRevisionPlan(pending.plan)) return null;
     const body = JSON.parse(pending.plan.bodyJson) as CreditCreate;
     const review = JSON.parse(pending.plan.reviewedJson) as CreditReview;
     const amount = (value: string) => `${formatAmount(value, locale)} ${review.asset.asset_id}`;
