@@ -6,6 +6,9 @@ export type CreditReceipt = components["schemas"]["BusinessCreditResponse"];
 export type CreditCapacity = components["schemas"]["CreditCapacity"];
 export type CreditSummary = components["schemas"]["CreditSummary"];
 export type CreditDetail = components["schemas"]["CreditDetail"];
+export type CreditCorrection = components["schemas"]["CreditCorrectionCreate"];
+export type CreditCancellation = components["schemas"]["CreditCancellationCreate"];
+export type CreditCurrent = components["schemas"]["CreditCurrent"];
 const base = (ledgerId: string) => `/api/v1/ledgers/${encodeURIComponent(ledgerId)}`;
 
 export const createCredit = (
