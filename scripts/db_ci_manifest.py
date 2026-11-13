@@ -7,11 +7,11 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
-# Full 200-line corrections are expensive on real PostgreSQL. Keep these two modules
-# apart from the current-group and current-HTTP read suites that hash to partition 1.
+# Complete 200-member groups dominate measured CI time. Balance the current-group
+# and boundary suites against history/current-detail reads without splitting modules.
 _PART_ZERO_MODULES = {
     "tests/integration/business/test_credit_revision_boundaries.py",
-    "tests/integration/business/test_credit_revision_history.py",
+    "tests/integration/business/test_credit_revision_current.py",
 }
 
 

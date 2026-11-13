@@ -184,7 +184,7 @@ CI 的 PostgreSQL 17、Node 24 和 Python 3.12 基础镜像使用固定摘要的
 
 浏览器 CI 用 `prepare_browser_ci_image.py --pull` 预取这三个固定镜像：优先官方 ECR，失败或120秒超时后仅回退一次至 Docker Hub 官方同名、同摘要镜像；两处均失败即停止。成功后生成仅含 PostgreSQL 镜像选择的 `build/compose.browser-images.yaml`，追加至该任务的 `COMPOSE_FILE`，并将所选 Node/Python 引用写入生成 Dockerfile。后续迁移及恢复复用同一覆盖；本地默认不预取，不更改部署/OCR镜像，不需要登录或凭据。
 
-数据库 CI 分成两个独立的 Ubuntu runner。各自在 checkout 后用 `python -m scripts.start_database_ci` 按固定摘要及双源拉取规则启动 PostgreSQL 17，健康检查成功后运行 `python scripts/check.py db`。两个分区都真实执行升级、空库降级、再次升级及模型一致性检查，然后各自执行所分配的集成测试。200 行贷项的并发边界和历史详情模块分到分区 0，当前组和当前详情模块分到分区 1；其余模块沿用路径散列。每个分区限时 40 分钟，失败时另一个继续。容器仅绑定 runner 回环地址，使用虚构凭据，结束时清理该容器和临时卷。启动脚本只在 GitHub Actions 中运行，镜像拉取或就绪失败会使该分区失败。
+数据库 CI 分成两个独立的 Ubuntu runner。各自在 checkout 后用 `python -m scripts.start_database_ci` 按固定摘要及双源拉取规则启动 PostgreSQL 17，健康检查成功后运行 `python scripts/check.py db`。两个分区都真实执行升级、空库降级、再次升级及模型一致性检查，然后各自执行所分配的集成测试。200 行贷项的并发边界和当前组模块分到分区 0，历史详情和当前详情模块分到分区 1；其余模块沿用路径散列。每个分区限时 40 分钟，失败时另一个继续。运行步骤未成功（含取消）时保留 stderr 并采集资源和数据库诊断，再清理容器；外层强制终止仍可能使原始 pytest 退出码或清单无法生成，不能据此判为通过。容器仅绑定 runner 回环地址，使用虚构凭据，结束时清理该容器和临时卷。启动脚本只在 GitHub Actions 中运行，镜像拉取或就绪失败会使该分区失败。
 
 单个用例运行满 60 秒时，数据库插件在持有 GIL 的 Python 线程中将用例名和各线程栈写到标准错误，并继续等待原用例完成。子进程因信号结束时，统一检查入口记录原始负返回值和信号，返回对应的 shell 状态码。
 

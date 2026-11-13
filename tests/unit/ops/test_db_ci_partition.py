@@ -244,7 +244,7 @@ def test_default_partition_uses_module_sha256_low_bit_and_never_param_or_class_n
 
 @pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
 def test_expensive_credit_scenarios_share_both_runners_by_complete_module(suffix):
-    for name, expected in [("boundaries", 0), ("history", 0), ("current", 1), ("reads", 1)]:
+    for name, expected in [("boundaries", 0), ("history", 1), ("current", 0), ("reads", 1)]:
         node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
         assert partition_for(node) == expected
 
@@ -267,3 +267,30 @@ def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_ph
     assert f"Slow PostgreSQL test after 0.05s: {node}" in result.stderr
     assert "in test_slow" in result.stderr
     check_part(json.loads(destination.read_text()), part, SHA)
+
+
+def test_rebalanced_complete_modules_execute_each_case_once_in_two_real_processes(tmp_path):
+    folder = tmp_path / "tests/integration/business"
+    folder.mkdir(parents=True)
+    (tmp_path / "pytest.ini").write_text(
+        "[pytest]\nmarkers = integration: fictional database case\n"
+    )
+    for name in ("boundaries", "history", "current", "reads"):
+        (folder / f"test_credit_revision_{name}.py").write_text(
+            "import pytest\n"
+            "@pytest.mark.integration\n"
+            "@pytest.mark.parametrize('members', [1, 200])\n"
+            "def test_complete(members): assert members in (1, 200)\n"
+        )
+    paths = []
+    for part, names in enumerate((("boundaries", "current"), ("history", "reads"))):
+        result, path = run_part(tmp_path, part)
+        assert result.returncode == 0, result.stdout + result.stderr
+        report = json.loads(path.read_text())
+        selected = check_part(report, part, SHA)
+        assert len(report["manifest"]) == 8 and len(selected) == 4
+        assert {node.split("::")[0] for node in selected} == {
+            f"tests/integration/business/test_credit_revision_{name}.py" for name in names
+        }
+        paths.append(path)
+    assert aggregate(paths).returncode == 0
