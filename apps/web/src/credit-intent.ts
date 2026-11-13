@@ -1,4 +1,9 @@
-import type { CreditCapacity, CreditCreate, CreditReceipt } from "./credit-api";
+import type {
+    CreditCapacity,
+    CreditCreate,
+    CreditReceipt,
+    CreditRevisionReceipt,
+} from "./credit-api";
 import type { BusinessConfirmationReceipt } from "./business-confirmation-api";
 import type { Asset } from "./ledger-api";
 import type { DeepReadonly } from "./settlement-intent";
@@ -234,7 +239,13 @@ export function validCreditReceipt(value: unknown, plan: FrozenCredit): value is
 }
 
 export function freezeCreditReceipt(value: CreditReceipt): DeepReadonly<CreditReceipt> {
-    const copy = JSON.parse(JSON.stringify(value)) as CreditReceipt;
+    return freezeCreditValue(value);
+}
+
+export function freezeCreditValue<T extends CreditReceipt | CreditRevisionReceipt>(
+    value: T,
+): DeepReadonly<T> {
+    const copy = JSON.parse(JSON.stringify(value)) as T;
     const freeze = (node: unknown): void => {
         if (node !== null && typeof node === "object") {
             Object.values(node).forEach(freeze);
@@ -242,5 +253,5 @@ export function freezeCreditReceipt(value: CreditReceipt): DeepReadonly<CreditRe
         }
     };
     freeze(copy);
-    return copy;
+    return copy as DeepReadonly<T>;
 }
