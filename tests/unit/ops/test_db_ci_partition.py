@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.db_ci_manifest import check_part, partition_for
+from scripts.db_ci_manifest import PART_COUNT, check_part, partition_for
 
 ROOT = Path(__file__).resolve().parents[3]
 SHA = "a3" * 20
@@ -20,7 +20,7 @@ def suite(directory):
     (directory / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
-    for module in ("test_first", "test_other"):
+    for module in ("test_first", "test_last", "test_sample_0"):
         (modules / f"{module}.py").write_text(
             "import pytest\n"
             "from pathlib import Path\n"
@@ -86,38 +86,43 @@ def good(tmp_path_factory):
     directory = tmp_path_factory.mktemp("fictional_db_partitions")
     suite(directory)
     paths = []
-    for part in (0, 1):
+    for part in range(PART_COUNT):
         result, path = run_part(directory, part)
         assert result.returncode == 0, result.stdout + result.stderr
         paths.append(path)
     return directory, paths
 
 
-def test_two_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
+def test_three_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
     directory, paths = good
     assert (directory / "trace.txt").read_text().splitlines() == [
         "test_first one",
         "test_first two",
-        "test_other one",
-        "test_other two",
+        "test_sample_0 one",
+        "test_sample_0 two",
+        "test_last one",
+        "test_last two",
     ]
     prefix = "tests/integration/"
     expected = [
         f"{prefix}{module}.py::test_fictional[{item}]"
-        for module in ("test_first", "test_other")
+        for module in ("test_first", "test_last", "test_sample_0")
         for item in ("one", "two")
     ]
     for i, path in enumerate(paths):
         report = json.loads(path.read_text())
         assert report["manifest"] == expected
         selected = check_part(report, i, SHA)
-        assert selected == expected[2 * i : 2 * i + 2]
+        module = ("test_first", "test_sample_0", "test_last")[i]
+        assert selected == [
+            f"{prefix}{module}.py::test_fictional[{item}]" for item in ("one", "two")
+        ]
         assert report["events"] == [
             [node, phase, "passed"] for node in selected for phase in ("setup", "call", "teardown")
         ]
     result = aggregate(paths)
     assert result.returncode == 0, result.stderr
-    assert "4 passed (part 0: 2, part 1: 2)" in result.stdout
+    assert "6 passed (part 0: 2, part 1: 2, part 2: 2)" in result.stdout
     assert SHA in result.stdout
 
 
@@ -214,21 +219,45 @@ def test_aggregate_rejects_missing_duplicate_and_mismatched_evidence(tmp_path, g
         report["part"] = 1
     altered = tmp_path / "altered.json"
     altered.write_text(json.dumps(report))
-    result = aggregate([altered, paths[1]])
+    result = aggregate([altered, *paths[1:]])
     assert result.returncode != 0
     assert "DB check evidence rejected" in result.stderr
 
 
-def test_evidence_requires_both_distinct_files_at_the_expected_sha(good, tmp_path):
+def test_evidence_requires_all_distinct_files_at_the_expected_sha(good, tmp_path):
     _, paths = good
-    for invalid in ([paths[0], paths[0]], list(reversed(paths)), [paths[0], tmp_path / "missing"]):
+    for invalid in (
+        paths[:2],
+        [paths[0], paths[0], paths[2]],
+        list(reversed(paths)),
+        [*paths[:2], tmp_path / "missing"],
+        [*paths, paths[0]],
+    ):
         assert aggregate(invalid).returncode != 0
     assert aggregate(paths, sha="").returncode != 0
     assert aggregate(paths, sha="b4" * 20).returncode != 0
 
 
-def test_default_partition_uses_module_sha256_low_bit_and_never_param_or_class_names():
-    for path, expected in [("test_first", 0), ("test_other", 1)]:
+@pytest.mark.parametrize("part", [0, 1, 2])
+@pytest.mark.parametrize("fault", ["signal", "missing phase", "different collection"])
+def test_every_required_runner_must_supply_complete_success(good, tmp_path, part, fault):
+    _, original = good
+    paths = list(original)
+    report = json.loads(paths[part].read_text())
+    if fault == "signal":
+        report["exitstatus"] = -11
+    elif fault == "missing phase":
+        report["events"].pop()
+    else:
+        report["manifest"] = list(reversed(report["manifest"]))
+    changed = tmp_path / "changed.json"
+    changed.write_text(json.dumps(report))
+    paths[part] = changed
+    assert aggregate(paths).returncode != 0
+
+
+def test_default_partition_uses_module_sha256_modulo_three_and_never_param_or_class_names():
+    for path, expected in [("test_first", 0), ("test_sample_0", 1), ("test_last", 2)]:
         for suffix in ["test_short", "TestGroup::test_case[with::param]", "test_param[ü]"]:
             assert partition_for(f"tests/integration/{path}.py::{suffix}") == expected
     for invalid in [
@@ -243,8 +272,14 @@ def test_default_partition_uses_module_sha256_low_bit_and_never_param_or_class_n
 
 
 @pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
-def test_expensive_credit_scenarios_share_both_runners_by_complete_module(suffix):
-    for name, expected in [("boundaries", 0), ("history", 1), ("current", 0), ("reads", 1)]:
+def test_expensive_credit_scenarios_share_three_runners_by_complete_module(suffix):
+    for name, expected in [
+        ("boundaries", 2),
+        ("history", 0),
+        ("current", 1),
+        ("reads", 1),
+        ("lifecycle", 2),
+    ]:
         node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
         assert partition_for(node) == expected
 
@@ -269,13 +304,13 @@ def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_ph
     check_part(json.loads(destination.read_text()), part, SHA)
 
 
-def test_rebalanced_complete_modules_execute_each_case_once_in_two_real_processes(tmp_path):
+def test_rebalanced_complete_modules_execute_each_case_once_in_three_real_processes(tmp_path):
     folder = tmp_path / "tests/integration/business"
     folder.mkdir(parents=True)
     (tmp_path / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
-    for name in ("boundaries", "history", "current", "reads"):
+    for name in ("boundaries", "history", "current", "reads", "lifecycle"):
         (folder / f"test_credit_revision_{name}.py").write_text(
             "import pytest\n"
             "@pytest.mark.integration\n"
@@ -283,12 +318,12 @@ def test_rebalanced_complete_modules_execute_each_case_once_in_two_real_processe
             "def test_complete(members): assert members in (1, 200)\n"
         )
     paths = []
-    for part, names in enumerate((("boundaries", "current"), ("history", "reads"))):
+    for part, names in enumerate((("history",), ("reads", "current"), ("boundaries", "lifecycle"))):
         result, path = run_part(tmp_path, part)
         assert result.returncode == 0, result.stdout + result.stderr
         report = json.loads(path.read_text())
         selected = check_part(report, part, SHA)
-        assert len(report["manifest"]) == 8 and len(selected) == 4
+        assert len(report["manifest"]) == 10 and len(selected) == 2 * len(names)
         assert {node.split("::")[0] for node in selected} == {
             f"tests/integration/business/test_credit_revision_{name}.py" for name in names
         }
