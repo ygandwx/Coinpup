@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [0, 1]
+        part: [0, 1, 2]
     timeout-minutes: 40
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require both database partitions to succeed
+      - name: Require all database partitions to succeed
         env:
           PARTS_RESULT: ${{ needs.database-parts.result }}
         run: test "$PARTS_RESULT" = success
@@ -166,11 +166,16 @@ jobs:
         with:
           name: db-ci-part-1
           path: ${{ runner.temp }}/db-ci-part-1
+      - uses: actions/download-artifact@v4
+        with:
+          name: db-ci-part-2
+          path: ${{ runner.temp }}/db-ci-part-2
       - name: Verify complete integration test execution
         run: >-
           python -m scripts.db_ci_manifest verify
           "$RUNNER_TEMP/db-ci-part-0/part-0.json"
           "$RUNNER_TEMP/db-ci-part-1/part-1.json"
+          "$RUNNER_TEMP/db-ci-part-2/part-2.json"
 
   container:
     name: Container, real browser login and backup restoration

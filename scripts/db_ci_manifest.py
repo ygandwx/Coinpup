@@ -1,4 +1,4 @@
-"""Verify two independent PostgreSQL pytest runs using only the standard library."""
+"""Verify all independent PostgreSQL pytest runs using only the standard library."""
 
 import argparse
 import hashlib
@@ -7,11 +7,14 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
-# Complete 200-member groups dominate measured CI time. Balance the current-group
-# and boundary suites against history/current-detail reads without splitting modules.
-_PART_ZERO_MODULES = {
-    "tests/integration/business/test_credit_revision_boundaries.py",
-    "tests/integration/business/test_credit_revision_current.py",
+# Measured complete 200-member suites need separate runners; keep every module intact.
+PART_COUNT = 3
+_HEAVY_MODULE_PARTS = {
+    "tests/integration/business/test_credit_revision_history.py": 0,
+    "tests/integration/business/test_credit_revision_reads.py": 1,
+    "tests/integration/business/test_credit_revision_current.py": 1,
+    "tests/integration/business/test_credit_revision_boundaries.py": 2,
+    "tests/integration/business/test_credit_revision_lifecycle.py": 2,
 }
 
 
@@ -35,13 +38,15 @@ def partition_for(nodeid):
         or ".." in path.parts
     ):
         raise ValueError(f"Invalid repository-relative integration node ID: {nodeid!r}")
-    if module in _PART_ZERO_MODULES:
-        return 0
-    return hashlib.sha256(module.encode("utf-8")).digest()[-1] & 1
+    if module in _HEAVY_MODULE_PARTS:
+        return _HEAVY_MODULE_PARTS[module]
+    return hashlib.sha256(module.encode("utf-8")).digest()[-1] % PART_COUNT
 
 
 def check_part(report, part, sha):
     """Derive this runner's assignment from its full collection, then prove each phase."""
+    if type(part) is not int or part not in range(PART_COUNT):
+        raise ValueError("Unexpected database partition")
     if not isinstance(report, dict) or report.get("sha") != sha:
         raise ValueError(f"Part {part} has an unexpected GITHUB_SHA")
     if type(report.get("part")) is not int or report["part"] != part:
@@ -74,23 +79,24 @@ def check_part(report, part, sha):
 
 def verify(paths):
     sha = github_sha()
+    if len(paths) != PART_COUNT:
+        raise ValueError(f"Require exactly {PART_COUNT} database partition reports")
     reports = [json.loads(path.read_text(encoding="utf-8")) for path in paths]
-    first, second = [check_part(report, i, sha) for i, report in enumerate(reports)]
+    assignments = [check_part(report, i, sha) for i, report in enumerate(reports)]
     manifest = reports[0]["manifest"]
-    if manifest != reports[1]["manifest"]:
-        raise ValueError("The two runners collected different integration manifests")
-    if set(first) & set(second) or set(first + second) != set(manifest):
-        raise ValueError("The two assignments overlap or omit integration tests")
-    print(
-        f"PostgreSQL integration: {len(manifest)} passed "
-        f"(part 0: {len(first)}, part 1: {len(second)}) at {sha}"
-    )
+    if any(report["manifest"] != manifest for report in reports[1:]):
+        raise ValueError("The runners collected different integration manifests")
+    executed = [node for selected in assignments for node in selected]
+    if len(executed) != len(set(executed)) or set(executed) != set(manifest):
+        raise ValueError("The assignments overlap or omit integration tests")
+    sizes = ", ".join(f"part {i}: {len(selected)}" for i, selected in enumerate(assignments))
+    print(f"PostgreSQL integration: {len(manifest)} passed ({sizes}) at {sha}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["verify"])
-    parser.add_argument("reports", type=Path, nargs=2, metavar="PART.json")
+    parser.add_argument("reports", type=Path, nargs=PART_COUNT, metavar="PART.json")
     args = parser.parse_args()
     try:
         verify(args.reports)

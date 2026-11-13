@@ -9,7 +9,7 @@ from threading import Timer
 
 import pytest
 
-from scripts.db_ci_manifest import check_part, github_sha, partition_for
+from scripts.db_ci_manifest import PART_COUNT, check_part, github_sha, partition_for
 
 SLOW_TEST_SECONDS = 60
 
@@ -17,8 +17,10 @@ SLOW_TEST_SECONDS = 60
 def pytest_configure(config):
     part = os.environ.get("COINPUP_DB_CI_PART")
     destination = os.environ.get("COINPUP_DB_CI_REPORT")
-    if part not in ("0", "1") or not destination:
-        raise pytest.UsageError("Set COINPUP_DB_CI_PART (0 or 1) and COINPUP_DB_CI_REPORT")
+    if part not in {str(i) for i in range(PART_COUNT)} or not destination:
+        raise pytest.UsageError(
+            f"Set COINPUP_DB_CI_PART (0..{PART_COUNT - 1}) and COINPUP_DB_CI_REPORT"
+        )
     if config.args != ["tests/integration"] or config.option.markexpr != "integration":
         raise pytest.UsageError(
             "DB partitions require the full tests/integration -m integration selection"

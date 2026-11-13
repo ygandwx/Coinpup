@@ -112,9 +112,31 @@ def apply_migration(engine, migration, direction):
             migration[direction]()
 
 
+def function_catalog(connection):
+    return dict(
+        connection.execute(
+            text("""
+        SELECT p.oid::regprocedure::text, pg_get_functiondef(p.oid)
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname LIKE 'coinpup_%' AND p.prokind = 'f'
+        ORDER BY p.oid::regprocedure::text
+    """)
+        ).all()
+    )
+
+
 @pytest.fixture
 def dispatch_structure(structure_database):
     engine, owner = structure_database
+    # The frozen 0011 probe deliberately installs its historical dispatcher. Its
+    # upgrade is not today's head: restore the exact pre-test functions afterwards.
+    with engine.connect() as connection:
+        catalog = function_catalog(connection)
+        restore = [
+            function_definition(connection, name)
+            for name in (*NEW_FUNCTIONS, "coinpup_validate_posting_shape(uuid)")
+        ]
+        assert all(isinstance(sql, str) for sql in restore)
     structure = LedgerService(engine)
     ledger = structure.create_entity(
         owner, EntityCreate(kind="personal", name="Fictional dispatch history", base_asset_id="USD")
@@ -140,18 +162,27 @@ def dispatch_structure(structure_database):
         ]
         for kind in ("income", "expense")
     }
-    return {
-        "engine": engine,
-        "owner": owner,
-        "ledger": ledger,
-        "accounts": accounts,
-        "categories": categories["expense"],
-        "income": categories["income"],
-        "posting": PostingService(engine),
-        "migration": runpy.run_path(
-            str(ROOT / "services/api/migrations/versions/20261004_0011_posting_shape_dispatch.py")
-        ),
-    }
+    try:
+        yield {
+            "engine": engine,
+            "owner": owner,
+            "ledger": ledger,
+            "accounts": accounts,
+            "categories": categories["expense"],
+            "income": categories["income"],
+            "posting": PostingService(engine),
+            "migration": runpy.run_path(
+                str(
+                    ROOT
+                    / "services/api/migrations/versions/20261004_0011_posting_shape_dispatch.py"
+                )
+            ),
+        }
+    finally:
+        with engine.begin() as connection:
+            for definition in restore:
+                connection.exec_driver_sql(definition, execution_options={"no_parameters": True})
+            assert function_catalog(connection) == catalog
 
 
 def creation_body(s, kind, account_number):
