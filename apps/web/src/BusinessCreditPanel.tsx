@@ -8,6 +8,7 @@ import type { BusinessConfirmedSummary } from "./business-confirmation-api";
 import { getCredit, getCreditCapacity, listCredits } from "./credit-api";
 import type { CreditCreate, CreditDetail, CreditSummary } from "./credit-api";
 import type { CreditReview } from "./credit-intent";
+import { isCreditRevisionPlan } from "./credit-revision-intent";
 import type { PendingBusinessCreditController } from "./pending-business-credit";
 import { BusinessCreditForm } from "./BusinessCreditForm";
 import { BusinessCreditResult } from "./BusinessCreditResult";
@@ -180,7 +181,8 @@ export function BusinessCreditPanel({
     }
     function editRejected() {
         const snapshot = controller.getSnapshot();
-        if (snapshot.status !== "rejected" || !snapshot.plan) return;
+        if (snapshot.status !== "rejected" || !snapshot.plan || isCreditRevisionPlan(snapshot.plan))
+            return;
         const body = JSON.parse(snapshot.plan.bodyJson) as CreditCreate;
         const review = JSON.parse(snapshot.plan.reviewedJson) as CreditReview;
         if (!controller.dismiss()) return;
@@ -196,15 +198,17 @@ export function BusinessCreditPanel({
         <section className="credit-form" aria-label={t("贷项", "Credits")}>
             <h2>{t("贷项", "Credits")}</h2>
             {plan ? (
-                <BusinessCreditResult
-                    pending={pending}
-                    locale={locale}
-                    onRetry={() => {
-                        void controller.retry(session).catch(fail);
-                    }}
-                    onEdit={editRejected}
-                    onClose={close}
-                />
+                !isCreditRevisionPlan(plan) && (
+                    <BusinessCreditResult
+                        pending={pending}
+                        locale={locale}
+                        onRetry={() => {
+                            void controller.retry(session).catch(fail);
+                        }}
+                        onEdit={editRejected}
+                        onClose={close}
+                    />
+                )
             ) : (
                 <>
                     {!target && (

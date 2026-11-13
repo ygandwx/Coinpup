@@ -94,6 +94,7 @@ jobs:
       - name: Install locked dependencies
         run: python -m pip install -r requirements-dev.lock
       - name: Run disposable database checks
+        id: database_checks
         # The pre-checkout service hook cannot use the existing official-image fallback.
         # Each partition has its own database and exercises the complete migration round trip.
         env:
@@ -103,7 +104,7 @@ jobs:
           python -m scripts.start_database_ci
           /usr/bin/time -v python scripts/check.py db 2> >(tee "$RUNNER_TEMP/db-stderr.log" >&2)
       - name: Capture failed partition diagnostics
-        if: failure()
+        if: ${{ always() && steps.database_checks.outcome != 'success' }}
         run: |
           group=$(awk -F: '$1 == "0" {print $3}' /proc/self/cgroup)
           for metric in memory.events memory.max memory.peak; do
@@ -118,7 +119,7 @@ jobs:
               "SELECT deadlocks, temp_files, temp_bytes, sessions_fatal, sessions_killed FROM pg_stat_database WHERE datname = current_database()"
           fi
       - name: Save failed partition stderr
-        if: failure()
+        if: ${{ always() && steps.database_checks.outcome != 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: db-stderr-part-${{ matrix.part }}
