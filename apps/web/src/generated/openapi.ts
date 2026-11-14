@@ -898,6 +898,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current
+         * @description Read the current operation version and its effective refund, if any.
+         */
+        get: operations["current_api_v1_ledgers__ledger_id__business_refunds__refund_id__current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/categories": {
         parameters: {
             query?: never;
@@ -5585,6 +5605,58 @@ export interface components {
             reason: string;
             replacement: components["schemas"]["RefundReplacement"];
         };
+        /**
+         * RefundCurrent
+         * @description Authorized current cash fact for a new intention, including its operation version.
+         */
+        RefundCurrent: {
+            fact: components["schemas"]["RefundRevisionFact"] | null;
+            /** Journal Id */
+            journal_id: string | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Direction
+             * @enum {string}
+             */
+            payment_direction: "receipt" | "payout";
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /**
+             * Refund Id
+             * Format: uuid
+             */
+            refund_id: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Revision Reason */
+            revision_reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /** Version */
+            version: number;
+        };
         /** RefundDetail */
         RefundDetail: {
             /**
@@ -8443,6 +8515,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefundRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_api_v1_ledgers__ledger_id__business_refunds__refund_id__current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundCurrent"];
                 };
             };
             /** @description Validation Error */

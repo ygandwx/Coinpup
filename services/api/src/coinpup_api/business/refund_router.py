@@ -10,6 +10,7 @@ from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
 from coinpup_api.business.refund_read_schemas import (
     RefundCapacity,
+    RefundCurrent,
     RefundDetail,
     RefundSummary,
 )
@@ -139,6 +140,11 @@ def create_refund_router(settings, engine):
     @router.get("/business-refunds/{refund_id}", response_model=RefundDetail)
     def detail(ledger_id: UUID, refund_id: UUID, identity: reader):
         return execute(reads.get_refund, identity.id, ledger_id, refund_id)
+
+    @router.get("/business-refunds/{refund_id}/current", response_model=RefundCurrent)
+    def current(ledger_id: UUID, refund_id: UUID, identity: reader):
+        """Read the current operation version and its effective refund, if any."""
+        return execute(reads.current, identity.id, ledger_id, refund_id)
 
     @router.get(
         "/business-payments/{payment_id}/refund-capacity",

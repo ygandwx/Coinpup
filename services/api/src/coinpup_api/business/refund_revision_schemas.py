@@ -134,10 +134,8 @@ class RefundRevisionResponse(BaseModel):
         return self
 
 
-def validate_refund_revision_amounts(
-    response: RefundRevisionResponse, assets: Mapping[str, AssetDefinition]
-):
-    """Decode both immutable sides with their actual units, including disabled historical assets."""
+def refund_fact_amounts(fact: RefundRevisionFact, assets: Mapping[str, AssetDefinition]):
+    """Decode the cash, fixed payment principal and ordered fees using their actual assets."""
 
     def decode(asset_id, quantity):
         asset = assets.get(asset_id)
@@ -145,13 +143,17 @@ def validate_refund_revision_amounts(
             raise MoneyError("refund_revision_integrity", "The revision asset is inconsistent.")
         return Amount.from_decimal(Decimal(quantity), asset)
 
+    cash = decode(fact.asset_id, fact.amount)
+    principal = decode(fact.payment_asset_id, fact.payment_amount)
+    if cash.asset == principal.asset and cash.minor_units != principal.minor_units:
+        raise MoneyError("refund_revision_integrity", "Same-asset cash and principal differ.")
+    return cash, principal, tuple(decode(fee.asset_id, fee.amount) for fee in fact.fees)
+
+
+def validate_refund_revision_amounts(
+    response: RefundRevisionResponse, assets: Mapping[str, AssetDefinition]
+):
     for fact in (response.previous, response.replacement):
-        if fact is None:
-            continue
-        cash = decode(fact.asset_id, fact.amount)
-        principal = decode(fact.payment_asset_id, fact.payment_amount)
-        if cash.asset == principal.asset and cash.minor_units != principal.minor_units:
-            raise MoneyError("refund_revision_integrity", "Same-asset cash and principal differ.")
-        for fee in fact.fees:
-            decode(fee.asset_id, fee.amount)
+        if fact is not None:
+            refund_fact_amounts(fact, assets)
     return response

@@ -8879,6 +8879,129 @@
         "title": "RefundCorrectionCreate",
         "type": "object"
       },
+      "RefundCurrent": {
+        "additionalProperties": false,
+        "description": "Authorized current cash fact for a new intention, including its operation version.",
+        "properties": {
+          "fact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefundRevisionFact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "journal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal Id"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "payment_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Payment Asset Id",
+            "type": "string"
+          },
+          "payment_direction": {
+            "enum": [
+              "receipt",
+              "payout"
+            ],
+            "title": "Payment Direction",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "refund_id": {
+            "format": "uuid",
+            "title": "Refund Id",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "revision_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Reason"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "refund_id",
+          "ledger_id",
+          "payment_id",
+          "operation_id",
+          "party_id",
+          "payment_direction",
+          "payment_asset_id",
+          "version",
+          "status",
+          "revision_id",
+          "revision_reason",
+          "journal_id",
+          "fact"
+        ],
+        "title": "RefundCurrent",
+        "type": "object"
+      },
       "RefundDetail": {
         "properties": {
           "account_id": {
@@ -14733,6 +14856,60 @@
           }
         },
         "summary": "Correct",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/current": {
+      "get": {
+        "description": "Read the current operation version and its effective refund, if any.",
+        "operationId": "current_api_v1_ledgers__ledger_id__business_refunds__refund_id__current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "refund_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Refund Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundCurrent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current",
         "tags": [
           "business settlements"
         ]

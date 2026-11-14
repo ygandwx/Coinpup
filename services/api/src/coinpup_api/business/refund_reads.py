@@ -8,8 +8,16 @@ from sqlalchemy.orm import aliased
 
 from coinpup_api.business.drafts import _fields
 from coinpup_api.business.refund_models import BusinessRefund
-from coinpup_api.business.refund_read_schemas import RefundCapacity, RefundDetail, RefundSummary
+from coinpup_api.business.refund_read_schemas import (
+    RefundCapacity,
+    RefundCurrent,
+    RefundDetail,
+    RefundSummary,
+)
 from coinpup_api.business.refund_receipts import integrity, response_from_rows
+from coinpup_api.business.refund_revision_current import read_current_refund
+from coinpup_api.business.refund_revision_receipts import integrity as revision_integrity
+from coinpup_api.business.refund_revision_schemas import refund_fact_amounts
 from coinpup_api.business.refund_schemas import BusinessRefundResponse
 from coinpup_api.business.settlement_balances import quantities
 from coinpup_api.business.settlement_models import BusinessPayment
@@ -103,6 +111,51 @@ class BusinessRefundReads(LedgerService):
                 )
             except ValidationError:
                 raise integrity() from None
+
+    def current(self, owner_id, ledger_id, refund_id):
+        with self._transaction(owner_id, read_only=True) as session:
+            self._ledger(session, owner_id, ledger_id)
+            state = read_current_refund(session, ledger_id, refund_id)
+            fact = state.fact
+            asset_ids = {fact.asset_id, fact.payment_asset_id, *(fee.asset_id for fee in fact.fees)}
+            records = session.scalars(
+                select(AssetRecord).where(AssetRecord.asset_id.in_(asset_ids))
+            )
+            assets = {record.asset_id: asset_definition(record) for record in records}
+            try:
+                cash, principal, fees = refund_fact_amounts(fact, assets)
+                active = state.operation.status == "active"
+                current_fact = (
+                    fact.model_copy(
+                        update={
+                            "amount": cash.to_string(),
+                            "payment_amount": principal.to_string(),
+                            "fees": tuple(
+                                fee.model_copy(update={"amount": amount.to_string()})
+                                for fee, amount in zip(fact.fees, fees, strict=True)
+                            ),
+                        }
+                    )
+                    if active
+                    else None
+                )
+                return RefundCurrent(
+                    refund_id=state.refund.id,
+                    ledger_id=ledger_id,
+                    payment_id=state.payment.id,
+                    operation_id=state.operation.id,
+                    party_id=state.payment.party_id,
+                    payment_direction=state.payment.direction,
+                    payment_asset_id=state.payment.asset_id,
+                    version=state.operation.version,
+                    status=state.operation.status,
+                    revision_id=state.revision.id if state.revision else None,
+                    revision_reason=state.revision.revision_reason if state.revision else None,
+                    journal_id=state.journal.id if active else None,
+                    fact=current_fact,
+                )
+            except (MoneyError, ValidationError):
+                raise revision_integrity() from None
 
     def capacity(self, owner_id, ledger_id, payment_id):
         with self._transaction(owner_id, read_only=True) as session:
