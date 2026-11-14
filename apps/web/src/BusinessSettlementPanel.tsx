@@ -683,6 +683,7 @@ export function BusinessSettlementPanel({
                 </div>
             ) : refundsOpen ? (
                 <BusinessRefundHistory
+                    assets={assets}
                     ledgerId={ledgerId}
                     locale={locale}
                     onClose={() => setRefundsOpen(false)}

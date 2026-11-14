@@ -3,23 +3,33 @@ import type { BusinessSettlementSnapshot } from "./pending-business-settlement";
 import type { RefundFact } from "./refund-api";
 import type { RefundRevisionInput, RefundRevisionReview } from "./refund-revision-intent";
 import type { DeepReadonly } from "./settlement-intent";
-import { formatAmount } from "./money";
+import { amountFromMinorUnits, formatAmount } from "./money";
+import { storedRefundUnits } from "./refund-revision-read";
 import { settlementError } from "./settlement-errors";
 
 export function RefundFactView({
     fact,
+    assets,
     locale,
 }: {
     fact: DeepReadonly<RefundFact>;
+    assets: RefundRevisionReview["assets"];
     locale: Locale;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
+    const display = (quantity: string, assetId: string) => {
+        const units = storedRefundUnits(quantity, assetId, assets);
+        return formatAmount(
+            amountFromMinorUnits(units, assets.find((a) => a.asset_id === assetId)!.scale),
+            locale,
+        );
+    };
     return (
         <div>
             <p>
-                {t("现金", "Cash")} {formatAmount(fact.amount, locale)} {fact.asset_id} ·{" "}
-                {t("付款本金", "Payment principal")} {formatAmount(fact.payment_amount, locale)}{" "}
-                {fact.payment_asset_id}
+                {t("现金", "Cash")} {display(fact.amount, fact.asset_id)} {fact.asset_id} ·{" "}
+                {t("付款本金", "Payment principal")}{" "}
+                {display(fact.payment_amount, fact.payment_asset_id)} {fact.payment_asset_id}
             </p>
             <p>
                 {fact.transaction_date} · {fact.reason}
@@ -37,7 +47,7 @@ export function RefundFactView({
                 <ol>
                     {fact.fees.map((f, i) => (
                         <li key={i}>
-                            {formatAmount(f.amount, locale)} {f.asset_id} · {f.account_id} ·{" "}
+                            {display(f.amount, f.asset_id)} {f.asset_id} · {f.account_id} ·{" "}
                             {f.category_id}
                         </li>
                     ))}
@@ -86,17 +96,26 @@ export function BusinessRefundRevisionResult({
             </p>
             <p>{body.reason}</p>
             <h4>{t("修订前", "Before revision")}</h4>
-            <RefundFactView locale={locale} fact={receipt?.previous ?? review.current.fact!} />
+            <RefundFactView
+                assets={review.assets}
+                locale={locale}
+                fact={receipt?.previous ?? review.current.fact!}
+            />
             {receipt?.replacement && (
                 <>
                     <h4>{t("修订后", "After revision")}</h4>
-                    <RefundFactView locale={locale} fact={receipt.replacement} />
+                    <RefundFactView
+                        assets={review.assets}
+                        locale={locale}
+                        fact={receipt.replacement}
+                    />
                 </>
             )}
             {!receipt && "replacement" in body && (
                 <>
                     <h4>{t("提交的替代事实", "Submitted replacement")}</h4>
                     <RefundFactView
+                        assets={review.assets}
                         locale={locale}
                         fact={{
                             ...body.replacement,
