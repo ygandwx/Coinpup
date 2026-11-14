@@ -75,7 +75,7 @@ def test_staged_evidence_is_ordered_and_immutable_and_leaves_no_writes(evidence,
             c.execute(insert(Evidence).values(**(row | dict(id=uuid4(), line_no=2))))
         elif case == "downgrade":
             with Operations.context(MigrationContext.configure(c)):
-                refund_revision_evidence_migration()["downgrade"]()
+                refund_revision_evidence_migration(include_dependents=False)["downgrade"]()
         else:
             c.exec_driver_sql("SET CONSTRAINTS tr_refund_revision_returns_complete IMMEDIATE")
     assert caught.value.orig.diag.constraint_name == expected
@@ -150,6 +150,6 @@ def test_evidence_notification_alone_blocks_downgrade(evidence):
             {"id": row["id"], "ledger": s["ledger"]},
         )
         with Operations.context(MigrationContext.configure(c)):
-            refund_revision_evidence_migration()["downgrade"]()
+            refund_revision_evidence_migration(include_dependents=False)["downgrade"]()
     assert caught.value.orig.diag.constraint_name == "ck_refund_revision_downgrade"
     assert snapshot(s) == before
