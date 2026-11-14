@@ -28,7 +28,11 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def revision(drafts):
-    payment, _, payload = setup_refund(drafts, allocated=False)
+    return refund_header(drafts, allocated=False)
+
+
+def refund_header(drafts, *, allocated):
+    payment, _, payload = setup_refund(drafts, allocated=allocated)
     original = refund(drafts, payload)
     header = dict(
         id=uuid4(),
@@ -199,7 +203,7 @@ def test_invalid_pending_history_cannot_escape_the_transaction(revision, command
             )
         else:
             with Operations.context(MigrationContext.configure(c)):
-                refund_revision_header_migration()["downgrade"]()
+                refund_revision_header_migration(include_dependents=False)["downgrade"]()
     assert caught.value.orig.diag.constraint_name == errors[command]
     assert snapshot(s) == before
 
@@ -222,7 +226,7 @@ def test_notification_history_alone_blocks_downgrade(revision, entity_type, vers
             {"id": header["id"], "ledger": s["ledger"], "version": version},
         )
         with Operations.context(MigrationContext.configure(c)):
-            refund_revision_header_migration()["downgrade"]()
+            refund_revision_header_migration(include_dependents=False)["downgrade"]()
     assert caught.value.orig.diag.constraint_name == "ck_refund_revision_downgrade"
 
 

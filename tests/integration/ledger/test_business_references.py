@@ -165,13 +165,14 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                         "(SELECT count(*) FROM business_credit_lines) + "
                         "(SELECT count(*) FROM business_credit_revisions) + "
                         "(SELECT count(*) FROM business_credit_revision_members) + "
-                        "(SELECT count(*) FROM business_refund_revisions)"
+                        "(SELECT count(*) FROM business_refund_revisions) + "
+                        "(SELECT count(*) FROM business_refund_revision_returns)"
                     ).scalar()
                     == 0
                 )
                 connection.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
-                    "business_refund_revisions, "
+                    "business_refund_revision_returns, business_refund_revisions, "
                     "business_credit_revision_members, business_credit_revisions, "
                     "business_credit_lines, business_credits, "
                     "business_refund_returns, business_refunds, "
