@@ -918,6 +918,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refund History
+         * @description Page ordered version metadata for the fixed refund.
+         */
+        get: operations["refund_history_api_v1_ledgers__ledger_id__business_refunds__refund_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/revisions/{revision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revision Detail
+         * @description Read the selected permanent receipt, including its ordered evidence and fees.
+         */
+        get: operations["revision_detail_api_v1_ledgers__ledger_id__business_refunds__refund_id__revisions__revision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/categories": {
         parameters: {
             query?: never;
@@ -5730,6 +5770,25 @@ export interface components {
              */
             category_id: string;
         };
+        /** RefundHistoryEntry */
+        RefundHistoryEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "correct" | "cancel";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Reason */
+            reason: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Version */
+            version: number;
+        };
         /** RefundReplacement */
         RefundReplacement: {
             /**
@@ -8547,6 +8606,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefundCurrent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refund_history_api_v1_ledgers__ledger_id__business_refunds__refund_id__history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundHistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revision_detail_api_v1_ledgers__ledger_id__business_refunds__refund_id__revisions__revision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                refund_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRevisionResponse"];
                 };
             };
             /** @description Validation Error */

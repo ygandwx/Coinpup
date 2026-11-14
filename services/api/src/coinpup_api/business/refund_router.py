@@ -15,6 +15,8 @@ from coinpup_api.business.refund_read_schemas import (
     RefundSummary,
 )
 from coinpup_api.business.refund_reads import BusinessRefundReads
+from coinpup_api.business.refund_revision_history import BusinessRefundHistory
+from coinpup_api.business.refund_revision_history_schemas import RefundHistoryEntry
 from coinpup_api.business.refund_revision_schemas import (
     RefundCancellationCreate,
     RefundCorrectionCreate,
@@ -34,6 +36,7 @@ def create_refund_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessRefundService(engine), BusinessRefundReads(engine)
     revisions = BusinessRefundRevisionService(engine)
+    history = BusinessRefundHistory(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -145,6 +148,27 @@ def create_refund_router(settings, engine):
     def current(ledger_id: UUID, refund_id: UUID, identity: reader):
         """Read the current operation version and its effective refund, if any."""
         return execute(reads.current, identity.id, ledger_id, refund_id)
+
+    @router.get("/business-refunds/{refund_id}/history", response_model=list[RefundHistoryEntry])
+    def refund_history(
+        ledger_id: UUID,
+        refund_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+    ):
+        """Page ordered version metadata for the fixed refund."""
+        return execute(
+            history.list_history, identity.id, ledger_id, refund_id, limit=limit, offset=offset
+        )
+
+    @router.get(
+        "/business-refunds/{refund_id}/revisions/{revision_id}",
+        response_model=RefundRevisionResponse,
+    )
+    def revision_detail(ledger_id: UUID, refund_id: UUID, revision_id: UUID, identity: reader):
+        """Read the selected permanent receipt, including its ordered evidence and fees."""
+        return execute(history.get_revision, identity.id, ledger_id, refund_id, revision_id)
 
     @router.get(
         "/business-payments/{payment_id}/refund-capacity",

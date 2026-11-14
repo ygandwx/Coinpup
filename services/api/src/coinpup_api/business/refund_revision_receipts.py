@@ -125,6 +125,21 @@ def replay_revision(session, receipt, ledger_id, refund_id, action, payload, dig
         or receipt.operation_id != saved.operation_id
     ):
         raise integrity()
+    original, assets = fixed_revision_receipt(session, saved, receipt)
+    return validate_revision_intent(original, action, payload, assets)
+
+
+def fixed_revision_receipt(session, saved, receipt):
+    """Return the stored 200 only after proving its immutable facts in this scoped snapshot."""
+    if (
+        receipt is None
+        or receipt.ledger_id != saved.ledger_id
+        or receipt.key != saved.idempotency_key
+        or receipt.operation_id != saved.operation_id
+        or receipt.hash_version != 2
+        or receipt.response_status != 200
+    ):
+        raise integrity()
     expected, assets = _stored_response(session, saved.id)
     try:
         original = RefundRevisionResponse.model_validate(receipt.response)
@@ -132,10 +147,10 @@ def replay_revision(session, receipt, ledger_id, refund_id, action, payload, dig
         raise integrity() from None
     if (
         receipt.response != expected.model_dump(mode="json")
-        or original.ledger_id != ledger_id
-        or original.refund_id != refund_id
+        or original.ledger_id != saved.ledger_id
+        or original.refund_id != saved.refund_id
         or original.operation_id != saved.operation_id
         or original.payment_id != saved.payment_id
     ):
         raise integrity()
-    return validate_revision_intent(original, action, payload, assets)
+    return original, assets
