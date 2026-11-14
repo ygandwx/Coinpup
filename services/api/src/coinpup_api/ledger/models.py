@@ -34,6 +34,7 @@ from coinpup_api.business import (
 from coinpup_api.business import credit_revision_models as credit_revision_models  # noqa: F401
 from coinpup_api.business import models as business_models  # noqa: F401
 from coinpup_api.business import refund_models as refund_models  # noqa: F401
+from coinpup_api.business import refund_revision_models as refund_revision_models  # noqa: F401
 from coinpup_api.business import settlement_models as settlement_models  # noqa: F401
 from coinpup_api.ledger import period_models as period_models  # noqa: F401
 from coinpup_api.models import Base

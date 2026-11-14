@@ -19,8 +19,10 @@ def test_member_ddl_catalog_and_operation_history_keys():
     previous = runpy.run_path(str(versions / "20261106_0040_credit_revision_headers.py"))
     assert migration["down_revision"] == previous["revision"]
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
-    assert set(get_args(EntityType)) == set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])
-    assert len(get_args(EntityType)) == 38
+    assert set(get_args(EntityType)) == set(
+        migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"]
+    ) | {"business_refund_revisions"}
+    assert len(get_args(EntityType)) == 39
     table = BusinessCreditRevisionMember.__table__
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         migration["_SCHEMA_SQL"].split()

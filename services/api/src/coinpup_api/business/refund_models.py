@@ -30,6 +30,13 @@ class BusinessRefund(SettlementIdentity, Base):
         *_journal("business_refund"),
         *_receipt("business_refund"),
         UniqueConstraint("id", "payment_id", "ledger_id", name="uq_business_refund_scope"),
+        UniqueConstraint(
+            "id",
+            "payment_id",
+            "operation_id",
+            "ledger_id",
+            name="uq_business_refund_operation_scope",
+        ),
         ForeignKeyConstraint(
             ["payment_id", "ledger_id"],
             ["business_payments.id", "business_payments.ledger_id"],

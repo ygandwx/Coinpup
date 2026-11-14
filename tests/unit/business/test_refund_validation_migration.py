@@ -34,5 +34,5 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
     assert current["_OLD_KINDS"] == migration["_KINDS"]
     assert str(constraint.sqltext) == current["_KINDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261106_0048"]
+    assert scripts.get_heads() == ["20261109_0049"]
     assert scripts.get_revision("20261015_0036").down_revision == "20261015_0035"
