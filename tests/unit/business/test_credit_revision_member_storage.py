@@ -21,8 +21,8 @@ def test_member_ddl_catalog_and_operation_history_keys():
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert set(get_args(EntityType)) == set(
         migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"]
-    ) | {"business_refund_revisions"}
-    assert len(get_args(EntityType)) == 39
+    ) | {"business_refund_revisions", "business_refund_revision_returns"}
+    assert len(get_args(EntityType)) == 40
     table = BusinessCreditRevisionMember.__table__
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         migration["_SCHEMA_SQL"].split()

@@ -48,7 +48,8 @@ class ChangeLog(Base):
             "'business_allocation_returns', 'business_allocation_return_lines', "
             "'business_refunds', 'business_refund_returns', "
             "'business_credits', 'business_credit_lines', 'business_credit_revisions', "
-            "'business_credit_revision_members', 'business_refund_revisions')",
+            "'business_credit_revision_members', 'business_refund_revisions', "
+            "'business_refund_revision_returns')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

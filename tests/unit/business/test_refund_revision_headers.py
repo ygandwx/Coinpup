@@ -20,7 +20,9 @@ def test_refund_revision_migration_extends_the_catalog_with_one_gated_table():
     assert schema["down_revision"] == "20261106_0048"
     assert schema["_TABLES"] == ("business_refund_revisions",)
     assert schema["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
-    assert set(get_args(EntityType)) == set(schema["_OLD_ENTITY_TYPES"] + schema["_TABLES"])
+    assert set(get_args(EntityType)) == set(schema["_OLD_ENTITY_TYPES"] + schema["_TABLES"]) | {
+        "business_refund_revision_returns"
+    }
     table = BusinessRefundRevision.__table__
     sql = " ".join(str(CreateTable(table).compile(dialect=dialect())).split())
     assert sql in " ".join(schema["_SCHEMA_SQL"].split())
