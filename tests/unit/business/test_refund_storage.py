@@ -27,7 +27,14 @@ def test_refund_storage_is_frozen_and_matches_all_declared_tables_and_indexes():
         statements = [CreateTable(model.__table__)]
         statements.extend(CreateIndex(index) for index in model.__table__.indexes)
         for statement in statements:
-            assert " ".join(str(statement.compile(dialect=dialect())).split()) in frozen
+            sql = " ".join(str(statement.compile(dialect=dialect())).split())
+            # The four-column key was added by 0049. Compare 0035 against its original DDL.
+            sql = sql.replace(
+                ", CONSTRAINT uq_business_refund_operation_scope UNIQUE "
+                "(id, payment_id, operation_id, ledger_id)",
+                "",
+            )
+            assert sql in frozen
         assert model.__tablename__ in migration["_TABLES"]
         assert len(model.__tablename__) <= 32
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
