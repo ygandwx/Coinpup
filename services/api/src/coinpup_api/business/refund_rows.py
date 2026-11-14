@@ -6,8 +6,11 @@ from coinpup_api.business.settlement_rows import PostingGroup
 from coinpup_api.ledger.posting_storage import PostingLine, prepare_journal_lines
 
 
-def refund_rows(service, session, ledger_id, party_id, payload, plan, controls, catalog):
-    operation, journal = uuid4(), uuid4()
+def refund_rows(
+    service, session, ledger_id, party_id, payload, plan, controls, catalog, *, operation_id=None
+):
+    operation = uuid4() if operation_id is None else operation_id
+    journal = uuid4()
     common = dict(journal_id=journal, ledger_id=ledger_id, party_id=party_id)
     rows = [
         PostingLine(
