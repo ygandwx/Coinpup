@@ -1,10 +1,10 @@
 """Exact net applications in one query, without multiplying joined source rows."""
 
-from sqlalchemy import func, literal, select, union_all
+from sqlalchemy import Numeric, Uuid, cast, column, func, literal, select, union_all
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from coinpup_api.business.allocation_return_models import BusinessAllocationReturnLine
 from coinpup_api.business.credit_projections import current_credit_lines
-from coinpup_api.business.refund_models import BusinessRefund
 from coinpup_api.business.settlement_models import BusinessAllocationLine
 
 
@@ -50,21 +50,25 @@ def document_totals(session, ledger_id, identifiers):
 
 def payment_totals(session, ledger_id, identifiers):
     """Keep net applications and refunded principal distinct in one bounded page query."""
+    identifiers = list(identifiers or ())
     if not identifiers:
         return {}
-    source, returned, refund = BusinessAllocationLine, BusinessAllocationReturnLine, BusinessRefund
+    source, returned = BusinessAllocationLine, BusinessAllocationReturnLine
+    principals = func.public.coinpup_current_refund_principals(
+        cast(ledger_id, Uuid), cast(identifiers, ARRAY(Uuid))
+    ).table_valued(column("payment_id", Uuid), column("payment_amount", Numeric(38, 18)))
     statements = [
         select(
             table.payment_id.label("identity"),
             applied.label("applied"),
-            refunded.label("refunded"),
+            literal(0).label("refunded"),
         ).where(table.ledger_id == ledger_id, table.payment_id.in_(identifiers))
-        for table, applied, refunded in (
-            (source, source.payment_amount, literal(0)),
-            (returned, -returned.payment_amount, literal(0)),
-            (refund, literal(0), refund.payment_amount),
+        for table, applied in (
+            (source, source.payment_amount),
+            (returned, -returned.payment_amount),
         )
     ]
+    statements.append(select(principals.c.payment_id, literal(0), principals.c.payment_amount))
     entries = union_all(*statements).subquery()
     return {
         identifier: (applied, refunded)
