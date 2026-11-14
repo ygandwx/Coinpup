@@ -14,6 +14,12 @@ from coinpup_api.business.refund_read_schemas import (
     RefundSummary,
 )
 from coinpup_api.business.refund_reads import BusinessRefundReads
+from coinpup_api.business.refund_revision_schemas import (
+    RefundCancellationCreate,
+    RefundCorrectionCreate,
+    RefundRevisionResponse,
+)
+from coinpup_api.business.refund_revisions import BusinessRefundRevisionService
 from coinpup_api.business.refund_schemas import (
     BusinessRefundCreate,
     BusinessRefundResponse,
@@ -26,6 +32,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_refund_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessRefundService(engine), BusinessRefundReads(engine)
+    revisions = BusinessRefundRevisionService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -62,6 +69,54 @@ def create_refund_router(settings, engine):
         """Record actual cash independently; preserve classification and the original payment."""
         return execute(
             service.create, identity.id, ledger_id, payload, idempotency_key, raw_body=raw_body
+        )
+
+    @router.post(
+        "/business-refunds/{refund_id}/corrections",
+        response_model=RefundRevisionResponse,
+        status_code=200,
+    )
+    def correct(
+        ledger_id: UUID,
+        refund_id: UUID,
+        payload: RefundCorrectionCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Replace current cash, fees and ordered evidence for the same payment."""
+        return execute(
+            revisions.correct,
+            identity.id,
+            ledger_id,
+            refund_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
+        )
+
+    @router.post(
+        "/business-refunds/{refund_id}/cancellations",
+        response_model=RefundRevisionResponse,
+        status_code=200,
+    )
+    def cancel(
+        ledger_id: UUID,
+        refund_id: UUID,
+        payload: RefundCancellationCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Reverse the current refund and retain every prior receipt."""
+        return execute(
+            revisions.cancel,
+            identity.id,
+            ledger_id,
+            refund_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
         )
 
     @router.get("/business-refunds", response_model=list[RefundSummary])

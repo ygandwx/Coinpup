@@ -858,6 +858,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/cancellations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel
+         * @description Reverse the current refund and retain every prior receipt.
+         */
+        post: operations["cancel_api_v1_ledgers__ledger_id__business_refunds__refund_id__cancellations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-refunds/{refund_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct
+         * @description Replace current cash, fees and ordered evidence for the same payment.
+         */
+        post: operations["correct_api_v1_ledgers__ledger_id__business_refunds__refund_id__corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/categories": {
         parameters: {
             query?: never;
@@ -5488,6 +5528,13 @@ export interface components {
             /** Source Version */
             source_version?: number | null;
         };
+        /** RefundCancellationCreate */
+        RefundCancellationCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
         /** RefundCapacity */
         RefundCapacity: {
             /** Amount */
@@ -5529,6 +5576,14 @@ export interface components {
              * Format: date
              */
             transaction_date: string;
+        };
+        /** RefundCorrectionCreate */
+        RefundCorrectionCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["RefundReplacement"];
         };
         /** RefundDetail */
         RefundDetail: {
@@ -5602,6 +5657,123 @@ export interface components {
              * Format: uuid
              */
             category_id: string;
+        };
+        /** RefundReplacement */
+        RefundReplacement: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Allocation Return Ids */
+            allocation_return_ids?: string[];
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /** Payment Amount */
+            payment_amount: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** RefundRevisionFact */
+        RefundRevisionFact: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Allocation Return Ids */
+            allocation_return_ids: string[];
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Fees */
+            fees: components["schemas"]["RefundFeeReceipt"][];
+            /** Payment Amount */
+            payment_amount: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Source Version */
+            source_version: number;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** RefundRevisionResponse */
+        RefundRevisionResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "correct" | "cancel";
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_refund_revision";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            previous: components["schemas"]["RefundRevisionFact"];
+            /**
+             * Previous Journal Id
+             * Format: uuid
+             */
+            previous_journal_id: string;
+            /** Previous Version */
+            previous_version: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Refund Id
+             * Format: uuid
+             */
+            refund_id: string;
+            replacement: components["schemas"]["RefundRevisionFact"] | null;
+            /** Replacement Journal Id */
+            replacement_journal_id: string | null;
+            /**
+             * Reversal Journal Id
+             * Format: uuid
+             */
+            reversal_journal_id: string;
+            /**
+             * Revision Id
+             * Format: uuid
+             */
+            revision_id: string;
+            /** Version */
+            version: number;
         };
         /** RefundSummary */
         RefundSummary: {
@@ -8193,6 +8365,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefundDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_ledgers__ledger_id__business_refunds__refund_id__cancellations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundCancellationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_api_v1_ledgers__ledger_id__business_refunds__refund_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundCorrectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRevisionResponse"];
                 };
             };
             /** @description Validation Error */
