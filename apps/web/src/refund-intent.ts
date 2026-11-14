@@ -13,14 +13,14 @@ export type RefundReview = {
     categories: Pick<Category, "id" | "ledger_id" | "kind" | "archived">[];
     returns: { id: string; ledger_id: string; payment_id: string; return_date: string }[];
 };
-const record = (value: unknown): value is Record<string, unknown> =>
+export const record = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value);
-const uuid = (value: unknown): value is string =>
+export const uuid = (value: unknown): value is string =>
     typeof value === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(value);
-const keys = (value: Record<string, unknown>, allowed: string[]) =>
+export const keys = (value: Record<string, unknown>, allowed: string[]) =>
     Object.keys(value).every((key) => allowed.includes(key));
-const assetId = (value: unknown): value is string =>
+export const assetId = (value: unknown): value is string =>
     typeof value === "string" && value.length > 0 && value.length <= 200 && !value.includes("\0");
 const quantity = (value: unknown, scale = 18): bigint => {
     if (typeof value !== "string" || !Number.isInteger(scale) || scale < 0 || scale > 18)

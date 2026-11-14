@@ -1,3 +1,4 @@
+import { stripCommandText as masterName } from "./command-text";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { getMasterData, saveMasterData } from "./business-api";
@@ -25,16 +26,7 @@ const terminal = ["idle", "confirmed", "conflict", "rejected"];
 const idle = (): MasterSnapshot =>
     Object.freeze({ status: "idle", plan: null, record: null, error: null });
 
-/** Match Python str.strip for names without changing other submitted text. */
-export function masterName(value: string): string {
-    const blank = (char: string) =>
-        /^\p{White_Space}$/u.test(char) || (char >= "\u001c" && char <= "\u001f");
-    let start = 0,
-        end = value.length;
-    while (start < end && blank(value[start])) start += 1;
-    while (end > start && blank(value[end - 1])) end -= 1;
-    return value.slice(start, end);
-}
+export { masterName };
 function scoped(value: unknown, plan: FrozenMaster): value is MasterRecord {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
     const row = value as Record<string, unknown>;
