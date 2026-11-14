@@ -115,13 +115,15 @@ def test_final_return_absorbs_the_exact_remaining_minimum_unit(drafts):
 def test_return_then_residual_and_reapplication_keep_original_facts(drafts, direction, asset):
     s = drafts
     payment, paid, allocation, body = setup_return(s, direction=direction, asset=asset)
+    category_totals = (
+        select(JournalLine.category_id, func.sum(JournalLine.amount))
+        .where(JournalLine.category_id.is_not(None))
+        .group_by(JournalLine.category_id)
+        .order_by(JournalLine.category_id)
+    )
     with s["engine"].connect() as c:
         cash_before = balance(c, s["account"].id, "USD")
-        categories_before = c.execute(
-            select(JournalLine.category_id, func.sum(JournalLine.amount))
-            .where(JournalLine.category_id.is_not(None))
-            .group_by(JournalLine.category_id)
-        ).all()
+        categories_before = c.execute(category_totals).all()
     result = submit_return(s, body)
     assert result.payment_id == payment.id
     assert result.postings[0].source_allocation_line_id == body.lines[0].source_allocation_line_id
@@ -156,14 +158,7 @@ def test_return_then_residual_and_reapplication_keep_original_facts(drafts, dire
     assert snapshot(s) == before
     with s["engine"].connect() as c:
         assert cash_before == balance(c, s["account"].id, "USD")
-        assert (
-            categories_before
-            == c.execute(
-                select(JournalLine.category_id, func.sum(JournalLine.amount))
-                .where(JournalLine.category_id.is_not(None))
-                .group_by(JournalLine.category_id)
-            ).all()
-        )
+        assert categories_before == c.execute(category_totals).all()
         assert c.scalar(select(func.count()).select_from(BusinessAllocationReturn)) == 2
         assert c.scalars(
             select(BusinessAllocationReturnLine.source_return_no).order_by(
