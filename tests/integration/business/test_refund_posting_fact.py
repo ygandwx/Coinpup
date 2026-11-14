@@ -204,7 +204,7 @@ def test_downgrade_requires_no_revision_history(evidence):
     with pytest.raises(IntegrityError) as rejected, s["engine"].begin() as c:
         c.execute(insert(Revision).values(**header))
         with Operations.context(MigrationContext.configure(c)):
-            refund_posting_fact_migration()["downgrade"]()
+            refund_posting_fact_migration(include_dependents=False)["downgrade"]()
     assert rejected.value.orig.diag.constraint_name == "ck_refund_revision_downgrade"
     assert refund(s, command) == original
     assert snapshot(s) == before
