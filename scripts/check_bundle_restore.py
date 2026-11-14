@@ -28,6 +28,7 @@ from check_ocr_confirmation_restore import seed_confirmations, verify_confirmati
 from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
 from check_refund_restore import seed_refunds, verify_refunds
+from check_refund_revision_restore import seed_refund_revisions, verify_refund_revisions
 from check_reminder_restore import seed_reminders, verify_reminders
 from restore_bundle import restore_bundle
 
@@ -361,6 +362,14 @@ def check_bundle_restore(source_url):
             business_settlements = seed_business_settlements(engine, owner)
             allocation_returns = seed_allocation_returns(engine, owner)
             business_refunds = seed_refunds(engine, owner)
+            refund_revisions = seed_refund_revisions(
+                engine,
+                owner,
+                service,
+                store,
+                fictional_pdf("Fictional archived refund correction 2026-10-05"),
+                upload_fixture,
+            )
             business_credits = seed_credits(engine, owner)
             credit_revisions = seed_credit_revisions(
                 engine,
@@ -443,9 +452,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                # Ledger-scoped bank copies plus one revision-born member's private PDF.
-                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 6.")
-                if len(manifest["blobs"]) != 6 or manifest["stored_files"] != [
+                # Bank copies and two private originals from revised credit and refund operations.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 7.")
+                if len(manifest["blobs"]) != 7 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
@@ -469,6 +478,7 @@ def check_bundle_restore(source_url):
             verify_business_settlements(restored_engine, business_settlements)
             verify_allocation_returns(restored_engine, allocation_returns)
             verify_refunds(restored_engine, business_refunds)
+            verify_refund_revisions(restored_engine, refund_revisions)
             verify_credits(restored_engine, business_credits)
             verify_credit_revisions(restored_engine, credit_revisions)
             verify_payment_evidence(restored_engine, payment_evidence)
@@ -482,6 +492,7 @@ def check_bundle_restore(source_url):
                 duplicate,
                 *payment_evidence["originals"],
                 *credit_revisions["originals"],
+                *refund_revisions["originals"],
             ):
                 file, key = restored_service.get_download(
                     owner, fixture["ledger"], fixture["receipt"].file_id
@@ -557,6 +568,7 @@ def check_bundle_restore(source_url):
                 "Actual same/cross-asset refunds, explicit returns, fees and exhausted principal "
                 "restored; closed/archived original v2 replay changes no table or change page."
             )
+            print("Refund revisions, fixed receipts and linked private PDF verified.")
             print(
                 "Confirmed invoice/bill snapshots, gross balances and v2 receipts restored exactly."
             )
