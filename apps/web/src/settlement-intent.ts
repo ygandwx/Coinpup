@@ -1,4 +1,6 @@
-import type { RefundCreate, RefundReceipt } from "./refund-api";
+import { validFrozenRefundRevision } from "./refund-revision-intent";
+import type { FrozenRefundRevision } from "./refund-revision-intent";
+import type { RefundCreate, RefundReceipt, RefundRevisionReceipt } from "./refund-api";
 import { validRefundInput, validRefundReceipt } from "./refund-intent";
 import type {
     BusinessAllocationCreate,
@@ -17,15 +19,21 @@ export type SettlementInput =
     | { kind: "return"; body: AllocationReturnCreate }
     | { kind: "refund"; body: RefundCreate };
 export type SettlementReceipt =
-    BusinessPaymentReceipt | BusinessAllocationReceipt | AllocationReturnReceipt | RefundReceipt;
-export type FrozenSettlement = Readonly<{
-    ownerId: string;
-    ledgerId: string;
-    kind: SettlementInput["kind"];
-    key: string;
-    bodyJson: string;
-    reviewedJson: string;
-}>;
+    | BusinessPaymentReceipt
+    | BusinessAllocationReceipt
+    | AllocationReturnReceipt
+    | RefundReceipt
+    | RefundRevisionReceipt;
+export type FrozenSettlement =
+    | (FrozenRefundRevision & { readonly kind: "refund-revision" })
+    | Readonly<{
+          ownerId: string;
+          ledgerId: string;
+          kind: SettlementInput["kind"];
+          key: string;
+          bodyJson: string;
+          reviewedJson: string;
+      }>;
 const record = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 const uuid = (value: unknown): value is string =>
@@ -179,6 +187,7 @@ export function validSettlementReceipt(
     plan: FrozenSettlement,
 ): value is SettlementReceipt {
     if (!record(value)) return false;
+    if (plan.kind === "refund-revision") return validFrozenRefundRevision(value, plan);
     if (plan.kind === "return") return validReturnReceipt(value, plan);
     if (plan.kind === "refund") return validRefundReceipt(value, plan);
     const body = JSON.parse(plan.bodyJson) as Record<string, unknown>;

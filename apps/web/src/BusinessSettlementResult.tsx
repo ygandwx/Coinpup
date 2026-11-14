@@ -4,6 +4,7 @@ import type { AllocationPayment, AllocationSource } from "./settlement-fields";
 import type { Locale } from "./i18n";
 import { settlementError } from "./settlement-errors";
 import { formatAmount } from "./money";
+import { BusinessRefundRevisionResult } from "./BusinessRefundRevisionResult";
 import { BusinessRefundResult } from "./BusinessRefundResult";
 import { BusinessAllocationReturnResult } from "./BusinessAllocationReturnResult";
 
@@ -30,6 +31,15 @@ export function BusinessSettlementResult({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const plan = pending.plan;
     if (!plan) return null;
+    if (plan.kind === "refund-revision")
+        return (
+            <BusinessRefundRevisionResult
+                pending={pending}
+                locale={locale}
+                onRetry={onRetry}
+                onClose={onClose}
+            />
+        );
     if (plan.kind === "refund")
         return (
             <BusinessRefundResult
