@@ -62,19 +62,26 @@ export function validRefundInput(value: unknown): boolean {
         ]) ||
         !uuid(value.id) ||
         !uuid(value.payment_id) ||
-        !uuid(value.account_id) ||
-        !assetId(value.asset_id) ||
         !Number.isSafeInteger(value.expected_version) ||
         (value.expected_version as number) < 1 ||
         (value.expected_version as number) > 2147483646 ||
-        !positive(value.amount) ||
-        !positive(value.payment_amount) ||
-        typeof value.transaction_date !== "string" ||
-        !validDraftDate(value.transaction_date) ||
         typeof value.reason !== "string" ||
         !value.reason.trim() ||
         value.reason.length > 2000 ||
         value.reason.includes("\0")
+    )
+        return false;
+    return validRefundCashFields(value);
+}
+
+export function validRefundCashFields(value: Record<string, unknown>): boolean {
+    if (
+        !uuid(value.account_id) ||
+        !assetId(value.asset_id) ||
+        !positive(value.amount) ||
+        !positive(value.payment_amount) ||
+        typeof value.transaction_date !== "string" ||
+        !validDraftDate(value.transaction_date)
     )
         return false;
     const returns = value.allocation_return_ids ?? [],
@@ -93,9 +100,21 @@ export function validRefundInput(value: unknown): boolean {
 }
 
 export function validRefundReview(ledgerId: string, body: unknown, reviewed: unknown): boolean {
+    return (
+        validRefundInput(body) &&
+        record(body) &&
+        validRefundCashReview(ledgerId, body, reviewed, 0n)
+    );
+}
+
+// Revisions can replace only their own effective principal in the same fixed payment.
+export function validRefundCashReview(
+    ledgerId: string,
+    body: Record<string, unknown>,
+    reviewed: unknown,
+    ownPrincipal: bigint,
+): boolean {
     if (
-        !validRefundInput(body) ||
-        !record(body) ||
         !record(reviewed) ||
         !record(reviewed.capacity) ||
         !uuid(ledgerId) ||
@@ -163,7 +182,9 @@ export function validRefundReview(ledgerId: string, body: unknown, reviewed: unk
             total - applied - refunded !== remaining ||
             principal <= 0n ||
             cash <= 0n ||
-            principal > remaining ||
+            ownPrincipal < 0n ||
+            ownPrincipal > refunded ||
+            principal > remaining + ownPrincipal ||
             (body.asset_id === capacity.asset_id && cash !== principal) ||
             !account(body.account_id, body.asset_id)
         )
