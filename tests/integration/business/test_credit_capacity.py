@@ -201,22 +201,18 @@ def test_capacity_migration_empty_roundtrip_restores_exact_refund_validator(draf
         s["engine"].begin() as connection,
         Operations.context(MigrationContext.configure(connection)),
     ):
-        migration["downgrade"]()
-        old = connection.scalar(
-            text(
-                "SELECT pg_get_functiondef("
-                "'coinpup_validate_business_allocation(uuid)'::regprocedure)"
-            )
+        definition = text(
+            "SELECT pg_get_functiondef('coinpup_validate_business_allocation(uuid)'::regprocedure)"
         )
+        original = connection.scalar(definition)
+        migration["downgrade"]()
+        old = connection.scalar(definition)
         assert "business_credit_lines" not in old and "business_refunds" in old
         migration["upgrade"]()
-        current = connection.scalar(
-            text(
-                "SELECT pg_get_functiondef("
-                "'coinpup_validate_business_allocation(uuid)'::regprocedure)"
-            )
-        )
-        assert "coinpup_current_credit_lines" in current and "business_refunds" in current
+        current = connection.scalar(definition)
+        assert current == original
+        assert "coinpup_current_credit_lines" in current
+        assert "coinpup_current_refund_principals" in current
     assert snapshot(s) == before
     assert pay(s, body) == saved
     assert snapshot(s) == before

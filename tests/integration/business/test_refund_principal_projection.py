@@ -177,5 +177,5 @@ def test_pending_refund_history_blocks_principal_downgrade(evidence):
     with pytest.raises(IntegrityError) as caught, s["engine"].begin() as c:
         c.execute(insert(Revision).values(**header))
         with Operations.context(MigrationContext.configure(c)):
-            refund_principal_migration()["downgrade"]()
+            refund_principal_migration(include_dependents=False)["downgrade"]()
     assert caught.value.orig.diag.constraint_name == "ck_refund_revision_downgrade"

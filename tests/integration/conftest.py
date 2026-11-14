@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261109_0051",)
+        assert context.get_current_heads() == ("20261109_0052",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261109_0051",)
+        assert context.get_current_heads() == ("20261109_0052",)
 
 
 def confirmation_schema_migration():
@@ -217,13 +217,35 @@ def refund_storage_migration():
 _CREDIT_HISTORY_LAYER = ContextVar("credit_history_layer", default=False)
 
 
-def refund_principal_migration():
+def refund_current_capacity_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261109_0052_refund_current_capacity.py"
+        )
+    )
+
+
+def refund_principal_migration(*, include_dependents=True):
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261109_0051_refund_principal_projection.py"
         )
     )
+
+    if not include_dependents:
+        return frozen
+
+    def downgrade():
+        refund_current_capacity_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        refund_current_capacity_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def refund_revision_evidence_migration(*, include_dependents=True):
@@ -308,13 +330,27 @@ def credit_current_capacity_migration():
         )
     )
 
+    def has_refund_projection():
+        return (
+            not _CREDIT_HISTORY_LAYER.get()
+            and op.get_bind()
+            .exec_driver_sql(
+                "SELECT to_regprocedure('public.coinpup_current_refund_principals(uuid,uuid[])')"
+            )
+            .scalar()
+        )
+
     def downgrade():
+        if has_refund_projection():
+            refund_current_capacity_migration()["downgrade"]()
         credit_revision_guards_migration()["downgrade"]()
         frozen["downgrade"]()
 
     def upgrade():
         frozen["upgrade"]()
         credit_revision_guards_migration()["upgrade"]()
+        if has_refund_projection():
+            refund_current_capacity_migration()["upgrade"]()
 
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
@@ -794,9 +830,10 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0051",
+                    "20261109_0052",
                 )
                 credit_definitions = definitions(connection)
+                refund_current_capacity_migration()["downgrade"]()
                 credit_lifecycle_migration()["downgrade"]()
             credit_token = _CREDIT_HISTORY_LAYER.set(True)
         owner = create_admin(
@@ -820,8 +857,9 @@ def structure_database(request):
                     Operations.context(MigrationContext.configure(connection)),
                 ):
                     credit_lifecycle_migration()["upgrade"]()
+                    refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261109_0051",
+                        "20261109_0052",
                     )
                     assert definitions(connection) == credit_definitions
             finally:

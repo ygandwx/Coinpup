@@ -34,5 +34,27 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
     assert current["_OLD_KINDS"] == migration["_KINDS"]
     assert str(constraint.sqltext) == current["_KINDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261109_0051"]
+    assert scripts.get_heads() == ["20261109_0052"]
     assert scripts.get_revision("20261015_0036").down_revision == "20261015_0035"
+
+
+def test_current_principal_consumers_replace_only_the_refund_capacity_terms():
+    versions = Path(__file__).resolve().parents[3] / "services/api/migrations/versions"
+    allocation = runpy.run_path(str(versions / "20261106_0046_credit_current_capacity.py"))
+    refund = runpy.run_path(str(versions / "20261015_0036_business_refund_validation.py"))
+    capacity = runpy.run_path(str(versions / "20261109_0052_refund_current_capacity.py"))
+    assert capacity["_OLD_ALLOCATION"].strip() == allocation["_ALLOCATION"].strip()
+    assert (
+        capacity["_OLD_REFUND"].strip()
+        == refund["_REFUND"].split("CREATE FUNCTION coinpup_validate_shape_refund(")[0].strip()
+    )
+    for kind, alias, scope, separator in (
+        ("ALLOCATION", "f", "allocation", " "),
+        ("REFUND", "r", "entry", "\n           "),
+    ):
+        old = f"public.business_refunds {alias}{separator}WHERE {alias}.payment_id=payment.id AND "
+        old += f"{alias}.ledger_id={scope}.ledger_id"
+        current = f"public.coinpup_current_refund_principals({scope}.ledger_id, ARRAY[payment.id])"
+        previous = capacity[f"_OLD_{kind}"]
+        assert previous.count(old) == 1
+        assert capacity[f"_{kind}"] == previous.replace(old, f"{current} {alias}")
