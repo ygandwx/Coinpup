@@ -1,3 +1,5 @@
+import { BusinessRefundRevisionHistory } from "./BusinessRefundRevisionHistory";
+import type { Asset } from "./ledger-api";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { getRefund, listRefunds } from "./refund-api";
@@ -8,11 +10,13 @@ import type { Locale } from "./i18n";
 
 export function BusinessRefundHistory({
     ledgerId,
+    assets,
     locale,
     onClose,
     onUnauthorized,
 }: {
     ledgerId: string;
+    assets: Asset[];
     locale: Locale;
     onClose: () => void;
     onUnauthorized: () => void;
@@ -20,6 +24,7 @@ export function BusinessRefundHistory({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [selected, setSelected] = useState<string | null>(null),
         [offset, setOffset] = useState(0);
+    const [versions, setVersions] = useState<string | null>(null);
     const [refresh, setRefresh] = useState(0);
     const key = `${ledgerId}/${selected ?? `page:${offset}`}/${refresh}`;
     const [loaded, setLoaded] = useState<{
@@ -164,6 +169,22 @@ export function BusinessRefundHistory({
                                 ))}
                             </ul>
                         </details>
+                        <button
+                            type="button"
+                            aria-expanded={versions === data.id}
+                            onClick={() => setVersions(versions === data.id ? null : data.id)}
+                        >
+                            {t("当前退款与版本历史", "Current refund and version history")}
+                        </button>
+                        {versions === data.id && (
+                            <BusinessRefundRevisionHistory
+                                key={ledgerId + data.id}
+                                original={data}
+                                assets={assets}
+                                locale={locale}
+                                onUnauthorized={onUnauthorized}
+                            />
+                        )}
                         <button type="button" onClick={() => setSelected(null)}>
                             {t("返回退款列表", "Back to refund list")}
                         </button>
