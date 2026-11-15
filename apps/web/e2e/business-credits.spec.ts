@@ -13,6 +13,10 @@ for (const [kind, principal] of [
 ] as const)
     test(`fictional ${kind}/${principal} manual credit and exact retry`, async ({ page }, info) => {
         test.setTimeout(120_000);
+        const longReason = kind === "invoice" && principal === "100";
+        const originalReason = longReason
+            ? "Fictional manual credit 中文 ".padEnd(1000, "A") + "🪙".repeat(998) + "尾证"
+            : "Fictional manual credit 中文 " + "reason ".repeat(8);
         const data = await confirmationSetup(page, kind, principal);
         const confirmed = await api<BusinessConfirmationReceipt>(
             page,
@@ -46,9 +50,15 @@ for (const [kind, principal] of [
         const form = page.getByRole("form", { name: "Record credit", exact: true });
         await expect(form).toBeVisible();
         await page.getByLabel("Credit transaction date", { exact: true }).fill("2026-01-05");
-        await page
-            .getByLabel("Credit reason", { exact: true })
-            .fill("Fictional manual credit 中文 " + "reason ".repeat(8));
+        await page.getByLabel("Credit reason", { exact: true }).fill(originalReason);
+        if (longReason) {
+            const field = page.getByRole("textbox", { name: "Credit reason", exact: true });
+            await field.fill(originalReason + "外");
+            await expect(field).toHaveValue(originalReason + "外");
+            await expect(field).toHaveAttribute("aria-invalid", "true");
+            await field.fill(originalReason);
+            await expect(field).toHaveValue(originalReason);
+        }
         await page.getByRole("checkbox", { name: "Credit this line", exact: true }).check();
         await page.getByLabel("Credit recognition date", { exact: true }).fill("2026-01-05");
         const reviewed = page.getByRole("checkbox", {
@@ -190,6 +200,8 @@ for (const [kind, principal] of [
         expect(new Set(keys).size).toBe(1);
         const credits = await api<CreditSummary[]>(page, "GET", `${data.ledger}/business-credits`);
         expect(credits).toHaveLength(1);
+        expect(JSON.parse(bodies[0]).reason).toBe(originalReason);
+        expect(credits[0].reason).toBe(originalReason.trim());
         const saved = await api<CreditDetail>(
             page,
             "GET",

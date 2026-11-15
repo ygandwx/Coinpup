@@ -17,6 +17,10 @@ for (const [direction, asset, principal] of [
         page,
     }, info) => {
         test.setTimeout(120_000);
+        const longReason = direction === "receipt" && asset === "USD" && principal === "100";
+        const originalReason = longReason
+            ? "Fictional refund 中文 ".padEnd(1000, "A") + "🪙".repeat(998) + "尾证"
+            : "Fictional refund 中文 " + "reason ".repeat(12);
         const data = await confirmationSetup(
             page,
             direction === "receipt" ? "invoice" : "bill",
@@ -96,9 +100,7 @@ for (const [direction, asset, principal] of [
                 .getByLabel("Original principal being refunded (USD)", { exact: true })
                 .fill("20");
             await page.getByLabel("Refund transaction date", { exact: true }).fill("2026-01-05");
-            await page
-                .getByLabel("Refund reason", { exact: true })
-                .fill("Fictional refund 中文 " + "reason ".repeat(12));
+            await page.getByLabel("Refund reason", { exact: true }).fill(originalReason);
         }
         let capacityReadFailed = false;
         await page.route(
@@ -117,6 +119,14 @@ for (const [direction, asset, principal] of [
         await expect(page.getByRole("form", { name: "Actual refund", exact: true })).toContainText(
             "30.00 USD",
         );
+        if (longReason) {
+            const field = page.getByRole("textbox", { name: "Refund reason", exact: true });
+            await field.fill(originalReason + "外");
+            await expect(field).toHaveValue(originalReason + "外");
+            await expect(field).toHaveAttribute("aria-invalid", "true");
+            await field.fill(originalReason);
+            await expect(field).toHaveValue(originalReason);
+        }
         let writes = 0;
         const submitted = (request: { method(): string; url(): string }) => {
             if (request.method() === "POST" && request.url().endsWith("/business-refunds"))
@@ -255,6 +265,8 @@ for (const [direction, asset, principal] of [
         expect(JSON.parse(bodies[0]).allocation_return_ids).toEqual([returnId]);
         const refunds = await api<RefundSummary[]>(page, "GET", `${data.ledger}/business-refunds`);
         expect(refunds).toHaveLength(1);
+        expect(JSON.parse(bodies[0]).reason).toBe(originalReason);
+        expect(refunds[0].reason).toBe(originalReason.trim());
         expect(await api(page, "GET", `${data.base}/settlement`)).toEqual(savedDocument);
         const payment = await api<BusinessPaymentDetail>(
             page,

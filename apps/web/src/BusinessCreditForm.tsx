@@ -1,3 +1,4 @@
+import { validBusinessReason } from "./command-text";
 import { useId, useState } from "react";
 import type { CreditCreate } from "./credit-api";
 import type { CreditReview } from "./credit-intent";
@@ -31,6 +32,7 @@ export function BusinessCreditForm({
 }) {
     const prefix = useId();
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
+    const invalidReason = body.reason !== "" && !validBusinessReason(body.reason);
     const reviewKey = JSON.stringify({ body, review });
     const [reviewedKey, setReviewedKey] = useState<string | null>(null),
         [invalid, setInvalid] = useState(false);
@@ -93,11 +95,20 @@ export function BusinessCreditForm({
                     <textarea
                         id={`${prefix}-reason`}
                         value={body.reason}
-                        maxLength={2000}
+                        aria-invalid={invalidReason || undefined}
+                        aria-describedby={invalidReason ? `${prefix}-reason-error` : undefined}
                         onChange={(event) =>
                             change((current) => ({ ...current, reason: event.target.value }))
                         }
                     />
+                    {invalidReason && (
+                        <p role="alert" id={`${prefix}-reason-error`}>
+                            {t(
+                                "原因限 1 至 2,000 个字符，不能只含空白或含有空字符。",
+                                "Enter a reason of 1 to 2,000 characters, with more than whitespace and no null characters.",
+                            )}
+                        </p>
+                    )}
                 </div>
                 {review.capacity.lines.map((source, index) => {
                     const selected = body.lines.find(
@@ -251,7 +262,7 @@ export function BusinessCreditForm({
                 <button
                     className="primary-button"
                     type="submit"
-                    disabled={disabled || !reviewed || body.lines.length === 0}
+                    disabled={disabled || !reviewed || body.lines.length === 0 || invalidReason}
                 >
                     {t("登记贷项", "Record credit")}
                 </button>

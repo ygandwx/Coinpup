@@ -73,6 +73,10 @@ for (const [asset, principal] of [
             },
         );
         const balances = await api(page, "GET", `${data.ledger}/balances?limit=100`);
+        const longReason = asset === "USD" && principal === "100";
+        const reason = longReason
+            ? "A".repeat(1000) + "🪙".repeat(998) + "尾证"
+            : "Fictional return 中文 " + "reason ".repeat(12);
         await page.goto(`/?entity=${data.entity.id}&view=business-settlements`);
         async function openReturn() {
             await page.getByRole("button", { name: "All allocations", exact: true }).click();
@@ -82,10 +86,18 @@ for (const [asset, principal] of [
                 .getByRole("checkbox", { name: source.lines[0].description, exact: true })
                 .check();
             await page.getByLabel("Return effective date", { exact: true }).fill("2026-01-04");
-            await page
-                .getByLabel("Return reason", { exact: true })
-                .fill("Fictional return 中文 " + "reason ".repeat(12));
+            const field = page.getByRole("textbox", { name: "Return reason", exact: true });
             await page.getByLabel("Document amount to return", { exact: true }).fill("20");
+            if (longReason) {
+                await field.fill(reason + "外");
+                await expect(field).toHaveValue(reason + "外");
+                await expect(field).toHaveAttribute("aria-invalid", "true");
+                await expect(
+                    page.getByRole("checkbox", { name: "I reviewed the original sources" }),
+                ).toBeDisabled();
+            }
+            await field.fill(reason);
+            await expect(field).toHaveValue(reason);
         }
         await openReturn();
         for (const width of [1440, 375, 320])
@@ -164,13 +176,14 @@ for (const [asset, principal] of [
         expect(bodies).toHaveLength(3);
         expect(new Set(bodies).size).toBe(1);
         expect(new Set(keys).size).toBe(1);
-        expect(
-            await api<AllocationReturnSummary[]>(
-                page,
-                "GET",
-                `${data.ledger}/business-allocation-returns`,
-            ),
-        ).toHaveLength(1);
+        expect(JSON.parse(bodies[0]).reason).toBe(reason);
+        const saved = await api<AllocationReturnSummary[]>(
+            page,
+            "GET",
+            `${data.ledger}/business-allocation-returns`,
+        );
+        expect(saved).toHaveLength(1);
+        expect(saved[0].reason).toBe(reason.trim());
         expect(await api(page, "GET", `${data.ledger}/balances?limit=100`)).toEqual(balances);
         const payment = await api<BusinessPaymentDetail>(
             page,

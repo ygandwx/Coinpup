@@ -1,3 +1,4 @@
+import { validBusinessReason } from "./command-text";
 import { useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
@@ -68,6 +69,7 @@ export function BusinessRefundForm({
     const callbacks = useRef({ onChange, onUnauthorized });
     callbacks.current = { onChange, onUnauthorized };
     const { payment, body, capacity } = draft;
+    const invalidReason = body.reason !== "" && !validBusinessReason(body.reason);
     const paymentId = payment.id;
     const key = `${ledgerId}/${paymentId}/${offset}/${refresh}`;
     const page = returns?.key === key ? returns.rows : null;
@@ -288,10 +290,19 @@ export function BusinessRefundForm({
                     <textarea
                         id={`${prefix}-reason`}
                         required
-                        maxLength={2000}
+                        aria-invalid={invalidReason || undefined}
+                        aria-describedby={invalidReason ? `${prefix}-reason-error` : undefined}
                         value={body.reason}
                         onChange={(event) => update({ ...body, reason: event.target.value })}
                     />
+                    {invalidReason && (
+                        <p role="alert" id={`${prefix}-reason-error`}>
+                            {t(
+                                "原因限 1 至 2,000 个字符，不能只含空白或含有空字符。",
+                                "Enter a reason of 1 to 2,000 characters, with more than whitespace and no null characters.",
+                            )}
+                        </p>
+                    )}
                 </div>
                 <fieldset>
                     <legend>
@@ -536,7 +547,7 @@ export function BusinessRefundForm({
                     <button
                         className="primary-button"
                         type="submit"
-                        disabled={!capacity || !reviewed}
+                        disabled={!capacity || !reviewed || invalidReason}
                     >
                         {revision
                             ? t("确认更正退款", "Confirm refund correction")

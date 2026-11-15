@@ -1,5 +1,6 @@
 import type { AllocationReturnCapacity } from "./allocation-return-api";
 import { returnPaymentAmount } from "./allocation-return-fields";
+import { validBusinessReason } from "./command-text";
 import { validDraftDate } from "./draft-fields";
 import { parseAmount } from "./money";
 import type { FrozenSettlement } from "./settlement-intent";
@@ -32,10 +33,7 @@ export function validReturnInput(value: unknown): boolean {
         !uuid(value.payment_id) ||
         typeof value.return_date !== "string" ||
         !validDraftDate(value.return_date) ||
-        typeof value.reason !== "string" ||
-        !value.reason.trim() ||
-        value.reason.includes("\0") ||
-        value.reason.length > 2000 ||
+        !validBusinessReason(value.reason) ||
         !Array.isArray(value.lines) ||
         value.lines.length < 1 ||
         value.lines.length > 200
