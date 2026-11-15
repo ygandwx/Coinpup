@@ -272,7 +272,7 @@ def test_default_partition_uses_module_sha256_modulo_three_and_never_param_or_cl
 
 
 @pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
-def test_expensive_credit_scenarios_share_three_runners_by_complete_module(suffix):
+def test_expensive_scenarios_share_three_runners_by_complete_module(suffix):
     for name, expected in [
         ("boundaries", 2),
         ("history", 0),
@@ -282,6 +282,9 @@ def test_expensive_credit_scenarios_share_three_runners_by_complete_module(suffi
     ]:
         node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
         assert partition_for(node) == expected
+    assert (
+        partition_for(f"tests/integration/ocr/test_payment_confirmation_schema.py::{suffix}") == 0
+    )
 
 
 def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_phases(tmp_path):
