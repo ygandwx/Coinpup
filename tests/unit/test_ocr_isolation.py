@@ -198,10 +198,20 @@ def test_wall_timeout_terminates_a_waiting_processor(processor, budget):
 def live_process(pid):
     try:
         state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
+        # The task can disappear before open or while reading its already-open proc file.
         return False
     # An orphan zombie cannot execute or retain descriptors; the host init reaps it.
     return state != "Z"
+
+
+def test_live_process_handles_exit_during_proc_read(monkeypatch):
+    def disappeared(path):
+        assert path == Path("/proc/123/stat")
+        raise ProcessLookupError
+
+    monkeypatch.setattr(Path, "read_text", disappeared)
+    assert not live_process(123)
 
 
 @LINUX
