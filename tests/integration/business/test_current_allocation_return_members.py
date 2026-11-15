@@ -180,12 +180,7 @@ def test_two_original_groups_on_same_source_only_replace_the_selected_group(revi
     assert snapshot(s) == before
 
 
-def test_source_first_added_in_a_revision_is_discoverable_without_any_original_return_line(drafts):
-    s = drafts
-    _, _, _, body = setup_return(s, count=2)
-    original = submit_return(s, body.model_copy(update={"lines": body.lines[:1]}))
-    original_source = original.postings[0].source_allocation_line_id
-    new_source = body.lines[1].source_allocation_line_id
+def stage_source_swap(c, s, original, new_source):
     new_op, new_journal = uuid4(), uuid4()
     rid = uuid4()
     header = dict(
@@ -203,48 +198,56 @@ def test_source_first_added_in_a_revision_is_discoverable_without_any_original_r
         idempotency_key="fictional-return",
     )
     old = member(header, original)
+    original_op = c.scalar(
+        select(BusinessAllocationLine.operation_id).where(BusinessAllocationLine.id == new_source)
+    )
+    c.execute(insert(Revision).values(**header))
+    c.execute(
+        insert(FinancialOperation).values(
+            id=new_op,
+            ledger_id=s["ledger"],
+            kind="unallocation",
+            created_by=s["owner"],
+            current_journal_id=new_journal,
+        )
+    )
+    new = old | dict(
+        id=uuid4(),
+        action="create",
+        source_allocation_line_id=new_source,
+        source_operation_id=original_op,
+        operation_id=new_op,
+        operation_version=1,
+        previous_line_no=None,
+        previous_operation_version=None,
+        previous_journal_id=None,
+        reversal_journal_id=None,
+        journal_id=new_journal,
+    )
+    removed = old | dict(
+        action="cancel",
+        member_no=2,
+        line_no=None,
+        journal_id=None,
+        payment_amount=None,
+        document_amount=None,
+        absorbs_remainder=None,
+    )
+    c.execute(insert(Member).values(**new))
+    c.execute(insert(Member).values(**removed))
+    return header, new, removed
+
+
+def test_source_first_added_in_a_revision_is_discoverable_without_any_original_return_line(drafts):
+    s = drafts
+    _, _, _, body = setup_return(s, count=2)
+    original = submit_return(s, body.model_copy(update={"lines": body.lines[:1]}))
+    original_source = original.postings[0].source_allocation_line_id
+    new_source = body.lines[1].source_allocation_line_id
     before = snapshot(s)
     with s["engine"].connect() as c:
-        original_op = c.scalar(
-            select(BusinessAllocationLine.operation_id).where(
-                BusinessAllocationLine.id == new_source
-            )
-        )
         assert current(c, s["ledger"], [new_source]) == []
-        c.execute(insert(Revision).values(**header))
-        c.execute(
-            insert(FinancialOperation).values(
-                id=new_op,
-                ledger_id=s["ledger"],
-                kind="unallocation",
-                created_by=s["owner"],
-                current_journal_id=new_journal,
-            )
-        )
-        new = old | dict(
-            id=uuid4(),
-            action="create",
-            source_allocation_line_id=new_source,
-            source_operation_id=original_op,
-            operation_id=new_op,
-            operation_version=1,
-            previous_line_no=None,
-            previous_operation_version=None,
-            previous_journal_id=None,
-            reversal_journal_id=None,
-            journal_id=new_journal,
-        )
-        removed = old | dict(
-            action="cancel",
-            member_no=2,
-            line_no=None,
-            journal_id=None,
-            payment_amount=None,
-            document_amount=None,
-            absorbs_remainder=None,
-        )
-        c.execute(insert(Member).values(**new))
-        c.execute(insert(Member).values(**removed))
+        header, new, _ = stage_source_swap(c, s, original, new_source)
         visible = current(c, s["ledger"], [new_source])
         assert [
             (
@@ -255,7 +258,7 @@ def test_source_first_added_in_a_revision_is_discoverable_without_any_original_r
                 x["journal_id"],
             )
             for x in visible
-        ] == [(new_source, original.id, rid, new_op, new_journal)]
+        ] == [(new_source, original.id, header["id"], new["operation_id"], new["journal_id"])]
         assert (
             current(c, s["ledger"], [original_source]) == []
             and current(c, uuid4(), [new_source]) == []

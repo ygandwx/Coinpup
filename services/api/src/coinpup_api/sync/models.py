@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,6 +57,17 @@ class ChangeLog(Base):
         CheckConstraint(
             "change_kind IN ('upsert', 'archive', 'restore', 'cancel')",
             name="ck_change_log_change_kind",
+        ),
+        Index(
+            "ix_change_log_return_slot_birth",
+            "ledger_id",
+            "entity_type",
+            "entity_id",
+            postgresql_include=["seq"],
+            postgresql_where=text(
+                "entity_version=1 AND entity_type IN "
+                "('business_allocation_return_lines','business_return_revision_members')"
+            ),
         ),
         Index("ix_change_log_owner_seq", "owner_id", "seq"),
     )
