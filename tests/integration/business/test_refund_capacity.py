@@ -68,7 +68,7 @@ def test_refund_aggregation_keeps_payment_page_query_count_constant(drafts):
     statements = []
 
     def capture(_conn, _cursor, statement, _parameters, _context, _many):
-        if statement.lstrip().upper().startswith("SELECT"):
+        if statement.lstrip().upper().startswith(("SELECT", "WITH")):
             statements.append(statement)
 
     event.listen(s["engine"], "before_cursor_execute", capture)

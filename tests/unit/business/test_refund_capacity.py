@@ -29,12 +29,14 @@ def test_payment_totals_are_one_scoped_query_and_keep_both_quantities_separate()
     assert len(statements) == 1
     compiled = statements[0].compile(dialect=dialect())
     assert str(compiled).count("UNION ALL") == 2
-    assert str(compiled).count(".ledger_id =") == 2
-    assert str(compiled).count(".payment_id IN") == 2
+    assert str(compiled).count("business_allocation_lines.ledger_id =") == 1
+    assert str(compiled).count("public.coinpup_current_return_members(") == 1
+    assert "array_agg(scoped_applications.id)" in str(compiled)
+    assert str(compiled).count(".payment_id IN") == 1
     assert list(compiled.params.values()).count(ledger) == 3
     assert str(compiled).count("public.coinpup_current_refund_principals(") == 1
     assert "business_refunds" not in str(compiled)
-    assert list(compiled.params.values()).count([payment]) == 3
+    assert list(compiled.params.values()).count([payment]) == 2
     assert str(payment) not in str(compiled)
 
 
