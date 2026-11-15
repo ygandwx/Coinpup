@@ -683,6 +683,18 @@ export function BusinessSettlementPanel({
                 </div>
             ) : refundsOpen ? (
                 <BusinessRefundHistory
+                    actions={{
+                        accounts,
+                        categories,
+                        disabled: archived || dataLoading || !!pending.plan,
+                        submit: (revision, review) =>
+                            controller.start(
+                                session,
+                                ledgerId,
+                                { kind: "refund-revision", revision },
+                                review,
+                            ),
+                    }}
                     assets={assets}
                     ledgerId={ledgerId}
                     locale={locale}
