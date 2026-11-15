@@ -19,7 +19,9 @@ def test_return_header_matches_frozen_ddl_and_fits_existing_change_log_type():
     assert current["down_revision"] == "20261109_0058"
     assert current["_OLD_ENTITY_TYPES"] == prior["_OLD_ENTITY_TYPES"] + prior["_TABLES"]
     assert current["_TABLES"] == (table.name,) and len(table.name) <= 32
-    assert set(get_args(EntityType)) == set(current["_OLD_ENTITY_TYPES"] + current["_TABLES"])
+    assert set(get_args(EntityType)) == set(current["_OLD_ENTITY_TYPES"] + current["_TABLES"]) | {
+        "business_return_revision_members"
+    }
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         current["_SCHEMA_SQL"].split()
     )

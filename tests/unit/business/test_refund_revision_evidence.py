@@ -19,7 +19,8 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
     assert schema["_OLD_ENTITY_TYPES"] == prior["_OLD_ENTITY_TYPES"] + prior["_TABLES"]
     assert schema["_TABLES"] == ("business_refund_revision_returns",)
     assert set(get_args(EntityType)) == set(schema["_OLD_ENTITY_TYPES"] + schema["_TABLES"]) | {
-        "business_return_revisions"
+        "business_return_revisions",
+        "business_return_revision_members",
     }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32
