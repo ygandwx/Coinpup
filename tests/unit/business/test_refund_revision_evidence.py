@@ -18,7 +18,9 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
     assert schema["down_revision"] == prior["revision"]
     assert schema["_OLD_ENTITY_TYPES"] == prior["_OLD_ENTITY_TYPES"] + prior["_TABLES"]
     assert schema["_TABLES"] == ("business_refund_revision_returns",)
-    assert set(get_args(EntityType)) == set(schema["_OLD_ENTITY_TYPES"] + schema["_TABLES"])
+    assert set(get_args(EntityType)) == set(schema["_OLD_ENTITY_TYPES"] + schema["_TABLES"]) | {
+        "business_return_revisions"
+    }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32
     for stmt in (CreateTable(table), *(CreateIndex(i) for i in table.indexes)):
