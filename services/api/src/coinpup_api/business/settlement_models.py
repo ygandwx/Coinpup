@@ -166,6 +166,13 @@ class BusinessAllocationLine(SettlementIdentity, Base):
     __table_args__ = (
         *_identity("business_allocation_line"),
         *_journal("business_allocation_line"),
+        UniqueConstraint(
+            "id",
+            "payment_id",
+            "operation_id",
+            "ledger_id",
+            name="uq_allocation_line_payment_operation_scope",
+        ),
         UniqueConstraint("allocation_id", "line_no", name="uq_business_allocation_line_position"),
         UniqueConstraint(
             "allocation_id", "document_line_id", name="uq_business_allocation_line_source"
