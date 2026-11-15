@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
@@ -6,6 +6,7 @@ import type { Asset } from "./ledger-api";
 import { getAllocationReturnCapacity } from "./allocation-return-api";
 import type { AllocationReturnCapacity, AllocationReturnCreate } from "./allocation-return-api";
 import type { AllocationReturnReview } from "./allocation-return-intent";
+import { validBusinessReason } from "./command-text";
 import { validReturnReview } from "./allocation-return-intent";
 import { returnPaymentAmount } from "./allocation-return-fields";
 import { formatAmount, parseAmount } from "./money";
@@ -43,6 +44,8 @@ export function BusinessAllocationReturnForm({
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
+    const reasonErrorId = useId();
+    const invalidReason = draft.reason !== "" && !validBusinessReason(draft.reason);
     const [error, setError] = useState<unknown>(null),
         [refresh, setRefresh] = useState(0);
     const [reviewed, setReviewed] = useState(false),
@@ -205,7 +208,8 @@ export function BusinessAllocationReturnForm({
                                 {t("退回原因", "Return reason")}
                                 <textarea
                                     required
-                                    maxLength={2000}
+                                    aria-invalid={invalidReason || undefined}
+                                    aria-describedby={invalidReason ? reasonErrorId : undefined}
                                     value={draft.reason}
                                     disabled={disabled}
                                     onChange={(e) =>
@@ -213,6 +217,14 @@ export function BusinessAllocationReturnForm({
                                     }
                                 />
                             </label>
+                            {invalidReason && (
+                                <p role="alert" id={reasonErrorId}>
+                                    {t(
+                                        "请输入 1 至 2,000 个字符的退回原因，不能只含空白或含有空字符。",
+                                        "Enter a return reason of 1 to 2,000 characters, with more than whitespace and no null characters.",
+                                    )}
+                                </p>
+                            )}
                         </div>
                     </div>
                     <ol className="confirmation-lines">

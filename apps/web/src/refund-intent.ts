@@ -1,3 +1,4 @@
+import { validBusinessReason } from "./command-text";
 import type { RefundCapacity } from "./refund-api";
 import type { Account, Asset, Category } from "./ledger-api";
 import { validDraftDate } from "./draft-fields";
@@ -65,10 +66,7 @@ export function validRefundInput(value: unknown): boolean {
         !Number.isSafeInteger(value.expected_version) ||
         (value.expected_version as number) < 1 ||
         (value.expected_version as number) > 2147483646 ||
-        typeof value.reason !== "string" ||
-        !value.reason.trim() ||
-        value.reason.length > 2000 ||
-        value.reason.includes("\0")
+        !validBusinessReason(value.reason)
     )
         return false;
     return validRefundCashFields(value);

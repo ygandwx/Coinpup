@@ -177,6 +177,15 @@ test("return review freezes scope, dates, versions, amount precision and origina
     }
 });
 
+test("return review counts the original reason in Unicode characters before stripping", () => {
+    const { input, review } = fixture();
+    const final = "🪙".repeat(1999) + "据";
+    assert(validReturnReview(ledger, { ...input.body, reason: final }, review));
+    for (const reason of [final + " ", "🪙".repeat(2001), "\u001c ", "a\0b"]) {
+        assert.equal(validReturnReview(ledger, { ...input.body, reason }, review), false);
+    }
+});
+
 test("receipt verifies original sources and numeric quantities while preserving 18-place text", async () => {
     const { input, review } = fixture();
     let observed;

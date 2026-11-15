@@ -1,3 +1,4 @@
+import { validBusinessReason } from "./command-text";
 import type {
     CreditCapacity,
     CreditCreate,
@@ -48,10 +49,7 @@ export function validCreditInput(value: unknown): value is CreditCreate {
         (value.expected_version as number) < 1 ||
         (value.expected_version as number) > 2147483647 ||
         !date(value.credit_date) ||
-        typeof value.reason !== "string" ||
-        !value.reason.trim() ||
-        value.reason.includes("\0") ||
-        value.reason.length > 2000 ||
+        !validBusinessReason(value.reason) ||
         !Array.isArray(value.lines) ||
         value.lines.length < 1 ||
         value.lines.length > 200
