@@ -102,13 +102,15 @@ def test_four_capacity_uses_and_their_predecessors_are_exact_on_empty_roundtrip(
         for name in names:
             actual = sql(c, name)
             assert actual == mig["_" + name.upper()]
-            if name == "allocation":
-                assert actual.count("public.coinpup_returned_payment_amount(") == 1
+            if name in {"allocation", "credit"}:
+                assert actual.count("public.coinpup_returned_payment_amount(") == (
+                    name == "allocation"
+                )
                 assert actual.count("public.coinpup_current_return_members(") == 1
                 assert "coalesce(item.returned_document_amount,0)" in actual
                 assert "coinpup_returned_document_amount(" not in actual
             else:
-                assert actual.count("coinpup_returned_") == 1
+                assert actual.count("public.coinpup_returned_payment_amount(") == 1
         mig["downgrade"]()
         for name in names:
             assert sql(c, name) == mig["_OLD_" + name.upper()]

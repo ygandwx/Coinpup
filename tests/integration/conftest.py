@@ -17,7 +17,7 @@ from coinpup_api.ledger.assets import ASSETS
 from coinpup_api.ledger.models import Account, AccountAsset, AssetRecord, Category, Entity, Ledger
 from coinpup_api.models import Administrator, AuthSession, LoginGuard
 from coinpup_api.security import csrf_token_for, token_digest
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, text, update
 from sqlalchemy.orm import Session
 
 
@@ -941,12 +941,17 @@ def structure_database(request):
             connection.execute(delete(Ledger))
             connection.execute(delete(Entity))
             connection.execute(delete(AssetRecord).where(AssetRecord.asset_id.not_in(list(ASSETS))))
-            connection.execute(update(AssetRecord).values(enabled=True, version=1))
-            # Resetting builtin assets creates events while the fixture owner still exists.
-            # This explicitly disposable cleanup must remove them before deleting that owner.
-            connection.exec_driver_sql("TRUNCATE TABLE change_log RESTRICT")
             connection.execute(delete(AuthSession))
             connection.execute(delete(Administrator))
+            # No owner remains: the normal asset change trigger ignores these bootstrap updates.
+            # The first RESTRICT truncation above already removed every stored notification.
+            connection.execute(
+                update(AssetRecord)
+                .where((AssetRecord.enabled.is_(False)) | (AssetRecord.version != 1))
+                .values(enabled=True, version=1)
+            )
+            if connection.scalar(text("SELECT EXISTS (SELECT 1 FROM change_log)")):
+                raise RuntimeError("Disposable fixture retained a change notification")
             connection.execute(
                 update(LoginGuard).values(
                     failure_count=0, window_started_at=None, locked_until=None

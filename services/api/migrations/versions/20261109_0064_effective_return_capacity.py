@@ -34,6 +34,21 @@ RETURNS numeric LANGUAGE sql STABLE STRICT SECURITY INVOKER SET search_path=pg_c
 $$;
 """
 
+
+def _returned_document_totals(ledger, document_scope):
+    # A document line can receive returns from several allocations and payments.
+    return f"""FOR item IN WITH return_sources AS MATERIALIZED (
+        SELECT a.id, a.document_line_id FROM public.business_allocation_lines a
+        WHERE a.ledger_id={ledger} AND a.document_line_id {document_scope}
+    ), return_totals AS MATERIALIZED (
+        SELECT s.document_line_id, sum(r.document_amount) AS amount
+        FROM public.coinpup_current_return_members({ledger},
+            ARRAY(SELECT id FROM return_sources)) r
+        JOIN return_sources s ON s.id=r.source_allocation_line_id
+        GROUP BY s.document_line_id
+    ), credit_totals AS MATERIALIZED ("""
+
+
 _OLD_ALLOCATION = (_FROZEN / "allocation.sql").read_text(encoding="utf-8")
 
 _ALLOCATION = (
@@ -58,20 +73,12 @@ _ALLOCATION = (
     )
     .replace(
         "FOR item IN WITH credit_totals AS MATERIALIZED (",
-        # Other payments and allocations may have returned funds to the same document line.
-        # Resolve every relevant source once per group validation, before walking its rows.
-        """FOR item IN WITH return_sources AS MATERIALIZED (
-        SELECT a.id, a.document_line_id FROM public.business_allocation_lines a
-        WHERE a.ledger_id=allocation.ledger_id AND a.document_line_id IN (
+        _returned_document_totals(
+            "allocation.ledger_id",
+            """IN (
             SELECT l.document_line_id FROM public.business_allocation_lines l
-            WHERE l.allocation_id=allocation.id AND l.ledger_id=allocation.ledger_id)
-    ), return_totals AS MATERIALIZED (
-        SELECT s.document_line_id, sum(r.document_amount) AS amount
-        FROM public.coinpup_current_return_members(allocation.ledger_id,
-            ARRAY(SELECT id FROM return_sources)) r
-        JOIN return_sources s ON s.id=r.source_allocation_line_id
-        GROUP BY s.document_line_id
-    ), credit_totals AS MATERIALIZED (""",
+            WHERE l.allocation_id=allocation.id AND l.ledger_id=allocation.ledger_id)""",
+        ),
     )
     .replace(
         "SELECT l.*, credits.total_amount AS current_credit_total",
@@ -87,15 +94,28 @@ _ALLOCATION = (
 
 _OLD_CREDIT = (_FROZEN / "credit.sql").read_text(encoding="utf-8")
 
-_CREDIT = _OLD_CREDIT.replace(
-    (
+_CREDIT = (
+    _OLD_CREDIT.replace(
         r"""(SELECT coalesce(sum(r.document_amount),0)
               FROM public.business_allocation_return_lines r
               JOIN public.business_allocation_lines a
                 ON a.id=r.source_allocation_line_id AND a.ledger_id=r.ledger_id
-              WHERE a.document_line_id=item.id AND a.ledger_id=entry.ledger_id)"""
-    ),
-    "public.coinpup_returned_document_amount(entry.ledger_id,item.id)",
+              WHERE a.document_line_id=item.id AND a.ledger_id=entry.ledger_id)""",
+        "coalesce(item.returned_document_amount,0)",
+    )
+    .replace(
+        "FOR item IN WITH credit_totals AS MATERIALIZED (",
+        _returned_document_totals("entry.ledger_id", "=ANY(source_ids)"),
+    )
+    .replace(
+        "SELECT s.*, coalesce(credits.",
+        "SELECT s.*, returned.amount AS returned_document_amount, coalesce(credits.",
+    )
+    .replace(
+        "LEFT JOIN credit_totals credits",
+        "LEFT JOIN return_totals returned ON returned.document_line_id=s.id "
+        "LEFT JOIN credit_totals credits",
+    )
 )
 
 _OLD_REFUND = (_FROZEN / "refund.sql").read_text(encoding="utf-8")
