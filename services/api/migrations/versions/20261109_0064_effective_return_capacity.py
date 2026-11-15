@@ -36,23 +36,53 @@ $$;
 
 _OLD_ALLOCATION = (_FROZEN / "allocation.sql").read_text(encoding="utf-8")
 
-_ALLOCATION = _OLD_ALLOCATION.replace(
-    (
-        r"""(SELECT coalesce(sum(r.payment_amount),0)
+_ALLOCATION = (
+    _OLD_ALLOCATION.replace(
+        (
+            r"""(SELECT coalesce(sum(r.payment_amount),0)
              FROM public.business_allocation_return_lines r
              WHERE r.payment_id=payment.id AND r.ledger_id=allocation.ledger_id)"""
-    ),
-    "public.coinpup_returned_payment_amount(allocation.ledger_id,payment.id)",
-).replace(
-    (
-        r"""(SELECT coalesce(sum(r.document_amount),0)
+        ),
+        "public.coinpup_returned_payment_amount(allocation.ledger_id,payment.id)",
+    )
+    .replace(
+        (
+            r"""(SELECT coalesce(sum(r.document_amount),0)
                  FROM public.business_allocation_return_lines r
                  JOIN public.business_allocation_lines a
                    ON a.id=r.source_allocation_line_id AND a.ledger_id=r.ledger_id
                  WHERE a.document_line_id=item.document_line_id
                    AND a.ledger_id=allocation.ledger_id)"""
-    ),
-    "public.coinpup_returned_document_amount(allocation.ledger_id,item.document_line_id)",
+        ),
+        "coalesce(item.returned_document_amount,0)",
+    )
+    .replace(
+        "FOR item IN WITH credit_totals AS MATERIALIZED (",
+        # Other payments and allocations may have returned funds to the same document line.
+        # Resolve every relevant source once per group validation, before walking its rows.
+        """FOR item IN WITH return_sources AS MATERIALIZED (
+        SELECT a.id, a.document_line_id FROM public.business_allocation_lines a
+        WHERE a.ledger_id=allocation.ledger_id AND a.document_line_id IN (
+            SELECT l.document_line_id FROM public.business_allocation_lines l
+            WHERE l.allocation_id=allocation.id AND l.ledger_id=allocation.ledger_id)
+    ), return_totals AS MATERIALIZED (
+        SELECT s.document_line_id, sum(r.document_amount) AS amount
+        FROM public.coinpup_current_return_members(allocation.ledger_id,
+            ARRAY(SELECT id FROM return_sources)) r
+        JOIN return_sources s ON s.id=r.source_allocation_line_id
+        GROUP BY s.document_line_id
+    ), credit_totals AS MATERIALIZED (""",
+    )
+    .replace(
+        "SELECT l.*, credits.total_amount AS current_credit_total",
+        "SELECT l.*, returned.amount AS returned_document_amount, "
+        "credits.total_amount AS current_credit_total",
+    )
+    .replace(
+        "LEFT JOIN credit_totals credits",
+        "LEFT JOIN return_totals returned ON returned.document_line_id=l.document_line_id "
+        "LEFT JOIN credit_totals credits",
+    )
 )
 
 _OLD_CREDIT = (_FROZEN / "credit.sql").read_text(encoding="utf-8")

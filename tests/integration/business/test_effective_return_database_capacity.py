@@ -16,6 +16,7 @@ from coinpup_api.business.credit_schemas import BusinessCreditCreate
 from coinpup_api.business.models import BusinessDocument
 from coinpup_api.business.refund_schemas import BusinessRefundCreate
 from coinpup_api.business.settlement_models import BusinessAllocationLine
+from coinpup_api.business.settlement_schemas import BusinessPaymentCreate
 from coinpup_api.business.settlement_totals import document_totals, payment_totals
 from sqlalchemy import insert, select, text
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +27,7 @@ from tests.integration.business.test_credit_revision_storage import definitions
 from tests.integration.business.test_credit_service import credit
 from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.business.test_refund_service import refund
+from tests.integration.business.test_settlement_service import pay
 from tests.integration.conftest import effective_return_capacity_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -100,7 +102,13 @@ def test_four_capacity_uses_and_their_predecessors_are_exact_on_empty_roundtrip(
         for name in names:
             actual = sql(c, name)
             assert actual == mig["_" + name.upper()]
-            assert actual.count("coinpup_returned_") == (2 if name == "allocation" else 1)
+            if name == "allocation":
+                assert actual.count("public.coinpup_returned_payment_amount(") == 1
+                assert actual.count("public.coinpup_current_return_members(") == 1
+                assert "coalesce(item.returned_document_amount,0)" in actual
+                assert "coinpup_returned_document_amount(" not in actual
+            else:
+                assert actual.count("coinpup_returned_") == 1
         mig["downgrade"]()
         for name in names:
             assert sql(c, name) == mig["_OLD_" + name.upper()]
@@ -120,6 +128,33 @@ def test_existing_return_rows_guard_downgrade_before_any_validator_is_replaced(r
         failure.value.orig.diag.constraint_name == "ck_return_revision_downgrade"
         and snapshot(s) == before
     )
+
+
+def allocation_using_another_payments_return(s, line):
+    # This payment has no return of its own. Only the earlier payment released room.
+    payment = BusinessPaymentCreate(
+        id=uuid4(),
+        direction="payout",
+        party_id=s["party"].id,
+        account_id=s["account"].id,
+        asset_id="USD",
+        amount="20",
+        transaction_date="2026-10-06",
+        description="Fictional allocation using a different payment's return",
+        initial_allocation=dict(
+            id=uuid4(),
+            allocation_date="2026-10-06",
+            lines=[
+                dict(
+                    document_id=line.document_id,
+                    document_line_id=line.document_line_id,
+                    payment_amount="20",
+                    document_amount="20",
+                )
+            ],
+        ),
+    )
+    return pay(s, payment, "fictional-second-payment").initial_allocation.id
 
 
 @pytest.mark.parametrize("kind", ["allocation", "refund", "credit"])
@@ -168,20 +203,24 @@ def test_actual_deferred_validator_rejects_a_shortened_return_even_though_v1_fit
         cash = refund(s, body)
         subject = cash.id if kind == "refund" else allocation_id
     check = text(f"SELECT coinpup_validate_business_{kind}(:subject)")
+    targets = [subject]
+    if kind == "allocation":
+        targets.append(allocation_using_another_payments_return(s, line))
     before = snapshot(s)
-    with s["engine"].connect() as c:
-        c.execute(check, {"subject": subject})
-        c.execute(insert(Revision).values(**header))
-        c.execute(
-            insert(Member).values(
-                **(
-                    member(header, original)
-                    | {"payment_amount": Decimal("5"), "document_amount": Decimal("5")}
+    for target in targets:
+        with s["engine"].connect() as c:
+            c.execute(check, {"subject": target})
+            c.execute(insert(Revision).values(**header))
+            c.execute(
+                insert(Member).values(
+                    **(
+                        member(header, original)
+                        | {"payment_amount": Decimal("5"), "document_amount": Decimal("5")}
+                    )
                 )
             )
-        )
-        with pytest.raises(IntegrityError) as caught:
-            c.execute(check, {"subject": subject})
-        assert caught.value.orig.diag.constraint_name == f"ck_business_{kind}_shape"
-        c.rollback()
+            with pytest.raises(IntegrityError) as caught:
+                c.execute(check, {"subject": target})
+            assert caught.value.orig.diag.constraint_name == f"ck_business_{kind}_shape"
+            c.rollback()
     assert snapshot(s) == before
