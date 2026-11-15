@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
-# Measured complete 200-member suites need separate runners; keep every module intact.
+# Distribute measured long-running suites; keep every module and its full-size cases intact.
 PART_COUNT = 3
 _HEAVY_MODULE_PARTS = {
     "tests/integration/business/test_credit_revision_history.py": 0,
@@ -15,6 +15,7 @@ _HEAVY_MODULE_PARTS = {
     "tests/integration/business/test_credit_revision_current.py": 1,
     "tests/integration/business/test_credit_revision_boundaries.py": 2,
     "tests/integration/business/test_credit_revision_lifecycle.py": 2,
+    "tests/integration/ocr/test_payment_confirmation_schema.py": 0,
 }
 
 
