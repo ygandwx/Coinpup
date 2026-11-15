@@ -174,7 +174,7 @@ def rows(
     }
 
 
-def pending(c, values, *, include_line=True, legacy=False):
+def pending(c, values, *, include_line=True, legacy=False, receipt_changes=None):
     c.exec_driver_sql("SELECT pg_advisory_xact_lock(18945999704708432)")
     c.execute(insert(TABLES[0]).values(**values["group"]))
     if not legacy:
@@ -192,17 +192,16 @@ def pending(c, values, *, include_line=True, legacy=False):
     response = c.scalar(
         select(func.coinpup_business_allocation_return_response(values["group"]["id"]))
     )
-    c.execute(
-        insert(CommandReceipt).values(
-            ledger_id=values["group"]["ledger_id"],
-            key=values["group"]["idempotency_key"],
-            request_hash="a" * 64,
-            hash_version=2,
-            response=response,
-            response_status=201,
-            operation_id=member["operation_id"],
-        )
+    receipt = dict(
+        ledger_id=values["group"]["ledger_id"],
+        key=values["group"]["idempotency_key"],
+        request_hash="a" * 64,
+        hash_version=2,
+        response=response,
+        response_status=201,
+        operation_id=member["operation_id"],
     )
+    c.execute(insert(CommandReceipt).values(**(receipt | (receipt_changes or {}))))
 
 
 def another_return(values, *, payment_amount, document_amount, source_return_no):
