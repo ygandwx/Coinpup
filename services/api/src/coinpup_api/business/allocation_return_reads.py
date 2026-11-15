@@ -11,6 +11,7 @@ from coinpup_api.business.allocation_return_models import (
 from coinpup_api.business.allocation_return_models import (
     BusinessAllocationReturnLine as Member,
 )
+from coinpup_api.business.allocation_return_projections import current_return_members
 from coinpup_api.business.allocation_return_read_schemas import (
     AllocationReturnCapacity,
     AllocationReturnCapacityLine,
@@ -215,19 +216,15 @@ class BusinessAllocationReturnReads(LedgerService):
                 )
                 .order_by(mapping.line_no)
             ).all()
+            live = current_return_members(ledger_id, [row.id for row, *_ in originals]).c
             totals = {
                 row[0]: row[1:]
                 for row in session.execute(
                     select(
-                        Member.source_allocation_line_id,
-                        func.sum(Member.payment_amount),
-                        func.sum(Member.document_amount),
-                    )
-                    .where(
-                        Member.ledger_id == ledger_id,
-                        Member.source_allocation_line_id.in_([row.id for row, *_ in originals]),
-                    )
-                    .group_by(Member.source_allocation_line_id)
+                        live.source_allocation_line_id,
+                        func.sum(live.payment_amount),
+                        func.sum(live.document_amount),
+                    ).group_by(live.source_allocation_line_id)
                 )
             }
             try:

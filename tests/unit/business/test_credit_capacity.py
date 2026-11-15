@@ -38,11 +38,13 @@ def test_document_components_use_one_bounded_query_and_keep_original_meanings():
     compiled = statements[0].compile(dialect=dialect())
     sql = str(compiled)
     assert sql.count("UNION ALL") == 2
-    assert sql.count(".ledger_id =") == 4  # Includes the same-ledger return join.
-    assert list(compiled.params.values()).count(ledger) == 4
-    assert sql.count(" IN ") == 2
+    assert sql.count("business_allocation_lines.ledger_id =") == 1
+    assert sql.count("public.coinpup_current_return_members(") == 1
+    assert "array_agg(scoped_applications.id)" in sql
+    assert list(compiled.params.values()).count(ledger) == 3
+    assert sql.count(" IN ") == 1
     assert sql.count("public.coinpup_current_credit_lines(") == 1
-    assert list(compiled.params.values()).count([line]) == 3
+    assert list(compiled.params.values()).count([line]) == 2
     assert str(line) not in sql
 
 

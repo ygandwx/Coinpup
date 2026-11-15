@@ -2,10 +2,10 @@
 
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
-from coinpup_api.business.allocation_return_models import BusinessAllocationReturnLine
 from coinpup_api.business.allocation_return_plan import AllocationReturnSource
+from coinpup_api.business.allocation_return_projections import return_source_state
 from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
 from coinpup_api.business.settlement_models import BusinessAllocation, BusinessAllocationLine
 from coinpup_api.business.settlement_plan import PaymentSource
@@ -60,23 +60,7 @@ def original_sources(session, ledger_id, payload):
 
 
 def plan_sources(session, ledger_id, payment, rows, catalog):
-    line = BusinessAllocationReturnLine
-    totals = {
-        row[0]: row[1:]
-        for row in session.execute(
-            select(
-                line.source_allocation_line_id,
-                func.sum(line.payment_amount),
-                func.sum(line.document_amount),
-                func.count(line.id),
-            )
-            .where(
-                line.ledger_id == ledger_id,
-                line.source_allocation_line_id.in_([row[0].id for row in rows]),
-            )
-            .group_by(line.source_allocation_line_id)
-        )
-    }
+    totals = return_source_state(session, ledger_id, [mapping.id for mapping, *_ in rows])
     asset = catalog[payment.asset_id]
     used = applied_totals(session, ledger_id, {payment.id}).get(payment.id, Decimal(0))
     payer = PaymentSource(
@@ -90,7 +74,7 @@ def plan_sources(session, ledger_id, payment, rows, catalog):
     )
     sources, next_positions = {}, {}
     for mapping, group, document, source, _operation in rows:
-        returned_p, returned_d, count = totals.get(mapping.id, (Decimal(0), Decimal(0), 0))
+        returned_p, returned_d, last_position = totals.get(mapping.id, (Decimal(0), Decimal(0), 0))
         document_asset = catalog[document.asset_id]
         sources[mapping.id] = AllocationReturnSource(
             mapping.id,
@@ -109,5 +93,5 @@ def plan_sources(session, ledger_id, payment, rows, catalog):
             Amount.from_decimal(returned_p, asset),
             Amount.from_decimal(returned_d, document_asset),
         )
-        next_positions[mapping.id] = count + 1
+        next_positions[mapping.id] = last_position + 1
     return payer, sources, next_positions
