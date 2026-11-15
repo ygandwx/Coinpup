@@ -151,13 +151,15 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                         "(SELECT count(*) FROM business_credit_revisions) + "
                         "(SELECT count(*) FROM business_credit_revision_members) + "
                         "(SELECT count(*) FROM business_refund_revisions) + "
-                        "(SELECT count(*) FROM business_refund_revision_returns)"
+                        "(SELECT count(*) FROM business_refund_revision_returns) + "
+                        "(SELECT count(*) FROM business_return_revisions)"
                     ).scalar()
                     == 0
                 )
                 c.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
-                    "business_refund_revision_returns, business_refund_revisions, "
+                    "business_return_revisions, business_refund_revision_returns, "
+                    "business_refund_revisions, "
                     "business_credit_revision_members, business_credit_revisions, "
                     "business_credit_lines, business_credits, "
                     "business_refund_returns, business_refunds, "
