@@ -1,3 +1,4 @@
+import type { RefundRevisionActions } from "./BusinessRefundRevisionEditor";
 import { BusinessRefundRevisionHistory } from "./BusinessRefundRevisionHistory";
 import type { Asset } from "./ledger-api";
 import { useEffect, useRef, useState } from "react";
@@ -11,12 +12,14 @@ import type { Locale } from "./i18n";
 export function BusinessRefundHistory({
     ledgerId,
     assets,
+    actions,
     locale,
     onClose,
     onUnauthorized,
 }: {
     ledgerId: string;
     assets: Asset[];
+    actions: RefundRevisionActions;
     locale: Locale;
     onClose: () => void;
     onUnauthorized: () => void;
@@ -180,6 +183,7 @@ export function BusinessRefundHistory({
                             <BusinessRefundRevisionHistory
                                 key={ledgerId + data.id}
                                 original={data}
+                                actions={actions}
                                 assets={assets}
                                 locale={locale}
                                 onUnauthorized={onUnauthorized}

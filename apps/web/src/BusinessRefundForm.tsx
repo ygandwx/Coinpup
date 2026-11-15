@@ -11,6 +11,7 @@ import { validRefundReview } from "./refund-intent";
 import type { RefundReview } from "./refund-intent";
 import { PaymentMoneyFields } from "./BusinessPaymentFields";
 import { settlementError } from "./settlement-errors";
+import { refundReplacementLimit } from "./refund-revision-editor";
 import { formatAmount } from "./money";
 import { validRefundCapacity } from "./refund-capacity";
 
@@ -29,6 +30,7 @@ export function BusinessRefundForm({
     categories,
     draft,
     disabled,
+    revision,
     onChange,
     onSubmit,
     onCancel,
@@ -41,6 +43,12 @@ export function BusinessRefundForm({
     categories: Category[];
     draft: RefundEditor;
     disabled: boolean;
+    revision?: {
+        reason: string;
+        setReason: (value: string) => void;
+        ownPrincipal: string;
+        valid: (body: RefundCreate, review: RefundReview) => boolean;
+    };
     onChange: (update: (value: RefundEditor) => RefundEditor) => void;
     onSubmit: (body: RefundCreate, review: RefundReview) => Promise<void>;
     onCancel: () => void;
@@ -118,20 +126,39 @@ export function BusinessRefundForm({
               returns: draft.selectedReturns,
           }
         : null;
+    const limit =
+        revision && capacity
+            ? refundReplacementLimit(capacity, revision.ownPrincipal, assets)
+            : null;
+    function changeSelected(rows: RefundReview["returns"]) {
+        setReviewed(false);
+        setInvalid(false);
+        onChange((current) => ({
+            ...current,
+            selectedReturns: rows,
+            body: { ...current.body, allocation_return_ids: rows.map((row) => row.id) },
+        }));
+    }
     const refs = { accounts, assets, categories, parties: [] };
     const fees = body.fees ?? [];
     const amount = (value: string, asset: string) => `${formatAmount(value, locale)} ${asset}`;
     return (
         <form
             className="refund-form"
-            aria-label={t("实际退款", "Actual refund")}
+            aria-label={
+                revision
+                    ? t("更正退款事实", "Correct refund facts")
+                    : t("实际退款", "Actual refund")
+            }
             onSubmit={(event) => {
                 event.preventDefault();
                 if (
                     disabled ||
                     !reviewed ||
                     !review ||
-                    !validRefundReview(ledgerId, body, review)
+                    !(revision
+                        ? revision.valid(body, review)
+                        : validRefundReview(ledgerId, body, review))
                 ) {
                     setInvalid(true);
                     return;
@@ -139,11 +166,30 @@ export function BusinessRefundForm({
                 void onSubmit(body, review);
             }}
         >
+            {revision && (
+                <label className="field">
+                    {t("更正原因", "Correction reason")}
+                    <textarea
+                        required
+                        value={revision.reason}
+                        onChange={(e) => {
+                            revision.setReason(e.currentTarget.value);
+                            setReviewed(false);
+                            setInvalid(false);
+                        }}
+                    />
+                </label>
+            )}
             <p className="help-text">
-                {t(
-                    "实际退款独立记录资金流，不自动冲减费用或收入。已有分摊须先明确退回；退回与退款分别保存，退款失败不会撤销已保存的退回。",
-                    "A refund records actual cash independently and does not reduce expense or income. Return existing allocations first; returns and refunds are saved separately. A rejected refund does not undo a saved return.",
-                )}
+                {revision
+                    ? t(
+                          "更正会完整冲销本笔当前退款并写入替代事实。请核对保留、移除或新增的退回证据。",
+                          "Correction reverses the current refund and records the replacement. Review the return evidence to retain, remove or add.",
+                      )
+                    : t(
+                          "实际退款独立记录资金流，不自动冲减费用或收入。已有分摊须先明确退回；退回与退款分别保存，退款失败不会撤销已保存的退回。",
+                          "A refund records actual cash independently and does not reduce expense or income. Return existing allocations first; returns and refunds are saved separately. A rejected refund does not undo a saved return.",
+                      )}
             </p>
             <dl className="confirmation-facts">
                 <dt>{t("原付款标识", "Original payment ID")}</dt>
@@ -162,6 +208,24 @@ export function BusinessRefundForm({
                         ? amount(capacity.refundable_amount, capacity.asset_id)
                         : t("读取中…", "Loading…")}
                 </dd>
+                {revision && capacity && (
+                    <>
+                        <dt>
+                            {t(
+                                "含本笔现有本金的替代上限",
+                                "Replacement limit including this refund",
+                            )}
+                        </dt>
+                        <dd>
+                            {limit === null
+                                ? t(
+                                      "请重新读取当前版本及付款容量。",
+                                      "Reload the current refund and payment capacity.",
+                                  )
+                                : amount(limit, capacity.asset_id)}
+                        </dd>
+                    </>
+                )}
             </dl>
             {error != null && <p role="alert">{settlementError(error, locale)}</p>}
             <button
@@ -289,6 +353,51 @@ export function BusinessRefundForm({
                     <p>
                         {t("已选来源数", "Selected references")}: {draft.selectedReturns.length}
                     </p>
+                    {revision && draft.selectedReturns.length > 0 && (
+                        <details>
+                            <summary>
+                                {t(
+                                    "按当前顺序编辑退回证据",
+                                    "Edit return evidence in its current order",
+                                )}
+                            </summary>
+                            <ol>
+                                {draft.selectedReturns.map((row, index) => (
+                                    <li key={row.id}>
+                                        <span>
+                                            {row.return_date} · {row.id}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            disabled={index === 0}
+                                            onClick={() => {
+                                                const selected = [...draft.selectedReturns];
+                                                [selected[index - 1], selected[index]] = [
+                                                    selected[index],
+                                                    selected[index - 1],
+                                                ];
+                                                changeSelected(selected);
+                                            }}
+                                        >
+                                            {t("上移", "Move up")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                changeSelected(
+                                                    draft.selectedReturns.filter(
+                                                        (r) => r.id !== row.id,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            {t("移除此引用", "Remove this reference")}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ol>
+                        </details>
+                    )}
                     <div className="form-actions allocation-pagination">
                         <button
                             type="button"
@@ -429,7 +538,9 @@ export function BusinessRefundForm({
                         type="submit"
                         disabled={!capacity || !reviewed}
                     >
-                        {t("登记实际退款", "Record actual refund")}
+                        {revision
+                            ? t("确认更正退款", "Confirm refund correction")
+                            : t("登记实际退款", "Record actual refund")}
                     </button>
                     <button type="button" onClick={onCancel}>
                         {t("取消", "Cancel")}

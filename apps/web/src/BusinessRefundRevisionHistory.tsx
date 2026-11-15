@@ -1,3 +1,5 @@
+import { BusinessRefundRevisionEditor } from "./BusinessRefundRevisionEditor";
+import type { RefundRevisionActions } from "./BusinessRefundRevisionEditor";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
@@ -27,11 +29,13 @@ type Loaded =
     | { mode: "revision"; row: RefundRevisionReceipt };
 export function BusinessRefundRevisionHistory({
     original,
+    actions,
     assets,
     locale,
     onUnauthorized,
 }: {
     original: RefundDetail;
+    actions: RefundRevisionActions;
     assets: Asset[];
     locale: Locale;
     onUnauthorized: () => void;
@@ -159,6 +163,15 @@ export function BusinessRefundRevisionHistory({
                             )}
                         </p>
                     )}
+                    <BusinessRefundRevisionEditor
+                        key={value.row.refund_id + "/" + value.row.version}
+                        original={original}
+                        current={value.row}
+                        assets={assets}
+                        locale={locale}
+                        actions={actions}
+                        onUnauthorized={onUnauthorized}
+                    />
                 </>
             )}
             {value?.mode === "page" && view.mode === "page" && (
