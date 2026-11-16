@@ -34,10 +34,14 @@ def check_transition(c, revision_id):
     c.execute(text("SELECT coinpup_validate_return_transition(:id)"), {"id": revision_id})
 
 
-def stage_transition(c, setup, *, cancel=False, asset="USD", fault=None, prior=None):
+def stage_transition(
+    c, setup, *, cancel=False, asset="USD", fault=None, prior=None, request_hash=None
+):
     h, receipt = create_group(c, setup, cancel=cancel, asset=asset, prior=prior)
     if fault != "receipt":
-        store_receipt(c, h, receipt)
+        store_receipt(
+            c, h, receipt, overrides={"request_hash": request_hash} if request_hash else None
+        )
     for position, member in enumerate(receipt["members"]):
         defect = fault if position == 0 else None
         old = member["previous"]["journal_id"]
