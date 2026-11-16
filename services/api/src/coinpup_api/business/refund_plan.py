@@ -24,6 +24,7 @@ class RefundReturnSource:
     ledger_id: UUID
     payment_id: UUID
     return_date: date
+    version: int = 1
 
 
 @dataclass(frozen=True, slots=True)

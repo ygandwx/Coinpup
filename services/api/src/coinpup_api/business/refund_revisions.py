@@ -6,9 +6,9 @@ from uuid import uuid4
 
 from sqlalchemy import func, insert, select, update
 
-from coinpup_api.business.allocation_return_models import BusinessAllocationReturn
 from coinpup_api.business.allocation_return_sources import require_current
-from coinpup_api.business.refund_plan import RefundReturnSource, plan_refund
+from coinpup_api.business.refund_evidence import bound_return_sources
+from coinpup_api.business.refund_plan import plan_refund
 from coinpup_api.business.refund_revision_current import read_current_refund
 from coinpup_api.business.refund_revision_hash import refund_revision_hash_v2
 from coinpup_api.business.refund_revision_models import BusinessRefundRevision as Revision
@@ -158,18 +158,20 @@ class BusinessRefundRevisionService(BusinessRefundService):
                     tuple(lines),
                     tuple(parameters),
                 )
-                posting = (
-                    self._replacement(session, current, replacement, catalog)
-                    if replacement
-                    else None
-                )
+                sources = {}
+                posting = None
+                if replacement:
+                    sources = bound_return_sources(
+                        session, ledger_id, current.payment.id, replacement.allocation_return_ids
+                    )
+                    posting = self._replacement(session, current, replacement, catalog, sources)
                 combined = (*reversal.lines, *posting.lines) if posting else reversal.lines
                 self._validate_balance_deltas(session, ledger_id, combined, catalog)
             except MoneyError as error:
                 raise _invalid_money(error) from None
             now = session.scalar(select(func.clock_timestamp()))
             identifier = _persist(
-                session, current, payload, key, owner_id, reversal, posting, catalog, now
+                session, current, payload, key, owner_id, reversal, posting, sources, catalog, now
             )
             result = response_from_rows(session, identifier)
             session.execute(
@@ -186,23 +188,11 @@ class BusinessRefundRevisionService(BusinessRefundService):
             )
             return result
 
-    def _replacement(self, session, current, replacement, catalog):
+    def _replacement(self, session, current, replacement, catalog, sources):
         payment = current.payment
         ledger_id = payment.ledger_id
         controls = _control(session, current)
         self._account(session, ledger_id, replacement.account_id, replacement.asset_id)
-        references = session.scalars(
-            select(BusinessAllocationReturn).where(
-                BusinessAllocationReturn.ledger_id == ledger_id,
-                BusinessAllocationReturn.payment_id == payment.id,
-                BusinessAllocationReturn.id.in_(replacement.allocation_return_ids),
-            )
-        ).all()
-        if len(references) != len(replacement.allocation_return_ids):
-            raise _not_found()
-        sources = {
-            r.id: RefundReturnSource(r.id, ledger_id, payment.id, r.return_date) for r in references
-        }
         asset = catalog[payment.asset_id]
         applied, total = payment_totals(session, ledger_id, {payment.id}).get(
             payment.id, (Decimal(0), Decimal(0))
@@ -241,7 +231,7 @@ class BusinessRefundRevisionService(BusinessRefundService):
         )
 
 
-def _persist(session, current, payload, key, owner_id, reversal, posting, catalog, now):
+def _persist(session, current, payload, key, owner_id, reversal, posting, sources, catalog, now):
     identifier = uuid4()
     op = current.operation
     old = current.journal
@@ -292,7 +282,7 @@ def _persist(session, current, payload, key, owner_id, reversal, posting, catalo
                     payment_id=current.payment.id,
                     ledger_id=ledger_id,
                     return_id=source,
-                    return_version=1,
+                    return_version=sources[source].version,
                     line_no=i,
                     created_at=now,
                 )
