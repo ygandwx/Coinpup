@@ -95,6 +95,52 @@ def evidence_row(c, s, returned, body, original, kind):
     return BusinessRefundRevisionReturn, link | dict(refund_id=original.id, revision_id=h["id"])
 
 
+def stage_explicit_unlink(c, s, body, refund_id):
+    """Stage the next explicit evidence-free correction in an already rollback-only SQL probe."""
+    original = stored(c, BusinessRefund, refund_id)
+    latest = (
+        c.execute(
+            select(RefundRevision.__table__)
+            .where(RefundRevision.ledger_id == s["ledger"], RefundRevision.refund_id == refund_id)
+            .order_by(RefundRevision.operation_version.desc())
+            .limit(1)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if latest is None:
+        version, journal = 1, original["journal_id"]
+    else:
+        version, journal = latest["operation_version"], latest["replacement_journal_id"]
+    source = latest if latest is not None else original
+    h = replacement(body) | dict(
+        id=uuid4(),
+        ledger_id=s["ledger"],
+        payment_id=original["payment_id"],
+        refund_id=refund_id,
+        operation_id=original["operation_id"],
+        operation_version=version + 1,
+        previous_revision_id=None if latest is None else latest["id"],
+        previous_journal_id=journal,
+        reversal_journal_id=uuid4(),
+        replacement_journal_id=uuid4(),
+        created_by=s["owner"],
+        revision_reason="Fictional explicit removal of evidence",
+        idempotency_key="fictional-explicit-unlink-" + str(uuid4()),
+    )
+    for field in (
+        "account_id",
+        "asset_id",
+        "amount",
+        "payment_amount",
+        "transaction_date",
+        "reason",
+        "fees",
+    ):
+        h[field] = source[field]
+    c.execute(insert(RefundRevision).values(**h))
+
+
 @pytest.mark.parametrize("kind", ["new-refund", "refund-correction"])
 def test_evidence_pins_v2_and_v1_dates_after_a_later_correction_or_terminal_return(drafts, kind):
     s = drafts
@@ -132,6 +178,8 @@ def test_evidence_pins_v2_and_v1_dates_after_a_later_correction_or_terminal_retu
         if kind == "new-refund":
             expected.add((original.id, 1))
         assert set(found) == expected
+        for refund_id, _ in expected:
+            stage_explicit_unlink(c, s, body, refund_id)
         end = revise_return(c, s, returned, None, follow)
         assert current(c, ledger, payment, [returned.id]) == []
         assert [historical(c, ledger, payment, returned.id, v) for v in [1, 2, 3, 4, 99]] == [
@@ -150,7 +198,7 @@ def test_evidence_pins_v2_and_v1_dates_after_a_later_correction_or_terminal_retu
 @pytest.mark.parametrize("case", ["old", "invented", "cancelled"])
 def test_old_future_or_terminal_evidence_cannot_be_attached(drafts, kind, case):
     s = drafts
-    _, returned, body, original = example(s)
+    _, returned, body, original = example(s, linked=case != "cancelled")
     before = snapshot(s)
     with pytest.raises(IntegrityError) as caught, s["engine"].begin() as c:
         revise_return(c, s, returned, None if case == "cancelled" else date(2026, 10, 2))
