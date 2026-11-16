@@ -36,7 +36,7 @@ class BusinessRefundRevisionReturn(SettlementIdentity, Base):
             name="fk_refund_revision_return_source",
             ondelete="RESTRICT",
         ),
-        CheckConstraint("return_version = 1", name="ck_refund_revision_return_source_version"),
+        CheckConstraint("return_version>=1", name="ck_refund_revision_return_source_version"),
         CheckConstraint("line_no BETWEEN 1 AND 200", name="ck_refund_revision_return_position"),
         Index("ix_refund_revision_returns_source", "ledger_id", "return_id"),
     )

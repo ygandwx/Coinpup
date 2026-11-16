@@ -25,6 +25,9 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32
     for stmt in (CreateTable(table), *(CreateIndex(i) for i in table.indexes)):
-        assert " ".join(str(stmt.compile(dialect=dialect())).split()) in " ".join(
-            schema["_SCHEMA_SQL"].split()
-        )
+        sql = " ".join(str(stmt.compile(dialect=dialect())).split())
+        # Compare the frozen 0050 schema before 0070 admitted bound later group versions.
+        if isinstance(stmt, CreateTable):
+            assert "ck_refund_revision_return_source_version CHECK (return_version>=1)" in sql
+            sql = sql.replace("CHECK (return_version>=1)", "CHECK (return_version = 1)")
+        assert sql in " ".join(schema["_SCHEMA_SQL"].split())

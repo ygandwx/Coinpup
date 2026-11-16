@@ -105,6 +105,7 @@ class BusinessRefundReturn(SettlementIdentity, Base):
             name="fk_business_refund_return_source",
             ondelete="RESTRICT",
         ),
+        CheckConstraint("return_version>=1", name="ck_business_refund_return_source_version"),
         CheckConstraint("line_no BETWEEN 1 AND 200", name="ck_business_refund_return_position"),
         Index("ix_business_refund_returns_source", "return_id"),
     )
@@ -114,4 +115,5 @@ class BusinessRefundReturn(SettlementIdentity, Base):
     refund_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     payment_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     return_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    return_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)

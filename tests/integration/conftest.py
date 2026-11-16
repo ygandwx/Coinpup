@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261109_0069",)
+        assert context.get_current_heads() == ("20261109_0070",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261109_0069",)
+        assert context.get_current_heads() == ("20261109_0070",)
 
 
 def confirmation_schema_migration():
@@ -220,6 +220,46 @@ _CREDIT_HISTORY_LAYER = ContextVar("credit_history_layer", default=False)
 _REFUND_HISTORY_LAYER = ContextVar("refund_history_layer", default=False)
 
 
+def bound_refund_evidence_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261109_0070_refund_bound_return_versions.py"
+        )
+    )
+
+
+_INSIDE_EVIDENCE_ROUNDTRIP = ContextVar("inside_evidence_roundtrip", default=False)
+
+
+def _with_dependent_migration(migration, load_dependent, nesting, *, detached=None):
+    """Run each frozen dependency once around nested historical DDL, in schema order."""
+
+    def run(action):
+        if nesting.get() or (detached is not None and detached.get()):
+            migration[action]()
+            return
+        token = nesting.set(True)
+        try:
+            dependent = load_dependent()
+            if action == "downgrade":
+                dependent[action]()
+            migration[action]()
+            if action == "upgrade":
+                dependent[action]()
+        finally:
+            nesting.reset(token)
+
+    return migration | {"downgrade": lambda: run("downgrade"), "upgrade": lambda: run("upgrade")}
+
+
+def _with_refund_evidence_binding(migration):
+    # The 0035 and 0050 tables own the 0070 column and binding triggers.
+    return _with_dependent_migration(
+        migration, bound_refund_evidence_migration, _INSIDE_EVIDENCE_ROUNDTRIP
+    )
+
+
 def return_ownership_migration():
     return runpy.run_path(
         str(
@@ -269,24 +309,12 @@ _INSIDE_CAPACITY_ROUNDTRIP = ContextVar("inside_capacity_roundtrip", default=Fal
 
 
 def _with_effective_return_capacity(migration):
-    """Remove 0064 once, around a frozen migration that overwrites its validators."""
-
-    def run(action):
-        if _REFUND_HISTORY_LAYER.get() or _INSIDE_CAPACITY_ROUNDTRIP.get():
-            migration[action]()
-            return
-        token = _INSIDE_CAPACITY_ROUNDTRIP.set(True)
-        try:
-            capacity = effective_return_capacity_migration()
-            if action == "downgrade":
-                capacity[action]()
-            migration[action]()
-            if action == "upgrade":
-                capacity[action]()
-        finally:
-            _INSIDE_CAPACITY_ROUNDTRIP.reset(token)
-
-    return migration | {"downgrade": lambda: run("downgrade"), "upgrade": lambda: run("upgrade")}
+    return _with_dependent_migration(
+        migration,
+        effective_return_capacity_migration,
+        _INSIDE_CAPACITY_ROUNDTRIP,
+        detached=_REFUND_HISTORY_LAYER,
+    )
 
 
 def return_revision_member_migration():
@@ -452,7 +480,7 @@ def refund_revision_evidence_migration(*, include_dependents=True):
         refund_principal_migration()["upgrade"]()
         refund_posting_fact_migration()["upgrade"]()
 
-    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+    return _with_refund_evidence_binding(frozen | {"downgrade": downgrade, "upgrade": upgrade})
 
 
 def refund_revision_header_migration(*, include_dependents=True):
@@ -741,7 +769,9 @@ def refund_validation_migration():
         refund_revision_header_migration()["upgrade"]()
         return_revision_header_migration()["upgrade"]()
 
-    return _with_effective_return_capacity(frozen | {"downgrade": downgrade, "upgrade": upgrade})
+    return _with_refund_evidence_binding(
+        _with_effective_return_capacity(frozen | {"downgrade": downgrade, "upgrade": upgrade})
+    )
 
 
 def business_allocation_migration():
@@ -1047,7 +1077,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0069",
+                    "20261109_0070",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1058,7 +1088,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0069",
+                    "20261109_0070",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1087,7 +1117,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261109_0069",
+                        "20261109_0070",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1100,7 +1130,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0069",
+                    "20261109_0070",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:
