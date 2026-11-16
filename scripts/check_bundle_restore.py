@@ -30,6 +30,8 @@ from check_period_restore import seed_periods, verify_periods
 from check_refund_restore import seed_refunds, verify_refunds
 from check_refund_revision_restore import seed_refund_revisions, verify_refund_revisions
 from check_reminder_restore import seed_reminders, verify_reminders
+from check_restored_return_reference import exercise_restored_return_reference
+from check_return_revision_restore import seed_return_revisions, verify_return_revisions
 from restore_bundle import restore_bundle
 
 
@@ -370,6 +372,14 @@ def check_bundle_restore(source_url):
                 fictional_pdf("Fictional archived refund correction 2026-10-05"),
                 upload_fixture,
             )
+            return_revisions = seed_return_revisions(
+                engine,
+                owner,
+                service,
+                store,
+                fictional_pdf("Fictional revised return evidence"),
+                upload_fixture,
+            )
             business_credits = seed_credits(engine, owner)
             credit_revisions = seed_credit_revisions(
                 engine,
@@ -452,9 +462,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                # Bank copies and two private originals from revised credit and refund operations.
-                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 7.")
-                if len(manifest["blobs"]) != 7 or manifest["stored_files"] != [
+                # Include the three separate revision PDFs and ledger-scoped bank copies.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 8.")
+                if len(manifest["blobs"]) != 8 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
@@ -479,6 +489,7 @@ def check_bundle_restore(source_url):
             verify_allocation_returns(restored_engine, allocation_returns)
             verify_refunds(restored_engine, business_refunds)
             verify_refund_revisions(restored_engine, refund_revisions)
+            verify_return_revisions(restored_engine, return_revisions)
             verify_credits(restored_engine, business_credits)
             verify_credit_revisions(restored_engine, credit_revisions)
             verify_payment_evidence(restored_engine, payment_evidence)
@@ -493,6 +504,7 @@ def check_bundle_restore(source_url):
                 *payment_evidence["originals"],
                 *credit_revisions["originals"],
                 *refund_revisions["originals"],
+                return_revisions["attachment"],
             ):
                 file, key = restored_service.get_download(
                     owner, fixture["ledger"], fixture["receipt"].file_id
@@ -552,6 +564,7 @@ def check_bundle_restore(source_url):
             # Late writes can advance non-MVCC identity state beyond the exported snapshot.
             verify_change_continuation(restored_engine, target, owner, ledger_b, expected_changes)
             verify_restored_queue_continuation(restored_engine, target, ocr_ids)
+            exercise_restored_return_reference(restored_engine, target, return_revisions)
             if snapshot(source) != after:
                 raise ArchiveError("Restored cursor continuation changed the bundle source.")
             print(
@@ -568,7 +581,14 @@ def check_bundle_restore(source_url):
                 "Actual same/cross-asset refunds, explicit returns, fees and exhausted principal "
                 "restored; closed/archived original v2 replay changes no table or change page."
             )
-            print("Refund revisions, fixed receipts and linked private PDF verified.")
+            print(
+                "Return revisions restored: exact 201 and 200 receipts, source order, "
+                "linked refund versions and private evidence."
+            )
+            print(
+                "Refund revisions restored: original 201s, every fixed 200, ordered evidence, "
+                "private file, terminal and active cash, fees and payment principal."
+            )
             print(
                 "Confirmed invoice/bill snapshots, gross balances and v2 receipts restored exactly."
             )
