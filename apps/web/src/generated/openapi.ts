@@ -390,6 +390,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Return History
+         * @description Page ordered metadata from the original return through its latest revision.
+         */
+        get: operations["return_history_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/revisions/{revision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revision Detail
+         * @description Read the complete permanent receipt for this group and revision.
+         */
+        get: operations["revision_detail_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__revisions__revision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-allocations": {
         parameters: {
             query?: never;
@@ -2158,6 +2198,25 @@ export interface components {
              * Format: date
              */
             return_date: string;
+        };
+        /** AllocationReturnHistoryEntry */
+        AllocationReturnHistoryEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "correct" | "cancel";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Reason */
+            reason: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Version */
+            version: number;
         };
         /** AllocationReturnLineCreate */
         AllocationReturnLineCreate: {
@@ -7587,6 +7646,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AllocationReturnCurrent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    return_history_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnHistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revision_detail_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__revisions__revision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                return_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnRevisionResponse"];
                 };
             };
             /** @description Validation Error */
