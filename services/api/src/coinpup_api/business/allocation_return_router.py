@@ -8,6 +8,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
+from coinpup_api.business.allocation_return_current_read import (
+    AllocationReturnCurrent,
+    BusinessAllocationReturnCurrentRead,
+)
 from coinpup_api.business.allocation_return_read_schemas import (
     AllocationReturnCapacity,
     AllocationReturnDetail,
@@ -32,6 +36,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_allocation_return_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessAllocationReturnService(engine), BusinessAllocationReturnReads(engine)
+    current_reads = BusinessAllocationReturnCurrentRead(engine)
     revisions = BusinessAllocationReturnRevisionService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
@@ -137,6 +142,13 @@ def create_allocation_return_router(settings, engine):
     @router.get("/business-allocation-returns/{return_id}", response_model=AllocationReturnDetail)
     def detail(ledger_id: UUID, return_id: UUID, identity: reader):
         return execute(reads.get_return, identity.id, ledger_id, return_id)
+
+    @router.get(
+        "/business-allocation-returns/{return_id}/current", response_model=AllocationReturnCurrent
+    )
+    def current(ledger_id: UUID, return_id: UUID, identity: reader):
+        """Read the current group version and its ordered active members."""
+        return execute(current_reads.current, identity.id, ledger_id, return_id)
 
     @router.get(
         "/business-allocations/{allocation_id}/return-capacity",
