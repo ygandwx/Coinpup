@@ -18,6 +18,10 @@ from coinpup_api.business.allocation_return_read_schemas import (
     AllocationReturnSummary,
 )
 from coinpup_api.business.allocation_return_reads import BusinessAllocationReturnReads
+from coinpup_api.business.allocation_return_revision_history import BusinessAllocationReturnHistory
+from coinpup_api.business.allocation_return_revision_history_schemas import (
+    AllocationReturnHistoryEntry,
+)
 from coinpup_api.business.allocation_return_revision_schemas import (
     AllocationReturnCancellationCreate,
     AllocationReturnCorrectionCreate,
@@ -36,6 +40,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_allocation_return_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessAllocationReturnService(engine), BusinessAllocationReturnReads(engine)
+    history = BusinessAllocationReturnHistory(engine)
     current_reads = BusinessAllocationReturnCurrentRead(engine)
     revisions = BusinessAllocationReturnRevisionService(engine)
     access = BrowserAccess(settings, engine)
@@ -149,6 +154,30 @@ def create_allocation_return_router(settings, engine):
     def current(ledger_id: UUID, return_id: UUID, identity: reader):
         """Read the current group version and its ordered active members."""
         return execute(current_reads.current, identity.id, ledger_id, return_id)
+
+    @router.get(
+        "/business-allocation-returns/{return_id}/history",
+        response_model=list[AllocationReturnHistoryEntry],
+    )
+    def return_history(
+        ledger_id: UUID,
+        return_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+    ):
+        """Page ordered metadata from the original return through its latest revision."""
+        return execute(
+            history.list_history, identity.id, ledger_id, return_id, limit=limit, offset=offset
+        )
+
+    @router.get(
+        "/business-allocation-returns/{return_id}/revisions/{revision_id}",
+        response_model=AllocationReturnRevisionResponse,
+    )
+    def revision_detail(ledger_id: UUID, return_id: UUID, revision_id: UUID, identity: reader):
+        """Read the complete permanent receipt for this group and revision."""
+        return execute(history.get_revision, identity.id, ledger_id, return_id, revision_id)
 
     @router.get(
         "/business-allocations/{allocation_id}/return-capacity",
