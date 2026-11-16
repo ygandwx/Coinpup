@@ -34,6 +34,15 @@ def test_refund_storage_is_frozen_and_matches_all_declared_tables_and_indexes():
                 "(id, payment_id, operation_id, ledger_id)",
                 "",
             )
+            if model is BusinessRefundReturn and isinstance(statement, CreateTable):
+                # The 0070 ALTER adds the bound version to legacy 0035 evidence.
+                column = "return_version INTEGER DEFAULT 1 NOT NULL, "
+                check = (
+                    ", CONSTRAINT ck_business_refund_return_source_version "
+                    "CHECK (return_version>=1)"
+                )
+                assert column in sql and check in sql
+                sql = sql.replace(column, "").replace(check, "")
             assert sql in frozen
         assert model.__tablename__ in migration["_TABLES"]
         assert len(model.__tablename__) <= 32
