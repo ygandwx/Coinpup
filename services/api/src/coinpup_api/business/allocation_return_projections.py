@@ -14,6 +14,9 @@ def current_return_members(ledger_id, source_ids):
         cast(ledger_id, Uuid), cast(source_ids, ARRAY(Uuid))
     ).table_valued(
         column("source_allocation_line_id", Uuid),
+        column("return_id", Uuid),
+        column("operation_id", Uuid),
+        column("source_return_no", BigInteger),
         column("payment_amount", Numeric(38, 18)),
         column("document_amount", Numeric(38, 18)),
     )

@@ -80,19 +80,30 @@ def _positive(text, asset):
 def _return_amounts(source, item, catalog):
     original_p, returned_p = _quantities(source.payment_amount, source.returned_payment, catalog)
     original_d, returned_d = _quantities(source.document_amount, source.returned_document, catalog)
-    remaining_p, remaining_d = original_p - returned_p, original_d - returned_d
-    same_asset = original_p.asset == original_d.asset
-    if (remaining_p.minor_units == 0) != (remaining_d.minor_units == 0) or (
-        same_asset and (original_p != original_d or returned_p != returned_d)
-    ):
-        raise _integrity()
+    remaining_p, remaining_d = remaining_return_pair(original_p, original_d, returned_p, returned_d)
     payment = _positive(item.payment_amount, original_p.asset)
     document = _positive(item.document_amount, original_d.asset)
+    validate_return_pair(original_p, original_d, remaining_p, remaining_d, payment, document)
+    return payment, document
+
+
+def remaining_return_pair(original_p, original_d, returned_p, returned_d):
+    remaining_p, remaining_d = original_p - returned_p, original_d - returned_d
+    if (remaining_p.minor_units == 0) != (remaining_d.minor_units == 0) or (
+        original_p.asset == original_d.asset
+        and (original_p != original_d or returned_p != returned_d)
+    ):
+        raise _integrity()
+    return remaining_p, remaining_d
+
+
+def validate_return_pair(original_p, original_d, remaining_p, remaining_d, payment, document):
+    """Use the original unit ratio for partial returns and the two-side remainder for the last."""
     if payment > remaining_p or document > remaining_d:
         raise MoneyError("allocation_return_exceeds_source", "Return exceeds the original mapping.")
     if document == remaining_d:
         expected_units = remaining_p.minor_units
-    elif same_asset:
+    elif original_p.asset == original_d.asset:
         expected_units = document.minor_units
     else:
         # Positive HALF_UP using the original pair, independent of Decimal precision.
@@ -109,7 +120,6 @@ def _return_amounts(source, item, catalog):
         raise MoneyError(
             "allocation_return_residual", "A partial return cannot leave only one side."
         )
-    return payment, document
 
 
 def plan_allocation_return(
