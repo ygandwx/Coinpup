@@ -67,12 +67,13 @@ async function save<T>(
     page: Page,
     endpoint: string,
     method: "POST" | "PATCH" = "POST",
+    button = page.getByRole("button", { name: "Save", exact: true }),
 ): Promise<T> {
     const responsePromise = page.waitForResponse(
         (response) =>
             new URL(response.url()).pathname === endpoint && response.request().method() === method,
     );
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await button.click();
     const response = await responsePromise;
     expect(response.status(), await response.text()).toBe(method === "POST" ? 201 : 200);
     return response.json() as Promise<T>;
@@ -546,7 +547,18 @@ test("a stablecoin needs explicit UI configuration and retains exact history whe
     expect(receipt.kind === "income" && receipt.amount).toBe("1.234567");
     await page.getByRole("button", { name: "Assets", exact: true }).click();
     const assetRow = page.getByTestId(`asset-${asset.asset_id}`);
-    await assetRow.getByRole("button", { name: "Disable", exact: true }).click();
+    const assetEndpoint = `/api/v1/assets/${encodeURIComponent(asset.asset_id)}`;
+    const disabled = await save<Asset>(
+        page,
+        assetEndpoint,
+        "PATCH",
+        assetRow.getByRole("button", { name: "Disable", exact: true }),
+    );
+    expect(disabled).toMatchObject({
+        asset_id: asset.asset_id,
+        enabled: false,
+        version: asset.version + 1,
+    });
     await expect(assetRow.getByRole("button", { name: "Enable", exact: true })).toBeEnabled();
     const balances = await api<Balance[]>(page, "GET", path(entity, "/balances"));
     const tokenBalance = balances.find((item) => item.asset_id === asset.asset_id)!;
@@ -565,7 +577,17 @@ test("a stablecoin needs explicit UI configuration and retains exact history whe
     expect(selectable).not.toContain(asset.asset_id);
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.getByRole("button", { name: "Assets", exact: true }).click();
-    await assetRow.getByRole("button", { name: "Enable", exact: true }).click();
+    const enabled = await save<Asset>(
+        page,
+        assetEndpoint,
+        "PATCH",
+        assetRow.getByRole("button", { name: "Enable", exact: true }),
+    );
+    expect(enabled).toMatchObject({
+        asset_id: asset.asset_id,
+        enabled: true,
+        version: disabled.version + 1,
+    });
     await expect(assetRow.getByRole("button", { name: "Disable", exact: true })).toBeEnabled();
     await expectNoOverflow(page);
 });
