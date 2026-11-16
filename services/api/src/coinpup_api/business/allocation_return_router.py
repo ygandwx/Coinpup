@@ -14,6 +14,12 @@ from coinpup_api.business.allocation_return_read_schemas import (
     AllocationReturnSummary,
 )
 from coinpup_api.business.allocation_return_reads import BusinessAllocationReturnReads
+from coinpup_api.business.allocation_return_revision_schemas import (
+    AllocationReturnCancellationCreate,
+    AllocationReturnCorrectionCreate,
+    AllocationReturnRevisionResponse,
+)
+from coinpup_api.business.allocation_return_revisions import BusinessAllocationReturnRevisionService
 from coinpup_api.business.allocation_return_schemas import (
     BusinessAllocationReturnCreate,
     BusinessAllocationReturnResponse,
@@ -26,6 +32,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_allocation_return_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business settlements"])
     service, reads = BusinessAllocationReturnService(engine), BusinessAllocationReturnReads(engine)
+    revisions = BusinessAllocationReturnRevisionService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -62,6 +69,52 @@ def create_allocation_return_router(settings, engine):
         """Release an explicit original application without moving funds or rewriting history."""
         return execute(
             service.create, identity.id, ledger_id, payload, idempotency_key, raw_body=raw_body
+        )
+
+    @router.post(
+        "/business-allocation-returns/{return_id}/corrections",
+        response_model=AllocationReturnRevisionResponse,
+    )
+    def correct(
+        ledger_id: UUID,
+        return_id: UUID,
+        payload: AllocationReturnCorrectionCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Reverse the old postings and record the complete ordered replacement group."""
+        return execute(
+            revisions.correct,
+            identity.id,
+            ledger_id,
+            return_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
+        )
+
+    @router.post(
+        "/business-allocation-returns/{return_id}/cancellations",
+        response_model=AllocationReturnRevisionResponse,
+    )
+    def cancel(
+        ledger_id: UUID,
+        return_id: UUID,
+        payload: AllocationReturnCancellationCreate,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Reverse all current members after explicit release of any active refund references."""
+        return execute(
+            revisions.cancel,
+            identity.id,
+            ledger_id,
+            return_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
         )
 
     @router.get("/business-allocation-returns", response_model=list[AllocationReturnSummary])
