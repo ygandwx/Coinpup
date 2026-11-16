@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 from sqlalchemy import func, insert, select
 
-from coinpup_api.business.allocation_return_models import BusinessAllocationReturn
 from coinpup_api.business.allocation_return_sources import require_current
+from coinpup_api.business.refund_evidence import bound_return_sources
 from coinpup_api.business.refund_models import BusinessRefund, BusinessRefundReturn
-from coinpup_api.business.refund_plan import RefundReturnSource, plan_refund
+from coinpup_api.business.refund_plan import plan_refund
 from coinpup_api.business.refund_receipts import replay_refund, response_from_rows
 from coinpup_api.business.refund_rows import refund_rows
 from coinpup_api.business.settlement_models import BusinessPayment
@@ -52,15 +52,9 @@ class BusinessRefundService(FeeCommands, BalanceQueries, PostingCore):
                 raise _not_found()
             payment, operation = record
             require_current(operation, payload.expected_version, payment.journal_id, "payment")
-            references = session.scalars(
-                select(BusinessAllocationReturn).where(
-                    BusinessAllocationReturn.ledger_id == ledger_id,
-                    BusinessAllocationReturn.payment_id == payment.id,
-                    BusinessAllocationReturn.id.in_(payload.allocation_return_ids),
-                )
-            ).all()
-            if len(references) != len(payload.allocation_return_ids):
-                raise _not_found()
+            returns = bound_return_sources(
+                session, ledger_id, payment.id, payload.allocation_return_ids
+            )
             advance = "advance.received" if payment.direction == "receipt" else "advance.paid"
             assets = {payment.asset_id, payload.asset_id} | {f.asset_id for f in payload.fees}
             controls = ControlAccounts(self.engine).ensure(
@@ -87,10 +81,6 @@ class BusinessRefundService(FeeCommands, BalanceQueries, PostingCore):
                     Amount.from_decimal(payment.amount, asset),
                     Amount.from_decimal(applied, asset),
                 )
-                returns = {
-                    row.id: RefundReturnSource(row.id, ledger_id, payment.id, row.return_date)
-                    for row in references
-                }
                 plan = plan_refund(
                     ledger_id,
                     source,
@@ -141,6 +131,7 @@ class BusinessRefundService(FeeCommands, BalanceQueries, PostingCore):
                         payment_id=payment.id,
                         ledger_id=ledger_id,
                         return_id=identifier,
+                        return_version=returns[identifier].version,
                         line_no=position,
                         created_at=now,
                     )
