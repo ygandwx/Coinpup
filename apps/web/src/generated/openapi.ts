@@ -330,6 +330,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/cancellations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel
+         * @description Reverse all current members after explicit release of any active refund references.
+         */
+        post: operations["cancel_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__cancellations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct
+         * @description Reverse the old postings and record the complete ordered replacement group.
+         */
+        post: operations["correct_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-allocations": {
         parameters: {
             query?: never;
@@ -1882,6 +1922,13 @@ export interface components {
              */
             operation_id: string;
         };
+        /** AllocationReturnCancellationCreate */
+        AllocationReturnCancellationCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
         /** AllocationReturnCapacity */
         AllocationReturnCapacity: {
             /**
@@ -1951,6 +1998,14 @@ export interface components {
             source_operation_id: string;
             /** Source Status */
             source_status: string;
+        };
+        /** AllocationReturnCorrectionCreate */
+        AllocationReturnCorrectionCreate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["ReturnReplacement"];
         };
         /** AllocationReturnDetail */
         AllocationReturnDetail: {
@@ -2091,6 +2146,51 @@ export interface components {
              * Format: uuid
              */
             source_operation_id: string;
+        };
+        /** AllocationReturnRevisionResponse */
+        AllocationReturnRevisionResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "correct" | "cancel";
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_allocation_return_revision";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Members */
+            members: components["schemas"]["ReturnMemberTransition"][];
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            previous: components["schemas"]["ReturnGroupFact"];
+            /** Previous Version */
+            previous_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["ReturnGroupFact"] | null;
+            /**
+             * Return Id
+             * Format: uuid
+             */
+            return_id: string;
+            /**
+             * Revision Id
+             * Format: uuid
+             */
+            revision_id: string;
+            /** Version */
+            version: number;
         };
         /** AllocationReturnSummary */
         AllocationReturnSummary: {
@@ -6137,6 +6237,103 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** ReturnGroupFact */
+        ReturnGroupFact: {
+            /** Reason */
+            reason: string;
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+        };
+        /** ReturnMemberTransition */
+        ReturnMemberTransition: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "correct" | "cancel";
+            /** Document Asset Id */
+            document_asset_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Line Id
+             * Format: uuid
+             */
+            document_line_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
+            previous: components["schemas"]["ReturnPostingFact"] | null;
+            replacement: components["schemas"]["ReturnPostingFact"] | null;
+            /** Reversal Journal Id */
+            reversal_journal_id: string | null;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Source Return No */
+            source_return_no: number;
+            /** Source Version */
+            source_version: number;
+        };
+        /** ReturnPostingFact */
+        ReturnPostingFact: {
+            /** Document Amount */
+            document_amount: string;
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /** Operation Version */
+            operation_version: number;
+            /** Payment Amount */
+            payment_amount: string;
+        };
+        /** ReturnReplacement */
+        ReturnReplacement: {
+            /** Lines */
+            lines: components["schemas"]["ReturnReplacementLine"][];
+            /** Reason */
+            reason: string;
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+        };
+        /** ReturnReplacementLine */
+        ReturnReplacementLine: {
+            /** Document Amount */
+            document_amount: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+        };
         /** ReviewField */
         ReviewField: {
             /** Candidate Value */
@@ -7167,6 +7364,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AllocationReturnDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__cancellations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllocationReturnCancellationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllocationReturnCorrectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnRevisionResponse"];
                 };
             };
             /** @description Validation Error */
