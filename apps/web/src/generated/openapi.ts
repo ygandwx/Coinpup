@@ -370,6 +370,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current
+         * @description Read the current group version and its ordered active members.
+         */
+        get: operations["current_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-allocations": {
         parameters: {
             query?: never;
@@ -2006,6 +2026,99 @@ export interface components {
             /** Reason */
             reason: string;
             replacement: components["schemas"]["ReturnReplacement"];
+        };
+        /** AllocationReturnCurrent */
+        AllocationReturnCurrent: {
+            fact: components["schemas"]["ReturnGroupFact"] | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Members */
+            members: components["schemas"]["AllocationReturnCurrentMember"][];
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Payment Asset Id */
+            payment_asset_id: string;
+            /**
+             * Payment Direction
+             * @enum {string}
+             */
+            payment_direction: "receipt" | "payout";
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /**
+             * Return Id
+             * Format: uuid
+             */
+            return_id: string;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Revision Reason */
+            revision_reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /** Version */
+            version: number;
+        };
+        /** AllocationReturnCurrentMember */
+        AllocationReturnCurrentMember: {
+            /** Document Amount */
+            document_amount: string;
+            /** Document Asset Id */
+            document_asset_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Line Id
+             * Format: uuid
+             */
+            document_line_id: string;
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /** Line No */
+            line_no: number;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
+            /** Payment Amount */
+            payment_amount: string;
+            /** Project Id */
+            project_id: string | null;
+            /**
+             * Source Allocation Line Id
+             * Format: uuid
+             */
+            source_allocation_line_id: string;
+            /**
+             * Source Operation Id
+             * Format: uuid
+             */
+            source_operation_id: string;
+            /** Source Return No */
+            source_return_no: number;
+            /** Source Version */
+            source_version: number;
         };
         /** AllocationReturnDetail */
         AllocationReturnDetail: {
@@ -7442,6 +7555,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AllocationReturnRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocationReturnCurrent"];
                 };
             };
             /** @description Validation Error */

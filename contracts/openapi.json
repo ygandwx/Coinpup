@@ -500,6 +500,227 @@
         "title": "AllocationReturnCorrectionCreate",
         "type": "object"
       },
+      "AllocationReturnCurrent": {
+        "additionalProperties": false,
+        "properties": {
+          "fact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReturnGroupFact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationReturnCurrentMember"
+            },
+            "maxItems": 200,
+            "title": "Members",
+            "type": "array"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "payment_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Payment Asset Id",
+            "type": "string"
+          },
+          "payment_direction": {
+            "enum": [
+              "receipt",
+              "payout"
+            ],
+            "title": "Payment Direction",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "return_id": {
+            "format": "uuid",
+            "title": "Return Id",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "revision_reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Reason"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "return_id",
+          "ledger_id",
+          "payment_id",
+          "party_id",
+          "payment_direction",
+          "payment_asset_id",
+          "version",
+          "status",
+          "revision_id",
+          "revision_reason",
+          "fact",
+          "members"
+        ],
+        "title": "AllocationReturnCurrent",
+        "type": "object"
+      },
+      "AllocationReturnCurrentMember": {
+        "additionalProperties": false,
+        "properties": {
+          "document_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Document Amount",
+            "type": "string"
+          },
+          "document_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Document Asset Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_line_id": {
+            "format": "uuid",
+            "title": "Document Line Id",
+            "type": "string"
+          },
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "operation_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          },
+          "payment_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Payment Amount",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "source_allocation_line_id": {
+            "format": "uuid",
+            "title": "Source Allocation Line Id",
+            "type": "string"
+          },
+          "source_operation_id": {
+            "format": "uuid",
+            "title": "Source Operation Id",
+            "type": "string"
+          },
+          "source_return_no": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Source Return No",
+            "type": "integer"
+          },
+          "source_version": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Source Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "line_no",
+          "source_allocation_line_id",
+          "source_operation_id",
+          "document_id",
+          "document_line_id",
+          "payment_amount",
+          "document_amount",
+          "operation_id",
+          "journal_id",
+          "operation_version",
+          "source_version",
+          "source_return_no",
+          "document_asset_id",
+          "project_id"
+        ],
+        "title": "AllocationReturnCurrentMember",
+        "type": "object"
+      },
       "AllocationReturnDetail": {
         "properties": {
           "asset_id": {
@@ -12637,6 +12858,60 @@
           }
         },
         "summary": "Correct",
+        "tags": [
+          "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-allocation-returns/{return_id}/current": {
+      "get": {
+        "description": "Read the current group version and its ordered active members.",
+        "operationId": "current_api_v1_ledgers__ledger_id__business_allocation_returns__return_id__current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "return_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Return Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationReturnCurrent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current",
         "tags": [
           "business settlements"
         ]
