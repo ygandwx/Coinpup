@@ -205,6 +205,38 @@ def live_process(pid):
     return state != "Z"
 
 
+def cleanup_descendant(marker):
+    if not marker.exists():
+        return
+    pid = int(marker.read_text())
+    if live_process(pid):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            # A child seen alive can exit before this fallback signal.
+            pass
+
+
+@pytest.mark.parametrize("error", [ProcessLookupError, PermissionError])
+def test_descendant_cleanup_ignores_only_an_already_exited_child(tmp_path, monkeypatch, error):
+    marker = tmp_path / "fictional.pid"
+    marker.write_text("123")
+    monkeypatch.setattr(sys.modules[__name__], "live_process", lambda pid: pid == 123)
+    calls = []
+
+    def send(pid, sig):
+        calls.append((pid, sig))
+        raise error()
+
+    monkeypatch.setattr(os, "kill", send)
+    if error is ProcessLookupError:
+        cleanup_descendant(marker)
+    else:
+        with pytest.raises(PermissionError):
+            cleanup_descendant(marker)
+    assert calls == [(123, signal.SIGKILL)]
+
+
 def test_live_process_handles_exit_during_proc_read(monkeypatch):
     def disappeared(path):
         assert path == Path("/proc/123/stat")
@@ -232,10 +264,7 @@ def test_descendants_are_killed_on_timeout_and_success(processor, budget, tmp_pa
         assert not live_process(pid), "Isolation left a live descendant behind"
     finally:
         # Clean our own fictional child if a regression fails the assertion.
-        if marker.exists():
-            pid = int(marker.read_text())
-            if live_process(pid):
-                os.kill(pid, signal.SIGKILL)
+        cleanup_descendant(marker)
 
 
 @LINUX
@@ -318,10 +347,7 @@ def test_lost_lease_cancels_waiting_processor_and_its_descendant(
             time.sleep(0.01)
         assert not live_process(pid), "Cancellation left a live descendant"
     finally:
-        if marker.exists():
-            pid = int(marker.read_text())
-            if live_process(pid):
-                os.kill(pid, signal.SIGKILL)
+        cleanup_descendant(marker)
 
 
 @LINUX
