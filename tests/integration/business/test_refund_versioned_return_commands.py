@@ -15,7 +15,7 @@ from coinpup_api.business.refund_revision_schemas import RefundCorrectionCreate
 from coinpup_api.business.refund_revisions import BusinessRefundRevisionService
 from coinpup_api.business.refunds import BusinessRefundService
 from coinpup_api.ledger.service import LedgerError
-from sqlalchemy import event, insert, select
+from sqlalchemy import event, insert, select, text
 from sqlalchemy.orm import Session
 
 from tests.integration.business.test_allocation_return_revision_members import member
@@ -77,7 +77,7 @@ def command(s, connection, kind, body, old, *, day, identifiers, key):
 @pytest.mark.parametrize("kind", ["create", "correct"])
 def test_normal_commands_use_earlier_effective_date_and_replay_the_same_bound_facts(drafts, kind):
     s = drafts
-    ret, body, old = original(s)
+    ret, body, old = original(s, linked=False)
     before = snapshot(s)
     with s["engine"].connect() as c:
         c.begin()
@@ -104,6 +104,30 @@ def test_normal_commands_use_earlier_effective_date_and_replay_the_same_bound_fa
             ).where(BusinessRefundRevisionReturn.revision_id == result.revision_id)
             check_posting(c, result.replacement_journal_id)
         assert c.execute(statement).all() == [(ret.id, 2)]
+        # The successful command now owns the active reference. Explicitly correct
+        # that refund's current evidence before cancelling, then replay its old command.
+        unlink = correction(
+            s,
+            old,
+            1 if kind == "create" else 2,
+            amount="5",
+            payment_amount="5",
+            allocation_return_ids=[],
+        )
+        # The enclosing rollback-only connection defers the first command's normal commit.
+        # Run its actual operation-history proof to seal that refund before the next command.
+        c.execute(
+            text("SELECT coinpup_validate_operation_history(:op)"), {"op": result.operation_id}
+        )
+        target = result.id if kind == "create" else old.id
+        edited = BusinessRefundRevisionService(c).correct(
+            s["owner"],
+            s["ledger"],
+            target,
+            RefundCorrectionCreate.model_validate(unlink),
+            "fictional-explicit-unlink",
+        )
+        assert edited.replacement.allocation_return_ids == ()
         revise_return(c, s, ret, None, v2)
         assert submit() == result
         assert c.execute(statement).all() == [(ret.id, 2)]
@@ -125,7 +149,7 @@ def test_commands_reject_the_current_date_terminal_group_and_out_of_scope_refere
     drafts, kind, fault, code, status
 ):
     s = drafts
-    ret, body, old = original(s)
+    ret, body, old = original(s, linked=False)
     before = snapshot(s)
     with s["engine"].connect() as c:
         c.begin()

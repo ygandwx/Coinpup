@@ -21,7 +21,10 @@ from tests.integration.business.test_allocation_return_service import setup_retu
 from tests.integration.business.test_credit_fact_validation import copy_posting, stored
 from tests.integration.business.test_credit_revision_storage import definitions
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.business.test_refund_bound_return_versions import revise_return
+from tests.integration.business.test_refund_bound_return_versions import (
+    revise_return,
+    stage_explicit_unlink,
+)
 from tests.integration.business.test_refund_historical_validation import check_origin, check_posting
 from tests.integration.business.test_refund_revision_headers import replacement
 from tests.integration.business.test_refund_service import refund
@@ -32,7 +35,7 @@ from tests.integration.ledger.test_posting_service_database import ledger_setup 
 pytestmark = pytest.mark.integration
 
 
-def original(s):
+def original(s, *, linked=True):
     payment, _, _, command = setup_return(s)
     command = command.model_copy(update={"return_date": date(2026, 10, 3)})
     returned = submit_return(s, command)
@@ -46,7 +49,7 @@ def original(s):
         payment_amount="5",
         transaction_date="2026-10-04",
         reason="Fictional refund with bound date",
-        allocation_return_ids=[returned.id],
+        allocation_return_ids=[returned.id] if linked else [],
     )
     return returned, body, refund(s, body)
 
@@ -145,7 +148,7 @@ def test_posting_proof_uses_bound_date_even_when_v1_or_the_later_current_date_wo
     drafts, kind, valid
 ):
     s = drafts
-    ret, body, old = original(s)
+    ret, body, old = original(s, linked=valid)
     before = snapshot(s)
     day = date(2026, 10, 2) if valid else date(2026, 10, 4)
     pinned = date(2026, 10, 1) if valid else date(2026, 10, 5)
@@ -153,6 +156,10 @@ def test_posting_proof_uses_bound_date_even_when_v1_or_the_later_current_date_wo
     with s["engine"].connect() as c:
         v2 = revise_return(c, s, ret, pinned)
         identifier, journal = staged(c, s, ret, body, old, kind, day)
+        if valid:
+            stage_explicit_unlink(c, s, body, old.id)
+            if kind == "origin":
+                stage_explicit_unlink(c, s, body, identifier)
         revise_return(c, s, ret, future, previous=v2)
         check_origin(c, old.id)
         check_posting(c, old.journal_id)
