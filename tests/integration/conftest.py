@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261109_0070",)
+        assert context.get_current_heads() == ("20261109_0071",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261109_0070",)
+        assert context.get_current_heads() == ("20261109_0071",)
 
 
 def confirmation_schema_migration():
@@ -220,12 +220,27 @@ _CREDIT_HISTORY_LAYER = ContextVar("credit_history_layer", default=False)
 _REFUND_HISTORY_LAYER = ContextVar("refund_history_layer", default=False)
 
 
-def bound_refund_evidence_migration():
+_INSIDE_BOUND_DATE_ROUNDTRIP = ContextVar("inside_bound_date_roundtrip", default=False)
+
+
+def refund_bound_date_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261109_0071_refund_bound_evidence_dates.py"
+        )
+    )
+
+
+def bound_refund_evidence_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261109_0070_refund_bound_return_versions.py"
         )
+    )
+    return _with_dependent_migration(
+        frozen, refund_bound_date_migration, _INSIDE_BOUND_DATE_ROUNDTRIP
     )
 
 
@@ -384,11 +399,17 @@ def refund_fixed_receipt_migration():
 
 
 def refund_historical_migration():
-    return runpy.run_path(
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261109_0054_refund_historical_validation.py"
         )
+    )
+    return _with_dependent_migration(
+        frozen,
+        refund_bound_date_migration,
+        _INSIDE_BOUND_DATE_ROUNDTRIP,
+        detached=_INSIDE_EVIDENCE_ROUNDTRIP,
     )
 
 
@@ -1077,7 +1098,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0070",
+                    "20261109_0071",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1088,7 +1109,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0070",
+                    "20261109_0071",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1117,7 +1138,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261109_0070",
+                        "20261109_0071",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1130,7 +1151,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0070",
+                    "20261109_0071",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:
