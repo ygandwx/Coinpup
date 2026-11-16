@@ -256,7 +256,16 @@ for (const [kind, principal] of [
         });
         await page.unroute(`**${data.ledger}/business-credits`);
         await reviewed.check();
-        await page.getByRole("button", { name: "Record credit", exact: true }).click();
+        const [closedCredit] = await Promise.all([
+            page.waitForResponse(
+                (response) =>
+                    response.request().method() === "POST" &&
+                    new URL(response.url()).pathname === `${data.ledger}/business-credits`,
+            ),
+            page.getByRole("button", { name: "Record credit", exact: true }).click(),
+        ]);
+        expect(closedCredit.status()).toBe(409);
+        expect(await closedCredit.json()).toMatchObject({ detail: { code: "period_closed" } });
         await expect(page.getByRole("alert")).toContainText("closed");
         for (const [locale, width] of [
             ["zh", 320],
