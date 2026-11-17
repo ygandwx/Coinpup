@@ -85,13 +85,19 @@ function responseError(status: number, data: unknown): ApiError {
     return new ApiError(kind, status, code, fields);
 }
 
+type DecodeJSON = (text: string) => unknown;
+type ResponseOptions = {
+    empty?: boolean;
+    timeoutMs?: number;
+    binary?: boolean;
+    decode?: DecodeJSON;
+};
+
 async function requestJSON<T>(
     path: string,
     init: RequestInit = {},
     signal?: AbortSignal,
-    empty = false,
-    timeoutMs = 12_000,
-    binary = false,
+    { empty = false, timeoutMs = 12_000, binary = false, decode }: ResponseOptions = {},
 ): Promise<T> {
     apiPath(path);
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3_610_000)
@@ -115,7 +121,7 @@ async function requestJSON<T>(
         if (response.ok && binary) return (await response.blob()) as T;
         let data: unknown;
         try {
-            data = await response.json();
+            data = response.ok && decode ? decode(await response.text()) : await response.json();
         } catch {
             if (controller.signal.aborted) throw new ApiError("network");
             if (!response.ok) throw responseError(response.status, null);
@@ -132,8 +138,8 @@ async function requestJSON<T>(
     }
 }
 
-export function readJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-    return requestJSON<T>(path, {}, signal);
+export function readJson<T>(path: string, signal?: AbortSignal, decode?: DecodeJSON): Promise<T> {
+    return requestJSON<T>(path, {}, signal, { decode });
 }
 
 export async function writeJson<T>(
@@ -143,6 +149,7 @@ export async function writeJson<T>(
     method: "POST" | "PATCH" | "PUT" = "POST",
     idempotencyKey?: string,
     signal?: AbortSignal,
+    decode?: DecodeJSON,
 ): Promise<T> {
     return requestJSON<T>(
         path,
@@ -156,6 +163,7 @@ export async function writeJson<T>(
             body: JSON.stringify(body),
         },
         signal,
+        { decode },
     );
 }
 
@@ -173,20 +181,15 @@ export function writeBytes<T>(
             headers: { "Content-Type": "application/octet-stream", "X-CSRF-Token": csrfToken },
         },
         options.signal,
-        false,
-        options.timeoutMs,
+        { timeoutMs: options.timeoutMs },
     );
 }
 
 export function readBlob(path: string, signal?: AbortSignal): Promise<Blob> {
-    return requestJSON<Blob>(
-        path,
-        { headers: { Accept: "application/octet-stream" } },
-        signal,
-        false,
-        120_000,
-        true,
-    );
+    return requestJSON<Blob>(path, { headers: { Accept: "application/octet-stream" } }, signal, {
+        timeoutMs: 120_000,
+        binary: true,
+    });
 }
 
 function parseSession(data: unknown): Session {
@@ -226,7 +229,7 @@ export async function signOut(csrfToken: string): Promise<void> {
             headers: { "X-CSRF-Token": csrfToken },
         },
         undefined,
-        true,
+        { empty: true },
     );
 }
 
