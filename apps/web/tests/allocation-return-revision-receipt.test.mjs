@@ -1,75 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { id, setupReturn } from "./return-revision-fixture.mjs";
+import { id, setupReturn, response } from "./return-revision-fixture.mjs";
 const { validFrozenReturnRevision } = await import("../src/allocation-return-revision-receipt.ts");
 
-export function response(data, cmd) {
-    const { ledger, review, group } = data,
-        { current } = review;
-    const lines = cmd.body.replacement?.lines ?? [];
-    const retained = new Set(lines.map((l) => l.source_allocation_line_id));
-    const layout = [
-        ...lines.map((l) => l.source_allocation_line_id),
-        ...current.members
-            .filter((m) => !retained.has(m.source_allocation_line_id))
-            .map((m) => m.source_allocation_line_id),
-    ];
-    const members = layout.map((key, i) => {
-        const src = data.sources.find((s) => s.source_allocation_line_id === key),
-            prev = current.members.find((m) => m.source_allocation_line_id === key);
-        const line = lines[i],
-            v = prev ? prev.operation_version + 1 : 1;
-        return {
-            source_allocation_line_id: key,
-            source_operation_id: src.source_operation_id,
-            document_id: src.document_id,
-            document_line_id: src.document_line_id,
-            document_asset_id: src.document_asset_id,
-            source_version: 1,
-            source_return_no: prev?.source_return_no ?? "9223372036854775807",
-            operation_id: prev?.operation_id ?? id(9000 + i),
-            operation_version: v,
-            action: prev ? (line ? "correct" : "cancel") : "create",
-            previous: prev
-                ? {
-                      line_no: prev.line_no,
-                      operation_version: prev.operation_version,
-                      journal_id: prev.journal_id,
-                      payment_amount: prev.payment_amount,
-                      document_amount: prev.document_amount,
-                  }
-                : null,
-            reversal_journal_id: prev ? id(10000 + i) : null,
-            replacement: line
-                ? {
-                      line_no: i + 1,
-                      operation_version: v,
-                      journal_id: id(11000 + i),
-                      payment_amount: line.payment_amount,
-                      document_amount: line.document_amount,
-                  }
-                : null,
-        };
-    });
-    const replacement = cmd.body.replacement;
-    return {
-        kind: "business_allocation_return_revision",
-        return_id: group,
-        revision_id: id(6),
-        ledger_id: ledger,
-        payment_id: current.payment_id,
-        payment_asset_id: current.payment_asset_id,
-        previous_version: current.version,
-        version: current.version + 1,
-        action: cmd.action,
-        reason: cmd.body.reason.trim(),
-        previous: current.fact,
-        replacement: replacement
-            ? { return_date: replacement.return_date, reason: replacement.reason.trim() }
-            : null,
-        members,
-    };
-}
 const freeze = (data, cmd) => ({
     ledgerId: data.ledger,
     ownerId: id(9),

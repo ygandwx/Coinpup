@@ -17,6 +17,14 @@ export function settlementError(error: unknown, locale: Locale): string {
             "退款超过当前可退本金。请重新读取来源与余量，明确核对后再提交。",
             "The refund exceeds current refundable principal. Reload its source and capacity, then review before submitting.",
         ],
+        allocation_return_refund_reference: [
+            "请先更正仍引用此退回组的有效退款，明确更新其证据，再取消退回。",
+            "Correct the active refunds that reference this return and explicitly update their evidence before cancelling it.",
+        ],
+        allocation_return_refund_date: [
+            "退回日期不得晚于仍引用此组的有效退款日期。",
+            "The return date cannot follow an active refund that references this group.",
+        ],
         allocation_return_date: [
             "退回日期不得早于原分摊生效日。",
             "A return cannot precede the original allocation date.",
