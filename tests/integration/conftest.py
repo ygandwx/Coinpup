@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261109_0074",)
+        assert context.get_current_heads() == ("20261110_0075",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261109_0074",)
+        assert context.get_current_heads() == ("20261110_0075",)
 
 
 def confirmation_schema_migration():
@@ -116,7 +116,7 @@ def business_confirmation_migration(*, include_dependents=True):
         frozen["upgrade"]()
         business_accrual_migration()["upgrade"]()
 
-    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+    return _with_document_headers(frozen | {"downgrade": downgrade, "upgrade": upgrade})
 
 
 def business_accrual_migration():
@@ -185,6 +185,43 @@ def payment_confirmation_migration():
             / "services/api/migrations/versions/20261013_0032_ocr_payment_evidence.py"
         )
     )
+
+
+def document_revision_header_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions"
+            / "20261110_0075_confirmed_document_revision_headers.py"
+        )
+    )
+
+
+def _with_document_headers(migration):
+    # The frozen 0027 and 0061 probes temporarily remove a referenced table or restore
+    # a historical change-feed constraint. Reinstall 0075 only after both are present.
+    def present(table):
+        return (
+            op.get_bind()
+            .execute(text("SELECT to_regclass(:table) IS NOT NULL"), {"table": "public." + table})
+            .scalar_one()
+        )
+
+    def downgrade():
+        if present("business_document_revisions"):
+            document_revision_header_migration()["downgrade"]()
+        migration["downgrade"]()
+
+    def upgrade():
+        migration["upgrade"]()
+        if (
+            not present("business_document_revisions")
+            and present("business_confirmations")
+            and present("business_return_revision_members")
+        ):
+            document_revision_header_migration()["upgrade"]()
+
+    return migration | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def return_lifecycle_migration():
@@ -397,7 +434,7 @@ def return_revision_member_migration():
             / "services/api/migrations/versions/20261109_0061_allocation_return_revision_members.py"
         )
     )
-    return _with_return_lifecycle(frozen)
+    return _with_document_headers(_with_return_lifecycle(frozen))
 
 
 def return_revision_header_migration():
@@ -985,7 +1022,7 @@ def _restore_current_change_types(connection):
     connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
     connection.exec_driver_sql(
         "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
-        f"(entity_type IN ({return_revision_member_migration()['_ENTITY_TYPES']}))"
+        f"(entity_type IN ({document_revision_header_migration()['_ENTITY_TYPES']}))"
     )
 
 
@@ -1021,6 +1058,7 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             | refund_revision_evidence_migration()["_CHANGE_TRIGGER_SQL"]
             | return_revision_header_migration()["_CHANGE_TRIGGER_SQL"]
             | return_revision_member_migration()["_CHANGE_TRIGGER_SQL"]
+            | document_revision_header_migration()["_CHANGE_TRIGGER_SQL"]
         )
         registered = dict(
             connection.exec_driver_sql(
@@ -1063,6 +1101,7 @@ def structure_database(request):
             connection.exec_driver_sql(
                 "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
+                "business_document_revisions, "
                 "business_return_revision_members, business_return_revisions, "
                 "business_refund_revision_returns, "
                 "business_refund_revisions, "
@@ -1157,7 +1196,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0074",
+                    "20261110_0075",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1168,7 +1207,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0074",
+                    "20261110_0075",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1197,7 +1236,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261109_0074",
+                        "20261110_0075",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1210,7 +1249,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261109_0074",
+                    "20261110_0075",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:

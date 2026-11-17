@@ -23,7 +23,9 @@ def test_member_freezes_the_real_table_and_extends_only_the_accepted_header_cata
     assert migration["_OLD_ENTITY_TYPES"] == header["_OLD_ENTITY_TYPES"] + header["_TABLES"]
     t = BusinessReturnRevisionMember.__table__
     assert migration["_TABLES"] == (t.name,) and len(t.name) <= 32
-    assert set(get_args(EntityType)) == set(migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"])
+    assert set(get_args(EntityType)) == set(
+        migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"]
+    ) | {"business_document_revisions"}
     for stmt in (CreateTable(t), *(CreateIndex(i) for i in t.indexes)):
         assert " ".join(str(stmt.compile(dialect=dialect())).split()) in " ".join(
             migration["_SCHEMA_SQL"].split()
