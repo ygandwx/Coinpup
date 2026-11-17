@@ -27,6 +27,52 @@ for (const locale of ["en", "zh"] as const)
                 },
             },
         );
+        const en = locale === "en";
+        let commands = 0;
+        page.on("request", (r) => {
+            if (r.method() === "POST" && r.url().includes(f.refundPath)) commands++;
+        });
+        const activePanel = await openRefundVersions(page, f.entity.id, locale);
+        const activeVersion = activePanel.getByRole("heading", {
+            name: en ? "Current version 2 · Active" : "当前版本 2 · 有效",
+        });
+        const correct = activePanel.getByRole("button", {
+            name: en ? "Correct this refund" : "更正此笔退款",
+            exact: true,
+        });
+        const cancel = activePanel.getByRole("button", {
+            name: en ? "Cancel this refund" : "取消此笔退款",
+            exact: true,
+        });
+        await expect(activeVersion).toBeVisible();
+        await expect(correct).toBeVisible();
+        await expect(cancel).toBeVisible();
+        await page.route(
+            "**" + f.refundPath + "/current",
+            async (route) => {
+                const response = await route.fetch();
+                expect(response.status()).toBe(200);
+                const body = await response.json();
+                expect(body.refund_id).toBe(f.original.id);
+                expect(body.payment_id).not.toBe(f.original.id);
+                await route.fulfill({ response, json: { ...body, payment_id: f.original.id } });
+            },
+            { times: 1 },
+        );
+        await activePanel
+            .getByRole("button", { name: en ? "Current refund" : "当前退款", exact: true })
+            .click();
+        await expect(activePanel.getByRole("alert")).toBeVisible();
+        await expect(correct).toHaveCount(0);
+        await expect(cancel).toHaveCount(0);
+        await expect(activeVersion).toHaveCount(0);
+        await activePanel
+            .getByRole("button", { name: en ? "Reload version" : "重新读取版本", exact: true })
+            .click();
+        await expect(activeVersion).toBeVisible();
+        await expect(correct).toBeVisible();
+        await expect(cancel).toBeVisible();
+        expect(commands).toBe(0);
         await api(page, "POST", f.refundPath + "/cancellations", {
             expected_version: 2,
             reason: "Fictional final cancel 中文",
@@ -34,17 +80,12 @@ for (const locale of ["en", "zh"] as const)
         const width = info.project.name === "mobile-chromium" ? 320 : 1440;
         await page.setViewportSize({ width, height: 900 });
         const panel = await openRefundVersions(page, f.entity.id, locale);
-        const en = locale === "en";
         await expect(
             panel.getByRole("heading", {
                 name: en ? "Current version 3 · Cancelled" : "当前版本 3 · 已取消",
             }),
         ).toBeVisible();
         await expect(panel.getByText("Fictional final cancel 中文", { exact: true })).toBeVisible();
-        let commands = 0;
-        page.on("request", (r) => {
-            if (r.method() === "POST" && r.url().includes(f.refundPath)) commands++;
-        });
         await panel
             .getByRole("button", { name: en ? "Version history" : "版本历史", exact: true })
             .click();

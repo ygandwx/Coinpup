@@ -1,3 +1,5 @@
+import { BusinessReturnRevisionHistory } from "./BusinessReturnRevisionHistory";
+import type { Asset } from "./ledger-api";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { getAllocationReturn, listAllocationReturns } from "./allocation-return-api";
@@ -8,11 +10,13 @@ import type { Locale } from "./i18n";
 
 export function BusinessAllocationReturnHistory({
     ledgerId,
+    assets,
     locale,
     onClose,
     onUnauthorized,
 }: {
     ledgerId: string;
+    assets: Asset[];
     locale: Locale;
     onClose: () => void;
     onUnauthorized: () => void;
@@ -140,6 +144,13 @@ export function BusinessAllocationReturnHistory({
                                 </li>
                             ))}
                         </ol>
+                        <BusinessReturnRevisionHistory
+                            key={data.ledger_id + "/" + data.id}
+                            original={data}
+                            assets={assets}
+                            locale={locale}
+                            onUnauthorized={onUnauthorized}
+                        />
                         <button type="button" onClick={() => setSelected(null)}>
                             {t("返回退回列表", "Back to return list")}
                         </button>

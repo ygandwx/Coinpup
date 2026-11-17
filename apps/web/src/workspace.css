@@ -1221,6 +1221,10 @@
 .business-settlement-panel {
     overflow-wrap: anywhere;
 }
+.return-versions .form-actions {
+    flex-wrap: wrap;
+    overflow-wrap: normal;
+}
 .business-settlement-panel button[aria-pressed="true"] {
     background: #e8eedf;
 }

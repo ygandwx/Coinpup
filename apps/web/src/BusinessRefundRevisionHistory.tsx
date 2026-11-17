@@ -1,6 +1,6 @@
 import { BusinessRefundRevisionEditor } from "./BusinessRefundRevisionEditor";
 import type { RefundRevisionActions } from "./BusinessRefundRevisionEditor";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
 import type { Asset } from "./ledger-api";
@@ -43,21 +43,19 @@ export function BusinessRefundRevisionHistory({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [view, setView] = useState<View>({ mode: "current" });
     const [refresh, setRefresh] = useState(0);
-    const key = [
-        original.ledger_id,
-        original.id,
-        view.mode,
-        view.mode === "current" ? 0 : view.offset,
-        view.mode === "revision" ? view.entry.revision_id : "",
-        refresh,
-    ].join("/");
-    const [loaded, setLoaded] = useState<{ key: string; value: Loaded } | null>(null);
-    const [error, setError] = useState<{ key: string; value: unknown } | null>(null);
+    // Selecting the same view again requires fresh evidence for the editor.
+    const key = useMemo(
+        () => ({ original, assets, view, refresh }),
+        [original, assets, view, refresh],
+    );
+    const [loaded, setLoaded] = useState<{ key: typeof key; value: Loaded } | null>(null);
+    const [error, setError] = useState<{ key: typeof key; value: unknown } | null>(null);
     const unauthorized = useRef(onUnauthorized);
     unauthorized.current = onUnauthorized;
     useEffect(() => {
         const controller = new AbortController(),
             signal = controller.signal;
+        const { original, assets, view } = key;
         const ledger = original.ledger_id,
             refund = original.id;
         const scope = {
@@ -111,7 +109,7 @@ export function BusinessRefundRevisionHistory({
             },
         );
         return () => controller.abort();
-    }, [original, assets, view, refresh, key]);
+    }, [key]);
     const value = loaded?.key === key ? loaded.value : null;
     return (
         <section
