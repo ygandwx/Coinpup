@@ -22,6 +22,7 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
         "business_return_revisions",
         "business_return_revision_members",
         "business_document_revisions",
+        "business_document_revision_lines",
     }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32

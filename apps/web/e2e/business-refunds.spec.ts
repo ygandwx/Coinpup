@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, request, test } from "@playwright/test";
 import { api, expectNoOverflow, username } from "./helpers";
 import { confirmationSetup } from "./business-confirmation-helpers";
 import type { Account, Balance, Category } from "../src/ledger-api";
@@ -215,8 +215,16 @@ for (const [direction, asset, principal] of [
             bodies.push(route.request().postData()!);
             keys.push(route.request().headers()["idempotency-key"]);
             if (bodies.length === 1) {
-                const response = await route.fetch();
-                expect(response.status()).toBe(201);
+                // Forward once on a new connection before dropping the browser response.
+                const forwarding = await request.newContext();
+                try {
+                    const response = await forwarding.fetch(route.request(), {
+                        headers: await route.request().allHeaders(),
+                    });
+                    expect(response.status()).toBe(201);
+                } finally {
+                    await forwarding.dispose();
+                }
                 return route.abort("failed");
             }
             if (bodies.length === 2) {
