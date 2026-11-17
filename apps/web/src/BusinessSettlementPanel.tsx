@@ -703,6 +703,7 @@ export function BusinessSettlementPanel({
                 />
             ) : returnsOpen ? (
                 <BusinessAllocationReturnHistory
+                    assets={assets}
                     ledgerId={ledgerId}
                     locale={locale}
                     onClose={() => setReturnsOpen(false)}
