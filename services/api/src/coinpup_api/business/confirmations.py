@@ -78,6 +78,38 @@ def confirmed_reference_rows(session, ledger_id, document, lines):
     return party, categories, projects
 
 
+def accrual_posting_lines(
+    source, journal, ledger_id, document_id, party_id, category_kind, asset, account_id
+):
+    """Prepare the signed control and category rows of an original or corrected accrual."""
+    scope = dict(
+        journal_id=journal,
+        ledger_id=ledger_id,
+        asset_id=asset.asset_id,
+        party_id=party_id,
+        document_id=document_id,
+        document_line_id=source.line_id,
+        project_id=source.project_id,
+    )
+    rows = [
+        PostingLine(
+            **scope,
+            line_no=1,
+            role="account",
+            account_id=account_id,
+            amount=source.account_amount,
+        ),
+        PostingLine(
+            **scope,
+            line_no=2,
+            role=category_kind,
+            category_id=source.category_id,
+            amount=source.category_amount,
+        ),
+    ]
+    return rows, prepare_journal_lines(rows, {asset.asset_id: asset})
+
+
 class BusinessConfirmationService(BalanceQueries, PostingCore):
     def confirm(self, owner_id, ledger_id, document_id, payload, key, *, raw_body=None):
         if not isinstance(key, str) or _IDEMPOTENCY_KEY.fullmatch(key) is None:
@@ -149,38 +181,23 @@ class BusinessConfirmationService(BalanceQueries, PostingCore):
         groups = []
         for source in plan.lines:
             operation, journal = uuid4(), uuid4()
-            scope = dict(
-                journal_id=journal,
-                ledger_id=plan.ledger_id,
-                asset_id=asset.asset_id,
-                party_id=plan.party_id,
-                document_id=plan.document_id,
-                document_line_id=source.line_id,
-                project_id=source.project_id,
+            rows, parameters = accrual_posting_lines(
+                source,
+                journal,
+                plan.ledger_id,
+                plan.document_id,
+                plan.party_id,
+                plan.category_kind,
+                asset,
+                account_id,
             )
-            rows = [
-                PostingLine(
-                    **scope,
-                    line_no=1,
-                    role="account",
-                    account_id=account_id,
-                    amount=source.account_amount,
-                ),
-                PostingLine(
-                    **scope,
-                    line_no=2,
-                    role=plan.category_kind,
-                    category_id=source.category_id,
-                    amount=source.category_amount,
-                ),
-            ]
             groups.append(
                 (
                     source,
                     operation,
                     journal,
                     rows,
-                    prepare_journal_lines(rows, {asset.asset_id: asset}),
+                    parameters,
                 )
             )
         return groups

@@ -44,6 +44,15 @@ class PostingLine:
     dimension_owner_id: UUID | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedJournal:
+    """A journal header with the validated lines and exact SQL insert values."""
+
+    header: dict
+    lines: tuple[PostingLine, ...]
+    parameters: tuple[dict, ...]
+
+
 def prepare_journal_lines(
     lines: Sequence[PostingLine], catalog: Mapping[str, AssetDefinition]
 ) -> list[dict]:

@@ -17,7 +17,8 @@ from coinpup_api.ledger.assets import AssetDefinition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import Journal, JournalLine
 from coinpup_api.ledger.money import Amount
-from coinpup_api.ledger.posting_storage import PostingLine, prepare_reversal_lines
+from coinpup_api.ledger.posting_storage import PreparedJournal as CreditRevisionJournal
+from coinpup_api.ledger.posting_storage import prepare_reversal_lines
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,13 +27,6 @@ class CreditRevisionOriginal:
     source_operation_id: UUID
     journal: Journal
     lines: tuple[JournalLine, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class CreditRevisionJournal:
-    header: dict
-    lines: tuple[PostingLine, ...]
-    parameters: tuple[dict, ...]
 
 
 @dataclass(frozen=True, slots=True)
