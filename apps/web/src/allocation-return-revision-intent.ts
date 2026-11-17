@@ -51,7 +51,7 @@ export function reviewedSources(capacities: AllocationReturnCapacity[]) {
     return byId;
 }
 const commandReason = (v: unknown, max: number) =>
-    typeof v === "string" && [...v].length <= max && reason(stripCommandText(v), max);
+    typeof v === "string" && reason(stripCommandText(v), max);
 
 export function validReturnRevisionInput(input: unknown): input is ReturnRevisionInput {
     if (
@@ -76,6 +76,8 @@ export function validReturnRevisionInput(input: unknown): input is ReturnRevisio
         !record(r) ||
         !keys(r, ["reason", "return_date", "lines"]) ||
         !commandReason(r.reason, 2000) ||
+        typeof r.reason !== "string" ||
+        [...r.reason].length > 2000 ||
         !date(r.return_date) ||
         !Array.isArray(r.lines) ||
         r.lines.length < 1 ||

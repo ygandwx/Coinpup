@@ -705,6 +705,16 @@ export function BusinessSettlementPanel({
                 />
             ) : returnsOpen ? (
                 <BusinessAllocationReturnHistory
+                    actions={{
+                        disabled: archived || dataLoading || !!pending.plan,
+                        submit: (revision, review) =>
+                            controller.start(
+                                session,
+                                ledgerId,
+                                { kind: "return-revision", revision },
+                                review,
+                            ),
+                    }}
                     assets={assets}
                     ledgerId={ledgerId}
                     locale={locale}

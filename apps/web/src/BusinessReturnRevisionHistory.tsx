@@ -1,3 +1,5 @@
+import { BusinessReturnRevisionEditor } from "./BusinessReturnRevisionEditor";
+import type { ReturnRevisionActions } from "./BusinessReturnRevisionEditor";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
@@ -129,11 +131,13 @@ export function ReturnRevisionFacts({
 
 export function BusinessReturnRevisionHistory({
     original,
+    actions,
     assets,
     locale,
     onUnauthorized,
 }: {
     original: AllocationReturnDetail;
+    actions: ReturnRevisionActions;
     assets: Asset[];
     locale: Locale;
     onUnauthorized: () => void;
@@ -262,6 +266,17 @@ export function BusinessReturnRevisionHistory({
                             </li>
                         ))}
                     </ol>
+                    {data.current.status === "active" && error?.key !== key && (
+                        <BusinessReturnRevisionEditor
+                            key={data.current.return_id + "/" + data.current.version}
+                            original={original}
+                            current={data.current}
+                            assets={assets}
+                            locale={locale}
+                            actions={actions}
+                            onUnauthorized={onUnauthorized}
+                        />
+                    )}
                 </>
             )}
             {data?.mode === "history" && view.mode === "history" && (
