@@ -39,5 +39,47 @@ def test_document_line_ddl_matches_composite_fks_and_current_additive_catalog():
     assert current["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert current["_TABLES"] == (table.name,) and len(table.name) <= 32
     assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"]
-    sql = str(CreateTable(table).compile(dialect=dialect()))
+    original_fks = [
+        fk for fk in table.foreign_key_constraints if fk.name != "fk_document_revision_line_source"
+    ]
+    sql = str(
+        CreateTable(table, include_foreign_key_constraints=original_fks).compile(dialect=dialect())
+    )
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())
+    (source,) = table.foreign_key_constraints.difference(original_fks)
+    assert [e.target_fullname for e in source.elements] == [
+        "business_document_lines.id",
+        "business_document_lines.document_id",
+        "business_document_lines.ledger_id",
+    ]
+    assert source.deferrable and source.initially == "DEFERRED"
+
+
+def test_source_registration_preserves_frozen_confirmation_and_draft_guard_bodies():
+    versions = Path(__file__).resolve().parents[3] / "services/api/migrations/versions"
+    initial = runpy.run_path(str(versions / "20261011_0027_business_confirmations.py"))
+    activation = runpy.run_path(str(versions / "20261011_0028_business_accruals.py"))
+    current = runpy.run_path(str(versions / "20261110_0077_document_revision_line_identities.py"))
+    assert current["down_revision"] == "20261110_0076"
+    for old, field in (
+        (initial["_COMPLETE_SQL"], "_OLD_COMPLETE"),
+        (initial["_SNAPSHOT_SQL"], "_OLD_SNAPSHOT"),
+        (activation["_LINE"], "_OLD_LINE"),
+    ):
+        assert (
+            old.strip().replace("CREATE FUNCTION", "CREATE OR REPLACE FUNCTION")
+            == current[field].strip()
+        )
+    assert current["_SNAPSHOT"].replace(current["_ORIGINAL"], "") == current["_OLD_SNAPSHOT"]
+    assert (
+        current["_COMPLETE"]
+        .replace(current["_ORIGINAL"], "")
+        .replace(
+            "FROM public.business_document_lines l\n      WHERE",
+            "FROM public.business_document_lines\n      WHERE",
+        )
+        == current["_OLD_COMPLETE"]
+    )
+    bounded = current["_LINE"].index("IF TG_OP IN ('INSERT','UPDATE') AND EXISTS (")
+    prior = current["_OLD_LINE"].index("IF TG_OP IN ('INSERT','UPDATE') AND EXISTS (")
+    assert current["_LINE"][bounded:] == current["_OLD_LINE"][prior:]

@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261110_0076",)
+        assert context.get_current_heads() == ("20261110_0077",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261110_0076",)
+        assert context.get_current_heads() == ("20261110_0077",)
 
 
 def confirmation_schema_migration():
@@ -135,7 +135,7 @@ def business_accrual_migration():
         frozen["upgrade"]()
         business_settlement_migration()["upgrade"]()
 
-    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
+    return _with_document_source_bindings(frozen | {"downgrade": downgrade, "upgrade": upgrade})
 
 
 def business_settlement_migration(*, include_dependents=True):
@@ -187,14 +187,55 @@ def payment_confirmation_migration():
     )
 
 
-def document_revision_line_migration():
+def document_source_binding_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261110_0077_document_revision_line_identities.py"
+        )
+    )
+
+
+def _with_document_source_bindings(migration):
+    def installed():
+        return (
+            op.get_bind()
+            .exec_driver_sql(
+                "SELECT to_regprocedure('public.coinpup_bind_document_revision_source()') "
+                "IS NOT NULL"
+            )
+            .scalar_one()
+        )
+
+    def downgrade():
+        if installed():
+            document_source_binding_migration()["downgrade"]()
+        migration["downgrade"]()
+
+    def upgrade():
+        migration["upgrade"]()
+        if (
+            op.get_bind()
+            .exec_driver_sql(
+                "SELECT to_regclass('public.business_document_revision_lines') IS NOT NULL"
+            )
+            .scalar_one()
+            and not installed()
+        ):
+            document_source_binding_migration()["upgrade"]()
+
+    return migration | {"downgrade": downgrade, "upgrade": upgrade}
+
+
+def document_revision_line_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions"
             / "20261110_0076_confirmed_document_revision_lines.py"
         )
     )
+    return _with_document_source_bindings(frozen)
 
 
 def document_revision_header_migration():
@@ -1218,7 +1259,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0076",
+                    "20261110_0077",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1229,7 +1270,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0076",
+                    "20261110_0077",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1258,7 +1299,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261110_0076",
+                        "20261110_0077",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1271,7 +1312,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0076",
+                    "20261110_0077",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:
