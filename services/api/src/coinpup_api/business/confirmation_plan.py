@@ -5,7 +5,7 @@ from datetime import date
 from uuid import UUID
 
 from coinpup_api.business.draft_schemas import BusinessDraftResponse
-from coinpup_api.business.pricing import DocumentPrice, LinePrice, PriceInput, price_document
+from coinpup_api.business.pricing import DocumentPrice, LinePrice, price_document_rows
 from coinpup_api.ledger.assets import AssetDefinition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.money import Amount
@@ -74,13 +74,7 @@ def plan_confirmation(draft: BusinessDraftResponse, asset: AssetDefinition) -> C
             or line.line_no < 1
         ):
             raise _integrity()
-    price = price_document(
-        tuple(
-            PriceInput(line.quantity, line.unit_price, line.discount_amount, line.tax_rate_percent)
-            for line in lines
-        ),
-        asset,
-    )
+    price = price_document_rows(lines, asset)
     for source, calculated in ((draft, price), *zip(lines, price.lines, strict=True)):
         if any(
             Amount.parse(getattr(source, name + "_amount"), asset) != getattr(calculated, name)
