@@ -60,6 +60,24 @@ def _replay(receipt, ledger_id, document_id, payload, digest):
     return result
 
 
+def confirmed_reference_rows(session, ledger_id, document, lines):
+    party = _references(session, BusinessParty, ledger_id, {document.party_id})[document.party_id]
+    role = "customer" if document.document_kind == "invoice" else "supplier"
+    if not party.name or party.role not in (role, "both"):
+        raise LedgerError("party_role", 422, "The party profile does not support this document.")
+    categories = _references(session, Category, ledger_id, {row.category_id for row in lines})
+    projects = _references(
+        session,
+        BusinessProject,
+        ledger_id,
+        {row.project_id for row in lines if row.project_id is not None},
+    )
+    kind = "income" if document.document_kind == "invoice" else "expense"
+    if any(row.kind != kind for row in categories.values()):
+        raise LedgerError("category_kind", 422, "The category kind does not match this document.")
+    return party, categories, projects
+
+
 class BusinessConfirmationService(BalanceQueries, PostingCore):
     def confirm(self, owner_id, ledger_id, document_id, payload, key, *, raw_body=None):
         if not isinstance(key, str) or _IDEMPOTENCY_KEY.fullmatch(key) is None:
@@ -100,7 +118,7 @@ class BusinessConfirmationService(BalanceQueries, PostingCore):
             )
             asset = asset_definition(session.get(AssetRecord, document.asset_id))
             sources = DraftService._lines(session, ledger_id, document_id)
-            self._references(session, ledger_id, document, sources)
+            confirmed_reference_rows(session, ledger_id, document, sources)
             try:
                 plan = plan_confirmation(_response(document, sources, asset), asset)
                 require_open_period(
@@ -124,29 +142,6 @@ class BusinessConfirmationService(BalanceQueries, PostingCore):
                 raise _invalid_money(error) from None
             return self._persist_group(
                 session, owner_id, ledger_id, document, payload, key, digest, plan, groups
-            )
-
-    @staticmethod
-    def _references(session, ledger_id, document, lines):
-        party = _references(session, BusinessParty, ledger_id, {document.party_id})[
-            document.party_id
-        ]
-        role = "customer" if document.document_kind == "invoice" else "supplier"
-        if not party.name or party.role not in (role, "both"):
-            raise LedgerError(
-                "party_role", 422, "The party profile does not support this document."
-            )
-        categories = _references(session, Category, ledger_id, {row.category_id for row in lines})
-        _references(
-            session,
-            BusinessProject,
-            ledger_id,
-            {row.project_id for row in lines if row.project_id is not None},
-        )
-        kind = "income" if document.document_kind == "invoice" else "expense"
-        if any(row.kind != kind for row in categories.values()):
-            raise LedgerError(
-                "category_kind", 422, "The category kind does not match this document."
             )
 
     @staticmethod
