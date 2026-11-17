@@ -40,6 +40,12 @@ _ROUTES = {
     "business_allocation_return": "/api/v1/ledgers/{ledger_id}/business-allocation-returns",
     "business_payment": "/api/v1/ledgers/{ledger_id}/business-payments",
     "business_allocation": "/api/v1/ledgers/{ledger_id}/business-allocations",
+    "correct_confirmed_document": (
+        "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/corrections"
+    ),
+    "cancel_confirmed_document": (
+        "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/cancellations"
+    ),
     "confirm_document": "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm",
     "opening": "/api/v1/ledgers/{ledger_id}/opening-balances",
     "income": "/api/v1/ledgers/{ledger_id}/income",
