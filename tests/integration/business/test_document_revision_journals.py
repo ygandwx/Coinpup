@@ -33,7 +33,7 @@ from tests.integration.ledger.test_posting_service_database import ledger_setup 
 pytestmark = pytest.mark.integration
 
 
-def confirmed(s, kind, count=4):
+def confirmed(s, kind, count=4, *, key="fictional-confirm"):
     raw = s["payload"](document_kind=kind)
     master = raw.lines[0].model_copy(
         update={
@@ -54,7 +54,10 @@ def confirmed(s, kind, count=4):
         s["owner"], s["ledger"], raw.model_copy(update={"lines": rows})
     )
     receipt = submit(
-        s, saved, BusinessConfirmationCreate(id=uuid4(), expected_version=saved.version)
+        s,
+        saved,
+        BusinessConfirmationCreate(id=uuid4(), expected_version=saved.version),
+        key,
     )
     doc = (
         BusinessConfirmationReads(s["engine"])
