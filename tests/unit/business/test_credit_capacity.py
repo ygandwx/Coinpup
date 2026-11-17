@@ -99,7 +99,7 @@ def test_credit_capacity_preserves_refund_sql_and_exact_empty_history_downgrade(
             assert node.module == "alembic"
         assert not isinstance(node, ast.Import)
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261109_0074"]
+    assert scripts.get_heads() == ["20261110_0075"]
     assert scripts.get_revision("20261021_0038").down_revision == "20261021_0037"
 
 
