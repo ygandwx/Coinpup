@@ -39,7 +39,7 @@ export function BusinessReturnRevisionResult({
                 {t("退回组", "Return group")} {plan.returnId} · {t("原版本", "Expected version")}{" "}
                 {body.expected_version}
             </p>
-            <p>{body.reason}</p>
+            {!receipt && <p>{body.reason}</p>}
             {receipt ? (
                 <ReturnRevisionFacts receipt={receipt} assets={review.assets} locale={locale} />
             ) : (
