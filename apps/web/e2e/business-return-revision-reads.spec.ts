@@ -1,14 +1,92 @@
 import { test, expect } from "@playwright/test";
+import type { Locator, Page, Request, TestInfo } from "@playwright/test";
 import { api, expectNoOverflow } from "./helpers";
 import { returnRevisionFixture, openReturnVersions } from "./return-revision-helpers";
 import type { components } from "../src/generated/openapi";
 type Receipt = components["schemas"]["AllocationReturnRevisionResponse"];
+
+async function capturePanel(page: Page, panel: Locator, info: TestInfo, label: string) {
+    for (const width of info.project.name === "mobile-chromium" ? [375, 320] : [1440]) {
+        await page.setViewportSize({ width, height: width === 1440 ? 1000 : 800 });
+        await expectNoOverflow(page);
+        const name = label + "-" + width;
+        const path = info.outputPath(name + ".png");
+        await panel.screenshot({ path });
+        await info.attach(name, { path, contentType: "image/png" });
+    }
+}
+
+async function reviewAndDiscard(page: Page, entity: string, locale: "en" | "zh", info: TestInfo) {
+    const panel = await openReturnVersions(page, entity, locale);
+    const en = locale === "en";
+    const writes: string[] = [];
+    const recordWrite = (request: Request) => {
+        if (
+            ["POST", "PATCH", "PUT", "DELETE"].includes(request.method()) &&
+            new URL(request.url()).pathname.startsWith("/api/v1/ledgers/")
+        )
+            writes.push(request.url());
+    };
+    page.on("request", recordWrite);
+    for (const action of ["correct", "cancel"] as const) {
+        const correct = action === "correct";
+        const open = correct
+            ? en
+                ? "Correct this return group"
+                : "更正此组退回"
+            : en
+              ? "Cancel this return group"
+              : "取消此组退回";
+        await panel.getByRole("button", { name: open, exact: true }).click();
+        const form = panel.getByRole("form");
+        const approve = form.getByRole("checkbox");
+        const submit = form.locator('button[type="submit"]');
+        const reason = form.getByRole("textbox", {
+            name: en ? "Revision reason" : "修订原因",
+            exact: true,
+        });
+        await reason.fill("Fictional review · 审阅");
+        await approve.check();
+        await expect(submit).toBeEnabled();
+        if (correct) {
+            const payment = form.getByRole("textbox", {
+                name: en ? "Payment quantity · USD" : "付款侧数量 · USD",
+                exact: true,
+            });
+            const document = form.getByRole("textbox", {
+                name: en ? "Document quantity · EUR" : "单据侧数量 · EUR",
+                exact: true,
+            });
+            await expect(payment).toHaveValue("11.00");
+            await expect(document).toHaveValue("10.00");
+            await payment.fill("11.001");
+            await expect(approve).not.toBeChecked();
+            await expect(approve).toBeDisabled();
+            await expect(submit).toBeDisabled();
+            await payment.fill("11.00");
+        } else {
+            await reason.fill("Fictional amended review · 重新审阅");
+        }
+        await expect(approve).not.toBeChecked();
+        await expect(submit).toBeDisabled();
+        await approve.check();
+        await expect(submit).toBeEnabled();
+        await capturePanel(page, form, info, "return-review-" + action + "-" + locale);
+        await form
+            .getByRole("button", { name: en ? "Discard these edits" : "放弃本次编辑", exact: true })
+            .click();
+        await expect(form).toHaveCount(0);
+    }
+    page.off("request", recordWrite);
+    expect(writes).toEqual([]);
+}
 
 for (const locale of ["zh", "en"] as const)
     test(`fictional ${locale} reads a retired return and its exact replacement history`, async ({
         page,
     }, info) => {
         const data = await returnRevisionFixture(page);
+        await reviewAndDiscard(page, data.entity.id, locale, info);
         const edited = await api<Receipt>(page, "POST", data.path + "/corrections", {
             expected_version: 1,
             reason: "Fictional swapped source 中文",
@@ -88,14 +166,7 @@ for (const locale of ["zh", "en"] as const)
         expect(normal.document_amount).toBe("10.000000000000000000");
         await expect(rows.nth(0)).toContainText("11.00 USD / 10.00 EUR");
         await expect(rows.nth(1)).toContainText("11.00 USD / 10.00 EUR");
-        for (const width of info.project.name === "mobile-chromium" ? [375, 320] : [1440]) {
-            await page.setViewportSize({ width, height: width === 1440 ? 1000 : 800 });
-            await expectNoOverflow(page);
-            const name = `return-history-${locale}-${width}`,
-                path = info.outputPath(name + ".png");
-            await panel.screenshot({ path });
-            await info.attach(name, { path, contentType: "image/png" });
-        }
+        await capturePanel(page, panel, info, "return-history-" + locale);
         await panel
             .getByRole("button", {
                 name: en ? "Back to version page" : "返回此页版本",

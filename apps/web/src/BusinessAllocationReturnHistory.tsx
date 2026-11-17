@@ -1,3 +1,4 @@
+import type { ReturnRevisionActions } from "./BusinessReturnRevisionEditor";
 import { BusinessReturnRevisionHistory } from "./BusinessReturnRevisionHistory";
 import type { Asset } from "./ledger-api";
 import { useEffect, useRef, useState } from "react";
@@ -10,12 +11,14 @@ import type { Locale } from "./i18n";
 
 export function BusinessAllocationReturnHistory({
     ledgerId,
+    actions,
     assets,
     locale,
     onClose,
     onUnauthorized,
 }: {
     ledgerId: string;
+    actions: ReturnRevisionActions;
     assets: Asset[];
     locale: Locale;
     onClose: () => void;
@@ -146,6 +149,7 @@ export function BusinessAllocationReturnHistory({
                         </ol>
                         <BusinessReturnRevisionHistory
                             key={data.ledger_id + "/" + data.id}
+                            actions={actions}
                             original={data}
                             assets={assets}
                             locale={locale}
