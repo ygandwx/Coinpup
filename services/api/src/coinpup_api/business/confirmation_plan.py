@@ -39,6 +39,26 @@ class ConfirmationPlan:
     recognition_dates: tuple[date, ...]
 
 
+def accrual_line(
+    row, position: int, price: LinePrice, document_kind: str
+) -> AccrualLinePlan | None:
+    """Use the same signed receivable/payable and classification for first and revised accruals."""
+    if not price.total.minor_units:
+        return None
+    account = price.total if document_kind == "invoice" else -price.total
+    return AccrualLinePlan(
+        row.id,
+        position,
+        row.category_id,
+        row.project_id,
+        row.recognition_date,
+        row.description,
+        price,
+        account,
+        -account,
+    )
+
+
 def _integrity():
     return MoneyError("confirmation_integrity", "The reviewed draft is inconsistent.")
 
@@ -83,24 +103,11 @@ def plan_confirmation(draft: BusinessDraftResponse, asset: AssetDefinition) -> C
             raise _integrity()
     if price.total.minor_units <= 0:
         raise MoneyError("confirmation_total_positive", "Confirm a document with a positive total.")
-    postings = []
-    for line, calculated in zip(lines, price.lines, strict=True):
-        if calculated.total.minor_units == 0:
-            continue
-        account = calculated.total if category_kind == "income" else -calculated.total
-        postings.append(
-            AccrualLinePlan(
-                line.id,
-                line.line_no,
-                line.category_id,
-                line.project_id,
-                line.recognition_date,
-                line.description,
-                calculated,
-                account,
-                -account,
-            )
-        )
+    postings = [
+        posting
+        for row, calculated in zip(lines, price.lines, strict=True)
+        if (posting := accrual_line(row, row.line_no, calculated, draft.document_kind)) is not None
+    ]
     return ConfirmationPlan(
         draft.ledger_id,
         draft.id,
