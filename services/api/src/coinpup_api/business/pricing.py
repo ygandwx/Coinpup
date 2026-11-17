@@ -81,3 +81,14 @@ def price_document(values: list[PriceInput] | tuple[PriceInput, ...], asset) -> 
     for line in lines:
         net, tax, total = net + line.net, tax + line.tax, total + line.total
     return DocumentPrice(lines=lines, net=net, tax=tax, total=total)
+
+
+def price_document_rows(rows, asset: AssetDefinition) -> DocumentPrice:
+    """Price an ordered collection of stored or submitted rows using their exact source strings."""
+    return price_document(
+        [
+            PriceInput(row.quantity, row.unit_price, row.discount_amount, row.tax_rate_percent)
+            for row in rows
+        ],
+        asset,
+    )

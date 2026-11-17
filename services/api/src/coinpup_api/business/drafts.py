@@ -16,7 +16,7 @@ from coinpup_api.business.models import (
     BusinessParty,
     BusinessProject,
 )
-from coinpup_api.business.pricing import PriceInput, price_document
+from coinpup_api.business.pricing import price_document_rows
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord, Category
@@ -30,16 +30,11 @@ from coinpup_api.ledger.service import (
     _version,
 )
 
-PRICE_FIELDS = ("quantity", "unit_price", "discount_amount", "tax_rate_percent")
 AMOUNTS = ("net", "tax", "total")
 
 
 def _snapshot(row, fields):
     return dict(id=str(row.id), version=row.version, **{f: getattr(row, f) for f in fields})
-
-
-def _source(line):
-    return PriceInput(**{field: getattr(line, field) for field in PRICE_FIELDS})
 
 
 def _fields(row, schema, **overrides):
@@ -69,7 +64,7 @@ def _references(session, model, ledger_id, identifiers):
 def _response(document, lines, asset, *, response_type=BusinessDraftResponse, **overrides):
     # Availability governs new input, not reading saved history.
     asset = replace(asset, enabled=True)
-    price = price_document([_source(line) for line in lines], asset)
+    price = price_document_rows(lines, asset)
     results = []
     for line, calculated in zip(lines, price.lines, strict=True):
         if any(
@@ -98,7 +93,7 @@ class DraftService(LedgerService):
     def _prepare(self, session, ledger_id, entity, payload):
         asset = asset_definition(self._assets(session, {payload.asset_id})[0])
         try:
-            price = price_document([_source(line) for line in payload.lines], asset)
+            price = price_document_rows(payload.lines, asset)
         except MoneyError as error:
             raise LedgerError(error.code, 422, "Draft pricing input is invalid.") from None
         party = _references(session, BusinessParty, ledger_id, {payload.party_id})[payload.party_id]
