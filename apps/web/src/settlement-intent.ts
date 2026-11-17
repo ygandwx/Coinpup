@@ -1,3 +1,6 @@
+import { validFrozenReturnRevision } from "./allocation-return-revision-receipt";
+import type { FrozenReturnRevision } from "./allocation-return-revision-receipt";
+import type { ReturnRevisionReceipt } from "./allocation-return-revision-api";
 import { validFrozenRefundRevision } from "./refund-revision-intent";
 import type { FrozenRefundRevision } from "./refund-revision-intent";
 import type { RefundCreate, RefundReceipt, RefundRevisionReceipt } from "./refund-api";
@@ -23,8 +26,10 @@ export type SettlementReceipt =
     | BusinessAllocationReceipt
     | AllocationReturnReceipt
     | RefundReceipt
-    | RefundRevisionReceipt;
+    | RefundRevisionReceipt
+    | ReturnRevisionReceipt;
 export type FrozenSettlement =
+    | (FrozenReturnRevision & { readonly kind: "return-revision" })
     | (FrozenRefundRevision & { readonly kind: "refund-revision" })
     | Readonly<{
           ownerId: string;
@@ -187,6 +192,7 @@ export function validSettlementReceipt(
     plan: FrozenSettlement,
 ): value is SettlementReceipt {
     if (!record(value)) return false;
+    if (plan.kind === "return-revision") return validFrozenReturnRevision(value, plan);
     if (plan.kind === "refund-revision") return validFrozenRefundRevision(value, plan);
     if (plan.kind === "return") return validReturnReceipt(value, plan);
     if (plan.kind === "refund") return validRefundReceipt(value, plan);

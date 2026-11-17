@@ -1,3 +1,4 @@
+import { BusinessReturnRevisionResult } from "./BusinessReturnRevisionResult";
 import type { BusinessSettlementSnapshot } from "./pending-business-settlement";
 import type { BusinessAllocationCreate, BusinessPaymentCreate } from "./business-settlement-api";
 import type { AllocationPayment, AllocationSource } from "./settlement-fields";
@@ -31,6 +32,15 @@ export function BusinessSettlementResult({
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const plan = pending.plan;
     if (!plan) return null;
+    if (plan.kind === "return-revision")
+        return (
+            <BusinessReturnRevisionResult
+                pending={pending}
+                locale={locale}
+                onRetry={onRetry}
+                onClose={onClose}
+            />
+        );
     if (plan.kind === "refund-revision")
         return (
             <BusinessRefundRevisionResult

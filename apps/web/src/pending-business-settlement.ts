@@ -1,3 +1,6 @@
+import { correctReturn, cancelReturn } from "./allocation-return-revision-api";
+import { validReturnRevisionReview } from "./allocation-return-revision-intent";
+import type { ReturnRevisionInput } from "./allocation-return-revision-intent";
 import { validRefundRevisionReview } from "./refund-revision-intent";
 import type { RefundRevisionInput } from "./refund-revision-intent";
 import { correctRefund, cancelRefund, createRefund } from "./refund-api";
@@ -29,6 +32,10 @@ export type BusinessSettlementSnapshot = Readonly<{
 type Transport = (session: Session, plan: FrozenSettlement) => Promise<unknown>;
 const transport: Transport = (session, plan) => {
     const body = JSON.parse(plan.bodyJson);
+    if (plan.kind === "return-revision") {
+        const submit = plan.action === "correct" ? correctReturn : cancelReturn;
+        return submit(session.csrf_token, plan.ledgerId, plan.returnId, body, plan.key);
+    }
     if (plan.kind === "refund-revision") {
         const submit = plan.action === "correct" ? correctRefund : cancelRefund;
         return submit(session.csrf_token, plan.ledgerId, plan.refundId, body, plan.key);
@@ -109,24 +116,34 @@ export class PendingBusinessSettlementController {
     start(
         session: Session,
         ledgerId: string,
-        input: SettlementInput | { kind: "refund-revision"; revision: RefundRevisionInput },
+        input:
+            | SettlementInput
+            | { kind: "refund-revision"; revision: RefundRevisionInput }
+            | { kind: "return-revision"; revision: ReturnRevisionInput },
         reviewed?: unknown,
     ): Promise<void> {
         try {
             this.authorized(session);
             if (this.flight || !["idle", "confirmed", "rejected"].includes(this.state.status))
                 throw new ApiError("server", null, "pending_settlement_unresolved");
-            if (
-                input.kind === "refund-revision"
-                    ? !validRefundRevisionReview(ledgerId, input.revision, reviewed)
-                    : !validSettlementInput(ledgerId, input) ||
-                      (input.kind === "return" &&
-                          !validReturnReview(ledgerId, input.body, reviewed)) ||
-                      (input.kind === "refund" &&
-                          !validRefundReview(ledgerId, input.body, reviewed))
-            )
-                throw new ApiError("server", null, "invalid_settlement_intent");
-            const body = input.kind === "refund-revision" ? input.revision.body : input.body;
+            let valid: boolean;
+            switch (input.kind) {
+                case "return-revision":
+                    valid = validReturnRevisionReview(ledgerId, input.revision, reviewed);
+                    break;
+                case "refund-revision":
+                    valid = validRefundRevisionReview(ledgerId, input.revision, reviewed);
+                    break;
+                default:
+                    valid =
+                        validSettlementInput(ledgerId, input) &&
+                        (input.kind !== "return" ||
+                            validReturnReview(ledgerId, input.body, reviewed)) &&
+                        (input.kind !== "refund" ||
+                            validRefundReview(ledgerId, input.body, reviewed));
+            }
+            if (!valid) throw new ApiError("server", null, "invalid_settlement_intent");
+            const body = "revision" in input ? input.revision.body : input.body;
             const bodyJson = JSON.stringify(body),
                 reviewedJson = JSON.stringify(reviewed === undefined ? body : reviewed);
             if (typeof reviewedJson !== "string") throw new Error("Invalid review snapshot");
@@ -138,14 +155,21 @@ export class PendingBusinessSettlementController {
                 reviewedJson,
             };
             const plan: FrozenSettlement =
-                input.kind === "refund-revision"
+                input.kind === "return-revision"
                     ? {
                           ...common,
                           kind: input.kind,
                           action: input.revision.action,
-                          refundId: input.revision.refundId,
+                          returnId: input.revision.returnId,
                       }
-                    : { ...common, kind: input.kind };
+                    : input.kind === "refund-revision"
+                      ? {
+                            ...common,
+                            kind: input.kind,
+                            action: input.revision.action,
+                            refundId: input.revision.refundId,
+                        }
+                      : { ...common, kind: input.kind };
             this.uncertain = false;
             this.state = Object.freeze({
                 ...idle(),
@@ -187,11 +211,7 @@ export class PendingBusinessSettlementController {
                 const result = await this.io(session, plan);
                 if (generation !== this.generation) return;
                 if (!validSettlementReceipt(result, plan))
-                    throw new ApiError(
-                        "server",
-                        plan.kind === "refund-revision" ? 200 : 201,
-                        "invalid_response",
-                    );
+                    throw new ApiError("server", "action" in plan ? 200 : 201, "invalid_response");
                 this.uncertain = false;
                 this.publish({
                     ...this.state,

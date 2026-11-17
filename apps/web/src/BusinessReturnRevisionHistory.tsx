@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
+import type { AssetScales } from "./settlement-revision-facts";
+import type { DeepReadonly } from "./settlement-intent";
 import type { Asset } from "./ledger-api";
 import { amountFromMinorUnits, formatAmount } from "./money";
 import type { AllocationReturnDetail } from "./allocation-return-api";
@@ -23,7 +25,12 @@ type Data =
     | { mode: "history"; page: ReturnHistoryEntry[] }
     | { mode: "revision"; receipt: ReturnRevisionReceipt };
 
-function displayQuantity(value: string, asset: string, assets: Asset[], locale: Locale): string {
+function displayQuantity(
+    value: string,
+    asset: string,
+    assets: AssetScales,
+    locale: Locale,
+): string {
     const definition = assets.find((a) => a.asset_id === asset);
     if (!definition) return formatAmount(value, locale) + " " + asset;
     const units = storedUnits(value, asset, assets);
@@ -35,8 +42,8 @@ export function ReturnRevisionFacts({
     assets,
     locale,
 }: {
-    receipt: ReturnRevisionReceipt;
-    assets: Asset[];
+    receipt: DeepReadonly<ReturnRevisionReceipt>;
+    assets: AssetScales;
     locale: Locale;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);

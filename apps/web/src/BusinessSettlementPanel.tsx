@@ -360,15 +360,17 @@ export function BusinessSettlementPanel({
             {open ? (
                 <div className="business-settlement-panel">
                     <h2>
-                        {plan?.kind === "refund-revision"
-                            ? t("退款修订", "Refund revision")
-                            : refundEditor || plan?.kind === "refund"
-                              ? t("实际退款", "Actual refund")
-                              : returnEditor || plan?.kind === "return"
-                                ? t("分摊退回", "Return allocation")
-                                : existing || plan?.kind === "allocation"
-                                  ? t("追加分摊", "Apply existing payment")
-                                  : t("实际收付款", "Actual payment")}
+                        {plan?.kind === "return-revision"
+                            ? t("退回修订", "Return revision")
+                            : plan?.kind === "refund-revision"
+                              ? t("退款修订", "Refund revision")
+                              : refundEditor || plan?.kind === "refund"
+                                ? t("实际退款", "Actual refund")
+                                : returnEditor || plan?.kind === "return"
+                                  ? t("分摊退回", "Return allocation")
+                                  : existing || plan?.kind === "allocation"
+                                    ? t("追加分摊", "Apply existing payment")
+                                    : t("实际收付款", "Actual payment")}
                     </h2>
                     {plan ? (
                         <BusinessSettlementResult
