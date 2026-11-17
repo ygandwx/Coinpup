@@ -31,9 +31,10 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
             "business_return_revisions",
             "business_return_revision_members",
             "business_document_revisions",
+            "business_document_revision_lines",
         }
     )
-    assert len(set(get_args(EntityType))) == 43
+    assert len(set(get_args(EntityType))) == 44
     table = BusinessCreditRevision.__table__
     generated = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(generated.split()) in " ".join(migration["_SCHEMA_SQL"].split())
@@ -55,5 +56,5 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
         assert unchanged not in source
     assert "complete group validation" in migration["_GUARDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261110_0075"]
+    assert scripts.get_heads() == ["20261110_0076"]
     assert scripts.get_revision("20261106_0040").down_revision == "20261021_0039"

@@ -1,6 +1,7 @@
 """Sealed confirmed-document revision headers and their reviewed replacement party."""
 
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
@@ -8,6 +9,7 @@ from sqlalchemy import (
     Date,
     ForeignKeyConstraint,
     Integer,
+    Numeric,
     String,
     UniqueConstraint,
     Uuid,
@@ -113,3 +115,73 @@ class BusinessDocumentRevision(SettlementIdentity, Base):
     party_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
     created_by: Mapped[UUID] = mapped_column(Uuid)
     idempotency_key: Mapped[str] = mapped_column(String(128))
+
+
+class BusinessDocumentRevisionLine(SettlementIdentity, Base):
+    """Ordered, priced lines of the replacement. Its predecessor retains the old lines."""
+
+    __tablename__ = "business_document_revision_lines"
+    __table_args__ = (
+        *_identity("document_revision_line"),
+        UniqueConstraint("revision_id", "source_line_id", name="uq_document_revision_line_source"),
+        UniqueConstraint("revision_id", "line_no", name="uq_document_revision_line_position"),
+        ForeignKeyConstraint(
+            ["revision_id", "confirmation_id", "document_id", "ledger_id", "document_version"],
+            [
+                "business_document_revisions.id",
+                "business_document_revisions.confirmation_id",
+                "business_document_revisions.document_id",
+                "business_document_revisions.ledger_id",
+                "business_document_revisions.document_version",
+            ],
+            name="fk_document_revision_line_header",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["category_id", "ledger_id", "category_kind"],
+            ["categories.id", "categories.ledger_id", "categories.kind"],
+            name="fk_document_revision_line_category",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["project_id", "ledger_id"],
+            ["business_projects.id", "business_projects.ledger_id"],
+            name="fk_document_revision_line_project",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("line_no BETWEEN 1 AND 200", name="ck_document_revision_line_position"),
+        CheckConstraint(
+            "description ~ '^[^[:space:]]' AND description ~ '[^[:space:]]$' "
+            "AND recognition_date BETWEEN DATE '0001-01-01' AND DATE '9999-12-31'",
+            name="ck_document_revision_line_description_date",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(category_snapshot) = 'object' "
+            "AND (category_snapshot->>'id' = category_id::text) IS TRUE "
+            "AND ((project_id IS NULL AND project_snapshot IS NULL) OR "
+            "(project_id IS NOT NULL AND project_snapshot IS NOT NULL "
+            "AND jsonb_typeof(project_snapshot) = 'object' "
+            "AND (project_snapshot->>'id' = project_id::text) IS TRUE))",
+            name="ck_document_revision_line_snapshots",
+        ),
+    )
+    revision_id: Mapped[UUID] = mapped_column(Uuid)
+    confirmation_id: Mapped[UUID] = mapped_column(Uuid)
+    document_id: Mapped[UUID] = mapped_column(Uuid)
+    document_version: Mapped[int] = mapped_column(Integer)
+    source_line_id: Mapped[UUID] = mapped_column(Uuid)
+    line_no: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(String(2000))
+    quantity: Mapped[str] = mapped_column(String(39))
+    unit_price: Mapped[str] = mapped_column(String(40))
+    discount_amount: Mapped[str] = mapped_column(String(40))
+    tax_rate_percent: Mapped[str] = mapped_column(String(39))
+    category_id: Mapped[UUID] = mapped_column(Uuid)
+    category_kind: Mapped[str] = mapped_column(String(7))
+    project_id: Mapped[UUID | None] = mapped_column(Uuid)
+    recognition_date: Mapped[date] = mapped_column(Date)
+    category_snapshot: Mapped[dict] = mapped_column(JSONB(none_as_null=True))
+    project_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
