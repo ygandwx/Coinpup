@@ -31,6 +31,17 @@ from coinpup_api.ledger.service import (
 )
 
 AMOUNTS = ("net", "tax", "total")
+PARTY_SNAPSHOT_FIELDS = (
+    "name",
+    "role",
+    "legal_name",
+    "email",
+    "phone",
+    "address",
+    "tax_identifier",
+)
+CATEGORY_SNAPSHOT_FIELDS = ("name", "name_en", "kind")
+PROJECT_SNAPSHOT_FIELDS = ("name",)
 
 
 def _snapshot(row, fields):
@@ -128,18 +139,7 @@ class DraftService(LedgerService):
                     "company_type",
                 ),
             ),
-            party_snapshot=_snapshot(
-                party,
-                (
-                    "name",
-                    "role",
-                    "legal_name",
-                    "email",
-                    "phone",
-                    "address",
-                    "tax_identifier",
-                ),
-            ),
+            party_snapshot=_snapshot(party, PARTY_SNAPSHOT_FIELDS),
         )
         lines = []
         for position, (source, calculated) in enumerate(
@@ -152,10 +152,12 @@ class DraftService(LedgerService):
                 category_kind=kind,
                 **source.model_dump(),
                 category_snapshot=_snapshot(
-                    categories[source.category_id], ("name", "name_en", "kind")
+                    categories[source.category_id], CATEGORY_SNAPSHOT_FIELDS
                 ),
                 project_snapshot=(
-                    _snapshot(projects[source.project_id], ("name",)) if source.project_id else None
+                    _snapshot(projects[source.project_id], PROJECT_SNAPSHOT_FIELDS)
+                    if source.project_id
+                    else None
                 ),
                 **{name + "_amount": getattr(calculated, name).to_decimal() for name in AMOUNTS},
             )

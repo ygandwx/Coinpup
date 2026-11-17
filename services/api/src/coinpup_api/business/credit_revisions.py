@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import func, insert, select
 
 from coinpup_api.business.allocation_return_sources import require_current
-from coinpup_api.business.confirmations import BusinessConfirmationService
+from coinpup_api.business.confirmations import confirmed_reference_rows
 from coinpup_api.business.credit_plan import CreditSource, plan_credit_line
 from coinpup_api.business.credit_revision_current import read_current_credit
 from coinpup_api.business.credit_revision_hash import credit_revision_hash_v2
@@ -81,7 +81,7 @@ class BusinessCreditRevisionService(BalanceQueries, PostingCore):
                         "credit_date", 422, "Credit cannot precede the original issue date."
                     )
                 sources = BusinessCreditService._sources(session, ledger_id, document, replacement)
-                BusinessConfirmationService._references(
+                confirmed_reference_rows(
                     session, ledger_id, document, [source[0] for source in sources.values()]
                 )
                 control_key = (
