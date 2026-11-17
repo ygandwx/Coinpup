@@ -52,7 +52,7 @@ class ChangeLog(Base):
             "'business_credit_revision_members', 'business_refund_revisions', "
             "'business_refund_revision_returns', 'business_return_revisions', "
             "'business_return_revision_members', 'business_document_revisions', "
-            "'business_document_revision_lines')",
+            "'business_document_revision_lines', 'business_document_accruals')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

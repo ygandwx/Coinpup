@@ -21,6 +21,7 @@ def test_confirmed_revision_header_relations_and_previous_catalog_match_the_ddl(
     assert current["_TABLES"] == (table.name,) and len(table.name) <= 32
     assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"] + (
         "business_document_revision_lines",
+        "business_document_accruals",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())
@@ -38,7 +39,9 @@ def test_document_line_ddl_matches_composite_fks_and_current_additive_catalog():
     assert current["down_revision"] == previous["revision"]
     assert current["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert current["_TABLES"] == (table.name,) and len(table.name) <= 32
-    assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"]
+    assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"] + (
+        "business_document_accruals",
+    )
     original_fks = [
         fk for fk in table.foreign_key_constraints if fk.name != "fk_document_revision_line_source"
     ]
@@ -83,3 +86,18 @@ def test_source_registration_preserves_frozen_confirmation_and_draft_guard_bodie
     bounded = current["_LINE"].index("IF TG_OP IN ('INSERT','UPDATE') AND EXISTS (")
     prior = current["_OLD_LINE"].index("IF TG_OP IN ('INSERT','UPDATE') AND EXISTS (")
     assert current["_LINE"][bounded:] == current["_OLD_LINE"][prior:]
+
+
+def test_accrual_links_have_the_frozen_scoped_journal_and_source_constraints():
+    from coinpup_api.business.document_revision_models import BusinessDocumentAccrual
+
+    versions = Path(__file__).resolve().parents[3] / "services/api/migrations/versions"
+    old = runpy.run_path(str(versions / "20261110_0076_confirmed_document_revision_lines.py"))
+    current = runpy.run_path(str(versions / "20261110_0078_document_accrual_members.py"))
+    assert current["down_revision"] == "20261110_0077"
+    assert current["_OLD_ENTITY_TYPES"] == old["_OLD_ENTITY_TYPES"] + old["_TABLES"]
+    table = BusinessDocumentAccrual.__table__
+    assert current["_TABLES"] == (table.name,)
+    assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"]
+    sql = str(CreateTable(table).compile(dialect=dialect()))
+    assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())

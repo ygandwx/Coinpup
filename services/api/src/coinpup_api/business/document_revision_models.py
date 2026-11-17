@@ -198,3 +198,87 @@ class BusinessDocumentRevisionLine(SettlementIdentity, Base):
     net_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+
+
+class BusinessDocumentAccrual(SettlementIdentity, Base):
+    """One actual operation transition per previously or newly positive source."""
+
+    __tablename__ = "business_document_accruals"
+    __table_args__ = (
+        *_identity("document_accrual"),
+        UniqueConstraint("revision_id", "source_line_id", name="uq_document_accrual_source"),
+        UniqueConstraint("operation_id", "operation_version", name="uq_document_accrual_operation"),
+        UniqueConstraint("replacement_fact_id", name="uq_document_accrual_fact"),
+        UniqueConstraint("journal_id", name="uq_document_accrual_journal"),
+        UniqueConstraint("reversal_journal_id", name="uq_document_accrual_reversal"),
+        ForeignKeyConstraint(
+            ["revision_id", "confirmation_id", "document_id", "ledger_id", "document_version"],
+            [
+                f"business_document_revisions.{c}"
+                for c in ("id", "confirmation_id", "document_id", "ledger_id", "document_version")
+            ],
+            name="fk_document_accrual_group",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_line_id", "document_id", "ledger_id"],
+            [f"business_document_lines.{c}" for c in ("id", "document_id", "ledger_id")],
+            name="fk_document_accrual_source",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["replacement_fact_id", "ledger_id"],
+            ["business_document_revision_lines.id", "business_document_revision_lines.ledger_id"],
+            name="fk_document_accrual_fact",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["operation_id", "ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_document_accrual_operation",
+            ondelete="RESTRICT",
+        ),
+        *(
+            ForeignKeyConstraint(
+                [column, "operation_id", "ledger_id"],
+                ["journals.id", "journals.operation_id", "journals.ledger_id"],
+                name=f"fk_document_accrual_{suffix}",
+                deferrable=True,
+                initially="DEFERRED",
+            )
+            for column, suffix in [
+                ("previous_journal_id", "previous"),
+                ("reversal_journal_id", "reversal"),
+                ("journal_id", "journal"),
+            ]
+        ),
+        CheckConstraint(
+            "action IN ('create','correct','cancel')", name="ck_document_accrual_action"
+        ),
+        CheckConstraint(
+            "(action = 'create' AND operation_version = 1 AND previous_journal_id IS NULL "
+            "AND reversal_journal_id IS NULL) OR (action IN ('correct','cancel') AND "
+            "operation_version > 1 AND previous_journal_id IS NOT NULL "
+            "AND reversal_journal_id IS NOT NULL AND previous_journal_id <> reversal_journal_id)",
+            name="ck_document_accrual_previous",
+        ),
+        CheckConstraint(
+            "(action = 'cancel' AND replacement_fact_id IS NULL AND journal_id IS NULL) OR "
+            "(action IN ('create','correct') AND replacement_fact_id IS NOT NULL "
+            "AND journal_id IS NOT NULL AND journal_id IS DISTINCT FROM previous_journal_id "
+            "AND journal_id IS DISTINCT FROM reversal_journal_id)",
+            name="ck_document_accrual_next",
+        ),
+    )
+    revision_id: Mapped[UUID] = mapped_column(Uuid)
+    confirmation_id: Mapped[UUID] = mapped_column(Uuid)
+    document_id: Mapped[UUID] = mapped_column(Uuid)
+    document_version: Mapped[int] = mapped_column(Integer)
+    source_line_id: Mapped[UUID] = mapped_column(Uuid)
+    replacement_fact_id: Mapped[UUID | None] = mapped_column(Uuid)
+    action: Mapped[str] = mapped_column(String(7))
+    operation_id: Mapped[UUID] = mapped_column(Uuid)
+    operation_version: Mapped[int] = mapped_column(Integer)
+    previous_journal_id: Mapped[UUID | None] = mapped_column(Uuid)
+    reversal_journal_id: Mapped[UUID | None] = mapped_column(Uuid)
+    journal_id: Mapped[UUID | None] = mapped_column(Uuid)

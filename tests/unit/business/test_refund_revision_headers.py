@@ -26,6 +26,7 @@ def test_refund_revision_migration_extends_the_catalog_with_one_gated_table():
         "business_return_revision_members",
         "business_document_revisions",
         "business_document_revision_lines",
+        "business_document_accruals",
     }
     table = BusinessRefundRevision.__table__
     sql = " ".join(str(CreateTable(table).compile(dialect=dialect())).split())

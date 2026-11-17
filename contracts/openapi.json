@@ -3866,7 +3866,8 @@
               "business_return_revisions",
               "business_return_revision_members",
               "business_document_revisions",
-              "business_document_revision_lines"
+              "business_document_revision_lines",
+              "business_document_accruals"
             ],
             "title": "Entity Type",
             "type": "string"
