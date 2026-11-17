@@ -95,7 +95,12 @@ export async function returnRevisionFixture(page: Page) {
         path: data.ledger + "/business-allocation-returns/" + original.id,
     };
 }
-export async function openReturnVersions(page: Page, entityId: string, locale: "en" | "zh") {
+export async function openReturnVersions(
+    page: Page,
+    entityId: string,
+    locale: "en" | "zh",
+    reason?: string,
+) {
     const en = locale === "en";
     await page.goto(`/?entity=${entityId}&view=business-settlements`);
     await page.getByRole("button", { name: en ? "English" : "中文", exact: true }).click();
@@ -105,7 +110,9 @@ export async function openReturnVersions(page: Page, entityId: string, locale: "
             exact: true,
         })
         .click();
-    await page
+    const source =
+        reason === undefined ? page : page.getByRole("listitem").filter({ hasText: reason });
+    await source
         .getByRole("button", { name: en ? "View return details" : "查看退回详情", exact: true })
         .click();
     return page.getByRole("region", {
