@@ -103,7 +103,9 @@ class BusinessConfirmationReads(LedgerService):
                     raise _integrity()
                 detail = _response(
                     document,
-                    DraftService._lines(session, ledger_id, document_id),
+                    DraftService._lines(
+                        session, ledger_id, document_id, original_confirmation=True
+                    ),
                     asset_definition(session.get(AssetRecord, document.asset_id)),
                     response_type=BusinessConfirmedDocument,
                     confirmation_id=confirmation.id,
@@ -143,6 +145,7 @@ class BusinessConfirmationReads(LedgerService):
                         line.ledger_id == ledger_id,
                         line.document_id.in_([d.id for d, _, _ in documents]),
                         line.archived.is_(False),
+                        line.quantity.is_not(None),
                     )
                     .group_by(line.document_id)
                 )

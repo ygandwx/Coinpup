@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     ForeignKeyConstraint,
+    Index,
     Integer,
     Numeric,
     String,
@@ -123,6 +124,18 @@ class BusinessDocumentRevisionLine(SettlementIdentity, Base):
     __tablename__ = "business_document_revision_lines"
     __table_args__ = (
         *_identity("document_revision_line"),
+        Index("ix_document_revision_line_source", "source_line_id", "document_id", "ledger_id"),
+        ForeignKeyConstraint(
+            ["source_line_id", "document_id", "ledger_id"],
+            [
+                "business_document_lines.id",
+                "business_document_lines.document_id",
+                "business_document_lines.ledger_id",
+            ],
+            name="fk_document_revision_line_source",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         UniqueConstraint("revision_id", "source_line_id", name="uq_document_revision_line_source"),
         UniqueConstraint("revision_id", "line_no", name="uq_document_revision_line_position"),
         ForeignKeyConstraint(

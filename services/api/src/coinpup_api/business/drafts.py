@@ -296,16 +296,16 @@ class DraftService(LedgerService):
         return document
 
     @staticmethod
-    def _lines(session, ledger_id, identifier):
-        return session.scalars(
-            select(BusinessDocumentLine)
-            .where(
-                BusinessDocumentLine.document_id == identifier,
-                BusinessDocumentLine.ledger_id == ledger_id,
-                BusinessDocumentLine.archived.is_(False),
-            )
-            .order_by(BusinessDocumentLine.line_no)
-        ).all()
+    def _lines(session, ledger_id, identifier, *, original_confirmation=False):
+        line = BusinessDocumentLine
+        statement = select(line).where(
+            line.document_id == identifier, line.ledger_id == ledger_id, line.archived.is_(False)
+        )
+        if original_confirmation:
+            # At confirmation all active lines are priced, including zero-priced lines.
+            # Later identity-only rows refer to separate immutable revision facts.
+            statement = statement.where(line.quantity.is_not(None))
+        return session.scalars(statement.order_by(line.line_no)).all()
 
     def get_draft(self, owner_id, ledger_id, identifier):
         with self._transaction(owner_id, read_only=True) as session:
