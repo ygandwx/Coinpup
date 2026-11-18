@@ -1,5 +1,6 @@
 """Prove real ledger heads and sealed journals without opening incomplete document groups."""
 
+from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -50,7 +51,9 @@ def append_accrual(
                     | dict(
                         id=uuid4(),
                         journal_id=journal,
-                        amount=sign * r["amount"],
+                        amount=-r["amount"]
+                        if sign == -1
+                        else Decimal(fact["total_amount"]).copy_sign(r["amount"]),
                         project_id=r["project_id"] if sign == -1 else fact["project_id"],
                         document_line_id=fact["source_line_id"],
                     )
