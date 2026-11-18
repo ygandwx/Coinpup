@@ -3,11 +3,13 @@
 from decimal import Decimal
 
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.orm import load_only
 
+from coinpup_api.business.document_revision_models import BusinessDocumentRevision
 from coinpup_api.business.drafts import _fields
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
+from coinpup_api.business.effective_document_lines import effective_document_lines
+from coinpup_api.business.models import BusinessDocument
 from coinpup_api.business.settlement_models import (
     BusinessAllocation,
     BusinessAllocationLine,
@@ -157,74 +159,85 @@ class BusinessSettlementBalances(LedgerService):
     def document_capacity(self, owner_id, ledger_id, document_id):
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
-            saved = session.execute(
-                select(BusinessDocument, AssetRecord)
-                .join(AssetRecord, AssetRecord.asset_id == BusinessDocument.asset_id)
-                .where(
-                    BusinessDocument.id == document_id,
-                    BusinessDocument.ledger_id == ledger_id,
-                    BusinessDocument.state == "confirmed",
-                )
-            ).one_or_none()
-            if saved is None:
-                raise _not_found()
-            document, asset_row = saved
-            asset = asset_definition(asset_row)
-            source = BusinessDocumentLine
-            rows = session.scalars(
-                select(source)
-                .where(
-                    source.document_id == document_id,
-                    source.ledger_id == ledger_id,
-                    source.archived.is_(False),
-                )
-                .order_by(source.line_no)
-            ).all()
-            totals = document_totals(session, ledger_id, [row.id for row in rows])
-            if not rows or not totals.keys() <= {row.id for row in rows}:
+            return document_settlement_detail(session, ledger_id, document_id)
+
+
+def document_settlement_detail(session, ledger_id, document_id):
+    """Report the current balance using the caller's owned ledger snapshot."""
+    doc, revision = BusinessDocument, BusinessDocumentRevision
+    owned = (revision.ledger_id == doc.ledger_id, revision.document_id == doc.id)
+    # A cancellation has no replacement header. Keep the party and scale of the last priced
+    # version for its zero balance, including when the original confirmation was the last one.
+    priced = (
+        select(revision.party_id, revision.asset_id)
+        .where(*owned, revision.action == "correct")
+        .order_by(revision.document_version.desc())
+        .limit(1)
+        .correlate(doc)
+        .lateral()
+    )
+    terminal = (
+        select(revision.id).where(*owned, revision.action == "cancel").correlate(doc).exists()
+    )
+    source_asset = func.coalesce(priced.c.asset_id, doc.asset_id)
+    header = session.execute(
+        select(func.coalesce(priced.c.party_id, doc.party_id), AssetRecord, terminal)
+        .select_from(doc)
+        .outerjoin(priced, true())
+        .join(AssetRecord, AssetRecord.asset_id == source_asset)
+        .where(doc.id == document_id, doc.ledger_id == ledger_id, doc.state == "confirmed")
+    ).one_or_none()
+    if header is None:
+        raise _not_found()
+    party_id, asset_row, terminal = header
+    asset = asset_definition(asset_row)
+    effective = effective_document_lines(ledger_id, document_id=document_id)
+    rows = session.execute(select(effective).order_by(effective.c.line_no)).all()
+    totals = document_totals(session, ledger_id, [row.source_line_id for row in rows])
+    if (not rows and not terminal) or not totals.keys() <= {row.source_line_id for row in rows}:
+        raise integrity()
+    try:
+        lines = []
+        total_units = applied_units = credited_units = 0
+        for row in rows:
+            used, net, tax = totals.get(row.source_line_id, (Decimal(0), Decimal(0), Decimal(0)))
+            net_credit = Amount.from_decimal(net, asset)
+            tax_credit = Amount.from_decimal(tax, asset)
+            credit = net_credit + tax_credit
+            if (
+                net_credit.minor_units < 0
+                or tax_credit.minor_units < 0
+                or net_credit > Amount.from_decimal(row.net_amount, asset)
+                or tax_credit > Amount.from_decimal(row.tax_amount, asset)
+            ):
                 raise integrity()
-            try:
-                lines = []
-                total_units = applied_units = credited_units = 0
-                for row in rows:
-                    used, net, tax = totals.get(row.id, (Decimal(0), Decimal(0), Decimal(0)))
-                    net_credit = Amount.from_decimal(net, asset)
-                    tax_credit = Amount.from_decimal(tax, asset)
-                    credit = net_credit + tax_credit
-                    if (
-                        net_credit.minor_units < 0
-                        or tax_credit.minor_units < 0
-                        or net_credit > Amount.from_decimal(row.net_amount, asset)
-                        or tax_credit > Amount.from_decimal(row.tax_amount, asset)
-                    ):
-                        raise integrity()
-                    total, allocated, outstanding = quantities(
-                        row.total_amount, used, asset, credited=credit.to_decimal()
-                    )
-                    total_units += Amount.from_decimal(row.total_amount, asset).minor_units
-                    applied_units += Amount.from_decimal(used, asset).minor_units
-                    credited_units += credit.minor_units
-                    lines.append(
-                        DocumentSettlementLine(
-                            id=row.id,
-                            line_no=row.line_no,
-                            project_id=row.project_id,
-                            total_amount=total,
-                            applied_amount=allocated,
-                            outstanding_amount=outstanding,
-                        )
-                    )
-                return DocumentSettlementDetail(
-                    id=document.id,
-                    ledger_id=ledger_id,
-                    party_id=document.party_id,
-                    asset_id=document.asset_id,
-                    total_amount=Amount(asset, total_units).to_string(),
-                    applied_amount=Amount(asset, applied_units).to_string(),
-                    outstanding_amount=Amount(
-                        asset, total_units - applied_units - credited_units
-                    ).to_string(),
-                    lines=tuple(lines),
+            total, allocated, outstanding = quantities(
+                row.total_amount, used, asset, credited=credit.to_decimal()
+            )
+            total_units += Amount.from_decimal(row.total_amount, asset).minor_units
+            applied_units += Amount.from_decimal(used, asset).minor_units
+            credited_units += credit.minor_units
+            lines.append(
+                DocumentSettlementLine(
+                    id=row.source_line_id,
+                    line_no=row.line_no,
+                    project_id=row.project_id,
+                    total_amount=total,
+                    applied_amount=allocated,
+                    outstanding_amount=outstanding,
                 )
-            except (MoneyError, ValidationError):
-                raise integrity() from None
+            )
+        return DocumentSettlementDetail(
+            id=document_id,
+            ledger_id=ledger_id,
+            party_id=party_id,
+            asset_id=asset.asset_id,
+            total_amount=Amount(asset, total_units).to_string(),
+            applied_amount=Amount(asset, applied_units).to_string(),
+            outstanding_amount=Amount(
+                asset, total_units - applied_units - credited_units
+            ).to_string(),
+            lines=tuple(lines),
+        )
+    except (MoneyError, ValidationError):
+        raise integrity() from None
