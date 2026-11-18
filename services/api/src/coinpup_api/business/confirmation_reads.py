@@ -55,69 +55,70 @@ def _documents(ledger_id):
     )
 
 
+def original_confirmation_detail(session, ledger_id, document_id):
+    """Read the original 201 and its priced sources in the caller's owned ledger snapshot."""
+    saved = session.execute(
+        _documents(ledger_id)
+        .add_columns(BusinessConfirmation)
+        .where(BusinessDocument.id == document_id)
+    ).one_or_none()
+    if saved is None:
+        raise _not_found()
+    document, confirmation = saved
+    receipt = session.get(CommandReceipt, (ledger_id, confirmation.idempotency_key))
+    if receipt is None or receipt.hash_version != 2 or receipt.response_status != 201:
+        raise _integrity()
+    try:
+        response = BusinessConfirmationResponse.model_validate(receipt.response)
+        members = tuple(
+            ConfirmationPosting(**row)
+            for row in session.execute(
+                select(
+                    BusinessPosting.line_id,
+                    BusinessDocumentLine.line_no,
+                    BusinessPosting.operation_id,
+                    BusinessPosting.journal_id,
+                )
+                .join(BusinessDocumentLine, BusinessDocumentLine.id == BusinessPosting.line_id)
+                .where(
+                    BusinessPosting.confirmation_id == confirmation.id,
+                    BusinessPosting.ledger_id == ledger_id,
+                )
+                .order_by(BusinessDocumentLine.line_no)
+            ).mappings()
+        )
+        if (
+            response.id != confirmation.id
+            or response.ledger_id != ledger_id
+            or response.document_id != document_id
+            or response.source_version != confirmation.source_version
+            or response.document_version != document.version
+            or response.postings != members
+            or response.postings[0].operation_id != receipt.operation_id
+        ):
+            raise _integrity()
+        detail = _response(
+            document,
+            DraftService._lines(session, ledger_id, document_id, original_confirmation=True),
+            asset_definition(session.get(AssetRecord, document.asset_id)),
+            response_type=BusinessConfirmedDocument,
+            confirmation_id=confirmation.id,
+            confirmed_at=confirmation.created_at,
+        )
+    except (ValidationError, MoneyError):
+        raise _integrity() from None
+    except LedgerError as error:
+        if error.code == "draft_integrity":
+            raise _integrity() from None
+        raise
+    return BusinessConfirmationDetail(document=detail, confirmation=response)
+
+
 class BusinessConfirmationReads(LedgerService):
     def get_confirmation(self, owner_id, ledger_id, document_id):
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
-            saved = session.execute(
-                _documents(ledger_id)
-                .add_columns(BusinessConfirmation)
-                .where(BusinessDocument.id == document_id)
-            ).one_or_none()
-            if saved is None:
-                raise _not_found()
-            document, confirmation = saved
-            receipt = session.get(CommandReceipt, (ledger_id, confirmation.idempotency_key))
-            if receipt is None or receipt.hash_version != 2 or receipt.response_status != 201:
-                raise _integrity()
-            try:
-                response = BusinessConfirmationResponse.model_validate(receipt.response)
-                members = tuple(
-                    ConfirmationPosting(**row)
-                    for row in session.execute(
-                        select(
-                            BusinessPosting.line_id,
-                            BusinessDocumentLine.line_no,
-                            BusinessPosting.operation_id,
-                            BusinessPosting.journal_id,
-                        )
-                        .join(
-                            BusinessDocumentLine, BusinessDocumentLine.id == BusinessPosting.line_id
-                        )
-                        .where(
-                            BusinessPosting.confirmation_id == confirmation.id,
-                            BusinessPosting.ledger_id == ledger_id,
-                        )
-                        .order_by(BusinessDocumentLine.line_no)
-                    ).mappings()
-                )
-                if (
-                    response.id != confirmation.id
-                    or response.ledger_id != ledger_id
-                    or response.document_id != document_id
-                    or response.source_version != confirmation.source_version
-                    or response.document_version != document.version
-                    or response.postings != members
-                    or response.postings[0].operation_id != receipt.operation_id
-                ):
-                    raise _integrity()
-                detail = _response(
-                    document,
-                    DraftService._lines(
-                        session, ledger_id, document_id, original_confirmation=True
-                    ),
-                    asset_definition(session.get(AssetRecord, document.asset_id)),
-                    response_type=BusinessConfirmedDocument,
-                    confirmation_id=confirmation.id,
-                    confirmed_at=confirmation.created_at,
-                )
-            except (ValidationError, MoneyError):
-                raise _integrity() from None
-            except LedgerError as error:
-                if error.code == "draft_integrity":
-                    raise _integrity() from None
-                raise
-            return BusinessConfirmationDetail(document=detail, confirmation=response)
+            return original_confirmation_detail(session, ledger_id, document_id)
 
     def list_confirmations(self, owner_id, ledger_id, *, limit=100, offset=0):
         _page(limit, offset)
