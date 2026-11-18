@@ -30,6 +30,7 @@ from tests.integration.business.test_refund_service import refund
 from tests.integration.business.test_settlement_service import pay
 from tests.integration.conftest import (
     allocation_document_validation_migration,
+    credit_document_capacity_migration,
     effective_return_capacity_migration,
 )
 from tests.integration.ledger.test_account_classes import snapshot
@@ -104,6 +105,9 @@ def test_four_capacity_uses_and_their_predecessors_are_exact_on_empty_roundtrip(
         current = definitions(c)
         latest = allocation_document_validation_migration()
         assert sql(c, "allocation") == latest["_ALLOCATION"]
+        credit_latest = credit_document_capacity_migration()
+        assert sql(c, "credit") == credit_latest["_VALIDATE"].removesuffix(";\n") + "\n"
+        credit_latest["downgrade"]()
         latest["downgrade"]()
         for name in names:
             actual = sql(c, name)
