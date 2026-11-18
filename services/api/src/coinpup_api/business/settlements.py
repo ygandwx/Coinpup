@@ -5,9 +5,11 @@ from types import SimpleNamespace
 
 from pydantic import ValidationError
 from sqlalchemy import func, insert, select
+from sqlalchemy.orm import Bundle
 
 from coinpup_api.business.drafts import _references
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine, BusinessParty
+from coinpup_api.business.effective_document_lines import effective_document_lines
+from coinpup_api.business.models import BusinessParty
 from coinpup_api.business.settlement_hash import allocation_hash_v2, payment_hash_v2
 from coinpup_api.business.settlement_models import BusinessPayment
 from coinpup_api.business.settlement_plan import (
@@ -74,19 +76,28 @@ def source_rows(session, ledger_id, payload):
     if payload is None:
         return {}
     identifiers = {line.document_line_id for line in payload.lines}
-    records = session.execute(
-        select(BusinessDocument, BusinessDocumentLine)
-        .join(
-            BusinessDocumentLine,
-            BusinessDocumentLine.document_id == BusinessDocument.id,
-        )
-        .where(
-            BusinessDocument.ledger_id == ledger_id,
-            BusinessDocumentLine.ledger_id == ledger_id,
-            BusinessDocumentLine.id.in_(identifiers),
-            BusinessDocument.state == "confirmed",
-        )
-    ).all()
+    source = effective_document_lines(ledger_id, line_ids=identifiers).c
+    document = Bundle(
+        "document",
+        source.document_id.label("id"),
+        source.document_kind,
+        source.party_id,
+        source.asset_id,
+        source.issue_date,
+        source.document_version.label("version"),
+    )
+    line = Bundle(
+        "line",
+        source.source_line_id.label("id"),
+        source.description,
+        source.project_id,
+        source.net_amount,
+        source.tax_amount,
+        source.total_amount,
+        source.operation_id,
+        source.journal_id,
+    )
+    records = session.execute(select(document, line))
     sources = {line.id: (document, line) for document, line in records}
     if sources.keys() != identifiers:
         raise _not_found()
