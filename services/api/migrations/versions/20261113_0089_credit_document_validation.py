@@ -17,7 +17,30 @@ _FACT = (
         "    posted public.business_postings%ROWTYPE; "
         "original public.financial_operations%ROWTYPE;",
         "document public.business_documents%ROWTYPE; source record;\n"
-        "    original public.financial_operations%ROWTYPE; source_journal public.journals%ROWTYPE;",
+        "    original public.financial_operations%ROWTYPE; "
+        "source_journal public.journals%ROWTYPE;\n"
+        "    bound_revision uuid;",
+    )
+    .replace(
+        "fact record; fact_count bigint;",
+        "fact record;",
+    )
+    .replace(
+        """SELECT count(*) INTO fact_count FROM public.coinpup_credit_posting_facts(
+        header.ledger_id,NULL,ARRAY[journal_identifier]);
+    IF header.id IS NULL OR fact_count<>1 THEN
+        RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='Business credit shape is invalid',
+            CONSTRAINT='ck_business_credit_shape';
+    END IF;
+    SELECT * INTO fact FROM public.coinpup_credit_posting_facts(
+        header.ledger_id,NULL,ARRAY[journal_identifier]);""",
+        """-- Count and read the one journal fact in the same statement.
+    SELECT f.*,count(*) OVER () AS matched_count INTO fact
+    FROM public.coinpup_credit_posting_facts(header.ledger_id,NULL,ARRAY[journal_identifier]) f;
+    IF header.id IS NULL OR fact.matched_count IS DISTINCT FROM 1 THEN
+        RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='Business credit shape is invalid',
+            CONSTRAINT='ck_business_credit_shape';
+    END IF;""",
     )
     .replace(
         """SELECT * INTO source FROM public.business_document_lines
@@ -25,9 +48,35 @@ _FACT = (
             AND ledger_id=fact.ledger_id;
     SELECT * INTO posted FROM public.business_postings WHERE line_id=source.id
         AND document_id=document.id AND ledger_id=fact.ledger_id;""",
-        """SELECT s.*,s.source_line_id AS id,count(*) OVER () AS matches INTO source
-    FROM public.coinpup_credit_document_sources(
-        fact.ledger_id,NULL,ARRAY[journal_identifier]) s;
+        """IF fact.revision_id IS NULL THEN
+        bound_revision := entry.document_revision_id;
+    ELSE
+        SELECT r.document_revision_id INTO bound_revision FROM public.business_credit_revisions r
+        WHERE (r.id,r.credit_id,r.document_id,r.ledger_id)=
+            (fact.revision_id,fact.credit_id,fact.document_id,fact.ledger_id);
+    END IF;
+    IF bound_revision IS NULL THEN
+        -- The posting fact already identifies the original source. Use the same scoped
+        -- confirmation and posting joins without re-enumerating the credit's posting facts.
+        SELECT l.id,l.net_amount,l.tax_amount,l.total_amount,l.category_id,l.project_id,
+            document.asset_id AS asset_id,document.party_id AS party_id,
+            document.issue_date AS issue_date,c.source_version+1 AS document_version,
+            p.operation_id AS source_operation_id,1 AS source_operation_version,
+            p.journal_id AS source_journal_id,count(*) OVER () AS matches INTO source
+        FROM public.business_document_lines l JOIN public.business_confirmations c
+            ON (c.document_id,c.ledger_id)=(l.document_id,l.ledger_id)
+        JOIN public.business_postings p ON (p.line_id,p.document_id,p.ledger_id,p.confirmation_id)=
+            (l.id,l.document_id,l.ledger_id,c.id)
+        WHERE (l.id,l.document_id,l.ledger_id)=(fact.source_line_id,fact.document_id,fact.ledger_id)
+            AND l.total_amount>0 AND NOT l.archived;
+    ELSE
+        SELECT s.source_line_id AS id,s.net_amount,s.tax_amount,s.total_amount,
+            s.category_id,s.project_id,s.asset_id,s.party_id,s.issue_date,s.document_version,
+            s.source_operation_id,s.source_operation_version,s.source_journal_id,
+            count(*) OVER () AS matches INTO source
+        FROM public.coinpup_credit_document_sources(
+            fact.ledger_id,NULL,ARRAY[journal_identifier]) s;
+    END IF;
     SELECT * INTO source_journal FROM public.journals WHERE id=source.source_journal_id;""",
     )
     .replace("WHERE asset_id=document.asset_id", "WHERE asset_id=source.asset_id")
