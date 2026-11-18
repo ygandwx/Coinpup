@@ -27,16 +27,32 @@ pytestmark = pytest.mark.integration
 
 
 def append_accrual(
-    c, header, doc, prior, action, version, *, source_id=None, fact_changes=None, fault=None
+    c,
+    header,
+    doc,
+    prior,
+    action,
+    version,
+    *,
+    source_id=None,
+    fact_changes=None,
+    fault=None,
+    header_saved=False,
 ):
-    c.execute(insert(Header), header)
+    if not header_saved:
+        c.execute(insert(Header), header)
     fact = line(header, doc) | (fact_changes or {})
     if source_id is not None:
         fact["source_line_id"] = source_id
     if action != "cancel":
         c.execute(insert(Fact), fact)
     row = accrual(header, fact, prior, action) | dict(operation_version=version)
-    post(c, header, fact, row)
+    journal_header = (
+        header | dict(reason="Fictional different journal reason")
+        if fault == "wrong-cancel-reason"
+        else header
+    )
+    post(c, journal_header, fact, row, kind=doc.document_kind)
     originals = (
         c.execute(select(JournalLine.__table__).where(JournalLine.journal_id == prior.journal_id))
         .mappings()
