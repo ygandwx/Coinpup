@@ -1,12 +1,11 @@
 """Simulate an entire replacement and its retained payment, document and refund dependencies."""
 
-from collections import defaultdict
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
 
-from sqlalchemy import Date, Uuid, cast, column, func, select
+from sqlalchemy import Date, Numeric, Uuid, cast, column, func, select
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from coinpup_api.business.allocation_return_plan import (
@@ -21,7 +20,7 @@ from coinpup_api.business.allocation_return_revision_slots import (
 )
 from coinpup_api.business.allocation_return_sources import original_sources, plan_sources
 from coinpup_api.business.settlement_rows import PostingGroup, allocation_rows
-from coinpup_api.business.settlement_totals import document_totals, payment_totals
+from coinpup_api.business.settlement_totals import payment_totals
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.models import Account, AccountAsset, AssetRecord
 from coinpup_api.ledger.money import Amount
@@ -122,27 +121,25 @@ def _require_dependencies(session, current, replacement):
     require_open_period(session, payment.ledger_id, *dates)
 
 
-def _capacity(session, current, payer, rows, sources, slots):
+def _capacity(session, current, payer, sources, slots):
     ledger_id = current.group.ledger_id
     old = {m.fact["source_allocation_line_id"]: m.fact for m in current.members}
     payment_delta = 0
-    changes = defaultdict(int)
-    documents = {}
-    for mapping, _, _, document_line, _ in rows:
-        source = sources[mapping.id]
+    changes = {}
+    for identifier, source in sources.items():
         asset = source.document_amount.asset
-        line_id = document_line.id
-        documents[line_id] = (document_line, asset)
-        if mapping.id in old:
-            fact = old[mapping.id]
+        document_delta = 0
+        if identifier in old:
+            fact = old[identifier]
             payment_delta += Amount.from_decimal(
                 fact["payment_amount"], payer.amount.asset
             ).minor_units
-            changes[line_id] += Amount.from_decimal(fact["document_amount"], asset).minor_units
-        new = slots[mapping.id].replacement
+            document_delta = Amount.from_decimal(fact["document_amount"], asset).minor_units
+        new = slots[identifier].replacement
         if new:
             payment_delta -= new.payment.minor_units
-            changes[line_id] -= new.document.minor_units
+            document_delta -= new.document.minor_units
+        changes[identifier] = Amount(asset, document_delta).to_decimal()
     zero = Decimal(0)
     applied, refunded = payment_totals(session, ledger_id, [payer.id]).get(payer.id, (zero, zero))
     net = Amount.from_decimal(applied, payer.amount.asset).minor_units + payment_delta
@@ -156,25 +153,22 @@ def _capacity(session, current, payer, rows, sources, slots):
             409,
             "Current applications and refunds exceed the available principal.",
         )
-    totals = document_totals(session, ledger_id, documents)
-    for line_id, (line, asset) in documents.items():
-        applied, credit_net, credit_tax = (
-            Amount.from_decimal(x, asset).minor_units
-            for x in totals.get(line_id, (zero, zero, zero))
-        )
-        net = applied + changes[line_id]
-        if (
-            net < 0
-            or net + credit_net + credit_tax
-            > Amount.from_decimal(line.total_amount, asset).minor_units
-            or credit_net > Amount.from_decimal(line.net_amount, asset).minor_units
-            or credit_tax > Amount.from_decimal(line.tax_amount, asset).minor_units
-        ):
-            raise LedgerError(
-                "allocation_return_document_capacity",
-                409,
-                "Current applications and credits exceed the document line.",
+    # A shortened return reinstates its original application in its own asset. The same
+    # database check validates the final write with zero proposed deltas.
+    if not session.scalar(
+        select(
+            func.public.coinpup_return_document_capacity_ok(
+                cast(ledger_id, Uuid),
+                cast(list(changes), ARRAY(Uuid)),
+                cast(list(changes.values()), ARRAY(Numeric)),
             )
+        )
+    ):
+        raise LedgerError(
+            "allocation_return_document_capacity",
+            409,
+            "This return conflicts with the effective document line or its available amount.",
+        )
 
 
 def plan_transition(session, current, replacement):
@@ -201,7 +195,7 @@ def plan_transition(session, current, replacement):
     slots = plan_source_slots(
         session, ledger_id, payment.id, current.group.id, sources, desired.values()
     )
-    _capacity(session, current, payer, rows, sources, slots)
+    _capacity(session, current, payer, sources, slots)
     postings = {}
     receipt = payment.direction == "receipt"
     if replacement:

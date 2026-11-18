@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261110_0086",)
+        assert context.get_current_heads() == ("20261110_0087",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261110_0086",)
+        assert context.get_current_heads() == ("20261110_0087",)
 
 
 def confirmation_schema_migration():
@@ -342,7 +342,7 @@ def _with_allocation_document_facts(migration):
         migration["upgrade"]()
         bind = op.get_bind()
         if (
-            MigrationContext.configure(bind).get_current_heads() == ("20261110_0086",)
+            MigrationContext.configure(bind).get_current_heads() == ("20261110_0087",)
             and not installed()
             and bind.scalar(
                 text(
@@ -581,6 +581,16 @@ def return_ownership_migration():
     )
 
 
+def return_document_capacity_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions"
+            / "20261110_0087_effective_return_document_capacity.py"
+        )
+    )
+
+
 def return_document_source_migration():
     return runpy.run_path(
         str(
@@ -594,7 +604,7 @@ def return_document_source_migration():
 def _with_pinned_return_definition(migration, definition):
     def upgrade():
         migration["upgrade"]()
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261110_0086",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261110_0087",):
             op.execute(return_document_source_migration()[definition])
 
     return migration | {"upgrade": upgrade}
@@ -641,7 +651,7 @@ def effective_return_capacity_migration():
     def upgrade():
         effective["upgrade"]()
         # 0064 owns the predecessor of the allocation validator replaced at 0085.
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261110_0086",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261110_0087",):
             allocation_document_validation_migration()["upgrade"]()
 
     return effective | {"upgrade": upgrade}
@@ -1431,7 +1441,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0086",
+                    "20261110_0087",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1442,7 +1452,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0086",
+                    "20261110_0087",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1471,7 +1481,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261110_0086",
+                        "20261110_0087",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1484,7 +1494,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0086",
+                    "20261110_0087",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:
