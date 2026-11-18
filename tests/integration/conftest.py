@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261110_0084",)
+        assert context.get_current_heads() == ("20261110_0085",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261110_0084",)
+        assert context.get_current_heads() == ("20261110_0085",)
 
 
 def confirmation_schema_migration():
@@ -304,6 +304,16 @@ def _with_document_source_bindings(migration):
     return migration | {"downgrade": downgrade, "upgrade": upgrade}
 
 
+def allocation_document_validation_migration():
+    return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions"
+            / "20261110_0085_allocation_document_validation.py"
+        )
+    )
+
+
 def allocation_document_fact_migration():
     return runpy.run_path(
         str(
@@ -332,7 +342,7 @@ def _with_allocation_document_facts(migration):
         migration["upgrade"]()
         bind = op.get_bind()
         if (
-            MigrationContext.configure(bind).get_current_heads() == ("20261110_0084",)
+            MigrationContext.configure(bind).get_current_heads() == ("20261110_0085",)
             and not installed()
             and bind.scalar(
                 text(
@@ -605,7 +615,15 @@ def effective_return_capacity_migration():
             / "services/api/migrations/versions/20261109_0064_effective_return_capacity.py"
         )
     )
-    return _with_return_lifecycle(frozen)
+    effective = _with_return_lifecycle(frozen)
+
+    def upgrade():
+        effective["upgrade"]()
+        # 0064 owns the predecessor of the allocation validator replaced at 0085.
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261110_0085",):
+            allocation_document_validation_migration()["upgrade"]()
+
+    return effective | {"upgrade": upgrade}
 
 
 _INSIDE_CAPACITY_ROUNDTRIP = ContextVar("inside_capacity_roundtrip", default=False)
@@ -1392,7 +1410,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0084",
+                    "20261110_0085",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1403,7 +1421,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0084",
+                    "20261110_0085",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1432,7 +1450,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261110_0084",
+                        "20261110_0085",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1445,7 +1463,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0084",
+                    "20261110_0085",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:

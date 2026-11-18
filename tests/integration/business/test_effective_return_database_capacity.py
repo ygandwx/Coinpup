@@ -28,7 +28,10 @@ from tests.integration.business.test_credit_service import credit
 from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.business.test_refund_service import refund
 from tests.integration.business.test_settlement_service import pay
-from tests.integration.conftest import effective_return_capacity_migration
+from tests.integration.conftest import (
+    allocation_document_validation_migration,
+    effective_return_capacity_migration,
+)
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -99,6 +102,9 @@ def test_four_capacity_uses_and_their_predecessors_are_exact_on_empty_roundtrip(
 
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
         current = definitions(c)
+        latest = allocation_document_validation_migration()
+        assert sql(c, "allocation") == latest["_ALLOCATION"]
+        latest["downgrade"]()
         for name in names:
             actual = sql(c, name)
             assert actual == mig["_" + name.upper()]

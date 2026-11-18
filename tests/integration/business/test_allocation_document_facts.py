@@ -23,7 +23,10 @@ from tests.integration.business.test_confirmed_document_revision_headers import 
 from tests.integration.business.test_confirmed_document_revision_headers import revision as revision
 from tests.integration.business.test_document_accrual_operation_heads import append_accrual
 from tests.integration.business.test_draft_service import drafts as drafts
-from tests.integration.conftest import allocation_document_fact_migration
+from tests.integration.conftest import (
+    allocation_document_fact_migration,
+    allocation_document_validation_migration,
+)
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -67,8 +70,7 @@ def test_original_allocation_sources_remain_scoped_and_match_public_detail(draft
     assert snapshot(s) == before
 
 
-def test_allocation_pins_replacement_and_keeps_it_after_later_revisions(revision):
-    s, header, doc, _, origin = revision
+def source_payment(s, doc):
     payment = BusinessPaymentCreate(
         id=uuid4(),
         party_id=doc.party_id,
@@ -82,6 +84,12 @@ def test_allocation_pins_replacement_and_keeps_it_after_later_revisions(revision
     BusinessSettlementService(s["engine"]).pay(
         s["owner"], s["ledger"], payment, "fictional-fact-pay"
     )
+    return payment
+
+
+def test_allocation_pins_replacement_and_keeps_it_after_later_revisions(revision):
+    s, header, doc, _, origin = revision
+    payment = source_payment(s, doc)
     day = doc.issue_date + timedelta(days=2)
     header = header | dict(issue_date=day, idempotency_key="fictional-reviewed-source")
     command = BusinessAllocationCreate(
@@ -134,6 +142,9 @@ def test_allocation_pins_replacement_and_keeps_it_after_later_revisions(revision
                 dict(stored) | dict(id=uuid4(), document_revision_line_id=uuid4()),
             )
         assert forged.value.orig.diag.constraint_name == "ck_allocation_document_fact"
+        # Revalidate each sealed journal against the reviewed source of its own 201.
+        for group in (earlier.id, command.id):
+            c.execute(select(func.coinpup_validate_business_allocation(group)))
         later = cancelled(header) | dict(
             id=uuid4(),
             previous_revision_id=header["id"],
@@ -190,5 +201,89 @@ def test_allocation_pins_replacement_and_keeps_it_after_later_revisions(revision
             with Operations.context(MigrationContext.configure(c)):
                 allocation_document_fact_migration()["downgrade"]()
         assert blocked.value.orig.diag.constraint_name == "ck_allocation_document_downgrade"
+        with pytest.raises(IntegrityError) as protected, c.begin_nested():
+            with Operations.context(MigrationContext.configure(c)):
+                allocation_document_validation_migration()["downgrade"]()
+        assert (
+            protected.value.orig.diag.constraint_name
+            == "ck_allocation_document_validation_downgrade"
+        )
+        # The terminal document has zero live capacity while both allocations remain applied.
+        with pytest.raises(IntegrityError) as capacity, c.begin_nested():
+            c.execute(select(func.coinpup_validate_business_allocation(earlier.id)))
+        assert capacity.value.orig.diag.constraint_name == "ck_business_allocation_shape"
+        tx.rollback()
+    assert snapshot(s) == before
+
+
+@pytest.mark.parametrize("action", ["correct", "create"])
+def test_allocation_checks_new_price_then_rejects_later_excess_live_exposure(revision, action):
+    s, header, doc, _, origin = revision
+    payment = source_payment(s, doc)
+    original = origin.postings[0]
+    source_id = original.line_id if action == "correct" else uuid4()
+    before = snapshot(s)
+    with s["engine"].connect() as c, c.begin() as tx:
+        priced = append_accrual(
+            c,
+            header,
+            doc,
+            original,
+            action,
+            2 if action == "correct" else 1,
+            source_id=source_id,
+            fact_changes=dict(
+                quantity="1",
+                unit_price="200",
+                discount_amount="0",
+                tax_rate_percent="10",
+                net_amount="200",
+                tax_amount="20",
+                total_amount="220",
+            ),
+        )
+        c.execute(select(func.coinpup_validate_operation_history(priced["operation_id"])))
+        command = BusinessAllocationCreate(
+            id=uuid4(),
+            payment_id=payment.id,
+            allocation_date=doc.issue_date,
+            lines=[
+                dict(
+                    document_id=doc.id,
+                    document_line_id=source_id,
+                    payment_amount="111.01",
+                    document_amount="111.01",
+                )
+            ],
+        )
+        assert Decimal(doc.lines[0].total_amount) < Decimal("111.01")
+        BusinessSettlementService(c).allocate(
+            s["owner"], s["ledger"], command, "fictional-repriced"
+        )
+        c.execute(select(func.coinpup_validate_business_allocation(command.id)))
+        following = header | dict(
+            id=uuid4(),
+            previous_revision_id=header["id"],
+            previous_version=header["document_version"],
+            document_version=header["document_version"] + 1,
+            idempotency_key="fictional-lower-capacity",
+        )
+        append_accrual(
+            c,
+            following,
+            doc,
+            SimpleNamespace(**priced),
+            "correct",
+            priced["operation_version"] + 1,
+            source_id=source_id,
+        )
+        c.execute(select(func.coinpup_validate_operation_history(priced["operation_id"])))
+        c.exec_driver_sql(
+            "SET CONSTRAINTS tr_document_accrual_journals,tr_document_accrual_facts,"
+            "tr_document_accrual_head,tr_journals_reversal_dimensions IMMEDIATE"
+        )
+        with pytest.raises(IntegrityError) as excess, c.begin_nested():
+            c.execute(select(func.coinpup_validate_business_allocation(command.id)))
+        assert excess.value.orig.diag.constraint_name == "ck_business_allocation_shape"
         tx.rollback()
     assert snapshot(s) == before
