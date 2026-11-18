@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from coinpup_api.business.credit_models import BusinessCredit
 from coinpup_api.business.credit_read_schemas import (
@@ -14,6 +14,7 @@ from coinpup_api.business.credit_read_schemas import (
 )
 from coinpup_api.business.credit_receipts import integrity, response_from_rows
 from coinpup_api.business.credit_schemas import BusinessCreditResponse
+from coinpup_api.business.document_revision_models import BusinessDocumentRevision
 from coinpup_api.business.drafts import _fields
 from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
 from coinpup_api.business.settlement_totals import document_totals
@@ -26,11 +27,22 @@ from coinpup_api.ledger.service import LedgerService, _not_found, _page
 
 def summaries(session, ledger_id, *, identifier=None, document_id=None, limit=100, offset=0):
     statement = (
-        select(BusinessCredit, BusinessDocument)
+        select(
+            BusinessCredit,
+            BusinessDocument.document_kind,
+            func.coalesce(BusinessDocumentRevision.party_id, BusinessDocument.party_id),
+            func.coalesce(BusinessDocumentRevision.asset_id, BusinessDocument.asset_id),
+        )
         .join(
             BusinessDocument,
             (BusinessDocument.id == BusinessCredit.document_id)
             & (BusinessDocument.ledger_id == BusinessCredit.ledger_id),
+        )
+        .outerjoin(
+            BusinessDocumentRevision,
+            (BusinessDocumentRevision.id == BusinessCredit.document_revision_id)
+            & (BusinessDocumentRevision.document_id == BusinessCredit.document_id)
+            & (BusinessDocumentRevision.ledger_id == BusinessCredit.ledger_id),
         )
         .where(BusinessCredit.ledger_id == ledger_id)
         .order_by(BusinessCredit.created_at, BusinessCredit.id)
@@ -48,13 +60,13 @@ def summaries(session, ledger_id, *, identifier=None, document_id=None, limit=10
                 **_fields(
                     row,
                     CreditSummary,
-                    document_kind=document.document_kind,
-                    party_id=document.party_id,
-                    asset_id=document.asset_id,
+                    document_kind=kind,
+                    party_id=party,
+                    asset_id=asset,
                 )
             ),
         )
-        for row, document in session.execute(statement)
+        for row, kind, party, asset in session.execute(statement)
     ]
 
 
