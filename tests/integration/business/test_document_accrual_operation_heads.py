@@ -56,6 +56,7 @@ def append_accrual(
                         else Decimal(fact["total_amount"]).copy_sign(r["amount"]),
                         project_id=r["project_id"] if sign == -1 else fact["project_id"],
                         asset_id=r["asset_id"] if sign == -1 else header["asset_id"],
+                        party_id=r["party_id"] if sign == -1 else header["party_id"],
                         document_line_id=fact["source_line_id"],
                     )
                     for r in originals

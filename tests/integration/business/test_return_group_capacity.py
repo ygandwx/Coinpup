@@ -30,6 +30,7 @@ from tests.integration.business.test_draft_service import drafts as drafts
 from tests.integration.business.test_refund_revision_service import correction, submit
 from tests.integration.business.test_refund_service import refund
 from tests.integration.business.test_settlement_service import pay
+from tests.integration.conftest import return_document_capacity_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
 
@@ -217,6 +218,15 @@ def test_group_capacity_migration_roundtrip_protects_revision_evidence(revision)
     before = snapshot(s)
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
         baseline = definitions(c)
+        latest = return_document_capacity_migration()
+        latest["downgrade"]()
+        frozen = c.scalar(
+            text(
+                "SELECT pg_get_functiondef("
+                "'coinpup_validate_return_capacity(uuid,uuid,uuid[])'::regprocedure)"
+            )
+        )
+        assert frozen == latest["_OLD"]
         migration["downgrade"]()
         assert (
             c.scalar(
@@ -225,6 +235,7 @@ def test_group_capacity_migration_roundtrip_protects_revision_evidence(revision)
             is None
         )
         migration["upgrade"]()
+        latest["upgrade"]()
         assert definitions(c) == baseline
     with pytest.raises(IntegrityError) as caught, s["engine"].begin() as c:
         c.execute(insert(Revision).values(**h))
