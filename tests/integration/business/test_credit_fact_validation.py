@@ -174,7 +174,7 @@ def pending_origin(
         insert(FinancialOperation).values(
             **(
                 stored(connection, FinancialOperation, first.operation_id)
-                | dict(id=operation, current_journal_id=journal)
+                | dict(id=operation, version=1, status="active", current_journal_id=journal)
             )
         )
     )
