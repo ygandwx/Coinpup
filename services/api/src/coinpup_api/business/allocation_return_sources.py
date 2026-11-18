@@ -3,10 +3,11 @@
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.orm import Bundle
 
+from coinpup_api.business.allocation_document_facts import allocation_document_facts
 from coinpup_api.business.allocation_return_plan import AllocationReturnSource
 from coinpup_api.business.allocation_return_projections import return_source_state
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
 from coinpup_api.business.settlement_models import BusinessAllocation, BusinessAllocationLine
 from coinpup_api.business.settlement_plan import PaymentSource
 from coinpup_api.business.settlement_totals import applied_totals
@@ -28,26 +29,34 @@ def require_current(operation, expected_version, journal_id, kind):
 
 
 def original_sources(session, ledger_id, payload):
-    source, group, doc, line, operation = (
-        BusinessAllocationLine,
-        BusinessAllocation,
-        BusinessDocument,
-        BusinessDocumentLine,
-        FinancialOperation,
-    )
+    source, group, operation = BusinessAllocationLine, BusinessAllocation, FinancialOperation
     requested = {item.source_allocation_line_id: item for item in payload.lines}
+    facts = allocation_document_facts(ledger_id, line_ids=requested)
+    f = facts.c
+    document = Bundle(
+        "document", f.document_id.label("id"), f.document_kind, f.asset_id, f.party_id, f.issue_date
+    )
+    line = Bundle(
+        "line",
+        f.source_line_id.label("id"),
+        f.project_id,
+        f.net_amount,
+        f.tax_amount,
+        f.total_amount,
+    )
     rows = session.execute(
-        select(source, group, doc, line, operation)
+        select(source, group, document, line, operation)
         .select_from(source)
-        .join(group, group.id == source.allocation_id)
-        .join(doc, doc.id == source.document_id)
-        .join(line, (line.id == source.document_line_id) & (line.document_id == doc.id))
-        .join(operation, operation.id == source.operation_id)
+        .join(group, (group.id == source.allocation_id) & (group.ledger_id == source.ledger_id))
+        .join(facts, (f.allocation_line_id == source.id) & (f.ledger_id == source.ledger_id))
+        .join(
+            operation,
+            (operation.id == source.operation_id) & (operation.ledger_id == source.ledger_id),
+        )
         .where(
-            *(table.ledger_id == ledger_id for table in (source, group, doc, line, operation)),
+            source.ledger_id == ledger_id,
             source.id.in_(requested),
             source.payment_id == payload.payment_id,
-            doc.state == "confirmed",
         )
     ).all()
     if {row[0].id for row in rows} != requested.keys():

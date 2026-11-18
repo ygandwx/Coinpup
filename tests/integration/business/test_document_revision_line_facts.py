@@ -156,7 +156,8 @@ def test_line_history_positions_and_cancel_shape_are_immutable(revision, op, exp
             c.execute(insert(Fact), member | {"id": uuid4()} | diff)
         elif op == "downgrade":
             with Operations.context(MigrationContext.configure(c)):
-                document_revision_line_migration()["downgrade"]()
+                # The populated frozen 0076 refuses before modifying its table or later FKs.
+                document_revision_line_migration(include_dependents=False)["downgrade"]()
     assert err.value.orig.diag.constraint_name == expected and snapshot(s) == before
 
 

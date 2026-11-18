@@ -166,6 +166,18 @@ class BusinessAllocationLine(SettlementIdentity, Base):
     __table_args__ = (
         *_identity("business_allocation_line"),
         *_journal("business_allocation_line"),
+        ForeignKeyConstraint(
+            ["document_revision_line_id", "ledger_id"],
+            ["business_document_revision_lines.id", "business_document_revision_lines.ledger_id"],
+            name="fk_allocation_document_revision_line",
+            ondelete="RESTRICT",
+        ),
+        Index(
+            "ix_allocation_document_revision_line",
+            "document_revision_line_id",
+            "ledger_id",
+            postgresql_where=text("document_revision_line_id IS NOT NULL"),
+        ),
         UniqueConstraint(
             "id",
             "payment_id",
@@ -213,6 +225,7 @@ class BusinessAllocationLine(SettlementIdentity, Base):
     payment_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     document_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     document_line_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    document_revision_line_id: Mapped[UUID | None] = mapped_column(Uuid)
     line_no: Mapped[int] = mapped_column(Integer, nullable=False)
     payment_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18), nullable=False)
     document_amount: Mapped[Decimal] = mapped_column(Numeric(38, 18), nullable=False)

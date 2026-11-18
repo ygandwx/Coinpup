@@ -25,9 +25,11 @@ from tests.integration.ledger.test_posting_service_database import ledger_setup 
 pytestmark = pytest.mark.integration
 
 
-def append_accrual(c, header, doc, prior, action, version, *, source_id=None, fault=None):
+def append_accrual(
+    c, header, doc, prior, action, version, *, source_id=None, fact_changes=None, fault=None
+):
     c.execute(insert(Header), header)
-    fact = line(header, doc)
+    fact = line(header, doc) | (fact_changes or {})
     if source_id is not None:
         fact["source_line_id"] = source_id
     if action != "cancel":
@@ -49,6 +51,7 @@ def append_accrual(c, header, doc, prior, action, version, *, source_id=None, fa
                         id=uuid4(),
                         journal_id=journal,
                         amount=sign * r["amount"],
+                        project_id=r["project_id"] if sign == -1 else fact["project_id"],
                         document_line_id=fact["source_line_id"],
                     )
                     for r in originals

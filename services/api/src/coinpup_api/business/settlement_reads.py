@@ -5,8 +5,8 @@ from decimal import Decimal
 from pydantic import ValidationError
 from sqlalchemy import select
 
+from coinpup_api.business.allocation_document_facts import allocation_document_facts
 from coinpup_api.business.drafts import _fields
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
 from coinpup_api.business.settlement_balances import (
     BusinessSettlementBalances,
     integrity,
@@ -176,23 +176,23 @@ class BusinessSettlementReads(BusinessSettlementBalances):
                 raise _not_found()
             group, payment, record = saved
             asset = asset_definition(record)
-            mapping, source, doc = BusinessAllocationLine, BusinessDocumentLine, BusinessDocument
+            mapping = BusinessAllocationLine
+            facts = allocation_document_facts(ledger_id, allocation_id=allocation_id)
+            source = facts.c
             rows = session.execute(
-                select(mapping, source, AssetRecord)
-                .join(source, source.id == mapping.document_line_id)
-                .join(doc, doc.id == mapping.document_id)
-                .join(AssetRecord, AssetRecord.asset_id == doc.asset_id)
-                .where(
-                    mapping.ledger_id == ledger_id,
-                    source.ledger_id == ledger_id,
-                    doc.ledger_id == ledger_id,
-                    mapping.allocation_id == allocation_id,
+                select(mapping, source.description, source.project_id, AssetRecord)
+                .join(
+                    facts,
+                    (source.allocation_line_id == mapping.id)
+                    & (source.ledger_id == mapping.ledger_id),
                 )
+                .join(AssetRecord, AssetRecord.asset_id == source.asset_id)
+                .where(mapping.ledger_id == ledger_id, mapping.allocation_id == allocation_id)
                 .order_by(mapping.line_no)
             ).all()
             try:
                 lines, total = [], Amount(asset, 0)
-                for row, source, source_asset in rows:
+                for row, description, project_id, source_asset in rows:
                     quantity = Amount.from_decimal(row.payment_amount, asset)
                     if quantity.minor_units <= 0 or row.document_amount <= 0:
                         raise integrity()
@@ -207,8 +207,8 @@ class BusinessSettlementReads(BusinessSettlementBalances):
                                 document_amount=Amount.from_decimal(
                                     row.document_amount, asset_definition(source_asset)
                                 ).to_string(),
-                                project_id=source.project_id,
-                                description=source.description,
+                                project_id=project_id,
+                                description=description,
                             )
                         )
                     )
