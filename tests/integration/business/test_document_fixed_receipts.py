@@ -270,6 +270,29 @@ def test_two_hundred_predecessors_and_replacements_keep_all_four_hundred_journal
         )
         assert [r.id for r in result.replacement.lines] == [f["source_line_id"] for f in facts]
         assert [r.source_line_id for r in result.reversals] == [p.source_line_id for p in old]
+        proposed = replacement(doc, notes=h["notes"])
+        proposed = proposed.model_copy(
+            update={
+                "lines": [
+                    proposed.lines[0].model_copy(update={"id": f["source_line_id"]}) for f in facts
+                ]
+            }
+        )
+        command = ConfirmedDocumentCorrection(
+            expected_version=doc.version, reason=h["reason"], replacement=proposed
+        )
+        saved, receipt, digest = save(c, db, h, "correct", command)
+        c.exec_driver_sql(
+            "SET CONSTRAINTS tr_command_document_revision, "
+            "zz_tr_document_revision_receipt IMMEDIATE"
+        )
+        assert (
+            saved
+            == result
+            == replay_document_revision(
+                db, receipt, doc.ledger_id, doc.id, "correct", command, digest
+            )
+        )
         assert (
             len(
                 {
