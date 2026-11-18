@@ -37,11 +37,25 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
     )
     assert len(set(get_args(EntityType))) == 45
     table = BusinessCreditRevision.__table__
-    generated = str(CreateTable(table).compile(dialect=dialect()))
-    assert " ".join(generated.split()) in " ".join(migration["_SCHEMA_SQL"].split())
+    original_fks = [
+        fk
+        for fk in table.foreign_key_constraints
+        if fk.name != "fk_credit_revision_document_revision"
+    ]
+    generated = " ".join(
+        str(
+            CreateTable(table, include_foreign_key_constraints=original_fks).compile(
+                dialect=dialect()
+            )
+        ).split()
+    )
+    # 0088 adds this column and FK without rewriting 0040's frozen header schema.
+    assert "document_revision_id UUID, " in generated
+    generated = generated.replace("document_revision_id UUID, ", "")
+    assert generated in " ".join(migration["_SCHEMA_SQL"].split())
     assert len(table.name) <= 32
     assert all(len(constraint.name) <= 63 for constraint in table.constraints if constraint.name)
-    assert not table.indexes
+    assert {index.name for index in table.indexes} == {"ix_credit_revision_document_revision"}
     source = path.read_text(encoding="utf-8")
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.ImportFrom):
@@ -57,5 +71,5 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
         assert unchanged not in source
     assert "complete group validation" in migration["_GUARDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261110_0087"]
+    assert scripts.get_heads() == ["20261113_0088"]
     assert scripts.get_revision("20261106_0040").down_revision == "20261021_0039"
