@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
+from coinpup_api.business.allocation_document_facts import allocation_document_facts
 from coinpup_api.business.allocation_return_models import (
     BusinessAllocationReturn as Return,
 )
@@ -22,7 +23,6 @@ from coinpup_api.business.allocation_return_read_schemas import (
 from coinpup_api.business.allocation_return_receipts import integrity, response_from_rows
 from coinpup_api.business.allocation_return_schemas import BusinessAllocationReturnResponse
 from coinpup_api.business.drafts import _fields
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
 from coinpup_api.business.settlement_balances import quantities
 from coinpup_api.business.settlement_models import (
     BusinessAllocation,
@@ -92,17 +92,23 @@ def summaries(session, ledger_id, *, identifier=None, payment_id=None, limit=100
 
 
 def member_details(session, ledger_id, return_id, receipt, payment_asset):
-    source, line, document = BusinessAllocationLine, BusinessDocumentLine, BusinessDocument
+    source = BusinessAllocationLine
+    facts = allocation_document_facts(
+        ledger_id, line_ids=[p.source_allocation_line_id for p in receipt.postings]
+    )
+    pinned = facts.c
     rows = session.execute(
-        select(source, line.description, AssetRecord)
+        select(source, pinned.description, AssetRecord)
         .select_from(Member)
         .join(source, source.id == Member.source_allocation_line_id)
-        .join(line, line.id == source.document_line_id)
-        .join(document, document.id == source.document_id)
-        .join(AssetRecord, AssetRecord.asset_id == document.asset_id)
+        .join(
+            facts, (pinned.allocation_line_id == source.id) & (pinned.ledger_id == source.ledger_id)
+        )
+        .join(AssetRecord, AssetRecord.asset_id == pinned.asset_id)
         .where(
             Member.return_id == return_id,
-            *(table.ledger_id == ledger_id for table in (Member, source, line, document)),
+            Member.ledger_id == ledger_id,
+            source.ledger_id == ledger_id,
         )
         .order_by(Member.line_no)
     ).all()
@@ -194,24 +200,22 @@ class BusinessAllocationReturnReads(LedgerService):
             if saved is None:
                 raise _not_found()
             group, payment_asset = saved
-            mapping, source, doc, operation = (
-                BusinessAllocationLine,
-                BusinessDocumentLine,
-                BusinessDocument,
-                FinancialOperation,
-            )
+            mapping, operation = BusinessAllocationLine, FinancialOperation
+            facts = allocation_document_facts(ledger_id, allocation_id=group.id)
+            pinned = facts.c
             originals = session.execute(
-                select(mapping, source, AssetRecord, operation)
+                select(mapping, pinned.description, AssetRecord, operation)
                 .select_from(mapping)
-                .join(source, source.id == mapping.document_line_id)
-                .join(doc, doc.id == mapping.document_id)
-                .join(AssetRecord, AssetRecord.asset_id == doc.asset_id)
+                .join(
+                    facts,
+                    (pinned.allocation_line_id == mapping.id)
+                    & (pinned.ledger_id == mapping.ledger_id),
+                )
+                .join(AssetRecord, AssetRecord.asset_id == pinned.asset_id)
                 .join(operation, operation.id == mapping.operation_id)
                 .where(
                     mapping.allocation_id == group.id,
                     mapping.ledger_id == ledger_id,
-                    source.ledger_id == ledger_id,
-                    doc.ledger_id == ledger_id,
                     operation.ledger_id == ledger_id,
                 )
                 .order_by(mapping.line_no)
@@ -229,7 +233,7 @@ class BusinessAllocationReturnReads(LedgerService):
             }
             try:
                 lines = []
-                for row, source, asset, operation in originals:
+                for row, description, asset, operation in originals:
                     paid, applied = totals.get(row.id, (Decimal(0), Decimal(0)))
                     payment, returned_payment, remaining_payment = quantities(
                         row.payment_amount, paid, asset_definition(payment_asset)
@@ -246,7 +250,7 @@ class BusinessAllocationReturnReads(LedgerService):
                             document_id=row.document_id,
                             document_line_id=row.document_line_id,
                             document_asset_id=asset.asset_id,
-                            description=source.description,
+                            description=description,
                             payment_amount=payment,
                             document_amount=document,
                             returned_payment_amount=returned_payment,
