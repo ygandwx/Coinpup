@@ -43,7 +43,7 @@ def accrual(header, fact, prior, action):
     )
 
 
-def post(c, header, fact, row, fault=None):
+def post(c, header, fact, row, fault=None, *, kind="invoice"):
     common = dict(
         ledger_id=row["ledger_id"],
         operation_id=row["operation_id"],
@@ -56,7 +56,7 @@ def post(c, header, fact, row, fault=None):
                 id=row["operation_id"],
                 ledger_id=row["ledger_id"],
                 created_by=header["created_by"],
-                kind="income" if fault == "operation-kind" else "invoice_accrual",
+                kind="income" if fault == "operation-kind" else kind + "_accrual",
                 current_journal_id=row["journal_id"],
                 version=1,
             ),
