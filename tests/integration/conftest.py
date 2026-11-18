@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261110_0079",)
+        assert context.get_current_heads() == ("20261110_0080",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261110_0079",)
+        assert context.get_current_heads() == ("20261110_0080",)
 
 
 def confirmation_schema_migration():
@@ -187,13 +187,34 @@ def payment_confirmation_migration():
     )
 
 
-def document_accrual_member_migration():
+def document_accrual_fact_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261110_0080_document_accrual_posting_facts.py"
+        )
+    )
+
+
+def document_accrual_member_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261110_0078_document_accrual_members.py"
         )
     )
+
+    def upgrade():
+        frozen["upgrade"]()
+        # Recreating 0078's table during a historical probe also recreates its 0080 trigger.
+        trigger_function = "public.coinpup_check_document_accrual_facts()"
+        installed = op.get_bind().scalar(
+            text("SELECT to_regprocedure(:fn) IS NOT NULL"), {"fn": trigger_function}
+        )
+        if installed:
+            op.execute(document_accrual_fact_migration()["_TRIGGER"])
+
+    return frozen | {"upgrade": upgrade}
 
 
 def document_source_binding_migration():
@@ -1280,7 +1301,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0079",
+                    "20261110_0080",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -1291,7 +1312,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0079",
+                    "20261110_0080",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -1320,7 +1341,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261110_0079",
+                        "20261110_0080",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -1333,7 +1354,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261110_0079",
+                    "20261110_0080",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:
