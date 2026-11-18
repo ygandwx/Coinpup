@@ -37,10 +37,23 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
     )
     frozen = " ".join(migration["_SCHEMA_SQL"].split())
     for model in (BusinessCredit, BusinessCreditLine):
-        statements = [CreateTable(model.__table__)]
-        statements.extend(CreateIndex(index) for index in model.__table__.indexes)
+        table = model.__table__
+        original_fks = [
+            fk for fk in table.foreign_key_constraints if fk.name != "fk_credit_document_revision"
+        ]
+        statements = [CreateTable(table, include_foreign_key_constraints=original_fks)]
+        statements.extend(
+            CreateIndex(index)
+            for index in table.indexes
+            if index.name != "ix_credit_document_revision"
+        )
         for statement in statements:
-            assert " ".join(str(statement.compile(dialect=dialect())).split()) in frozen
+            sql = " ".join(str(statement.compile(dialect=dialect())).split())
+            if model is BusinessCredit and isinstance(statement, CreateTable):
+                # 0088 adds the reviewed version; 0037's original schema stays frozen.
+                assert "document_revision_id UUID, " in sql
+                sql = sql.replace("document_revision_id UUID, ", "")
+            assert sql in frozen
         assert model.__tablename__ in migration["_TABLES"]
         assert len(model.__tablename__) <= 32
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
@@ -49,5 +62,5 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
         elif isinstance(node, ast.Import):
             raise AssertionError("Migration imports runtime code")
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261110_0087"]
+    assert scripts.get_heads() == ["20261113_0088"]
     assert scripts.get_revision("20261021_0037").down_revision == "20261015_0036"

@@ -7,10 +7,12 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +24,18 @@ class BusinessCreditRevision(SettlementIdentity, Base):
     __tablename__ = "business_credit_revisions"
     __table_args__ = (
         *_identity("business_credit_revision"),
+        ForeignKeyConstraint(
+            ["document_revision_id", "ledger_id"],
+            ["business_document_revisions.id", "business_document_revisions.ledger_id"],
+            name="fk_credit_revision_document_revision",
+            ondelete="RESTRICT",
+        ),
+        Index(
+            "ix_credit_revision_document_revision",
+            "document_revision_id",
+            "ledger_id",
+            postgresql_where=text("document_revision_id IS NOT NULL"),
+        ),
         *_receipt("business_credit_revision"),
         UniqueConstraint(
             "id", "credit_id", "document_id", "ledger_id", name="uq_business_credit_revision_scope"
@@ -69,6 +83,7 @@ class BusinessCreditRevision(SettlementIdentity, Base):
         ),
     )
     credit_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    document_revision_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     document_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     group_version: Mapped[int] = mapped_column(Integer, nullable=False)
     previous_revision_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)

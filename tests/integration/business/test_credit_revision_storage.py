@@ -231,6 +231,8 @@ def test_empty_revision_round_trip_preserves_existing_credit_receipts_and_financ
                     "coinpup_validate_credit_posting_fact",
                     "coinpup_credit_posting_facts",
                     "coinpup_current_credit_lines",
+                    "coinpup_bind_credit_document_version",
+                    "coinpup_credit_document_sources",
                 )
             )
         ]
