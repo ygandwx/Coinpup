@@ -77,7 +77,8 @@ def copy_posting(connection, source_journal, values, *, reverse=False, line_chan
         copied = dict(line) | dict(id=uuid4(), journal_id=header["id"])
         if reverse:
             copied["amount"] = copied["amount"].copy_negate()
-        connection.execute(insert(JournalLine).values(**(copied | (line_changes or {}))))
+        changes = line_changes(copied) if callable(line_changes) else (line_changes or {})
+        connection.execute(insert(JournalLine).values(**(copied | changes)))
 
 
 def pending_fact(
@@ -157,10 +158,12 @@ def pending_origin(
     line_changes=None,
     receipt_changes=None,
     omit_receipt=False,
+    journal_line_changes=None,
+    identifier=None,
 ):
     lock_credit(connection, original)
     first = original.postings[0]
-    identifier, operation, journal = uuid4(), uuid4(), uuid4()
+    identifier, operation, journal = identifier or uuid4(), uuid4(), uuid4()
     header = (
         stored(connection, BusinessCredit, original.id)
         | dict(id=identifier, idempotency_key=str(identifier))
@@ -175,7 +178,12 @@ def pending_origin(
             )
         )
     )
-    copy_posting(connection, first.journal_id, dict(id=journal, operation_id=operation))
+    copy_posting(
+        connection,
+        first.journal_id,
+        dict(id=journal, operation_id=operation),
+        line_changes=journal_line_changes,
+    )
     row = dict(
         connection.execute(
             select(BusinessCreditLine.__table__).where(BusinessCreditLine.credit_id == original.id)
