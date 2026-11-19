@@ -24,6 +24,10 @@ from check_business_settlement_restore import seed_business_settlements, verify_
 from check_control_restore import seed_controls, verify_controls
 from check_credit_restore import seed_credits, verify_credits
 from check_credit_revision_restore import seed_credit_revisions, verify_credit_revisions
+from check_document_revision_restore import (
+    seed_document_revisions,
+    verify_document_revisions,
+)
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
@@ -389,6 +393,14 @@ def check_bundle_restore(source_url):
                 fictional_pdf("Fictional credit revision evidence 2026-11-04 USD 20.00"),
                 upload_fixture,
             )
+            document_revisions = seed_document_revisions(
+                engine,
+                owner,
+                service,
+                store,
+                fictional_pdf("Fictional complete document revision evidence"),
+                upload_fixture,
+            )
             duplicate = upload_fixture(
                 service, store, owner, ledger_a, pdf, "Fictional duplicate.pdf", operation.id
             )
@@ -462,9 +474,9 @@ def check_bundle_restore(source_url):
                     "Concurrent-upload snapshot exercise did not execute its late write."
                 )
             with verified_bundle(bundle) as (manifest, _dump, _blobs):
-                # Include the three separate revision PDFs and ledger-scoped bank copies.
-                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 8.")
-                if len(manifest["blobs"]) != 8 or manifest["stored_files"] != [
+                # Include revision PDFs, both document histories and ledger-scoped bank copies.
+                print(f"Fictional bundle blob count: {len(manifest['blobs'])}; expected 10.")
+                if len(manifest["blobs"]) != 10 or manifest["stored_files"] != [
                     row[0]
                     for row in sorted(
                         before["stored_files"],
@@ -492,6 +504,7 @@ def check_bundle_restore(source_url):
             verify_return_revisions(restored_engine, return_revisions)
             verify_credits(restored_engine, business_credits)
             verify_credit_revisions(restored_engine, credit_revisions)
+            verify_document_revisions(restored_engine, document_revisions)
             verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
@@ -503,6 +516,7 @@ def check_bundle_restore(source_url):
                 duplicate,
                 *payment_evidence["originals"],
                 *credit_revisions["originals"],
+                *document_revisions["originals"],
                 *refund_revisions["originals"],
                 return_revisions["attachment"],
             ):
@@ -577,6 +591,10 @@ def check_bundle_restore(source_url):
             )
             print("Isolated test databases retained; no DROP or production cutover ran.")
             print("OCR queue intent/completion replay and independent human edit restored exactly.")
+            print(
+                "Whole-document original201, each fixed200, BTC/ETH versions and retired accrual "
+                "PDFs restored; archived/closed replay changes no table or private file."
+            )
             print(
                 "Actual same/cross-asset refunds, explicit returns, fees and exhausted principal "
                 "restored; closed/archived original v2 replay changes no table or change page."
