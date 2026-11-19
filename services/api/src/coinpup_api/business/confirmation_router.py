@@ -19,6 +19,7 @@ from coinpup_api.business.confirmation_schemas import (
 )
 from coinpup_api.business.confirmations import BusinessConfirmationService
 from coinpup_api.business.document_current import BusinessDocumentCurrentReads, DocumentCurrent
+from coinpup_api.business.document_history import BusinessDocumentHistory, DocumentHistoryEntry
 from coinpup_api.business.document_revision_receipt import DocumentRevisionResponse
 from coinpup_api.business.document_revision_schemas import (
     ConfirmedDocumentCancellation,
@@ -34,6 +35,7 @@ def create_business_confirmation_router(settings, engine):
     service, reads = BusinessConfirmationService(engine), BusinessConfirmationReads(engine)
     revisions = BusinessDocumentRevisionService(engine)
     current_reads = BusinessDocumentCurrentReads(engine)
+    history = BusinessDocumentHistory(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -126,6 +128,27 @@ def create_business_confirmation_router(settings, engine):
             idempotency_key,
             raw_body=raw_body,
         )
+
+    @router.get(
+        "/business-documents/{document_id}/history", response_model=list[DocumentHistoryEntry]
+    )
+    def list_history(
+        ledger_id: UUID,
+        document_id: UUID,
+        identity: reader,
+        limit: page_size = 100,
+        offset: page_offset = 0,
+    ):
+        return execute(
+            history.list_history, identity.id, ledger_id, document_id, limit=limit, offset=offset
+        )
+
+    @router.get(
+        "/business-documents/{document_id}/revisions/{revision_id}",
+        response_model=DocumentRevisionResponse,
+    )
+    def get_revision(ledger_id: UUID, document_id: UUID, revision_id: UUID, identity: reader):
+        return execute(history.get_revision, identity.id, ledger_id, document_id, revision_id)
 
     @router.get("/business-documents/{document_id}/current", response_model=DocumentCurrent)
     def get_current(ledger_id: UUID, document_id: UUID, identity: reader):

@@ -18,6 +18,7 @@ from coinpup_api.business.credit_schemas import BusinessCreditCreate
 from coinpup_api.business.credits import BusinessCreditService
 from coinpup_api.business.document_current import BusinessDocumentCurrentReads
 from coinpup_api.business.document_fixed_receipts import fixed_document_response
+from coinpup_api.business.document_history import BusinessDocumentHistory
 from coinpup_api.business.document_revision_schemas import (
     ConfirmedDocumentCancellation,
     ConfirmedDocumentCorrection,
@@ -82,6 +83,13 @@ def observations(engine, owner, case):
         ).all()
         return dict(
             current_api=BusinessDocumentCurrentReads(engine).current(owner, ledger, identifier),
+            history_api=BusinessDocumentHistory(engine).list_history(owner, ledger, identifier),
+            revision_api=[
+                BusinessDocumentHistory(engine).get_revision(
+                    owner, ledger, identifier, row["result"].revision_id
+                )
+                for row in case["revisions"]
+            ],
             version=now.version,
             cancelled=now.document is None,
             details=details,

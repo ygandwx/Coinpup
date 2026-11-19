@@ -813,6 +813,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List History */
+        get: operations["list_history_api_v1_ledgers__ledger_id__business_documents__document_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/revisions/{revision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Revision */
+        get: operations["get_revision_api_v1_ledgers__ledger_id__business_documents__document_id__revisions__revision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/settlement": {
         parameters: {
             query?: never;
@@ -4438,6 +4472,29 @@ export interface components {
              * Format: uuid
              */
             source_line_id: string;
+        };
+        /** DocumentHistoryEntry */
+        DocumentHistoryEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "confirm" | "correct" | "cancel";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Previous Line Count */
+            previous_line_count: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Replacement Line Count */
+            replacement_line_count: number | null;
+            /** Revision Id */
+            revision_id: string | null;
+            /** Version */
+            version: number;
         };
         /** DocumentReceiptGroup */
         DocumentReceiptGroup: {
@@ -8885,6 +8942,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentCurrent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_history_api_v1_ledgers__ledger_id__business_documents__document_id__history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentHistoryEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_revision_api_v1_ledgers__ledger_id__business_documents__document_id__revisions__revision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRevisionResponse"];
                 };
             };
             /** @description Validation Error */
