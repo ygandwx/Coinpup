@@ -34,6 +34,9 @@ export type FrozenDocumentRevision = Readonly<{
     bodyJson: string;
     reviewedJson: string;
 }>;
+export function isDocumentRevisionPlan(value: unknown): value is FrozenDocumentRevision {
+    return record(value) && (value.action === "correct" || value.action === "cancel");
+}
 const version = (v: unknown): v is number =>
     Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= 2147483647;
 const text = (v: unknown, limit: number, nonempty = false): v is string =>

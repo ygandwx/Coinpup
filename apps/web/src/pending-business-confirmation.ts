@@ -10,6 +10,12 @@ import type {
 import type { Asset } from "./ledger-api";
 import { parseAmount } from "./money";
 import type { PendingStatus } from "./pending-command";
+import { cancelDocument, correctDocument } from "./document-revision-api";
+import type { DocumentRevisionReceipt } from "./document-revision-api";
+import { isDocumentRevisionPlan, validDocumentRevisionReview } from "./document-revision-intent";
+import type { DocumentRevisionInput, FrozenDocumentRevision } from "./document-revision-intent";
+import { validDocumentRevisionReceipt } from "./document-revision-receipt";
+import type { DeepReadonly } from "./settlement-intent";
 
 type Member = Readonly<{ line_id: string; line_no: number }>;
 type Receipt = Readonly<Omit<BusinessConfirmationReceipt, "postings">> & {
@@ -26,20 +32,33 @@ export type FrozenBusinessConfirmation = Readonly<{
 }>;
 export type BusinessConfirmationSnapshot = Readonly<{
     status: PendingStatus;
-    plan: FrozenBusinessConfirmation | null;
+    plan: FrozenBusinessConfirmation | FrozenDocumentRevision | null;
     receipt: Receipt | null;
+    revisionReceipt: DeepReadonly<DocumentRevisionReceipt> | null;
     error: ApiError | null;
 }>;
-type Transport = (session: Session, plan: FrozenBusinessConfirmation) => Promise<unknown>;
+type Transport = (
+    session: Session,
+    plan: FrozenBusinessConfirmation | FrozenDocumentRevision,
+) => Promise<unknown>;
 type ReadVersion = (ledgerId: string, documentId: string) => Promise<unknown>;
-const transport: Transport = (session, plan) =>
-    confirmBusinessDocument(
+const transport: Transport = (session, plan) => {
+    if (isDocumentRevisionPlan(plan))
+        return (plan.action === "correct" ? correctDocument : cancelDocument)(
+            session.csrf_token,
+            plan.ledgerId,
+            plan.documentId,
+            JSON.parse(plan.bodyJson),
+            plan.key,
+        );
+    return confirmBusinessDocument(
         session.csrf_token,
         plan.ledgerId,
         plan.documentId,
         JSON.parse(plan.bodyJson),
         plan.key,
     );
+};
 const readVersion: ReadVersion = async (ledgerId, documentId) => {
     try {
         return await getBusinessDraft(ledgerId, documentId);
@@ -49,7 +68,24 @@ const readVersion: ReadVersion = async (ledgerId, documentId) => {
     }
 };
 const idle = (): BusinessConfirmationSnapshot =>
-    Object.freeze({ status: "idle", plan: null, receipt: null, error: null });
+    Object.freeze({
+        status: "idle",
+        plan: null,
+        receipt: null,
+        revisionReceipt: null,
+        error: null,
+    });
+function freezeRevision(value: DocumentRevisionReceipt): DeepReadonly<DocumentRevisionReceipt> {
+    const copy = JSON.parse(JSON.stringify(value)) as DocumentRevisionReceipt;
+    const freeze = (node: unknown): void => {
+        if (node !== null && typeof node === "object") {
+            Object.values(node).forEach(freeze);
+            Object.freeze(node);
+        }
+    };
+    freeze(copy);
+    return copy;
+}
 const uuid = (value: unknown): value is string =>
     typeof value === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(value);
@@ -180,7 +216,7 @@ export class PendingBusinessConfirmationController {
     private publish(next = this.state): void {
         this.state = Object.freeze(next);
         this.visible =
-            this.owner === null && next.plan
+            (this.owner === null && next.plan) || next.status === "auth-required"
                 ? Object.freeze({ ...idle(), status: "auth-required" })
                 : this.state;
         for (const listener of [...this.listeners]) listener();
@@ -234,7 +270,7 @@ export class PendingBusinessConfirmationController {
                 expected_version: document.version,
             };
             this.uncertain = false;
-            this.publish({
+            this.state = Object.freeze({
                 ...idle(),
                 plan: Object.freeze({
                     ownerId: this.owner!,
@@ -255,6 +291,41 @@ export class PendingBusinessConfirmationController {
             );
         }
     }
+    startRevision(
+        session: Session,
+        ledgerId: string,
+        documentId: string,
+        input: DocumentRevisionInput,
+        reviewed: unknown,
+    ): Promise<void> {
+        try {
+            this.authorized(session);
+            if (this.flight || !["idle", "confirmed", "rejected"].includes(this.state.status))
+                throw new ApiError("server", null, "pending_confirmation_unresolved");
+            if (!validDocumentRevisionReview(ledgerId, documentId, input, reviewed))
+                throw new ApiError("server", null, "invalid_document_revision_intent");
+            this.uncertain = false;
+            this.state = Object.freeze({
+                ...idle(),
+                plan: Object.freeze({
+                    ownerId: this.owner!,
+                    ledgerId,
+                    documentId,
+                    action: input.action,
+                    key: crypto.randomUUID(),
+                    bodyJson: JSON.stringify(input.body),
+                    reviewedJson: JSON.stringify(reviewed),
+                }),
+            });
+            return this.send(session);
+        } catch (error) {
+            return Promise.reject(
+                error instanceof ApiError
+                    ? error
+                    : new ApiError("server", null, "invalid_document_revision_intent"),
+            );
+        }
+    }
     retry(session: Session): Promise<void> {
         try {
             this.authorized(session);
@@ -272,7 +343,6 @@ export class PendingBusinessConfirmationController {
     private send(session: Session): Promise<void> {
         const generation = this.generation,
             plan = this.state.plan!;
-        this.publish({ ...this.state, status: "submitting", error: null });
         const flight = Promise.resolve().then(async () => {
             try {
                 if (generation !== this.generation) return;
@@ -282,25 +352,39 @@ export class PendingBusinessConfirmationController {
                 }
                 const result = await this.io(session, plan);
                 if (generation !== this.generation) return;
-                if (!valid(result, plan)) throw new ApiError("server", 201, "invalid_response");
+                let saved: Pick<BusinessConfirmationSnapshot, "receipt" | "revisionReceipt">;
+                if (isDocumentRevisionPlan(plan)) {
+                    if (!validDocumentRevisionReceipt(result, plan))
+                        throw new ApiError("server", 200, "invalid_response");
+                    saved = { receipt: null, revisionReceipt: freezeRevision(result) };
+                } else {
+                    if (!valid(result, plan)) throw new ApiError("server", 201, "invalid_response");
+                    saved = {
+                        revisionReceipt: null,
+                        receipt: Object.freeze({
+                            ...result,
+                            postings: Object.freeze(
+                                result.postings.map((row) => Object.freeze({ ...row })),
+                            ),
+                        }),
+                    };
+                }
                 this.uncertain = false;
                 this.publish({
                     ...this.state,
                     status: "confirmed",
-                    receipt: Object.freeze({
-                        ...result,
-                        postings: Object.freeze(
-                            result.postings.map((row) => Object.freeze({ ...row })),
-                        ),
-                    }),
+                    ...saved,
                 });
             } catch (caught) {
                 if (generation !== this.generation) return;
                 const error = caught instanceof ApiError ? caught : new ApiError("network");
                 let status: PendingStatus;
-                if (error.kind === "unauthorized") status = "auth-required";
-                else if (error.code === "idempotency_conflict") status = "idempotency-conflict";
+                if (error.kind === "unauthorized") {
+                    status = "auth-required";
+                    if (isDocumentRevisionPlan(plan)) this.uncertain = true;
+                } else if (error.code === "idempotency_conflict") status = "idempotency-conflict";
                 else if (
+                    !isDocumentRevisionPlan(plan) &&
                     this.uncertain &&
                     error.status === 409 &&
                     ["version_conflict", "document_confirmed"].includes(error.code ?? "")
@@ -343,6 +427,7 @@ export class PendingBusinessConfirmationController {
             }
         });
         this.flight = flight;
+        this.publish({ ...this.state, status: "submitting", error: null });
         return flight;
     }
 }
