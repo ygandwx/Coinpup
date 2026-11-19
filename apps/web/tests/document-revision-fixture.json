@@ -1,0 +1,376 @@
+{
+  "input": {
+    "action": "correct",
+    "body": {
+      "expected_version": 9,
+      "reason": "  Fictional corrected document",
+      "replacement": {
+        "document_kind": "bill",
+        "party_id": "00000000-0000-0000-0000-000000000001",
+        "asset_id": "EUR",
+        "issue_date": "2026-10-11",
+        "due_date": "2026-11-01",
+        "notes": null,
+        "lines": [
+          {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "description": "  Fictional 经营项目\u001c",
+            "quantity": "1",
+            "unit_price": "2.00",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-12-03"
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000005",
+            "description": "Fictional 经营项目",
+            "quantity": "1",
+            "unit_price": "2.00",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-12-03"
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000006",
+            "description": "Fictional 经营项目",
+            "quantity": "1",
+            "unit_price": "2.00",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-12-03"
+          }
+        ],
+        "reviewed_references": []
+      }
+    }
+  },
+  "review": {
+    "current": {
+      "ledger_id": "00000000-0000-0000-0000-000000000007",
+      "document_id": "00000000-0000-0000-0000-000000000008",
+      "confirmation_id": "00000000-0000-0000-0000-000000000009",
+      "document_kind": "bill",
+      "version": 9,
+      "status": "active",
+      "revision_id": "00000000-0000-0000-0000-000000000010",
+      "document": {
+        "version": 9,
+        "created_at": "2026-10-11T00:00:00Z",
+        "updated_at": "2026-10-11T00:00:00Z",
+        "document_kind": "bill",
+        "party_id": "00000000-0000-0000-0000-000000000001",
+        "asset_id": "USD",
+        "issue_date": "2026-10-11",
+        "due_date": "2026-11-01",
+        "notes": null,
+        "id": "00000000-0000-0000-0000-000000000008",
+        "ledger_id": "00000000-0000-0000-0000-000000000007",
+        "state": "confirmed",
+        "archived": false,
+        "issuer_snapshot": {
+          "name": "Fictional issuer"
+        },
+        "party_snapshot": {
+          "name": "Fictional party"
+        },
+        "line_count": 3,
+        "net_amount": "4",
+        "tax_amount": "0",
+        "total_amount": "4",
+        "confirmation_id": "00000000-0000-0000-0000-000000000009",
+        "confirmed_at": "2026-10-11T00:00:00Z",
+        "lines": [
+          {
+            "version": 4,
+            "created_at": "2026-10-11T00:00:00Z",
+            "updated_at": "2026-10-11T00:00:00Z",
+            "id": "00000000-0000-0000-0000-000000000006",
+            "description": "Fictional 经营项目",
+            "quantity": "1",
+            "unit_price": "1",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-09-01",
+            "document_id": "00000000-0000-0000-0000-000000000008",
+            "ledger_id": "00000000-0000-0000-0000-000000000007",
+            "line_no": 2,
+            "asset_id": "USD",
+            "category_kind": "expense",
+            "archived": false,
+            "category_snapshot": {
+              "name": "Fictional category"
+            },
+            "project_snapshot": {
+              "name": "Fictional project"
+            },
+            "net_amount": "1",
+            "tax_amount": "0",
+            "total_amount": "1"
+          },
+          {
+            "version": 4,
+            "created_at": "2026-10-11T00:00:00Z",
+            "updated_at": "2026-10-11T00:00:00Z",
+            "id": "00000000-0000-0000-0000-000000000005",
+            "description": "Fictional 经营项目",
+            "quantity": "1",
+            "unit_price": "0",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-09-02",
+            "document_id": "00000000-0000-0000-0000-000000000008",
+            "ledger_id": "00000000-0000-0000-0000-000000000007",
+            "line_no": 5,
+            "asset_id": "USD",
+            "category_kind": "expense",
+            "archived": false,
+            "category_snapshot": {
+              "name": "Fictional category"
+            },
+            "project_snapshot": {
+              "name": "Fictional project"
+            },
+            "net_amount": "0",
+            "tax_amount": "0",
+            "total_amount": "0"
+          },
+          {
+            "version": 4,
+            "created_at": "2026-10-11T00:00:00Z",
+            "updated_at": "2026-10-11T00:00:00Z",
+            "id": "00000000-0000-0000-0000-000000000002",
+            "description": "Fictional 经营项目",
+            "quantity": "1",
+            "unit_price": "3",
+            "discount_amount": "0",
+            "tax_rate_percent": "0",
+            "category_id": "00000000-0000-0000-0000-000000000003",
+            "project_id": "00000000-0000-0000-0000-000000000004",
+            "recognition_date": "2026-09-03",
+            "document_id": "00000000-0000-0000-0000-000000000008",
+            "ledger_id": "00000000-0000-0000-0000-000000000007",
+            "line_no": 8,
+            "asset_id": "USD",
+            "category_kind": "expense",
+            "archived": false,
+            "category_snapshot": {
+              "name": "Fictional category"
+            },
+            "project_snapshot": {
+              "name": "Fictional project"
+            },
+            "net_amount": "3",
+            "tax_amount": "0",
+            "total_amount": "3"
+          }
+        ]
+      },
+      "postings": [
+        {
+          "operation_id": "00000000-0000-0000-0000-000000000011",
+          "operation_version": 3,
+          "journal_id": "00000000-0000-0000-0000-000000000012",
+          "source_line_id": "00000000-0000-0000-0000-000000000006"
+        },
+        {
+          "operation_id": "00000000-0000-0000-0000-000000000013",
+          "operation_version": 3,
+          "journal_id": "00000000-0000-0000-0000-000000000014",
+          "source_line_id": "00000000-0000-0000-0000-000000000002"
+        }
+      ]
+    },
+    "oldAsset": {
+      "code": "USD",
+      "kind": "fiat",
+      "scale": 2,
+      "network": null,
+      "token_reference": null,
+      "enabled": true,
+      "asset_id": "USD"
+    },
+    "newAsset": {
+      "code": "EUR",
+      "kind": "fiat",
+      "scale": 2,
+      "network": null,
+      "token_reference": null,
+      "enabled": true,
+      "asset_id": "EUR"
+    },
+    "references": []
+  },
+  "receipt": {
+    "kind": "business_document_revision",
+    "ledger_id": "00000000-0000-0000-0000-000000000007",
+    "confirmation_id": "00000000-0000-0000-0000-000000000009",
+    "document_id": "00000000-0000-0000-0000-000000000008",
+    "revision_id": "00000000-0000-0000-0000-000000000015",
+    "previous_version": 9,
+    "version": 10,
+    "action": "correct",
+    "reason": "Fictional corrected document",
+    "previous": {
+      "document_kind": "bill",
+      "party_id": "00000000-0000-0000-0000-000000000001",
+      "asset_id": "USD",
+      "issue_date": "2026-10-11",
+      "due_date": "2026-11-01",
+      "notes": null,
+      "lines": [
+        {
+          "id": "00000000-0000-0000-0000-000000000006",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "1",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-09-01",
+          "line_no": 2,
+          "net_amount": "1",
+          "tax_amount": "0",
+          "total_amount": "1",
+          "posting": {
+            "operation_id": "00000000-0000-0000-0000-000000000011",
+            "operation_version": 3,
+            "journal_id": "00000000-0000-0000-0000-000000000012"
+          }
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000005",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "0",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-09-02",
+          "line_no": 5,
+          "net_amount": "0",
+          "tax_amount": "0",
+          "total_amount": "0",
+          "posting": null
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000002",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "3",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-09-03",
+          "line_no": 8,
+          "net_amount": "3",
+          "tax_amount": "0",
+          "total_amount": "3",
+          "posting": {
+            "operation_id": "00000000-0000-0000-0000-000000000013",
+            "operation_version": 3,
+            "journal_id": "00000000-0000-0000-0000-000000000014"
+          }
+        }
+      ],
+      "net_amount": "4",
+      "tax_amount": "0",
+      "total_amount": "4"
+    },
+    "replacement": {
+      "document_kind": "bill",
+      "party_id": "00000000-0000-0000-0000-000000000001",
+      "asset_id": "EUR",
+      "issue_date": "2026-10-11",
+      "due_date": "2026-11-01",
+      "notes": null,
+      "lines": [
+        {
+          "id": "00000000-0000-0000-0000-000000000002",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "2.00",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-12-03",
+          "line_no": 1,
+          "net_amount": "2.00",
+          "tax_amount": "0.00",
+          "total_amount": "2.00",
+          "posting": {
+            "operation_id": "00000000-0000-0000-0000-000000000013",
+            "operation_version": 4,
+            "journal_id": "00000000-0000-0000-0000-000000000016"
+          }
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000005",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "2.00",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-12-03",
+          "line_no": 2,
+          "net_amount": "2.00",
+          "tax_amount": "0.00",
+          "total_amount": "2.00",
+          "posting": {
+            "operation_id": "00000000-0000-0000-0000-000000000017",
+            "operation_version": 1,
+            "journal_id": "00000000-0000-0000-0000-000000000018"
+          }
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000006",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "2.00",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000003",
+          "project_id": "00000000-0000-0000-0000-000000000004",
+          "recognition_date": "2026-12-03",
+          "line_no": 3,
+          "net_amount": "2.00",
+          "tax_amount": "0.00",
+          "total_amount": "2.00",
+          "posting": {
+            "operation_id": "00000000-0000-0000-0000-000000000011",
+            "operation_version": 4,
+            "journal_id": "00000000-0000-0000-0000-000000000019"
+          }
+        }
+      ],
+      "net_amount": "6.00",
+      "tax_amount": "0.00",
+      "total_amount": "6.00"
+    },
+    "reversals": [
+      {
+        "source_line_id": "00000000-0000-0000-0000-000000000006",
+        "journal_id": "00000000-0000-0000-0000-000000000020"
+      },
+      {
+        "source_line_id": "00000000-0000-0000-0000-000000000002",
+        "journal_id": "00000000-0000-0000-0000-000000000021"
+      }
+    ]
+  }
+}
