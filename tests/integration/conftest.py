@@ -1529,9 +1529,10 @@ def structure_database(request):
     def cleanup():
         with database.engine.begin() as connection:
             # Only this explicitly opted-in disposable fixture may truncate immutable journals.
-            # RESTRICT rejects unexpected dependants; production utilities never do this.
-            connection.exec_driver_sql(
-                "TRUNCATE TABLE change_log, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
+            # Keep foreign-key-connected tables together and skip completely empty groups.
+            truncate_groups = (
+                "change_log",
+                "ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
                 "business_document_accruals, business_document_revision_lines, "
                 "business_document_revisions, "
@@ -1543,14 +1544,29 @@ def structure_database(request):
                 "business_refund_returns, business_refunds, "
                 "business_allocation_return_lines, business_allocation_returns, "
                 "business_allocation_lines, business_allocations, business_payments, "
-                "reminder_delivery_revisions, reminder_delivery_configs, "
-                "reminder_event_revisions, reminder_events, "
                 "recurring_invoice_instances, recurring_invoice_rules, "
                 "command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations, account_assets, accounts, business_document_lines, "
-                "business_documents, business_parties, business_projects, ledger_period_receipts, "
-                "ledger_period_audits, ledger_periods RESTRICT"
+                "business_documents, business_parties, business_projects",
+                "reminder_delivery_revisions, reminder_delivery_configs, "
+                "reminder_event_revisions, reminder_events",
+                "ledger_period_receipts, ledger_period_audits, ledger_periods",
             )
+            # Protect the emptiness checks with the same locks held by the original cleanup.
+            connection.exec_driver_sql(
+                f"LOCK TABLE {', '.join(truncate_groups)} IN ACCESS EXCLUSIVE MODE"
+            )
+            probes = []
+            for group in truncate_groups:
+                rows = " UNION ALL ".join(f"SELECT 1 FROM {table}" for table in group.split(", "))
+                probes.append(f"EXISTS ({rows})")
+            occupied = connection.exec_driver_sql(f"SELECT {', '.join(probes)}").one()
+            tables = [
+                group for group, has_rows in zip(truncate_groups, occupied, strict=True) if has_rows
+            ]
+            if tables:
+                # RESTRICT continues to reject unexpected dependants of every truncated table.
+                connection.exec_driver_sql(f"TRUNCATE TABLE {', '.join(tables)} RESTRICT")
             connection.execute(delete(AccountAsset))
             connection.execute(delete(Account))
             # Delete leaves first; the immutable-parent rule makes every valid graph acyclic.
@@ -1565,7 +1581,7 @@ def structure_database(request):
             connection.execute(delete(AuthSession))
             connection.execute(delete(Administrator))
             # No owner remains: the normal asset change trigger ignores these bootstrap updates.
-            # The first RESTRICT truncation above already removed every stored notification.
+            # The initial cleanup already removed every stored notification.
             connection.execute(
                 update(AssetRecord)
                 .where((AssetRecord.enabled.is_(False)) | (AssetRecord.version != 1))
