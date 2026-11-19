@@ -6,8 +6,8 @@ from uuid import uuid4
 
 from sqlalchemy import func, insert, select
 
-from coinpup_api.business.allocation_return_sources import require_current
 from coinpup_api.business.confirmations import confirmed_reference_rows
+from coinpup_api.business.credit_command_sources import current_credit_sources
 from coinpup_api.business.credit_plan import CreditSource, plan_credit_line
 from coinpup_api.business.credit_revision_current import read_current_credit
 from coinpup_api.business.credit_revision_hash import credit_revision_hash_v2
@@ -15,7 +15,7 @@ from coinpup_api.business.credit_revision_member_models import BusinessCreditRev
 from coinpup_api.business.credit_revision_models import BusinessCreditRevision
 from coinpup_api.business.credit_revision_receipts import replay_revision, response_from_rows
 from coinpup_api.business.credit_revision_rows import prepare_credit_revision_rows
-from coinpup_api.business.credits import BusinessCreditService
+from coinpup_api.business.document_revision_versions import read_confirmed_document_version
 from coinpup_api.business.settlement_totals import document_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
@@ -73,14 +73,17 @@ class BusinessCreditRevisionService(BalanceQueries, PostingCore):
             sources, controls = {}, {}
             assets = {line.asset_id for original in current.originals for line in original.lines}
             if replacement is not None:
-                if document.state != "confirmed":
-                    raise _not_found()
-                _version(document, current.credit.source_version)
+                effective = read_confirmed_document_version(session, ledger_id, document.id)
+                document = effective.document
+                if document is None:
+                    raise LedgerError(
+                        "document_cancelled", 409, "A cancelled document is terminal."
+                    )
                 if replacement.credit_date < document.issue_date:
                     raise LedgerError(
                         "credit_date", 422, "Credit cannot precede the original issue date."
                     )
-                sources = BusinessCreditService._sources(session, ledger_id, document, replacement)
+                sources = current_credit_sources(session, ledger_id, effective, replacement)
                 confirmed_reference_rows(
                     session, ledger_id, document, [source[0] for source in sources.values()]
                 )
@@ -128,6 +131,7 @@ class BusinessCreditRevisionService(BalanceQueries, PostingCore):
                         replacement,
                         sources,
                         catalog[document.asset_id],
+                        document,
                     )
                     if replacement is not None
                     else {}
@@ -178,18 +182,12 @@ class BusinessCreditRevisionService(BalanceQueries, PostingCore):
             return result
 
 
-def _plans(session, ledger_id, current, replacement, sources, asset):
+def _plans(session, ledger_id, current, replacement, sources, asset, document):
     totals = document_totals(session, ledger_id, sources)
     old = {fact["source_line_id"]: fact for fact in current.facts}
     result = {}
     for requested in replacement.lines:
-        row, original, operation = sources[requested.source_line_id]
-        require_current(
-            operation,
-            1,
-            original.journal_id,
-            "invoice_accrual" if current.document.document_kind == "invoice" else "bill_accrual",
-        )
+        row, _, _ = sources[requested.source_line_id]
         used, net, tax = (
             Amount.from_decimal(value, asset)
             for value in totals.get(row.id, (Decimal(0), Decimal(0), Decimal(0)))
@@ -209,9 +207,9 @@ def _plans(session, ledger_id, current, replacement, sources, asset):
             raise MoneyError("credit_integrity", "The stored source capacity is inconsistent.")
         source = CreditSource(
             ledger_id,
-            current.document.id,
+            document.id,
             row.id,
-            current.document.document_kind,
+            document.document_kind,
             row.category_id,
             row.project_id,
             Amount.from_decimal(row.net_amount, asset),

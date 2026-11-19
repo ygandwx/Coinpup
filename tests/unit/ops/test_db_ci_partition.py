@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from itertools import chain
 from pathlib import Path
 
 import pytest
@@ -313,22 +314,31 @@ def test_rebalanced_complete_modules_execute_each_case_once_in_three_real_proces
     (tmp_path / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
-    for name in ("boundaries", "history", "current", "reads", "lifecycle"):
-        (folder / f"test_credit_revision_{name}.py").write_text(
+    expected_modules = (
+        ("test_credit_revision_history", "test_document_allocation_native"),
+        (
+            "test_credit_revision_reads",
+            "test_credit_revision_current",
+            "test_credit_versioned_corrections",
+        ),
+        ("test_credit_revision_boundaries", "test_credit_revision_lifecycle"),
+    )
+    for name in chain.from_iterable(expected_modules):
+        (folder / f"{name}.py").write_text(
             "import pytest\n"
             "@pytest.mark.integration\n"
             "@pytest.mark.parametrize('members', [1, 200])\n"
             "def test_complete(members): assert members in (1, 200)\n"
         )
     paths = []
-    for part, names in enumerate((("history",), ("reads", "current"), ("boundaries", "lifecycle"))):
+    for part, names in enumerate(expected_modules):
         result, path = run_part(tmp_path, part)
         assert result.returncode == 0, result.stdout + result.stderr
         report = json.loads(path.read_text())
         selected = check_part(report, part, SHA)
-        assert len(report["manifest"]) == 10 and len(selected) == 2 * len(names)
+        assert len(report["manifest"]) == 14 and len(selected) == 2 * len(names)
         assert {node.split("::")[0] for node in selected} == {
-            f"tests/integration/business/test_credit_revision_{name}.py" for name in names
+            f"tests/integration/business/{name}.py" for name in names
         }
         paths.append(path)
     assert aggregate(paths).returncode == 0
