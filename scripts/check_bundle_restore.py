@@ -593,7 +593,8 @@ def check_bundle_restore(source_url):
             print("OCR queue intent/completion replay and independent human edit restored exactly.")
             print(
                 "Whole-document original201, each fixed200, BTC/ETH versions and retired accrual "
-                "PDFs restored; archived/closed replay changes no table or private file."
+                "PDFs restored; version-bound credit201/200, current groups and history replay "
+                "after archive/closure without changing any table or private file."
             )
             print(
                 "Actual same/cross-asset refunds, explicit returns, fees and exhausted principal "
