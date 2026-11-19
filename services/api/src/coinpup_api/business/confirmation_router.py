@@ -18,6 +18,7 @@ from coinpup_api.business.confirmation_schemas import (
     BusinessConfirmationResponse,
 )
 from coinpup_api.business.confirmations import BusinessConfirmationService
+from coinpup_api.business.document_current import BusinessDocumentCurrentReads, DocumentCurrent
 from coinpup_api.business.document_revision_receipt import DocumentRevisionResponse
 from coinpup_api.business.document_revision_schemas import (
     ConfirmedDocumentCancellation,
@@ -32,6 +33,7 @@ def create_business_confirmation_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business confirmations"])
     service, reads = BusinessConfirmationService(engine), BusinessConfirmationReads(engine)
     revisions = BusinessDocumentRevisionService(engine)
+    current_reads = BusinessDocumentCurrentReads(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -124,6 +126,11 @@ def create_business_confirmation_router(settings, engine):
             idempotency_key,
             raw_body=raw_body,
         )
+
+    @router.get("/business-documents/{document_id}/current", response_model=DocumentCurrent)
+    def get_current(ledger_id: UUID, document_id: UUID, identity: reader):
+        """Read the complete current facts; this snapshot cannot confirm an unknown command."""
+        return execute(current_reads.current, identity.id, ledger_id, document_id)
 
     @router.get(
         "/business-documents/{document_id}/confirmation", response_model=BusinessConfirmationDetail

@@ -5583,6 +5583,125 @@
         "title": "DocumentAccrualReversal",
         "type": "object"
       },
+      "DocumentCurrent": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation_id": {
+            "format": "uuid",
+            "title": "Confirmation Id",
+            "type": "string"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessConfirmedDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentCurrentPosting"
+            },
+            "maxItems": 200,
+            "title": "Postings",
+            "type": "array"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "document_id",
+          "confirmation_id",
+          "document_kind",
+          "version",
+          "status",
+          "revision_id",
+          "document",
+          "postings"
+        ],
+        "title": "DocumentCurrent",
+        "type": "object"
+      },
+      "DocumentCurrentPosting": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "operation_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "operation_version",
+          "journal_id",
+          "source_line_id"
+        ],
+        "title": "DocumentCurrentPosting",
+        "type": "object"
+      },
       "DocumentReceiptGroup": {
         "additionalProperties": false,
         "properties": {
@@ -15345,6 +15464,60 @@
         "summary": "Capacity",
         "tags": [
           "business settlements"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/current": {
+      "get": {
+        "description": "Read the complete current facts; this snapshot cannot confirm an unknown command.",
+        "operationId": "get_current_api_v1_ledgers__ledger_id__business_documents__document_id__current_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCurrent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Current",
+        "tags": [
+          "business confirmations"
         ]
       }
     },

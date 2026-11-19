@@ -793,6 +793,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current
+         * @description Read the complete current facts; this snapshot cannot confirm an unknown command.
+         */
+        get: operations["get_current_api_v1_ledgers__ledger_id__business_documents__document_id__current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/settlement": {
         parameters: {
             query?: never;
@@ -4358,6 +4378,61 @@ export interface components {
              * Format: uuid
              */
             journal_id: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+        };
+        /** DocumentCurrent */
+        DocumentCurrent: {
+            /**
+             * Confirmation Id
+             * Format: uuid
+             */
+            confirmation_id: string;
+            document: components["schemas"]["BusinessConfirmedDocument"] | null;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Postings */
+            postings: components["schemas"]["DocumentCurrentPosting"][];
+            /** Revision Id */
+            revision_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /** Version */
+            version: number;
+        };
+        /** DocumentCurrentPosting */
+        DocumentCurrentPosting: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
             /**
              * Source Line Id
              * Format: uuid
@@ -8778,6 +8853,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreditCapacity"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_api_v1_ledgers__ledger_id__business_documents__document_id__current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCurrent"];
                 };
             };
             /** @description Validation Error */
