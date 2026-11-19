@@ -32,7 +32,7 @@ function snapshotFor(
     return value.kind === kind || (!identified && !Object.hasOwn(value, "kind"));
 }
 
-function assetIdentity(asset: Asset | undefined, id: unknown): asset is Asset {
+export function validDocumentAsset(asset: Asset | undefined, id: unknown): asset is Asset {
     return (
         !!asset &&
         record(asset) &&
@@ -110,7 +110,7 @@ export function validDocumentCurrent(
             d.state !== "confirmed" ||
             d.archived !== false ||
             !uuid(d.party_id) ||
-            !assetIdentity(asset, d.asset_id) ||
+            !validDocumentAsset(asset, d.asset_id) ||
             !date(d.issue_date) ||
             (d.due_date !== null && !date(d.due_date)) ||
             !nullableText(d.notes) ||
