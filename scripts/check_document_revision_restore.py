@@ -9,7 +9,10 @@ from coinpup_api.business.confirmations import BusinessConfirmationService
 from coinpup_api.business.credit_reads import BusinessCreditReads
 from coinpup_api.business.credit_revision_history_reads import BusinessCreditHistory
 from coinpup_api.business.credit_revision_reads import BusinessCreditRevisionReads
-from coinpup_api.business.credit_revision_schemas import CreditCancellationCreate
+from coinpup_api.business.credit_revision_schemas import (
+    CreditCancellationCreate,
+    CreditCorrectionCreate,
+)
 from coinpup_api.business.credit_revisions import BusinessCreditRevisionService
 from coinpup_api.business.credit_schemas import BusinessCreditCreate
 from coinpup_api.business.credits import BusinessCreditService
@@ -203,9 +206,36 @@ def seed_document_revisions(engine, owner, files, store, pdf, upload):
             return saved
 
         early_credit = create_credit(one["result"].version, old[1]["id"], "fictional-early-credit")
+        corrected_credit = frozen(
+            CreditCorrectionCreate(
+                expected_version=1,
+                reason="Fictional bound-credit correction",
+                replacement=dict(
+                    credit_date="2026-10-02",
+                    reason="Fictional corrected capacity",
+                    lines=[
+                        dict(
+                            source_line_id=old[1]["id"],
+                            net_amount={"BTC": "0.00000002", "ETH": "0.000000000000000002"}[asset],
+                            tax_amount="0",
+                            recognition_date="2026-10-01",
+                        )
+                    ],
+                ),
+            ),
+            "fictional-bound-credit-correct",
+        )
+        corrected_credit["result"] = invoke(
+            BusinessCreditRevisionService(engine),
+            "correct",
+            owner,
+            ledger,
+            corrected_credit,
+            early_credit["result"].id,
+        )
         released_credit = frozen(
             CreditCancellationCreate(
-                expected_version=1, reason="Fictional explicit bound-credit release"
+                expected_version=2, reason="Fictional explicit bound-credit release"
             ),
             "fictional-bound-credit-cancel",
         )
@@ -287,6 +317,7 @@ def seed_document_revisions(engine, owner, files, store, pdf, upload):
             attachment=attachment,
             born=born,
             credits=credits,
+            corrected_credit=corrected_credit,
             released_credit=released_credit,
         )
         case["expected"] = observations(engine, owner, case)
@@ -331,19 +362,22 @@ def verify_document_revisions(engine, evidence):
                 != saved["result"]
             ):
                 raise RuntimeError("Version-bound original credit201 changed after restore")
-        released = case["released_credit"]
         credit_id = case["credits"][0]["result"].id
-        if (
-            invoke(
-                BusinessCreditRevisionService(engine), "cancel", owner, ledger, released, credit_id
-            )
-            != released["result"]
-            or BusinessCreditHistory(engine).get_revision(
-                owner, ledger, credit_id, released["result"].revision_id
-            )
-            != released["result"]
+        for action, saved in (
+            ("correct", case["corrected_credit"]),
+            ("cancel", case["released_credit"]),
         ):
-            raise RuntimeError("Version-bound credit200 changed after restore")
+            if (
+                invoke(
+                    BusinessCreditRevisionService(engine), action, owner, ledger, saved, credit_id
+                )
+                != saved["result"]
+                or BusinessCreditHistory(engine).get_revision(
+                    owner, ledger, credit_id, saved["result"].revision_id
+                )
+                != saved["result"]
+            ):
+                raise RuntimeError("Version-bound credit200 changed after restore")
         if (
             observations(engine, owner, case) != case["expected"]
             or BusinessConfirmationReads(engine).get_confirmation(owner, ledger, identifier)

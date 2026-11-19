@@ -5,24 +5,22 @@ from types import SimpleNamespace
 
 from sqlalchemy import func, insert, select
 
-from coinpup_api.business.confirmation_models import BusinessPosting
 from coinpup_api.business.credit_command_sources import current_credit_sources
 from coinpup_api.business.credit_hash import credit_hash_v2
 from coinpup_api.business.credit_plan import CreditSource, plan_credit_line
 from coinpup_api.business.credit_receipts import replay_credit, response_from_rows
 from coinpup_api.business.credit_rows import credit_rows, persist_credit
 from coinpup_api.business.document_revision_versions import read_confirmed_document_version
-from coinpup_api.business.models import BusinessDocumentLine
 from coinpup_api.business.settlement_totals import document_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
 from coinpup_api.ledger.control_accounts import ControlAccounts
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.idempotency import _IDEMPOTENCY_KEY
-from coinpup_api.ledger.models import AssetRecord, CommandReceipt, FinancialOperation
+from coinpup_api.ledger.models import AssetRecord, CommandReceipt
 from coinpup_api.ledger.money import Amount
 from coinpup_api.ledger.period_checks import require_open_period
-from coinpup_api.ledger.service import LedgerError, _not_found, _version
+from coinpup_api.ledger.service import LedgerError, _version
 
 
 class BusinessCreditService(BalanceQueries, PostingCore):
@@ -128,31 +126,3 @@ class BusinessCreditService(BalanceQueries, PostingCore):
                 )
             )
             return result
-
-    @staticmethod
-    def _sources(session, ledger_id, document, payload):
-        identifiers = {row.source_line_id for row in payload.lines}
-        rows = session.execute(
-            select(BusinessDocumentLine, BusinessPosting, FinancialOperation)
-            .join(
-                BusinessPosting,
-                (BusinessPosting.line_id == BusinessDocumentLine.id)
-                & (BusinessPosting.ledger_id == BusinessDocumentLine.ledger_id),
-            )
-            .join(
-                FinancialOperation,
-                (FinancialOperation.id == BusinessPosting.operation_id)
-                & (FinancialOperation.ledger_id == BusinessPosting.ledger_id),
-            )
-            .where(
-                BusinessDocumentLine.ledger_id == ledger_id,
-                BusinessDocumentLine.document_id == document.id,
-                BusinessPosting.document_id == document.id,
-                BusinessDocumentLine.archived.is_(False),
-                BusinessDocumentLine.id.in_(identifiers),
-            )
-        ).all()
-        sources = {line.id: (line, original, operation) for line, original, operation in rows}
-        if sources.keys() != identifiers:
-            raise _not_found()
-        return sources

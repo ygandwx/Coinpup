@@ -15,6 +15,8 @@ _HEAVY_MODULE_PARTS = {
     "tests/integration/business/test_credit_revision_current.py": 1,
     "tests/integration/business/test_credit_revision_boundaries.py": 2,
     "tests/integration/business/test_credit_revision_lifecycle.py": 2,
+    "tests/integration/business/test_document_allocation_native.py": 0,
+    "tests/integration/business/test_credit_versioned_corrections.py": 1,
     "tests/integration/ocr/test_payment_confirmation_schema.py": 0,
 }
 
