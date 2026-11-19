@@ -1,17 +1,18 @@
-"""Atomic manual credits, bounded original-line capacity and permanent v2 intentions."""
+"""Atomic manual credits, bounded effective-line capacity and permanent v2 intentions."""
 
 from decimal import Decimal
 from types import SimpleNamespace
 
 from sqlalchemy import func, insert, select
 
-from coinpup_api.business.allocation_return_sources import require_current
 from coinpup_api.business.confirmation_models import BusinessPosting
+from coinpup_api.business.credit_command_sources import current_credit_sources
 from coinpup_api.business.credit_hash import credit_hash_v2
 from coinpup_api.business.credit_plan import CreditSource, plan_credit_line
 from coinpup_api.business.credit_receipts import replay_credit, response_from_rows
 from coinpup_api.business.credit_rows import credit_rows, persist_credit
-from coinpup_api.business.models import BusinessDocument, BusinessDocumentLine
+from coinpup_api.business.document_revision_versions import read_confirmed_document_version
+from coinpup_api.business.models import BusinessDocumentLine
 from coinpup_api.business.settlement_totals import document_totals
 from coinpup_api.ledger.balances import BalanceQueries
 from coinpup_api.ledger.common import PostingCore, _invalid_money, asset_definition
@@ -36,21 +37,16 @@ class BusinessCreditService(BalanceQueries, PostingCore):
                 return replay_credit(session, receipt, ledger_id, payload, digest)
             if entity.archived:
                 raise LedgerError("entity_archived", 409, "Restore the entity before posting.")
-            document = session.scalar(
-                select(BusinessDocument).where(
-                    BusinessDocument.id == payload.document_id,
-                    BusinessDocument.ledger_id == ledger_id,
-                    BusinessDocument.state == "confirmed",
-                )
-            )
+            current = read_confirmed_document_version(session, ledger_id, payload.document_id)
+            _version(current, payload.expected_version)
+            document = current.document
             if document is None:
-                raise _not_found()
-            _version(document, payload.expected_version)
+                raise LedgerError("document_cancelled", 409, "A cancelled document is terminal.")
             if payload.credit_date < document.issue_date:
                 raise LedgerError(
                     "credit_date", 422, "Credit cannot precede the original issue date."
                 )
-            sources = self._sources(session, ledger_id, document, payload)
+            sources = current_credit_sources(session, ledger_id, current, payload)
             control_key = (
                 "receivable.customer" if document.document_kind == "invoice" else "payable.supplier"
             )
@@ -67,15 +63,7 @@ class BusinessCreditService(BalanceQueries, PostingCore):
             groups = []
             try:
                 for requested in payload.lines:
-                    row, original, operation = sources[requested.source_line_id]
-                    require_current(
-                        operation,
-                        1,
-                        original.journal_id,
-                        "invoice_accrual"
-                        if document.document_kind == "invoice"
-                        else "bill_accrual",
-                    )
+                    row, original, _ = sources[requested.source_line_id]
                     used, net, tax = (
                         Amount.from_decimal(value, asset)
                         for value in totals.get(row.id, (Decimal(0), Decimal(0), Decimal(0)))

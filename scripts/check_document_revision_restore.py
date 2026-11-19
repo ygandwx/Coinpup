@@ -6,6 +6,13 @@ from check_credit_revision_restore import frozen, invoke
 from coinpup_api.business.confirmation_reads import BusinessConfirmationReads
 from coinpup_api.business.confirmation_schemas import BusinessConfirmationCreate
 from coinpup_api.business.confirmations import BusinessConfirmationService
+from coinpup_api.business.credit_reads import BusinessCreditReads
+from coinpup_api.business.credit_revision_history_reads import BusinessCreditHistory
+from coinpup_api.business.credit_revision_reads import BusinessCreditRevisionReads
+from coinpup_api.business.credit_revision_schemas import CreditCancellationCreate
+from coinpup_api.business.credit_revisions import BusinessCreditRevisionService
+from coinpup_api.business.credit_schemas import BusinessCreditCreate
+from coinpup_api.business.credits import BusinessCreditService
 from coinpup_api.business.document_fixed_receipts import fixed_document_response
 from coinpup_api.business.document_revision_schemas import (
     ConfirmedDocumentCancellation,
@@ -76,6 +83,14 @@ def observations(engine, owner, case):
             fixed=fixed,
             operations=operations,
             original=now.original.model_dump(mode="json"),
+            credits=[
+                (
+                    BusinessCreditReads(engine).get_credit(owner, ledger, saved["result"].id),
+                    BusinessCreditRevisionReads(engine).current(owner, ledger, saved["result"].id),
+                    BusinessCreditHistory(engine).list_history(owner, ledger, saved["result"].id),
+                )
+                for saved in case["credits"]
+            ],
         )
 
 
@@ -164,6 +179,45 @@ def seed_document_revisions(engine, owner, files, store, pdf, upload):
         )
         one["action"] = "correct"
         one["result"] = invoke(service, "correct", owner, ledger, one, draft.id)
+
+        def create_credit(version, source, key, *, document_id=draft.id, unit=unit, ledger=ledger):
+            saved = frozen(
+                BusinessCreditCreate(
+                    id=uuid4(),
+                    document_id=document_id,
+                    expected_version=version,
+                    credit_date="2026-10-02",
+                    reason="Fictional version-bound credit restore",
+                    lines=[
+                        dict(
+                            source_line_id=source,
+                            net_amount=unit,
+                            tax_amount="0",
+                            recognition_date="2026-10-01",
+                        )
+                    ],
+                ),
+                key,
+            )
+            saved["result"] = invoke(BusinessCreditService(engine), "create", owner, ledger, saved)
+            return saved
+
+        early_credit = create_credit(one["result"].version, old[1]["id"], "fictional-early-credit")
+        released_credit = frozen(
+            CreditCancellationCreate(
+                expected_version=1, reason="Fictional explicit bound-credit release"
+            ),
+            "fictional-bound-credit-cancel",
+        )
+        released_credit["result"] = invoke(
+            BusinessCreditRevisionService(engine),
+            "cancel",
+            owner,
+            ledger,
+            released_credit,
+            early_credit["result"].id,
+        )
+        credits = [early_credit]
         born = one["result"].replacement.lines[1].posting.operation_id
         attachment = upload(
             files,
@@ -194,6 +248,10 @@ def seed_document_revisions(engine, owner, files, store, pdf, upload):
         two["action"] = "correct"
         two["result"] = invoke(service, "correct", owner, ledger, two, draft.id)
         revisions = [one, two]
+        if kind == "bill":
+            credits.append(
+                create_credit(two["result"].version, old[0]["id"], "fictional-latest-active-credit")
+            )
         if kind == "invoice":
             end = frozen(
                 ConfirmedDocumentCancellation(
@@ -228,6 +286,8 @@ def seed_document_revisions(engine, owner, files, store, pdf, upload):
             original_detail=original_detail,
             attachment=attachment,
             born=born,
+            credits=credits,
+            released_credit=released_credit,
         )
         case["expected"] = observations(engine, owner, case)
         cases.append(case)
@@ -265,6 +325,25 @@ def verify_document_revisions(engine, evidence):
                 != revision["result"]
             ):
                 raise RuntimeError("Fixed document200 changed after restore")
+        for saved in case["credits"]:
+            if (
+                invoke(BusinessCreditService(engine), "create", owner, ledger, saved)
+                != saved["result"]
+            ):
+                raise RuntimeError("Version-bound original credit201 changed after restore")
+        released = case["released_credit"]
+        credit_id = case["credits"][0]["result"].id
+        if (
+            invoke(
+                BusinessCreditRevisionService(engine), "cancel", owner, ledger, released, credit_id
+            )
+            != released["result"]
+            or BusinessCreditHistory(engine).get_revision(
+                owner, ledger, credit_id, released["result"].revision_id
+            )
+            != released["result"]
+        ):
+            raise RuntimeError("Version-bound credit200 changed after restore")
         if (
             observations(engine, owner, case) != case["expected"]
             or BusinessConfirmationReads(engine).get_confirmation(owner, ledger, identifier)
