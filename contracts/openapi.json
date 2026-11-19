@@ -4112,6 +4112,135 @@
         "title": "ConfirmationResponse",
         "type": "object"
       },
+      "ConfirmedDocumentCancellation": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "maximum": 2147483646.0,
+            "minimum": 2.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "ConfirmedDocumentCancellation",
+        "type": "object"
+      },
+      "ConfirmedDocumentCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "maximum": 2147483646.0,
+            "minimum": 2.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "replacement": {
+            "$ref": "#/components/schemas/ConfirmedDocumentReplacement"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason",
+          "replacement"
+        ],
+        "title": "ConfirmedDocumentCorrection",
+        "type": "object"
+      },
+      "ConfirmedDocumentReplacement": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDraftLineInput"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "reviewed_references": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewedDocumentReference"
+            },
+            "maxItems": 401,
+            "title": "Reviewed References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "lines"
+        ],
+        "title": "ConfirmedDocumentReplacement",
+        "type": "object"
+      },
       "ControlBalance": {
         "properties": {
           "account_archived": {
@@ -5403,6 +5532,360 @@
           "created_at"
         ],
         "title": "CreditSummary",
+        "type": "object"
+      },
+      "DocumentAccrualPosting": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "operation_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Operation Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation_id",
+          "operation_version",
+          "journal_id"
+        ],
+        "title": "DocumentAccrualPosting",
+        "type": "object"
+      },
+      "DocumentAccrualReversal": {
+        "additionalProperties": false,
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "source_line_id": {
+            "format": "uuid",
+            "title": "Source Line Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_line_id",
+          "journal_id"
+        ],
+        "title": "DocumentAccrualReversal",
+        "type": "object"
+      },
+      "DocumentReceiptGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "document_kind": {
+            "enum": [
+              "invoice",
+              "bill"
+            ],
+            "title": "Document Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentReceiptLine"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "party_id": {
+            "format": "uuid",
+            "title": "Party Id",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "total_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Total Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_kind",
+          "party_id",
+          "asset_id",
+          "issue_date",
+          "lines",
+          "net_amount",
+          "tax_amount",
+          "total_amount"
+        ],
+        "title": "DocumentReceiptGroup",
+        "type": "object"
+      },
+      "DocumentReceiptLine": {
+        "additionalProperties": false,
+        "properties": {
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "discount_amount": {
+            "default": "0",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Discount Amount",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line_no": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Line No",
+            "type": "integer"
+          },
+          "net_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net Amount",
+            "type": "string"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentAccrualPosting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "quantity": {
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Quantity",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "tax_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Tax Amount",
+            "type": "string"
+          },
+          "tax_rate_percent": {
+            "default": "0",
+            "maxLength": 39,
+            "minLength": 1,
+            "title": "Tax Rate Percent",
+            "type": "string"
+          },
+          "total_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Total Amount",
+            "type": "string"
+          },
+          "unit_price": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Unit Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "quantity",
+          "unit_price",
+          "category_id",
+          "recognition_date",
+          "line_no",
+          "net_amount",
+          "tax_amount",
+          "total_amount",
+          "posting"
+        ],
+        "title": "DocumentReceiptLine",
+        "type": "object"
+      },
+      "DocumentRevisionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "correct",
+              "cancel"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmation_id": {
+            "format": "uuid",
+            "title": "Confirmation Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "business_document_revision",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/DocumentReceiptGroup"
+          },
+          "previous_version": {
+            "maximum": 2147483646.0,
+            "minimum": 2.0,
+            "title": "Previous Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "replacement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentReceiptGroup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reversals": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentAccrualReversal"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Reversals",
+            "type": "array"
+          },
+          "revision_id": {
+            "format": "uuid",
+            "title": "Revision Id",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 3.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "ledger_id",
+          "confirmation_id",
+          "document_id",
+          "revision_id",
+          "previous_version",
+          "version",
+          "action",
+          "reason",
+          "previous",
+          "replacement",
+          "reversals"
+        ],
+        "title": "DocumentRevisionResponse",
         "type": "object"
       },
       "DocumentSettlementDetail": {
@@ -10823,6 +11306,38 @@
         "title": "ReviewView",
         "type": "object"
       },
+      "ReviewedDocumentReference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "party",
+              "category",
+              "project"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "version"
+        ],
+        "title": "ReviewedDocumentReference",
+        "type": "object"
+      },
       "RuleSelection": {
         "additionalProperties": false,
         "properties": {
@@ -14426,6 +14941,98 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/cancellations": {
+      "post": {
+        "description": "Reverse the complete document after explicit release of active dependencies.",
+        "operationId": "cancel_api_v1_ledgers__ledger_id__business_documents__document_id__cancellations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmedDocumentCancellation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRevisionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "business confirmations"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm": {
       "post": {
         "description": "Retry unknown submissions with the original key, version, identity and JSON bytes.",
@@ -14566,6 +15173,98 @@
           }
         },
         "summary": "Get Confirmation",
+        "tags": [
+          "business confirmations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/corrections": {
+      "post": {
+        "description": "Replace the complete confirmed version; unknown outcomes retry the original intent.",
+        "operationId": "correct_api_v1_ledgers__ledger_id__business_documents__document_id__corrections_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmedDocumentCorrection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentRevisionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Correct",
         "tags": [
           "business confirmations"
         ]

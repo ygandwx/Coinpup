@@ -696,6 +696,26 @@ export interface paths {
         patch: operations["archive_business_document_api_v1_ledgers__ledger_id__business_documents__document_id__archive_patch"];
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/cancellations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel
+         * @description Reverse the complete document after explicit release of active dependencies.
+         */
+        post: operations["cancel_api_v1_ledgers__ledger_id__business_documents__document_id__cancellations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/confirm": {
         parameters: {
             query?: never;
@@ -727,6 +747,26 @@ export interface paths {
         get: operations["get_confirmation_api_v1_ledgers__ledger_id__business_documents__document_id__confirmation_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/business-documents/{document_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct
+         * @description Replace the complete confirmed version; unknown outcomes retry the original intent.
+         */
+        post: operations["correct_api_v1_ledgers__ledger_id__business_documents__document_id__corrections_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3756,6 +3796,49 @@ export interface components {
              */
             target_ledger_id: string;
         };
+        /** ConfirmedDocumentCancellation */
+        ConfirmedDocumentCancellation: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
+        /** ConfirmedDocumentCorrection */
+        ConfirmedDocumentCorrection: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["ConfirmedDocumentReplacement"];
+        };
+        /** ConfirmedDocumentReplacement */
+        ConfirmedDocumentReplacement: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Lines */
+            lines: components["schemas"]["BusinessDraftLineInput"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Reviewed References */
+            reviewed_references?: components["schemas"]["ReviewedDocumentReference"][];
+        };
         /** ControlBalance */
         ControlBalance: {
             /** Account Archived */
@@ -4252,6 +4335,154 @@ export interface components {
             party_id: string;
             /** Reason */
             reason: string;
+        };
+        /** DocumentAccrualPosting */
+        DocumentAccrualPosting: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Operation Version */
+            operation_version: number;
+        };
+        /** DocumentAccrualReversal */
+        DocumentAccrualReversal: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Source Line Id
+             * Format: uuid
+             */
+            source_line_id: string;
+        };
+        /** DocumentReceiptGroup */
+        DocumentReceiptGroup: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Document Kind
+             * @enum {string}
+             */
+            document_kind: "invoice" | "bill";
+            /** Due Date */
+            due_date?: string | null;
+            /**
+             * Issue Date
+             * Format: date
+             */
+            issue_date: string;
+            /** Lines */
+            lines: components["schemas"]["DocumentReceiptLine"][];
+            /** Net Amount */
+            net_amount: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Party Id
+             * Format: uuid
+             */
+            party_id: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Total Amount */
+            total_amount: string;
+        };
+        /** DocumentReceiptLine */
+        DocumentReceiptLine: {
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Discount Amount
+             * @default 0
+             */
+            discount_amount?: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line No */
+            line_no: number;
+            /** Net Amount */
+            net_amount: string;
+            posting: components["schemas"]["DocumentAccrualPosting"] | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /**
+             * Tax Rate Percent
+             * @default 0
+             */
+            tax_rate_percent?: string;
+            /** Total Amount */
+            total_amount: string;
+            /** Unit Price */
+            unit_price: string;
+        };
+        /** DocumentRevisionResponse */
+        DocumentRevisionResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "correct" | "cancel";
+            /**
+             * Confirmation Id
+             * Format: uuid
+             */
+            confirmation_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "business_document_revision";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            previous: components["schemas"]["DocumentReceiptGroup"];
+            /** Previous Version */
+            previous_version: number;
+            /** Reason */
+            reason: string;
+            replacement: components["schemas"]["DocumentReceiptGroup"] | null;
+            /** Reversals */
+            reversals: components["schemas"]["DocumentAccrualReversal"][];
+            /**
+             * Revision Id
+             * Format: uuid
+             */
+            revision_id: string;
+            /** Version */
+            version: number;
         };
         /** DocumentSettlementDetail */
         DocumentSettlementDetail: {
@@ -6540,6 +6771,21 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** ReviewedDocumentReference */
+        ReviewedDocumentReference: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "party" | "category" | "project";
+            /** Version */
+            version: number;
+        };
         /** RuleSelection */
         RuleSelection: {
             /** Applicability Confirmed */
@@ -8361,6 +8607,45 @@ export interface operations {
             };
         };
     };
+    cancel_api_v1_ledgers__ledger_id__business_documents__document_id__cancellations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmedDocumentCancellation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRevisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_api_v1_ledgers__ledger_id__business_documents__document_id__confirm_post: {
         parameters: {
             query?: never;
@@ -8419,6 +8704,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessConfirmationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_api_v1_ledgers__ledger_id__business_documents__document_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmedDocumentCorrection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentRevisionResponse"];
                 };
             };
             /** @description Validation Error */

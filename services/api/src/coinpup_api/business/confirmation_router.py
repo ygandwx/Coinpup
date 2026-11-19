@@ -18,6 +18,12 @@ from coinpup_api.business.confirmation_schemas import (
     BusinessConfirmationResponse,
 )
 from coinpup_api.business.confirmations import BusinessConfirmationService
+from coinpup_api.business.document_revision_receipt import DocumentRevisionResponse
+from coinpup_api.business.document_revision_schemas import (
+    ConfirmedDocumentCancellation,
+    ConfirmedDocumentCorrection,
+)
+from coinpup_api.business.document_revisions import BusinessDocumentRevisionService
 from coinpup_api.ledger.posting_router import raw_command_body
 from coinpup_api.ledger.service import LedgerError
 
@@ -25,6 +31,7 @@ from coinpup_api.ledger.service import LedgerError
 def create_business_confirmation_router(settings, engine):
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business confirmations"])
     service, reads = BusinessConfirmationService(engine), BusinessConfirmationReads(engine)
+    revisions = BusinessDocumentRevisionService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -62,6 +69,54 @@ def create_business_confirmation_router(settings, engine):
         """Retry unknown submissions with the original key, version, identity and JSON bytes."""
         return execute(
             service.confirm,
+            identity.id,
+            ledger_id,
+            document_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
+        )
+
+    @router.post(
+        "/business-documents/{document_id}/corrections",
+        response_model=DocumentRevisionResponse,
+        status_code=200,
+    )
+    def correct(
+        ledger_id: UUID,
+        document_id: UUID,
+        payload: ConfirmedDocumentCorrection,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Replace the complete confirmed version; unknown outcomes retry the original intent."""
+        return execute(
+            revisions.correct,
+            identity.id,
+            ledger_id,
+            document_id,
+            payload,
+            idempotency_key,
+            raw_body=raw_body,
+        )
+
+    @router.post(
+        "/business-documents/{document_id}/cancellations",
+        response_model=DocumentRevisionResponse,
+        status_code=200,
+    )
+    def cancel(
+        ledger_id: UUID,
+        document_id: UUID,
+        payload: ConfirmedDocumentCancellation,
+        identity: writer,
+        idempotency_key: command_key,
+        raw_body: original_body,
+    ):
+        """Reverse the complete document after explicit release of active dependencies."""
+        return execute(
+            revisions.cancel,
             identity.id,
             ledger_id,
             document_id,
