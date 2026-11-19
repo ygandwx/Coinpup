@@ -1,5 +1,7 @@
 # API 通用约定
 
+已确认经营单据的 `/history` 只分页返回按单据版本递增的确认/更正/取消元数据，并为修订提供独立的 `previous_line_count` / `replacement_line_count`（包含零金额行，取消替代数为0，原确认两者为空，其行数在原单据中）。详情显示须逐一核对这两个计数；首版使用真实确认版本，不固定为1。`/revisions/{revision_id}` 返回该版不可变200，核对其原请求回执、完整前后计价事实与冲销/应计映射；跨单据或账本先拒绝。目录、当前快照及固定历史详情都不是未知命令的成功证明；原意图仍按原键和JSON重试。
+
 已确认经营单据的 `GET business-documents/{document_id}/current` 在同一只读快照返回当前完整计价行与正金额行的应计操作版本。取消后保留单据/确认身份和终态版本，当前单据与应计映射为空；原 `/confirmation` 始终保留原201事实。当前快照用于审阅新意图，不能证明未知写入成功；已归档、资产停用及期间关闭不屏蔽历史读取。依据[ADR0050](decisions/0050-confirmed-document-revisions.md)。
 
 接口路径、请求字段、响应字段及参数默认值以代码生成的 [OpenAPI](../../contracts/openapi.json) 为准。本文只记录跨接口规则；设计理由由 [ADR 索引](decisions/README.md) 路由，不用历史回执或历史 ADR 的交付边界判断当前任务状态。
