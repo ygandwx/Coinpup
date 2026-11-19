@@ -13,6 +13,7 @@ export function DraftLineFields({
     assetId,
     onChange,
     onRemove,
+    idPrefix = "draft-line",
 }: {
     value: DraftLine;
     index: number;
@@ -23,9 +24,10 @@ export function DraftLineFields({
     assetId: string;
     onChange: (line: DraftLine) => void;
     onRemove: () => void;
+    idPrefix?: string;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
-    const prefix = `draft-line-${value.id}`;
+    const prefix = `${idPrefix}-${value.id}`;
     const direction = kind === "invoice" ? "income" : "expense";
     const category = refs.categories.find((row) => row.id === value.category_id);
     const project = refs.projects.find((row) => row.id === value.project_id);
