@@ -1,14 +1,15 @@
 """Read current complete credit facts in one authorized, bounded read-only snapshot."""
 
 from pydantic import ValidationError
-from sqlalchemy import select, true
-from sqlalchemy.orm import aliased
+from sqlalchemy import case, func, select, true
+from sqlalchemy.orm import Bundle, aliased
 
 from coinpup_api.business.credit_models import BusinessCredit
 from coinpup_api.business.credit_projections import posting_facts
 from coinpup_api.business.credit_revision_models import BusinessCreditRevision
 from coinpup_api.business.credit_revision_read_schemas import CreditCurrent, CreditCurrentMember
 from coinpup_api.business.credit_revision_receipts import integrity
+from coinpup_api.business.document_revision_models import BusinessDocumentRevision
 from coinpup_api.business.models import BusinessDocument
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
@@ -88,44 +89,68 @@ class BusinessCreditRevisionReads(LedgerService):
         """Five service SELECTs, including authorization, regardless of member count."""
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
-            latest = (
-                select(BusinessCreditRevision)
-                .where(
-                    BusinessCreditRevision.credit_id == BusinessCredit.id,
-                    BusinessCreditRevision.ledger_id == BusinessCredit.ledger_id,
-                    BusinessCreditRevision.document_id == BusinessCredit.document_id,
-                )
-                .order_by(BusinessCreditRevision.group_version.desc())
-                .limit(1)
-                .correlate(BusinessCredit)
-                .lateral("latest_credit_revision")
-            )
-            revision = aliased(BusinessCreditRevision, latest)
-            saved = session.execute(
-                select(BusinessCredit, BusinessDocument, AssetRecord, revision)
-                .join(
-                    BusinessDocument,
-                    (BusinessDocument.id == BusinessCredit.document_id)
-                    & (BusinessDocument.ledger_id == BusinessCredit.ledger_id),
-                )
-                .join(AssetRecord, AssetRecord.asset_id == BusinessDocument.asset_id)
-                .outerjoin(revision, true())
-                .where(BusinessCredit.id == credit_id, BusinessCredit.ledger_id == ledger_id)
-            ).one_or_none()
-            if saved is None:
-                raise _not_found()
-            credit, document, record, revision = saved
-            facts = posting_facts(ledger_id, credit_ids=[credit_id])
-            rows = (
-                session.execute(
-                    select(facts)
-                    .where(
-                        facts.c.group_version == (1 if revision is None else revision.group_version)
-                    )
-                    .order_by(facts.c.line_no)
-                    .limit(201)
-                )
-                .mappings()
-                .all()
-            )
-            return _current(credit, document, asset_definition(record), revision, rows)
+            return read_current_credit_group(session, ledger_id, credit_id)
+
+
+def read_current_credit_group(session, ledger_id, credit_id):
+    """Read one complete group in the caller's owned, authorized consistent snapshot."""
+    latest = (
+        select(BusinessCreditRevision)
+        .where(
+            BusinessCreditRevision.credit_id == BusinessCredit.id,
+            BusinessCreditRevision.ledger_id == BusinessCredit.ledger_id,
+            BusinessCreditRevision.document_id == BusinessCredit.document_id,
+        )
+        .order_by(BusinessCreditRevision.group_version.desc())
+        .limit(1)
+        .correlate(BusinessCredit)
+        .lateral("latest_credit_revision")
+    )
+    revision = aliased(BusinessCreditRevision, latest)
+    source = BusinessDocumentRevision
+    source_id = case(
+        (revision.id.is_(None), BusinessCredit.document_revision_id),
+        else_=revision.document_revision_id,
+    )
+    document_fields = Bundle(
+        "credit_source_document",
+        BusinessDocument.id,
+        BusinessDocument.document_kind,
+        func.coalesce(source.party_id, BusinessDocument.party_id).label("party_id"),
+    )
+    saved = session.execute(
+        select(BusinessCredit, document_fields, AssetRecord, revision)
+        .select_from(BusinessCredit)
+        .join(
+            BusinessDocument,
+            (BusinessDocument.id == BusinessCredit.document_id)
+            & (BusinessDocument.ledger_id == BusinessCredit.ledger_id),
+        )
+        .outerjoin(revision, true())
+        .outerjoin(
+            source,
+            (source.id == source_id)
+            & (source.document_id == BusinessCredit.document_id)
+            & (source.ledger_id == BusinessCredit.ledger_id),
+        )
+        .join(
+            AssetRecord,
+            AssetRecord.asset_id == func.coalesce(source.asset_id, BusinessDocument.asset_id),
+        )
+        .where(BusinessCredit.id == credit_id, BusinessCredit.ledger_id == ledger_id)
+    ).one_or_none()
+    if saved is None:
+        raise _not_found()
+    credit, document, record, revision = saved
+    facts = posting_facts(ledger_id, credit_ids=[credit_id])
+    rows = (
+        session.execute(
+            select(facts)
+            .where(facts.c.group_version == (1 if revision is None else revision.group_version))
+            .order_by(facts.c.line_no)
+            .limit(201)
+        )
+        .mappings()
+        .all()
+    )
+    return _current(credit, document, asset_definition(record), revision, rows)

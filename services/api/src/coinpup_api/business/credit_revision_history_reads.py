@@ -12,6 +12,7 @@ from coinpup_api.business.credit_revision_schemas import (
     CreditRevisionResponse,
     validate_credit_revision_amounts,
 )
+from coinpup_api.business.document_revision_models import BusinessDocumentRevision
 from coinpup_api.business.models import BusinessDocument
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
@@ -56,7 +57,17 @@ def _revision(session, ledger_id, credit_id, revision_id):
             (BusinessDocument.id == Revision.document_id)
             & (BusinessDocument.ledger_id == Revision.ledger_id),
         )
-        .join(AssetRecord, AssetRecord.asset_id == BusinessDocument.asset_id)
+        .outerjoin(
+            BusinessDocumentRevision,
+            (BusinessDocumentRevision.id == Revision.document_revision_id)
+            & (BusinessDocumentRevision.document_id == Revision.document_id)
+            & (BusinessDocumentRevision.ledger_id == Revision.ledger_id),
+        )
+        .join(
+            AssetRecord,
+            AssetRecord.asset_id
+            == func.coalesce(BusinessDocumentRevision.asset_id, BusinessDocument.asset_id),
+        )
         .where(
             Revision.id == revision_id,
             Revision.credit_id == credit_id,
