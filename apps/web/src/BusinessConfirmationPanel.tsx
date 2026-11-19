@@ -12,6 +12,7 @@ import type {
     BusinessConfirmedSummary,
 } from "./business-confirmation-api";
 import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
+import { isDocumentRevisionPlan } from "./document-revision-intent";
 import { formatAmount, parseAmount } from "./money";
 
 type Document = BusinessDraft | BusinessConfirmationDetail["document"];
@@ -38,7 +39,10 @@ export function BusinessConfirmationPanel({
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
-    const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
+    const plan =
+        pending.plan?.ledgerId === ledgerId && !isDocumentRevisionPlan(pending.plan)
+            ? pending.plan
+            : null;
     const [mode, setMode] = useState<"draft" | "confirmed">("draft");
     const [offset, setOffset] = useState(0),
         [refresh, setRefresh] = useState(0);
