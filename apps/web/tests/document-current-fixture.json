@@ -1,0 +1,150 @@
+{
+  "current": {
+    "ledger_id": "00000000-0000-0000-0000-000000000001",
+    "document_id": "00000000-0000-0000-0000-000000000002",
+    "confirmation_id": "00000000-0000-0000-0000-000000000003",
+    "document_kind": "invoice",
+    "version": 9,
+    "status": "active",
+    "revision_id": "00000000-0000-0000-0000-000000000004",
+    "document": {
+      "version": 9,
+      "created_at": "2026-10-11T00:00:00Z",
+      "updated_at": "2026-10-11T00:00:00Z",
+      "document_kind": "invoice",
+      "party_id": "00000000-0000-0000-0000-000000000005",
+      "asset_id": "USD",
+      "issue_date": "2026-10-11",
+      "due_date": "2026-11-01",
+      "notes": null,
+      "id": "00000000-0000-0000-0000-000000000002",
+      "ledger_id": "00000000-0000-0000-0000-000000000001",
+      "state": "confirmed",
+      "archived": false,
+      "issuer_snapshot": {
+        "name": "Fictional issuer"
+      },
+      "party_snapshot": {
+        "name": "Fictional party"
+      },
+      "line_count": 3,
+      "net_amount": "4",
+      "tax_amount": "0",
+      "total_amount": "4",
+      "confirmation_id": "00000000-0000-0000-0000-000000000003",
+      "confirmed_at": "2026-10-11T00:00:00Z",
+      "lines": [
+        {
+          "version": 4,
+          "created_at": "2026-10-11T00:00:00Z",
+          "updated_at": "2026-10-11T00:00:00Z",
+          "id": "00000000-0000-0000-0000-000000000006",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "1",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000007",
+          "project_id": "00000000-0000-0000-0000-000000000008",
+          "recognition_date": "2026-09-01",
+          "document_id": "00000000-0000-0000-0000-000000000002",
+          "ledger_id": "00000000-0000-0000-0000-000000000001",
+          "line_no": 2,
+          "asset_id": "USD",
+          "category_kind": "income",
+          "archived": false,
+          "category_snapshot": {
+            "name": "Fictional category"
+          },
+          "project_snapshot": {
+            "name": "Fictional project"
+          },
+          "net_amount": "1",
+          "tax_amount": "0",
+          "total_amount": "1"
+        },
+        {
+          "version": 4,
+          "created_at": "2026-10-11T00:00:00Z",
+          "updated_at": "2026-10-11T00:00:00Z",
+          "id": "00000000-0000-0000-0000-000000000009",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "0",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000007",
+          "project_id": "00000000-0000-0000-0000-000000000008",
+          "recognition_date": "2026-09-02",
+          "document_id": "00000000-0000-0000-0000-000000000002",
+          "ledger_id": "00000000-0000-0000-0000-000000000001",
+          "line_no": 5,
+          "asset_id": "USD",
+          "category_kind": "income",
+          "archived": false,
+          "category_snapshot": {
+            "name": "Fictional category"
+          },
+          "project_snapshot": {
+            "name": "Fictional project"
+          },
+          "net_amount": "0",
+          "tax_amount": "0",
+          "total_amount": "0"
+        },
+        {
+          "version": 4,
+          "created_at": "2026-10-11T00:00:00Z",
+          "updated_at": "2026-10-11T00:00:00Z",
+          "id": "00000000-0000-0000-0000-00000000000a",
+          "description": "Fictional 经营项目",
+          "quantity": "1",
+          "unit_price": "3",
+          "discount_amount": "0",
+          "tax_rate_percent": "0",
+          "category_id": "00000000-0000-0000-0000-000000000007",
+          "project_id": "00000000-0000-0000-0000-000000000008",
+          "recognition_date": "2026-09-03",
+          "document_id": "00000000-0000-0000-0000-000000000002",
+          "ledger_id": "00000000-0000-0000-0000-000000000001",
+          "line_no": 8,
+          "asset_id": "USD",
+          "category_kind": "income",
+          "archived": false,
+          "category_snapshot": {
+            "name": "Fictional category"
+          },
+          "project_snapshot": {
+            "name": "Fictional project"
+          },
+          "net_amount": "3",
+          "tax_amount": "0",
+          "total_amount": "3"
+        }
+      ]
+    },
+    "postings": [
+      {
+        "operation_id": "00000000-0000-0000-0000-00000000000b",
+        "operation_version": 3,
+        "journal_id": "00000000-0000-0000-0000-00000000000c",
+        "source_line_id": "00000000-0000-0000-0000-000000000006"
+      },
+      {
+        "operation_id": "00000000-0000-0000-0000-00000000000d",
+        "operation_version": 3,
+        "journal_id": "00000000-0000-0000-0000-00000000000e",
+        "source_line_id": "00000000-0000-0000-0000-00000000000a"
+      }
+    ]
+  },
+  "asset": {
+    "code": "USD",
+    "kind": "fiat",
+    "scale": 2,
+    "network": null,
+    "token_reference": null,
+    "enabled": true,
+    "asset_id": "USD"
+  }
+}
