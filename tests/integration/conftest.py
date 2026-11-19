@@ -1627,6 +1627,7 @@ def structure_database(request):
         "test_credit_current_document_capacity",
         "test_credit_pinned_validation",
         "test_credit_bound_revision_receipts",
+        "test_credit_bound_current_reads",
         "test_credit_document_origin",
         "test_document_accrual_operation_heads",
         "test_document_accrual_links",

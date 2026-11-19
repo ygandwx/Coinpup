@@ -3,13 +3,14 @@
 from decimal import Decimal
 
 from pydantic import ValidationError
-from sqlalchemy import func, select, true
+from sqlalchemy import func, select
 from sqlalchemy.orm import load_only
 
-from coinpup_api.business.document_revision_models import BusinessDocumentRevision
 from coinpup_api.business.drafts import _fields
-from coinpup_api.business.effective_document_lines import effective_document_lines
-from coinpup_api.business.models import BusinessDocument
+from coinpup_api.business.effective_document_lines import (
+    effective_document_header,
+    effective_document_lines,
+)
 from coinpup_api.business.settlement_models import (
     BusinessAllocation,
     BusinessAllocationLine,
@@ -26,7 +27,7 @@ from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import AssetRecord
 from coinpup_api.ledger.money import Amount
-from coinpup_api.ledger.service import LedgerError, LedgerService, _not_found, _page
+from coinpup_api.ledger.service import LedgerError, LedgerService, _page
 
 
 def integrity():
@@ -164,32 +165,7 @@ class BusinessSettlementBalances(LedgerService):
 
 def document_settlement_detail(session, ledger_id, document_id):
     """Report the current balance using the caller's owned ledger snapshot."""
-    doc, revision = BusinessDocument, BusinessDocumentRevision
-    owned = (revision.ledger_id == doc.ledger_id, revision.document_id == doc.id)
-    # A cancellation has no replacement header. Keep the party and scale of the last priced
-    # version for its zero balance, including when the original confirmation was the last one.
-    priced = (
-        select(revision.party_id, revision.asset_id)
-        .where(*owned, revision.action == "correct")
-        .order_by(revision.document_version.desc())
-        .limit(1)
-        .correlate(doc)
-        .lateral()
-    )
-    terminal = (
-        select(revision.id).where(*owned, revision.action == "cancel").correlate(doc).exists()
-    )
-    source_asset = func.coalesce(priced.c.asset_id, doc.asset_id)
-    header = session.execute(
-        select(func.coalesce(priced.c.party_id, doc.party_id), AssetRecord, terminal)
-        .select_from(doc)
-        .outerjoin(priced, true())
-        .join(AssetRecord, AssetRecord.asset_id == source_asset)
-        .where(doc.id == document_id, doc.ledger_id == ledger_id, doc.state == "confirmed")
-    ).one_or_none()
-    if header is None:
-        raise _not_found()
-    party_id, asset_row, terminal = header
+    header, asset_row, terminal = effective_document_header(session, ledger_id, document_id)
     asset = asset_definition(asset_row)
     effective = effective_document_lines(ledger_id, document_id=document_id)
     rows = session.execute(select(effective).order_by(effective.c.line_no)).all()
@@ -230,7 +206,7 @@ def document_settlement_detail(session, ledger_id, document_id):
         return DocumentSettlementDetail(
             id=document_id,
             ledger_id=ledger_id,
-            party_id=party_id,
+            party_id=header.party_id,
             asset_id=asset.asset_id,
             total_amount=Amount(asset, total_units).to_string(),
             applied_amount=Amount(asset, applied_units).to_string(),

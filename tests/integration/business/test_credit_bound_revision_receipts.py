@@ -10,6 +10,7 @@ from alembic.operations import Operations
 from coinpup_api.business.credit_hash import credit_hash_v2
 from coinpup_api.business.credit_receipts import response_from_rows as original_response
 from coinpup_api.business.credit_revision_hash import credit_revision_hash_v2
+from coinpup_api.business.credit_revision_history_reads import _revision
 from coinpup_api.business.credit_revision_receipts import response_from_rows
 from coinpup_api.business.credit_revision_schemas import (
     CreditCancellationCreate,
@@ -18,7 +19,8 @@ from coinpup_api.business.credit_revision_schemas import (
 from coinpup_api.business.credit_revisions import BusinessCreditRevisionService
 from coinpup_api.business.credits import BusinessCreditService
 from coinpup_api.ledger.control_accounts import ControlAccounts
-from sqlalchemy import func, select
+from coinpup_api.ledger.service import LedgerError
+from sqlalchemy import event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -161,6 +163,30 @@ def test_fixed_bound_correction_and_actual_cancellation_replay_all_tables_unchan
                         select(func.coinpup_validate_credit_revision_receipt(receipt.revision_id))
                     )
             date_settings.rollback()
+        statements = []
+
+        def capture(_c, _cursor, statement, _parameters, _context, _many):
+            statements.append(statement.upper().lstrip())
+
+        event.listen(c, "before_cursor_execute", capture)
+        try:
+            for saved in (corrected, ended):
+                statements.clear()
+                assert _revision(db, s["ledger"], identifier, saved.revision_id) == saved
+                assert len(statements) == 2 and all(q.startswith("SELECT") for q in statements)
+                assert all("FOR UPDATE" not in q and "PG_ADVISORY" not in q for q in statements)
+            for ledger, group, revision_id in (
+                (uuid4(), identifier, ended.revision_id),
+                (s["ledger"], uuid4(), ended.revision_id),
+                (s["ledger"], identifier, uuid4()),
+            ):
+                statements.clear()
+                with pytest.raises(LedgerError) as denied:
+                    _revision(db, ledger, group, revision_id)
+                assert (denied.value.status, denied.value.code) == (404, "not_found")
+                assert len(statements) == 1 and "CREDIT_REVISION_RESPONSE" not in statements[0]
+        finally:
+            event.remove(c, "before_cursor_execute", capture)
         assert all_rows(c) == snapshot_before
         c.exec_driver_sql("SET CONSTRAINTS tr_document_revisions_complete IMMEDIATE")
     assert gated.value.orig.diag.constraint_name == "ck_document_revision_complete"
