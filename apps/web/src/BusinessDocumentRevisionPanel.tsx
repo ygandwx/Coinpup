@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { BusinessDocumentHistoryPanel } from "./BusinessDocumentHistoryPanel";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import type { Asset, Category } from "./ledger-api";
@@ -58,6 +59,7 @@ export function BusinessDocumentRevisionPanel({
         pending.plan.documentId === documentId
             ? pending.plan
             : null;
+    const [history, setHistory] = useState(false);
     const [refresh, setRefresh] = useState(0);
     const request = useMemo(
         () => ({ ledgerId, documentId, session, refresh }),
@@ -91,7 +93,8 @@ export function BusinessDocumentRevisionPanel({
         };
     }, [request]);
     useEffect(() => {
-        if (pending.plan || pending.status === "auth-required" || editor || dataLoading) return;
+        if (pending.plan || pending.status === "auth-required" || editor || history || dataLoading)
+            return;
         const abort = new AbortController();
         getDocumentCurrent(ledgerId, documentId, abort.signal)
             .then((value) => {
@@ -112,7 +115,7 @@ export function BusinessDocumentRevisionPanel({
                 else setFailure({ request, error });
             });
         return () => abort.abort();
-    }, [ledgerId, documentId, request, pending.plan, pending.status, editor, dataLoading]);
+    }, [ledgerId, documentId, request, pending.plan, pending.status, editor, history, dataLoading]);
     function fail(error: unknown) {
         if (!active.current || latest.current.request !== request) return;
         if (error instanceof ApiError && error.status === 401) latest.current.onUnauthorized();
@@ -240,6 +243,22 @@ export function BusinessDocumentRevisionPanel({
             />
         );
     if (pending.plan) return null;
+    if (history)
+        return (
+            <BusinessDocumentHistoryPanel
+                ledgerId={ledgerId}
+                documentId={documentId}
+                session={session}
+                locale={locale}
+                assets={assets}
+                available={!dataLoading}
+                onUnauthorized={onUnauthorized}
+                onBack={() => {
+                    setHistory(false);
+                    backToCurrent();
+                }}
+            />
+        );
     return (
         <section
             className="document-revision-form"
@@ -326,6 +345,13 @@ export function BusinessDocumentRevisionPanel({
                         </div>
                     )}
                     <div className="form-actions">
+                        <button
+                            type="button"
+                            disabled={busy || dataLoading}
+                            onClick={() => setHistory(true)}
+                        >
+                            {t("查看版本历史", "View version history")}
+                        </button>
                         <button type="button" disabled={busy} onClick={backToCurrent}>
                             {t("重新读取当前版本", "Reload current version")}
                         </button>
