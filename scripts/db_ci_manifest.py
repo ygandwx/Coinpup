@@ -7,17 +7,31 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
-# Distribute measured long-running suites; keep every module and its full-size cases intact.
-PART_COUNT = 3
+# Full 2567-case native runs measured 134 minutes total; keep complete modules together.
+PART_COUNT = 5
 _HEAVY_MODULE_PARTS = {
-    "tests/integration/business/test_credit_revision_history.py": 0,
-    "tests/integration/business/test_credit_revision_reads.py": 1,
-    "tests/integration/business/test_credit_revision_current.py": 1,
+    "tests/integration/business/test_allocation_return_revision_receipts.py": 1,
+    "tests/integration/business/test_credit_projections.py": 3,
     "tests/integration/business/test_credit_revision_boundaries.py": 2,
-    "tests/integration/business/test_credit_revision_lifecycle.py": 2,
-    "tests/integration/business/test_document_allocation_native.py": 0,
-    "tests/integration/business/test_credit_versioned_corrections.py": 1,
-    "tests/integration/ocr/test_payment_confirmation_schema.py": 0,
+    "tests/integration/business/test_credit_revision_current.py": 1,
+    "tests/integration/business/test_credit_revision_history.py": 0,
+    "tests/integration/business/test_credit_revision_lifecycle.py": 0,
+    "tests/integration/business/test_credit_revision_reads.py": 2,
+    "tests/integration/business/test_credit_service.py": 0,
+    "tests/integration/business/test_credit_versioned_corrections.py": 3,
+    "tests/integration/business/test_credit_versioned_create.py": 1,
+    "tests/integration/business/test_current_allocation_return_members.py": 2,
+    "tests/integration/business/test_document_allocation_native.py": 4,
+    "tests/integration/business/test_return_command_current.py": 2,
+    "tests/integration/business/test_return_complete_lifecycle.py": 4,
+    "tests/integration/business/test_return_current_http.py": 3,
+    "tests/integration/business/test_return_revision_history_http.py": 0,
+    "tests/integration/business/test_return_revision_service.py": 2,
+    "tests/integration/business/test_return_source_history.py": 1,
+    "tests/integration/business/test_settlement_service.py": 4,
+    "tests/integration/ocr/test_payment_confirmation_schema.py": 4,
+    "tests/integration/ocr/test_payment_confirmation_service.py": 3,
+    "tests/integration/ocr/test_payment_evidence_reads.py": 0,
 }
 
 

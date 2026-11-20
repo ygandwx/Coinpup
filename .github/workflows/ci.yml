@@ -71,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [0, 1, 2]
+        part: [0, 1, 2, 3, 4]
     timeout-minutes: 40
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
@@ -170,12 +170,22 @@ jobs:
         with:
           name: db-ci-part-2
           path: ${{ runner.temp }}/db-ci-part-2
+      - uses: actions/download-artifact@v4
+        with:
+          name: db-ci-part-3
+          path: ${{ runner.temp }}/db-ci-part-3
+      - uses: actions/download-artifact@v4
+        with:
+          name: db-ci-part-4
+          path: ${{ runner.temp }}/db-ci-part-4
       - name: Verify complete integration test execution
         run: >-
           python -m scripts.db_ci_manifest verify
           "$RUNNER_TEMP/db-ci-part-0/part-0.json"
           "$RUNNER_TEMP/db-ci-part-1/part-1.json"
           "$RUNNER_TEMP/db-ci-part-2/part-2.json"
+          "$RUNNER_TEMP/db-ci-part-3/part-3.json"
+          "$RUNNER_TEMP/db-ci-part-4/part-4.json"
 
   container:
     name: Container, real browser login and backup restoration
