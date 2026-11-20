@@ -6,9 +6,11 @@ import { formatAmount } from "./money";
 export function BusinessDocumentCurrentFacts({
     current,
     locale,
+    historical = false,
 }: {
     current: DocumentCurrent;
     locale: Locale;
+    historical?: boolean;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const d = current.document;
@@ -23,9 +25,18 @@ export function BusinessDocumentCurrentFacts({
         );
     const amount = (v: string) => `${formatAmount(v, locale)} ${d.asset_id}`;
     return (
-        <section aria-label={t("当前单据事实", "Current document facts")}>
+        <section
+            aria-label={
+                historical
+                    ? t("原始单据事实", "Original document facts")
+                    : t("当前单据事实", "Current document facts")
+            }
+        >
             <h4>
-                {t("当前单据", "Current document")} · {t("版本", "Version")} {current.version}
+                {historical
+                    ? t("原始单据", "Original document")
+                    : t("当前单据", "Current document")}{" "}
+                · {t("版本", "Version")} {current.version}
             </h4>
             <dl className="confirmation-facts">
                 <dt>{t("开票主体", "Issuer")}</dt>
