@@ -1,5 +1,7 @@
 """A native complete proof retains real postings, all identities and permanent receipts."""
 
+from pathlib import Path
+from runpy import run_path
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -208,11 +210,27 @@ def test_incomplete_groups_fail_native_proof_and_roll_back(revision, fault):
 
 def test_group_proof_empty_roundtrip_and_protected_history(revision):
     s, h, doc, _, origin = revision
+    plan = run_path(
+        str(
+            Path(__file__).resolve().parents[3]
+            / "services/api/migrations/versions/20261120_0131_document_group_plan.py"
+        )
+    )
+    read_definition = """
+        SELECT prosrc, proconfig FROM pg_catalog.pg_proc
+        WHERE oid = 'public.coinpup_validate_document_revision(uuid,uuid,uuid)'::regprocedure
+    """
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
         original = definitions(c)
+        body, settings = c.exec_driver_sql(read_definition).one()
+        assert set(settings) == {"search_path=pg_catalog", "plan_cache_mode=force_generic_plan"}
+        assert c.scalar(select(func.current_setting("plan_cache_mode"))) == "auto"
+        plan["downgrade"]()
+        assert c.exec_driver_sql(read_definition).one() == (body, ["search_path=pg_catalog"])
         m = document_group_migration()
         m["downgrade"]()
         m["upgrade"]()
+        plan["upgrade"]()
         assert definitions(c) == original
     before = snapshot(s)
     with pytest.raises(IntegrityError) as guarded, s["engine"].begin() as c:
@@ -220,6 +238,11 @@ def test_group_proof_empty_roundtrip_and_protected_history(revision):
         with Operations.context(MigrationContext.configure(c)):
             m["downgrade"]()
     assert guarded.value.orig.diag.constraint_name == "ck_document_group_downgrade"
+    with pytest.raises(IntegrityError) as guarded_plan, s["engine"].begin() as c:
+        append_accrual(c, h, doc, origin.postings[0], "correct", 2)
+        with Operations.context(MigrationContext.configure(c)):
+            plan["downgrade"]()
+    assert guarded_plan.value.orig.diag.constraint_name == "ck_document_group_plan_downgrade"
     assert snapshot(s) == before
 
 
