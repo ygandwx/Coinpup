@@ -28,6 +28,7 @@ from check_document_revision_restore import (
     seed_document_revisions,
     verify_document_revisions,
 )
+from check_invoice_profile_restore import seed_invoice_profiles, verify_invoice_profiles
 from check_ocr_confirmation_restore import seed_confirmations, verify_confirmations
 from check_payment_evidence_restore import seed_payment_evidence, verify_payment_evidence
 from check_period_restore import seed_periods, verify_periods
@@ -343,6 +344,7 @@ def check_bundle_restore(source_url):
                 service, store, owner, ledger_b, pdf, "Fictional company certificate.pdf"
             )
             picture = upload_fixture(service, store, owner, ledger_b, PNG, "Fictional receipt.png")
+            invoice_profiles = seed_invoice_profiles(engine, ledger_b, picture["receipt"].file_id)
             confirmations = seed_confirmations(
                 engine,
                 owner,
@@ -505,6 +507,7 @@ def check_bundle_restore(source_url):
             verify_credits(restored_engine, business_credits)
             verify_credit_revisions(restored_engine, credit_revisions)
             verify_document_revisions(restored_engine, document_revisions)
+            verify_invoice_profiles(restored_engine, invoice_profiles)
             verify_payment_evidence(restored_engine, payment_evidence)
             restored_service = DocumentService(restored_engine)
             restored_store = FileStore(restored_storage, 1024 * 1024, 30)
