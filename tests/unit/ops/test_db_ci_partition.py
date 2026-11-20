@@ -4,7 +4,6 @@ import json
 import os
 import subprocess
 import sys
-from itertools import chain
 from pathlib import Path
 
 import pytest
@@ -13,6 +12,7 @@ from scripts.db_ci_manifest import PART_COUNT, check_part, partition_for
 
 ROOT = Path(__file__).resolve().parents[3]
 SHA = "a3" * 20
+MODULES = ("test_sample_10", "test_last", "test_first", "test_sample_0", "test_sample_2")
 
 
 def suite(directory):
@@ -21,7 +21,7 @@ def suite(directory):
     (directory / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
-    for module in ("test_first", "test_last", "test_sample_0"):
+    for module in MODULES:
         (modules / f"{module}.py").write_text(
             "import pytest\n"
             "from pathlib import Path\n"
@@ -94,36 +94,30 @@ def good(tmp_path_factory):
     return directory, paths
 
 
-def test_three_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
+def test_five_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
     directory, paths = good
     assert (directory / "trace.txt").read_text().splitlines() == [
-        "test_first one",
-        "test_first two",
-        "test_sample_0 one",
-        "test_sample_0 two",
-        "test_last one",
-        "test_last two",
+        f"{module} {item}" for module in MODULES for item in ("one", "two")
     ]
     prefix = "tests/integration/"
     expected = [
         f"{prefix}{module}.py::test_fictional[{item}]"
-        for module in ("test_first", "test_last", "test_sample_0")
+        for module in sorted(MODULES)
         for item in ("one", "two")
     ]
     for i, path in enumerate(paths):
         report = json.loads(path.read_text())
         assert report["manifest"] == expected
         selected = check_part(report, i, SHA)
-        module = ("test_first", "test_sample_0", "test_last")[i]
         assert selected == [
-            f"{prefix}{module}.py::test_fictional[{item}]" for item in ("one", "two")
+            f"{prefix}{MODULES[i]}.py::test_fictional[{item}]" for item in ("one", "two")
         ]
         assert report["events"] == [
             [node, phase, "passed"] for node in selected for phase in ("setup", "call", "teardown")
         ]
     result = aggregate(paths)
     assert result.returncode == 0, result.stderr
-    assert "6 passed (part 0: 2, part 1: 2, part 2: 2)" in result.stdout
+    assert "10 passed (part 0: 2, part 1: 2, part 2: 2, part 3: 2, part 4: 2)" in result.stdout
     assert SHA in result.stdout
 
 
@@ -145,13 +139,13 @@ def test_real_skips_xfails_xpasses_and_failures_all_reject_the_part(tmp_path, ba
     (modules / "test_first.py").write_text(
         "import pytest\npytestmark = pytest.mark.integration\n" + bad_body
     )
-    result, path = run_part(tmp_path, 0)
+    result, path = run_part(tmp_path, partition_for("tests/integration/test_first.py::test_bad"))
     assert result.returncode != 0
     assert "DB check evidence rejected" in result.stdout
     report = json.loads(path.read_text())
     assert any(outcome != "passed" for _, _, outcome in report["events"])
     with pytest.raises(ValueError):
-        check_part(report, 0, SHA)
+        check_part(report, partition_for("tests/integration/test_first.py::test_bad"), SHA)
 
 
 def test_collection_skip_and_additional_deselection_cannot_silently_shrink_both_manifests(tmp_path):
@@ -229,9 +223,9 @@ def test_evidence_requires_all_distinct_files_at_the_expected_sha(good, tmp_path
     _, paths = good
     for invalid in (
         paths[:2],
-        [paths[0], paths[0], paths[2]],
+        [paths[0], paths[0], *paths[2:]],
         list(reversed(paths)),
-        [*paths[:2], tmp_path / "missing"],
+        [*paths[:-1], tmp_path / "missing"],
         [*paths, paths[0]],
     ):
         assert aggregate(invalid).returncode != 0
@@ -239,7 +233,7 @@ def test_evidence_requires_all_distinct_files_at_the_expected_sha(good, tmp_path
     assert aggregate(paths, sha="b4" * 20).returncode != 0
 
 
-@pytest.mark.parametrize("part", [0, 1, 2])
+@pytest.mark.parametrize("part", range(PART_COUNT))
 @pytest.mark.parametrize("fault", ["signal", "missing phase", "different collection"])
 def test_every_required_runner_must_supply_complete_success(good, tmp_path, part, fault):
     _, original = good
@@ -257,8 +251,14 @@ def test_every_required_runner_must_supply_complete_success(good, tmp_path, part
     assert aggregate(paths).returncode != 0
 
 
-def test_default_partition_uses_module_sha256_modulo_three_and_never_param_or_class_names():
-    for path, expected in [("test_first", 0), ("test_sample_0", 1), ("test_last", 2)]:
+def test_default_partition_uses_module_sha256_modulo_five_and_never_param_or_class_names():
+    for path, expected in [
+        ("test_sample_10", 0),
+        ("test_last", 1),
+        ("test_first", 2),
+        ("test_sample_0", 3),
+        ("test_sample_2", 4),
+    ]:
         for suffix in ["test_short", "TestGroup::test_case[with::param]", "test_param[ü]"]:
             assert partition_for(f"tests/integration/{path}.py::{suffix}") == expected
     for invalid in [
@@ -273,18 +273,18 @@ def test_default_partition_uses_module_sha256_modulo_three_and_never_param_or_cl
 
 
 @pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
-def test_expensive_scenarios_share_three_runners_by_complete_module(suffix):
+def test_expensive_scenarios_share_five_runners_by_complete_module(suffix):
     for name, expected in [
         ("boundaries", 2),
         ("history", 0),
         ("current", 1),
-        ("reads", 1),
-        ("lifecycle", 2),
+        ("reads", 2),
+        ("lifecycle", 0),
     ]:
         node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
         assert partition_for(node) == expected
     assert (
-        partition_for(f"tests/integration/ocr/test_payment_confirmation_schema.py::{suffix}") == 0
+        partition_for(f"tests/integration/ocr/test_payment_confirmation_schema.py::{suffix}") == 4
     )
 
 
@@ -308,37 +308,36 @@ def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_ph
     check_part(json.loads(destination.read_text()), part, SHA)
 
 
-def test_rebalanced_complete_modules_execute_each_case_once_in_three_real_processes(tmp_path):
+def test_rebalanced_complete_modules_execute_each_case_once_in_five_real_processes(tmp_path):
     folder = tmp_path / "tests/integration/business"
     folder.mkdir(parents=True)
     (tmp_path / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
-    expected_modules = (
-        ("test_credit_revision_history", "test_document_allocation_native"),
-        (
-            "test_credit_revision_reads",
-            "test_credit_revision_current",
-            "test_credit_versioned_corrections",
-        ),
-        ("test_credit_revision_boundaries", "test_credit_revision_lifecycle"),
+    groups = (
+        ("credit_revision_history", "credit_revision_lifecycle"),
+        ("credit_versioned_create", "credit_revision_current"),
+        ("credit_revision_reads", "credit_revision_boundaries"),
+        ("credit_versioned_corrections",),
+        ("document_allocation_native",),
     )
-    for name in chain.from_iterable(expected_modules):
-        (folder / f"{name}.py").write_text(
-            "import pytest\n"
-            "@pytest.mark.integration\n"
-            "@pytest.mark.parametrize('members', [1, 200])\n"
-            "def test_complete(members): assert members in (1, 200)\n"
-        )
+    for names in groups:
+        for name in names:
+            (folder / f"test_{name}.py").write_text(
+                "import pytest\n"
+                "@pytest.mark.integration\n"
+                "@pytest.mark.parametrize('members', [1, 200])\n"
+                "def test_complete(members): assert members in (1, 200)\n"
+            )
     paths = []
-    for part, names in enumerate(expected_modules):
+    for part, names in enumerate(groups):
         result, path = run_part(tmp_path, part)
         assert result.returncode == 0, result.stdout + result.stderr
         report = json.loads(path.read_text())
         selected = check_part(report, part, SHA)
-        assert len(report["manifest"]) == 14 and len(selected) == 2 * len(names)
+        assert len(report["manifest"]) == 16 and len(selected) == 2 * len(names)
         assert {node.split("::")[0] for node in selected} == {
-            f"tests/integration/business/{name}.py" for name in names
+            f"tests/integration/business/test_{name}.py" for name in names
         }
         paths.append(path)
     assert aggregate(paths).returncode == 0
