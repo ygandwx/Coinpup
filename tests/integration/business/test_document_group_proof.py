@@ -210,27 +210,36 @@ def test_incomplete_groups_fail_native_proof_and_roll_back(revision, fault):
 
 def test_group_proof_empty_roundtrip_and_protected_history(revision):
     s, h, doc, _, origin = revision
-    plan = run_path(
-        str(
-            Path(__file__).resolve().parents[3]
-            / "services/api/migrations/versions/20261120_0131_document_group_plan.py"
-        )
-    )
+    versions = Path(__file__).resolve().parents[3] / "services/api/migrations/versions"
+    plan = run_path(str(versions / "20261120_0131_document_group_plan.py"))
+    source_keys = run_path(str(versions / "20261120_0132_document_accrual_source_keys.py"))
     read_definition = """
         SELECT prosrc, proconfig FROM pg_catalog.pg_proc
         WHERE oid = 'public.coinpup_validate_document_revision(uuid,uuid,uuid)'::regprocedure
     """
+    source_definition = """
+        SELECT pg_get_functiondef(
+            'public.coinpup_validate_document_accrual_fact(uuid)'::regprocedure
+        )
+    """
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
         original = definitions(c)
+        assert c.exec_driver_sql(source_definition).scalar_one().count("JOIN LATERAL") == 6
         body, settings = c.exec_driver_sql(read_definition).one()
         assert set(settings) == {"search_path=pg_catalog", "plan_cache_mode=force_generic_plan"}
         assert c.scalar(select(func.current_setting("plan_cache_mode"))) == "auto"
+        source_keys["downgrade"]()
+        assert "JOIN LATERAL" not in c.exec_driver_sql(source_definition).scalar_one()
+        prior_body, prior_settings = c.exec_driver_sql(read_definition).one()
+        assert "IF document_accrual IS NOT TRUE" in body and prior_body != body
+        assert prior_settings == settings
         plan["downgrade"]()
-        assert c.exec_driver_sql(read_definition).one() == (body, ["search_path=pg_catalog"])
+        assert c.exec_driver_sql(read_definition).one() == (prior_body, ["search_path=pg_catalog"])
         m = document_group_migration()
         m["downgrade"]()
         m["upgrade"]()
         plan["upgrade"]()
+        source_keys["upgrade"]()
         assert definitions(c) == original
     before = snapshot(s)
     with pytest.raises(IntegrityError) as guarded, s["engine"].begin() as c:
@@ -243,6 +252,13 @@ def test_group_proof_empty_roundtrip_and_protected_history(revision):
         with Operations.context(MigrationContext.configure(c)):
             plan["downgrade"]()
     assert guarded_plan.value.orig.diag.constraint_name == "ck_document_group_plan_downgrade"
+    with pytest.raises(IntegrityError) as guarded_keys, s["engine"].begin() as c:
+        append_accrual(c, h, doc, origin.postings[0], "correct", 2)
+        with Operations.context(MigrationContext.configure(c)):
+            source_keys["downgrade"]()
+    assert (
+        guarded_keys.value.orig.diag.constraint_name == "ck_document_accrual_source_keys_downgrade"
+    )
     assert snapshot(s) == before
 
 
