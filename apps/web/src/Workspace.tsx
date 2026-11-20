@@ -1185,6 +1185,7 @@ export function BusinessWorkspace({
                                 session={session}
                                 controller={businessConfirmations}
                                 assets={assets}
+                                categories={categories}
                                 archived={entity.archived}
                                 dataLoading={loading || ledgerLoading || !current}
                                 onUnauthorized={onUnauthorized}

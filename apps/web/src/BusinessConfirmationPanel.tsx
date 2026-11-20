@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import type { Locale } from "./i18n";
-import type { Asset } from "./ledger-api";
+import type { Asset, Category } from "./ledger-api";
 import { businessError } from "./business-errors";
 import { getBusinessDraft, listBusinessDrafts } from "./business-draft-api";
 import type { BusinessDraft, BusinessDraftSummary } from "./business-draft-api";
@@ -15,6 +15,8 @@ import type { PendingBusinessConfirmationController } from "./pending-business-c
 import { isDocumentRevisionPlan } from "./document-revision-intent";
 import { formatAmount, parseAmount } from "./money";
 
+import { BusinessDocumentRevisionPanel } from "./BusinessDocumentRevisionPanel";
+
 type Document = BusinessDraft | BusinessConfirmationDetail["document"];
 export function BusinessConfirmationPanel({
     ledgerId,
@@ -22,6 +24,7 @@ export function BusinessConfirmationPanel({
     locale,
     controller,
     assets,
+    categories,
     archived,
     dataLoading,
     onEditing,
@@ -32,6 +35,7 @@ export function BusinessConfirmationPanel({
     locale: Locale;
     controller: PendingBusinessConfirmationController;
     assets: Asset[];
+    categories: Category[];
     archived: boolean;
     dataLoading: boolean;
     onEditing: (value: boolean) => void;
@@ -43,6 +47,14 @@ export function BusinessConfirmationPanel({
         pending.plan?.ledgerId === ledgerId && !isDocumentRevisionPlan(pending.plan)
             ? pending.plan
             : null;
+    const revisionPlan =
+        isDocumentRevisionPlan(pending.plan) &&
+        pending.plan.ownerId === String(session.user.id) &&
+        pending.plan.ledgerId === ledgerId
+            ? pending.plan
+            : null;
+    const [revisionTarget, setRevisionTarget] = useState<string | null>(null);
+    const revisionId = revisionPlan?.documentId ?? revisionTarget;
     const [mode, setMode] = useState<"draft" | "confirmed">("draft");
     const [offset, setOffset] = useState(0),
         [refresh, setRefresh] = useState(0);
@@ -64,7 +76,7 @@ export function BusinessConfirmationPanel({
     const readError = failure?.key === key ? failure.error : null;
     const document: Document | null = plan ? JSON.parse(plan.reviewedJson) : selected;
     const receipt = plan ? pending.receipt : sealed;
-    const open = !!target || !!plan;
+    const open = !!target || !!plan || !!revisionId;
     const unresolved = !["idle", "confirmed", "rejected"].includes(pending.status);
     const asset = assets.find((item) => item.asset_id === document?.asset_id);
     const eligible = (() => {
@@ -90,6 +102,7 @@ export function BusinessConfirmationPanel({
     useEffect(() => () => detailAbort.current?.abort(), []);
     useEffect(() => {
         const abort = new AbortController();
+        if (revisionId) return;
         const read = mode === "draft" ? listBusinessDrafts : listBusinessConfirmations;
         read(ledgerId, offset, abort.signal)
             .then((items) => {
@@ -102,7 +115,7 @@ export function BusinessConfirmationPanel({
                 else setFailure({ key, error: caught });
             });
         return () => abort.abort();
-    }, [ledgerId, mode, offset, key]);
+    }, [ledgerId, mode, offset, key, revisionId]);
     function fail(caught: unknown) {
         if (caught instanceof ApiError && caught.status === 401) callbacks.current.onUnauthorized();
         else setError(caught);
@@ -174,6 +187,27 @@ export function BusinessConfirmationPanel({
         }
     }
     const amount = (value: string) => `${formatAmount(value, locale)} ${document?.asset_id ?? ""}`;
+    if (revisionId)
+        return (
+            <BusinessDocumentRevisionPanel
+                ledgerId={ledgerId}
+                documentId={revisionId}
+                session={session}
+                locale={locale}
+                controller={controller}
+                assets={assets}
+                categories={categories}
+                archived={archived}
+                dataLoading={dataLoading}
+                onUnauthorized={onUnauthorized}
+                onKeepTarget={() => setRevisionTarget(revisionId)}
+                onBack={() => {
+                    setRevisionTarget(null);
+                    setMode("confirmed");
+                    setRefresh((value) => value + 1);
+                }}
+            />
+        );
     return (
         <section
             className="business-panel business-confirmation-panel"
@@ -396,6 +430,20 @@ export function BusinessConfirmationPanel({
                                             ? t("核对已保存版本", "Review saved version")
                                             : t("查看封存单据", "View sealed document")}
                                     </button>
+                                    {mode === "confirmed" && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!open && controller.dismiss())
+                                                    setRevisionTarget(row.id);
+                                            }}
+                                        >
+                                            {t(
+                                                "当前状态、更正与取消",
+                                                "Current state, correction and cancellation",
+                                            )}
+                                        </button>
+                                    )}
                                 </li>
                             ))}
                         </ul>
