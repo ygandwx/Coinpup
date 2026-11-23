@@ -344,7 +344,9 @@ def check_bundle_restore(source_url):
                 service, store, owner, ledger_b, pdf, "Fictional company certificate.pdf"
             )
             picture = upload_fixture(service, store, owner, ledger_b, PNG, "Fictional receipt.png")
-            invoice_profiles = seed_invoice_profiles(engine, ledger_b, picture["receipt"].file_id)
+            invoice_profiles = seed_invoice_profiles(
+                engine, owner, ledger_b, picture["receipt"].file_id
+            )
             confirmations = seed_confirmations(
                 engine,
                 owner,
