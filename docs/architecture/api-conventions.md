@@ -92,6 +92,12 @@ OCR确认增加明确`entry.kind="link_payment"`，选择已有付款和操作�
 
 `GET /business-credits/{credit_id}/current`返回稳定组身份、当前组`version`、状态、最新修订身份/原因和最多200个完整有效成员，不分页。当前日期/事实说明与修订原因分开；取消保留终态版本，当前日期/说明为null、成员为空，不以零金额代替已移除成员。当前数量按实际资产精度输出，原201/200回执不变。此接口使用同一只读快照，归档、停用和结账后仍可读；服务固定5次SELECT（含管理员/账本/主体鉴权），HTTP会话另1次。不读取完整分录历史，不获取写锁；稳定组通知可触发重读，但未知POST仍只能重放原意图。
 
+## 公司 Invoice 配置
+
+`/api/v1/ledgers/{ledger_id}/invoice-profiles` 只管理公司账本的开票配置，不分配号码、发行PDF或改变财务分录。POST以稳定UUID创建（201）；GET分页及`/{profile_id}`读取当前配置；PUT `/{profile_id}`以`expected_version`完整替换展示资料、编号规则及Logo选择，省略的可空字段清空；PATCH `/{profile_id}/archive`显式归档或恢复。重复ID与旧版本分别返回409；不存在或跨账本身份返回404。读含归档，分页/排序沿用主资料约定。写入要求当前公司有效，读取保留归档历史。
+
+Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为有效的PNG/JPEG/WebP；保持原选择不会随文件标题修改而改绑字节。配置只保存当前版本，正式发行须另行冻结所审阅资料。未知资料提交沿用ADR0025，保留原UUID、正文和版本并显式核对；这些响应不是财务命令永久回执，也不表示已预留发票号码。会话、Origin/CSRF、no-store和生成字段合同沿用通用边界。
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。

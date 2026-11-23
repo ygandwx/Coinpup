@@ -1316,6 +1316,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/invoice-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Profiles */
+        get: operations["list_profiles_api_v1_ledgers__ledger_id__invoice_profiles_get"];
+        put?: never;
+        /** Create Profile */
+        post: operations["create_profile_api_v1_ledgers__ledger_id__invoice_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/invoice-profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__get"];
+        /** Replace Profile */
+        put: operations["replace_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/invoice-profiles/{profile_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Archive Profile */
+        patch: operations["archive_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__archive_patch"];
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/ocr-drafts": {
         parameters: {
             query?: never;
@@ -5372,6 +5425,102 @@ export interface components {
             id: string;
             /** Lines */
             lines: components["schemas"]["AllocationLineCreate"][];
+        };
+        /** InvoiceNumberingPolicy */
+        InvoiceNumberingPolicy: {
+            /** Minimum Digits */
+            minimum_digits: number;
+            /** Prefix */
+            prefix: string;
+        };
+        /** InvoiceProfileArchive */
+        InvoiceProfileArchive: {
+            /** Archived */
+            archived: boolean;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** InvoiceProfileCreate */
+        InvoiceProfileCreate: {
+            /** Footer */
+            footer?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Issuer Extra Text */
+            issuer_extra_text?: string | null;
+            /** Logo File Id */
+            logo_file_id?: string | null;
+            /** Logo File Version */
+            logo_file_version?: number | null;
+            /** Name */
+            name: string;
+            numbering: components["schemas"]["InvoiceNumberingPolicy"];
+            /** Payment Instructions */
+            payment_instructions?: string | null;
+        };
+        /** InvoiceProfileReplacement */
+        InvoiceProfileReplacement: {
+            /** Expected Version */
+            expected_version: number;
+            /** Footer */
+            footer?: string | null;
+            /** Issuer Extra Text */
+            issuer_extra_text?: string | null;
+            /** Logo File Id */
+            logo_file_id?: string | null;
+            /** Logo File Version */
+            logo_file_version?: number | null;
+            /** Name */
+            name: string;
+            numbering: components["schemas"]["InvoiceNumberingPolicy"];
+            /** Payment Instructions */
+            payment_instructions?: string | null;
+        };
+        /**
+         * InvoiceProfileResponse
+         * @description Current configuration only; it does not assert any number was issued.
+         */
+        InvoiceProfileResponse: {
+            /** Archived */
+            archived: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Footer */
+            footer?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Issuer Extra Text */
+            issuer_extra_text?: string | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Logo File Id */
+            logo_file_id?: string | null;
+            /** Logo File Version */
+            logo_file_version?: number | null;
+            /** Name */
+            name: string;
+            numbering: components["schemas"]["InvoiceNumberingPolicy"];
+            /** Payment Instructions */
+            payment_instructions?: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
         };
         /** JobCreate */
         JobCreate: {
@@ -10184,6 +10333,186 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_profiles_api_v1_ledgers__ledger_id__invoice_profiles_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceProfileResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_profile_api_v1_ledgers__ledger_id__invoice_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceProfileCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceProfileReplacement"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_profile_api_v1_ledgers__ledger_id__invoice_profiles__profile_id__archive_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceProfileArchive"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceProfileResponse"];
                 };
             };
             /** @description Validation Error */
