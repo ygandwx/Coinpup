@@ -1798,6 +1798,9 @@ def structure_database(request):
     invoice_key_definitions = None
     invoice_previous_history = invoice_key_history or (
         request.node.path == Path(__file__).parent / "business/test_invoice_command_key.py"
+        # This fixture runs a real Alembic head -> 0008 -> head round trip. All
+        # registered triggers must be present when Alembic starts the downgrade.
+        and "legacy_v1_receipts" not in request.fixturenames
     )
     invoice_previous_token = None
     invoice_previous_definitions = None
