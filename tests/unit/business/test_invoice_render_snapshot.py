@@ -198,6 +198,21 @@ def test_document_integrity_checks_are_applied_before_rendering():
         freeze(*args)
 
 
+def test_configuration_and_logo_versions_must_fit_the_persisted_version_contract():
+    facts, command, profile, logo = inputs(with_logo=True)
+    limit = 2147483647
+    profile.version = command.expected_configuration_version = limit
+    logo.version = profile.logo_file_version = limit
+    assert freeze(facts, command, profile, logo).decode()["profile"]["version"] == limit
+    for version in (0, limit + 1):
+        invalid_profile = profile.model_copy(update={"version": version})
+        invalid_command = command.model_copy(update={"expected_configuration_version": version})
+        with pytest.raises(MoneyError):
+            freeze(facts, invalid_command, invalid_profile, logo)
+        with pytest.raises(MoneyError):
+            freeze(facts, command, profile, logo.model_copy(update={"version": version}))
+
+
 def test_bad_copied_intent_and_wrong_types_do_not_bypass_validation():
     facts, command, profile, logo = inputs()
     for intent in [
