@@ -50,33 +50,38 @@ class DocumentCurrent(BaseModel):
         return self
 
 
+def read_current_document(session, ledger_id, document_id):
+    """Build the current DTO in the caller's already authorized transaction."""
+    facts = read_confirmed_document_version(session, ledger_id, document_id)
+    original = facts.original.document
+    try:
+        return DocumentCurrent(
+            ledger_id=ledger_id,
+            document_id=document_id,
+            confirmation_id=original.confirmation_id,
+            document_kind=original.document_kind,
+            version=facts.version,
+            status="cancelled" if facts.document is None else "active",
+            revision_id=facts.revision_id,
+            document=facts.document,
+            postings=[
+                DocumentCurrentPosting(
+                    source_line_id=p.source_line_id,
+                    operation_id=p.operation_id,
+                    operation_version=p.version,
+                    journal_id=p.journal_id,
+                )
+                for p in facts.postings
+            ],
+        )
+    except ValidationError:
+        raise LedgerError(
+            "document_revision_integrity", 503, "Stored document facts are inconsistent."
+        ) from None
+
+
 class BusinessDocumentCurrentReads(LedgerService):
     def current(self, owner_id, ledger_id, document_id):
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
-            facts = read_confirmed_document_version(session, ledger_id, document_id)
-            original = facts.original.document
-            try:
-                return DocumentCurrent(
-                    ledger_id=ledger_id,
-                    document_id=document_id,
-                    confirmation_id=original.confirmation_id,
-                    document_kind=original.document_kind,
-                    version=facts.version,
-                    status="cancelled" if facts.document is None else "active",
-                    revision_id=facts.revision_id,
-                    document=facts.document,
-                    postings=[
-                        DocumentCurrentPosting(
-                            source_line_id=p.source_line_id,
-                            operation_id=p.operation_id,
-                            operation_version=p.version,
-                            journal_id=p.journal_id,
-                        )
-                        for p in facts.postings
-                    ],
-                )
-            except ValidationError:
-                raise LedgerError(
-                    "document_revision_integrity", 503, "Stored document facts are inconsistent."
-                ) from None
+            return read_current_document(session, ledger_id, document_id)
