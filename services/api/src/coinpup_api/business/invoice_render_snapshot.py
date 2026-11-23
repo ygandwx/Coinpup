@@ -83,42 +83,55 @@ def freeze_invoice_render_input(
     Subsequent rendering must verify actual Logo bytes against this saved identity;
     it must not rebuild a pending input from newer profile or document versions.
     """
+    try:
+        document, checked, reviewed, number = _prepare(
+            current, asset, profile, ledger_id=ledger_id, command=command, sequence=sequence
+        )
+        return _encode(
+            document, checked, reviewed, number, _logo_identity(logo, checked, ledger_id)
+        )
+    except (ValidationError, TypeError, ValueError, UnicodeError):
+        raise _invalid() from None
+
+
+def _prepare(current, asset, profile, *, ledger_id, command, sequence):
     if (
         not isinstance(profile, InvoiceProfileResponse)
         or not isinstance(command, InvoiceIssuanceCreate)
         or not isinstance(ledger_id, UUID)
     ):
         raise _invalid()
-    try:
-        source = profile.model_dump()
-        checked = InvoiceProfileResponse.model_validate(source)
-        reviewed = InvoiceIssuanceCreate.model_validate(command.model_dump())
-        if (
-            checked.model_dump() != source
-            or type(profile.version) is not int
-            or not 1 <= profile.version <= 2147483647
-            or profile.archived is not False
-            or checked.ledger_id != ledger_id
-            or checked.id != reviewed.configuration_id
-            or checked.version != reviewed.expected_configuration_version
-        ):
-            raise _invalid()
-        document = freeze_invoice_document(current, asset, ledger_id=ledger_id, command=reviewed)
-        number = candidate_number(checked.numbering, sequence)
-        payload = {
-            "schema_version": 1,
-            "template_version": INVOICE_TEMPLATE_VERSION,
-            "intent": reviewed.model_dump(mode="json"),
-            "number": {"sequence": number.sequence, "number": number.number},
-            "document": document.decode(),
-            "profile": checked.model_dump(mode="json"),
-            "logo": _logo_identity(logo, checked, ledger_id),
-        }
-        content = json.dumps(
-            payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False
-        ).encode("utf-8")
-        if len(content) > MAX_RENDER_SNAPSHOT_BYTES:
-            raise _invalid()
-        return FrozenInvoiceRenderInput(content)
-    except (ValidationError, TypeError, ValueError, UnicodeError):
-        raise _invalid() from None
+    source = profile.model_dump()
+    checked = InvoiceProfileResponse.model_validate(source)
+    reviewed = InvoiceIssuanceCreate.model_validate(command.model_dump())
+    if (
+        checked.model_dump() != source
+        or type(profile.version) is not int
+        or not 1 <= profile.version <= 2147483647
+        or profile.archived is not False
+        or checked.ledger_id != ledger_id
+        or checked.id != reviewed.configuration_id
+        or checked.version != reviewed.expected_configuration_version
+    ):
+        raise _invalid()
+    document = freeze_invoice_document(current, asset, ledger_id=ledger_id, command=reviewed)
+    number = candidate_number(checked.numbering, sequence)
+    return document, checked, reviewed, number
+
+
+def _encode(document, profile, intent, number, logo):
+    payload = {
+        "schema_version": 1,
+        "template_version": INVOICE_TEMPLATE_VERSION,
+        "intent": intent.model_dump(mode="json"),
+        "number": {"sequence": number.sequence, "number": number.number},
+        "document": document.decode(),
+        "profile": profile.model_dump(mode="json"),
+        "logo": logo,
+    }
+    content = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    if len(content) > MAX_RENDER_SNAPSHOT_BYTES:
+        raise _invalid()
+    return FrozenInvoiceRenderInput(content)
