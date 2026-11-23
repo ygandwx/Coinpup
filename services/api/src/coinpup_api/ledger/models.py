@@ -39,6 +39,9 @@ from coinpup_api.business import (
 )
 from coinpup_api.business import credit_revision_models as credit_revision_models  # noqa: F401
 from coinpup_api.business import document_revision_models as document_revision_models  # noqa: F401
+from coinpup_api.business import (
+    invoice_completion_models as invoice_completion_models,  # noqa: F401
+)
 from coinpup_api.business import invoice_profile_models as invoice_profile_models  # noqa: F401
 from coinpup_api.business import (
     invoice_reservation_models as invoice_reservation_models,  # noqa: F401

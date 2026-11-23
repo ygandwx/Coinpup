@@ -26,6 +26,7 @@ def test_return_header_matches_frozen_ddl_and_fits_existing_change_log_type():
         "business_document_accruals",
         "business_invoice_profiles",
         "business_invoice_reservations",
+        "business_invoice_completions",
     }
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         current["_SCHEMA_SQL"].split()
