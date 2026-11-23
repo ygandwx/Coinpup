@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from tests.integration.conftest import (
     draft_header_migration,
     draft_line_migration,
+    invoice_reservation_migration,
     party_profile_migration,
     period_migration,
     project_dimension_migration,
@@ -161,7 +162,9 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 )
                 assert (
                     connection.exec_driver_sql(
-                        "SELECT (SELECT count(*) FROM business_credits) + "
+                        "SELECT (SELECT count(*) FROM business_invoice_reservations) + "
+                        "(SELECT count(*) FROM business_invoice_profiles) + "
+                        "(SELECT count(*) FROM business_credits) + "
                         "(SELECT count(*) FROM business_credit_lines) + "
                         "(SELECT count(*) FROM business_credit_revisions) + "
                         "(SELECT count(*) FROM business_credit_revision_members) + "
@@ -177,6 +180,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 )
                 connection.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
+                    "business_invoice_reservations, "
                     "business_invoice_profiles, business_document_accruals, "
                     "business_document_revision_lines, "
                     "business_document_revisions, "
@@ -209,6 +213,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
         )
         with s["engine"].begin() as connection:
             with Operations.context(MigrationContext.configure(connection)):
+                invoice_reservation_migration()["downgrade"]()
                 reminder_migration()["downgrade"]()
                 recurring_migration()["downgrade"]()
                 draft_line_migration()["downgrade"]()
@@ -229,6 +234,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 draft_line_migration()["upgrade"]()
                 recurring_migration()["upgrade"]()
                 reminder_migration()["upgrade"]()
+                invoice_reservation_migration()["upgrade"]()
         assert snapshot(s) == before
         seed(s)
         with s["engine"].connect() as connection:

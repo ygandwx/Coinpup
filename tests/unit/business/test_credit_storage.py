@@ -34,6 +34,7 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
             "business_document_revision_lines",
             "business_document_accruals",
             "business_invoice_profiles",
+            "business_invoice_reservations",
         }
     )
     frozen = " ".join(migration["_SCHEMA_SQL"].split())
@@ -63,5 +64,5 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
         elif isinstance(node, ast.Import):
             raise AssertionError("Migration imports runtime code")
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261113_0097"]
+    assert scripts.get_heads() == ["20261113_0098"]
     assert scripts.get_revision("20261021_0037").down_revision == "20261015_0036"
