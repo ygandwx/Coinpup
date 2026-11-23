@@ -86,6 +86,17 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
             ]
         )
         return fix_steps + steps, skipped
+    if mode == "invoice":
+        steps.extend(
+            [
+                python_step("Dependency consistency", "-m", "pip", "check"),
+                python_step("Invoice dependency notices", "scripts/check_invoice_dependencies.py"),
+                python_step(
+                    "Invoice render checks", "-m", "pytest", "tests/invoice", "-m", "invoice"
+                ),
+            ]
+        )
+        return fix_steps + steps, skipped
     if mode == "ocr":
         steps.extend(
             [
@@ -119,7 +130,11 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
                 python_step("Python lint", "-m", "ruff", "check", "."),
                 python_step("Python formatting", "-m", "ruff", "format", "--check", "."),
                 python_step(
-                    "Tests without database", "-m", "pytest", "-m", "not integration and not ocr"
+                    "Tests without database",
+                    "-m",
+                    "pytest",
+                    "-m",
+                    "not integration and not ocr and not invoice",
                 ),
                 python_step("Documentation", "scripts/check_docs.py"),
                 python_step("OpenAPI snapshot", "scripts/export_openapi.py", "--check"),
@@ -214,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "mode",
         nargs="?",
-        choices=("fast", "web", "db", "ocr", "corpus", "assets", "candidates"),
+        choices=("fast", "web", "db", "ocr", "corpus", "assets", "candidates", "invoice"),
         default="fast",
     )
     parser.add_argument(

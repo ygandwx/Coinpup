@@ -39,6 +39,16 @@ jobs:
         run: python -m pip install -r requirements-dev.lock
       - name: Run fast checks
         run: python scripts/check.py fast
+      - name: Install locked Invoice render and validation dependencies
+        run: python -m pip install --require-hashes -r requirements-invoice.lock -r requirements-benchmark.lock
+      - name: Prepare complete pinned Invoice fonts
+        run: |
+          python -m scripts.ocr_benchmark.fonts fetch --source-dir "$RUNNER_TEMP/invoice-font-sources"
+          python scripts/build_invoice_fonts.py "$RUNNER_TEMP/invoice-font-sources" "$RUNNER_TEMP/invoice-fonts"
+      - name: Check real Invoice text rendering
+        env:
+          COINPUP_INVOICE_FONT_DIR: ${{ runner.temp }}/invoice-fonts
+        run: python scripts/check.py invoice
 
   web:
     name: Web type check and build
