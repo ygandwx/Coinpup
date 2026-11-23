@@ -402,5 +402,5 @@ def test_scoped_migration_guards_data_logs_and_restores_empty_schema(ocr_structu
                 ),
                 {"pattern": "trg_%_change_log"},
             )
-            == 27  # Previous 26 plus current company Invoice configuration.
+            == 28  # Previous 27 plus immutable Invoice reservations.
         )

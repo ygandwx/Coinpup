@@ -79,6 +79,7 @@ EntityType = Literal[
     "business_document_revision_lines",
     "business_document_accruals",
     "business_invoice_profiles",
+    "business_invoice_reservations",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 
