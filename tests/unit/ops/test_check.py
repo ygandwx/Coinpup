@@ -29,7 +29,7 @@ def test_default_fast_covers_python_contracts_and_offline_migration(monkeypatch,
     assert [command[1:] for command, _ in commands] == [
         ["-m", "ruff", "check", "."],
         ["-m", "ruff", "format", "--check", "."],
-        ["-m", "pytest", "-m", "not integration and not ocr"],
+        ["-m", "pytest", "-m", "not integration and not ocr and not invoice"],
         ["scripts/check_docs.py"],
         ["scripts/export_openapi.py", "--check"],
         ["-m", "alembic", "upgrade", "head", "--sql"],
@@ -59,6 +59,19 @@ def test_ocr_checks_require_installed_dependencies_without_npm(monkeypatch, tmp_
         [sys.executable, "-m", "pip", "check"],
         [sys.executable, "scripts/check_ocr_dependencies.py"],
         [sys.executable, "-m", "pytest", "tests/ocr", "-m", "ocr"],
+    ]
+
+
+def test_invoice_checks_require_real_dependencies_and_fonts_without_npm(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        checks.shutil, "which", lambda name: pytest.fail("invoice must not need npm")
+    )
+    steps, skipped = checks.build_steps("invoice", False, tmp_path)
+    assert skipped == []
+    assert [step.command for step in steps] == [
+        [sys.executable, "-m", "pip", "check"],
+        [sys.executable, "scripts/check_invoice_dependencies.py"],
+        [sys.executable, "-m", "pytest", "tests/invoice", "-m", "invoice"],
     ]
 
 

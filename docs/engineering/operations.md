@@ -264,6 +264,19 @@ ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与
 该环境不安装识别引擎或 fontTools 构建器，默认 API 环境不自动安装此可选组。
 依赖安装及审计不等于渲染服务部署、正式 Invoice 发行或 OCR 验收。
 
+## Invoice 文本渲染检查
+
+`python scripts/check.py invoice` 显式运行依赖审计与真实 PDF 检查；缺少可选包或
+`COINPUP_INVOICE_FONT_DIR` 指定的完整固定字库会失败。验证环境同时按哈希安装
+`requirements-invoice.lock` 与 `requirements-benchmark.lock`，后者仅提供构建字体和
+读取 PDF 的测试工具；默认 API 不导入这些库。CI 在必需 Quality 任务中执行该入口，
+不运行 OCR 正式验收或修改其门槛。
+
+文本核心仅消费已授权预留的冻结字节与保存的摘要，标签中英切换、原文直接绘制；金额
+始终使用保存的十进制字符串，不重新计价。不支持的字形明确拒绝，不替换为空白方块。
+内核限制 256 页及 8 MiB 输出；正式调用还必须由后续独立进程限制 CPU、内存与墙钟时间。
+此阶段含 Logo 的快照明确拒绝，不能静默省略 Logo；也不写原件、分配号码或开放发行 API。
+
 重生成锁文件：
 
 ```sh
