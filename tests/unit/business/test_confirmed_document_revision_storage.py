@@ -22,6 +22,7 @@ def test_confirmed_revision_header_relations_and_previous_catalog_match_the_ddl(
     assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"] + (
         "business_document_revision_lines",
         "business_document_accruals",
+        "business_invoice_profiles",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())
@@ -41,6 +42,7 @@ def test_document_line_ddl_matches_composite_fks_and_current_additive_catalog():
     assert current["_TABLES"] == (table.name,) and len(table.name) <= 32
     assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"] + (
         "business_document_accruals",
+        "business_invoice_profiles",
     )
     original_fks = [
         fk for fk in table.foreign_key_constraints if fk.name != "fk_document_revision_line_source"
@@ -98,6 +100,8 @@ def test_accrual_links_have_the_frozen_scoped_journal_and_source_constraints():
     assert current["_OLD_ENTITY_TYPES"] == old["_OLD_ENTITY_TYPES"] + old["_TABLES"]
     table = BusinessDocumentAccrual.__table__
     assert current["_TABLES"] == (table.name,)
-    assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"]
+    assert tuple(get_args(EntityType)) == current["_OLD_ENTITY_TYPES"] + current["_TABLES"] + (
+        "business_invoice_profiles",
+    )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())

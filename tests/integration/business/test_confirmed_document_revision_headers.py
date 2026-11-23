@@ -15,6 +15,7 @@ from tests.integration.business.test_confirmation_service import prepare, submit
 from tests.integration.business.test_credit_revision_storage import definitions
 from tests.integration.business.test_document_revision_capacity import replacement
 from tests.integration.business.test_draft_service import drafts as drafts
+from tests.integration.business.test_refund_revision_headers import schema_catalog
 from tests.integration.conftest import document_revision_header_migration
 from tests.integration.ledger.test_account_classes import snapshot
 from tests.integration.ledger.test_posting_service_database import ledger_setup as ledger_setup
@@ -194,8 +195,10 @@ def test_notification_history_alone_refuses_downgrade_and_empty_roundtrip_preser
     assert failed.value.orig.diag.constraint_name == "ck_document_revision_downgrade"
     with s["engine"].begin() as c, Operations.context(MigrationContext.configure(c)):
         expected = definitions(c)
+        catalog = schema_catalog(c)
         migration["downgrade"]()
         assert c.scalar(text("SELECT to_regclass('public.business_document_revisions')")) is None
         migration["upgrade"]()
         assert definitions(c) == expected
+        assert schema_catalog(c) == catalog
     assert submit(s, doc, intent) == receipt and snapshot(s) == before
