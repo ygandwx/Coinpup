@@ -253,3 +253,19 @@ T06-6 的离线字体构建使用已锁定的 fonttools 4.66.1；在独立构建
 不按测试语料删减字形。构建结果必须匹配应用固定的字节大小与 SHA-256。
 运行时读取同一目录内的两份字体及 LICENSE，拒绝缺失、篡改、链接和替代系统字体。
 字体输出供后续受限 PDF 渲染使用；此命令不分配 Invoice 号码、生成正式文件或部署服务。
+
+## Invoice 渲染依赖
+
+`invoice` 可选组单独锁定在 `requirements-invoice.lock`，沿用已审阅构建锁中的
+ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与 OCR 锁不变。
+在独立渲染环境运行 `python -m pip install --require-hashes -r requirements-invoice.lock`，
+然后运行 `python scripts/check_invoice_dependencies.py` 核对实际平台的 wheel 版本与通知。
+所有包内授权文件随制品保留，包括 ReportLab 附带字体的声明；Invoice 只使用上述固定字库。
+该环境不安装识别引擎或 fontTools 构建器，默认 API 环境不自动安装此可选组。
+依赖安装及审计不等于渲染服务部署、正式 Invoice 发行或 OCR 验收。
+
+重生成锁文件：
+
+```sh
+python -m piptools compile pyproject.toml --extra invoice --constraint requirements-benchmark.lock --output-file requirements-invoice.lock --generate-hashes --strip-extras --no-emit-index-url --no-emit-trusted-host
+```
