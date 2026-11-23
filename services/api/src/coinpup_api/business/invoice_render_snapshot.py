@@ -51,6 +51,7 @@ def _logo_identity(logo, profile, ledger_id):
         logo.id != profile.logo_file_id
         or logo.ledger_id != ledger_id
         or type(logo.version) is not int
+        or not 1 <= logo.version <= 2147483647
         or logo.version < profile.logo_file_version
         or logo.archived is not False
         or type(logo.byte_size) is not int
@@ -95,6 +96,7 @@ def freeze_invoice_render_input(
         if (
             checked.model_dump() != source
             or type(profile.version) is not int
+            or not 1 <= profile.version <= 2147483647
             or profile.archived is not False
             or checked.ledger_id != ledger_id
             or checked.id != reviewed.configuration_id
