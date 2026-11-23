@@ -146,7 +146,8 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 assert c.exec_driver_sql("SELECT count(*) FROM ocr_confirmations").scalar() == 0
                 assert (
                     c.exec_driver_sql(
-                        "SELECT (SELECT count(*) FROM business_invoice_reservations) + "
+                        "SELECT (SELECT count(*) FROM business_invoice_completions) + "
+                        "(SELECT count(*) FROM business_invoice_reservations) + "
                         "(SELECT count(*) FROM business_invoice_profiles) + "
                         "(SELECT count(*) FROM business_credits) + "
                         "(SELECT count(*) FROM business_credit_lines) + "
@@ -164,7 +165,7 @@ def test_profile_downgrade_preserves_data_and_logs(ledger_setup, history):
                 )
                 c.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
-                    "business_invoice_reservations, "
+                    "business_invoice_completions, business_invoice_reservations, "
                     "business_invoice_profiles, business_document_accruals, "
                     "business_document_revision_lines, "
                     "business_document_revisions, "

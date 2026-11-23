@@ -162,7 +162,8 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 )
                 assert (
                     connection.exec_driver_sql(
-                        "SELECT (SELECT count(*) FROM business_invoice_reservations) + "
+                        "SELECT (SELECT count(*) FROM business_invoice_completions) + "
+                        "(SELECT count(*) FROM business_invoice_reservations) + "
                         "(SELECT count(*) FROM business_invoice_profiles) + "
                         "(SELECT count(*) FROM business_credits) + "
                         "(SELECT count(*) FROM business_credit_lines) + "
@@ -180,7 +181,7 @@ def test_reference_migration_preserves_history_and_empty_round_trip(ledger_setup
                 )
                 connection.exec_driver_sql(
                     "TRUNCATE TABLE ocr_confirmations, business_postings, business_confirmations, "
-                    "business_invoice_reservations, "
+                    "business_invoice_completions, business_invoice_reservations, "
                     "business_invoice_profiles, business_document_accruals, "
                     "business_document_revision_lines, "
                     "business_document_revisions, "
