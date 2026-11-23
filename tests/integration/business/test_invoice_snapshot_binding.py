@@ -14,6 +14,7 @@ from coinpup_api.business.invoice_issuance_hash import invoice_issuance_hash_v2
 from coinpup_api.business.invoice_issuance_schemas import InvoiceIssuanceCreate
 from coinpup_api.business.invoice_profiles import InvoiceProfileService
 from coinpup_api.business.invoice_render_snapshot import freeze_invoice_render_input
+from coinpup_api.business.invoice_reservation_facts import verify_invoice_reservation
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
 from coinpup_api.business.schemas import PartyCreate
 from coinpup_api.business.service import BusinessService
@@ -23,6 +24,7 @@ from coinpup_api.ledger.assets import ASSETS
 from coinpup_api.ledger.schemas import CategoryCreate
 from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from tests.integration.business.test_document_revision_capacity import replacement
 from tests.integration.business.test_document_revision_commands import correction, send
@@ -168,6 +170,16 @@ def test_complete_real_company_input_passes_binding_but_still_cannot_commit(
     with pytest.raises(IntegrityError) as caught, s["engine"].begin() as c:
         c.execute(insert(InvoiceReservation).values(**values))
         assert c.scalar(select(InvoiceReservation.snapshot_json)) == values["snapshot_json"]
+        # Read the real row with every immediate binding guard active. The deferred
+        # gate below must still reject commit; this is not a persisted pending intent.
+        with Session(bind=c, join_transaction_mode="rollback_only") as session:
+            row = session.get(InvoiceReservation, values["id"])
+            result = verify_invoice_reservation(row, owner_id=s["owner"], ledger_id=s["ledger"])
+            assert result.snapshot.content.decode() == values["snapshot_json"]
+            assert result.identity.sequence == "1" and result.identity.number == values["number"]
+            assert result.request_json == values["request_json"]
+            assert result.request_hash == values["request_hash"]
+
     assert caught.value.orig.diag.constraint_name == "ck_invoice_reservation_complete"
     assert snapshot(s) == before
 
