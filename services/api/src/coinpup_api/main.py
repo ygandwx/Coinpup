@@ -18,6 +18,7 @@ from coinpup_api.business.allocation_return_router import create_allocation_retu
 from coinpup_api.business.confirmation_router import create_business_confirmation_router
 from coinpup_api.business.credit_router import create_credit_router
 from coinpup_api.business.draft_router import create_business_draft_router
+from coinpup_api.business.invoice_profile_router import create_invoice_profile_router
 from coinpup_api.business.recurring_router import create_recurring_router
 from coinpup_api.business.refund_router import create_refund_router
 from coinpup_api.business.router import create_business_router
@@ -119,6 +120,7 @@ def create_app(
     app.include_router(create_auth_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_ledger_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_business_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_invoice_profile_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_business_draft_router(settings, getattr(probe, "engine", None)))
     app.include_router(
         create_business_confirmation_router(settings, getattr(probe, "engine", None))
