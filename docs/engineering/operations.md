@@ -239,3 +239,17 @@ PostgreSQL 工具语义依据：[pg_dump 17](https://www.postgresql.org/docs/17/
 退款修订恢复演练在独立虚构账本建立多版更正和终态取消，将退款操作关联的私有 PDF 与数据库放入同一 bundle。空目标恢复后读取当前事实与逐版历史，重放原创建、退回及每版修订的冻结请求，核对付款本金、现金、控制余额、独立手续费、证据顺序、文件内容与关联。
 
 分摊退回修订演练建立跨资产的换源、重新加入和终态取消，核对重新加入的永久序位与新操作。有效退款先引用退回 v2，显式更正至另一有效组后才可取消原组；恢复后核对两个证据版本、已移除成员的私有 PDF、目录、逐版详情与原始 JSON 幂等重放。
+
+## Invoice 字体准备
+
+T06-6 的离线字体构建使用已锁定的 fonttools 4.66.1；在独立构建环境安装
+`requirements-benchmark.lock` 中的锁定依赖，不运行 OCR 或识别质量验收。
+输入为 `invoice_fonts.py` 固定版本的 Noto SC/TC 原始字体及原 LICENSE；
+其来源版本与既有 `tests/fixtures/ocr/font-assets.json` 一致。构建器不联网。
+
+在仓库根目录、Python 包可导入的环境运行
+`python scripts/build_invoice_fonts.py FONT_SOURCE_DIR NEW_FONT_OUTPUT_DIR`。
+输出目录必须不存在；两个完整字库按固定权重生成并改名，保留授权信息，
+不按测试语料删减字形。构建结果必须匹配应用固定的字节大小与 SHA-256。
+运行时读取同一目录内的两份字体及 LICENSE，拒绝缺失、篡改、链接和替代系统字体。
+字体输出供后续受限 PDF 渲染使用；此命令不分配 Invoice 号码、生成正式文件或部署服务。
