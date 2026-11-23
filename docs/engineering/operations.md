@@ -274,7 +274,7 @@ ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与
 
 文本核心仅消费已授权预留的冻结字节与保存的摘要，标签中英切换、原文直接绘制；金额
 始终使用保存的十进制字符串，不重新计价。不支持的字形明确拒绝，不替换为空白方块。
-内核限制 256 页及 8 MiB 输出；正式调用还必须由后续独立进程限制 CPU、内存与墙钟时间。
+内核限制 256 页及 8 MiB 输出；`render_invoice_pair` 在 Linux 固定子进程同时生成中英两份。
 此阶段含 Logo 的快照明确拒绝，不能静默省略 Logo；也不写原件、分配号码或开放发行 API。
 
 重生成锁文件：
@@ -282,3 +282,18 @@ ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与
 ```sh
 python -m piptools compile pyproject.toml --extra invoice --constraint requirements-benchmark.lock --output-file requirements-invoice.lock --generate-hashes --strip-extras --no-emit-index-url --no-emit-trusted-host
 ```
+
+## Invoice 受限渲染进程
+
+调用方须先鉴权取得其预留的冻结字节、保存的摘要和受信任本地字体目录；摘要本身不是
+访问授权。固定子进程在加载应用和可选包之前限制 CPU 30 秒、地址空间 1 GiB、文件
+8 MiB、64 个描述符并禁用 core；已有更低软/硬限制保持更低。父进程限制总墙钟 45 秒
+及两份 PDF 加固定帧头的合并输出；测试/运维预算只能调低，不能增大。
+
+临时目录为 0700、快照为 0600；子进程不继承数据库凭据、Python 启动覆盖或代理环境。
+两种语言均成功后才输出完整帧，父进程核对归属摘要、长度和两份内容哈希。超时、资源
+超限、输出不完整或清理失败均不返回完成结果；清理整个进程组、回收直接子进程并删除
+临时输入。此限制不是网络/文件系统安全沙箱，不执行用户模板或外部命令。
+
+原冻结数据始终是失败后的恢复来源。本包不写原件、续租/提交发行或开放 API；Logo 仍
+明确拒绝。未来发行服务必须持有有效预留并重新核对归属后，才能原子关联两份原件。
