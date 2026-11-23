@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from coinpup_api.business.invoice_completion_facts import verify_invoice_completion
 from coinpup_api.business.invoice_completion_models import InvoiceCompletion
 from coinpup_api.business.invoice_issuance_results import InvoiceIssuanceComplete
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
@@ -15,6 +16,7 @@ from coinpup_api.files.models import StoredFile
 from coinpup_api.sync.models import ChangeLog
 from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from tests.integration.business.test_document_revision_journals import confirmed
 from tests.integration.business.test_invoice_predecessor import next_input
@@ -98,6 +100,19 @@ def completion(s, reservation, *, files=None):
     )
 
 
+def read_completion(s, connection, identifier):
+    with Session(bind=connection, join_transaction_mode="rollback_only") as session:
+        row = session.get(InvoiceCompletion, identifier)
+        return verify_invoice_completion(
+            session.get(InvoiceReservation, identifier),
+            row,
+            zh_file=session.get(StoredFile, row.zh_file_id),
+            en_file=session.get(StoredFile, row.en_file_id),
+            owner_id=s["owner"],
+            ledger_id=s["ledger"],
+        )
+
+
 def rejected(s, reservation, values, constraint):
     before = snapshot(s)
     with pytest.raises(IntegrityError) as caught, s["engine"].begin() as c:
@@ -119,6 +134,7 @@ def test_complete_bilingual_metadata_has_fixed_dto_and_owned_notification_but_ca
         c.execute(insert(InvoiceCompletion).values(**values))
         row = c.execute(select(InvoiceCompletion.__table__)).mappings().one()
         assert row["response"] == values["response"] and row["response_status"] == 201
+        assert read_completion(s, c, row["id"]).model_dump(mode="json") == values["response"]
         assert c.execute(
             select(
                 ChangeLog.owner_id,
@@ -273,6 +289,7 @@ def test_later_metadata_archive_never_rewrites_the_original_response(company):
             .values(archived=True, title="Fictional renamed", version=2)
         )
         assert c.execute(select(InvoiceCompletion.response)).scalar_one() == values["response"]
+        assert read_completion(s, c, values["id"]).model_dump(mode="json") == values["response"]
         assert (
             c.execute(
                 text("SELECT coinpup_invoice_completion_response(:ledger,:id,:zh,:en)"),
