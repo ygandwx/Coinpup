@@ -8,6 +8,17 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 
+def _read_private(name, maximum):
+    descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or not 1 <= info.st_size <= maximum:
+            raise ValueError
+        content = stream.read(maximum + 1)
+    Path(name).unlink()
+    return content
+
+
 def _limits(arguments):
     import resource
 
@@ -38,21 +49,17 @@ def main():
         with redirect_stdout(sys.stderr):
             site.main()
             sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+            from coinpup_api.business.invoice_logo import MAX_LOGO_BYTES
             from coinpup_api.business.invoice_pdf import render_invoice_text_pdf
             from coinpup_api.business.invoice_render_process import CHILD_ERRORS, MAGIC
             from coinpup_api.business.invoice_render_snapshot import MAX_RENDER_SNAPSHOT_BYTES
             from coinpup_api.ledger.errors import MoneyError
 
-            descriptor = os.open("snapshot.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-            with os.fdopen(descriptor, "rb") as stream:
-                info = os.fstat(stream.fileno())
-                if (
-                    not stat.S_ISREG(info.st_mode)
-                    or not 1 <= info.st_size <= MAX_RENDER_SNAPSHOT_BYTES
-                ):
-                    return 71
-                content = stream.read(MAX_RENDER_SNAPSHOT_BYTES + 1)
-            Path("snapshot.json").unlink()
+            content = _read_private("snapshot.json", MAX_RENDER_SNAPSHOT_BYTES)
+            try:
+                logo_content = _read_private("logo.bin", MAX_LOGO_BYTES)
+            except FileNotFoundError:
+                logo_content = None
             try:
                 outputs = tuple(
                     render_invoice_text_pdf(
@@ -60,6 +67,7 @@ def main():
                         expected_sha256=sys.argv[1],
                         language=language,
                         font_directory=sys.argv[2],
+                        logo_content=logo_content,
                     )
                     for language in ("zh", "en")
                 )

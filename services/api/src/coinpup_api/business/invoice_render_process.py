@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 
+from coinpup_api.business.invoice_logo import MAX_LOGO_BYTES
 from coinpup_api.business.invoice_pdf import MAX_INVOICE_PDF_BYTES
 from coinpup_api.business.invoice_render_snapshot import MAX_RENDER_SNAPSHOT_BYTES
 from coinpup_api.ledger.errors import MoneyError
@@ -27,6 +28,7 @@ CHILD_ERRORS = {
     74: "invoice_fonts_unavailable",
     75: "invoice_render_glyph",
     76: "invoice_render_logo_unavailable",
+    77: "invoice_render_logo_invalid",
 }
 
 
@@ -93,7 +95,9 @@ def _pair(output, digest):
     return tuple(result)
 
 
-def render_invoice_pair(content, *, expected_sha256, font_directory, budget=DEFAULT_BUDGET):
+def render_invoice_pair(
+    content, *, expected_sha256, font_directory, budget=DEFAULT_BUDGET, logo_content=None
+):
     """Return both complete PDFs from authorized immutable bytes; never finalize issuance.
 
     The caller supplies its trusted local font directory and owned reservation digest, not
@@ -104,6 +108,11 @@ def render_invoice_pair(content, *, expected_sha256, font_directory, budget=DEFA
         raise _error("invoice_render_unavailable")
     if not isinstance(budget, InvoiceRenderBudget):
         raise _error()
+    if logo_content is not None:
+        if type(logo_content) is not bytes:
+            raise _error("invoice_render_integrity")
+        if not 1 <= len(logo_content) <= MAX_LOGO_BYTES:
+            raise _error("invoice_render_limit")
     if (
         type(content) is not bytes
         or not 1 <= len(content) <= MAX_RENDER_SNAPSHOT_BYTES
@@ -132,6 +141,10 @@ def render_invoice_pair(content, *, expected_sha256, font_directory, budget=DEFA
         with (directory / "snapshot.json").open("xb") as stream:
             os.fchmod(stream.fileno(), 0o600)
             stream.write(content)
+        if logo_content is not None:
+            with (directory / "logo.bin").open("xb") as stream:
+                os.fchmod(stream.fileno(), 0o600)
+                stream.write(logo_content)
         command = [
             str(Path(sys.executable).absolute()),
             "-I",

@@ -1,12 +1,13 @@
-"""Deterministic text rendering core; call only in the future bounded rendering worker.
+"""Deterministic rendering core; call only in the bounded Invoice worker.
 
-No number allocation, database access, original-file writes or issuance endpoint. Logo-bearing
-snapshots reject until the separate bounded image decoder is implemented; never omit a Logo.
+No number allocation, database access, original-file writes or issuance endpoint. Logo bytes
+must match the immutable snapshot and pass bounded decoding; never silently omit a Logo.
 """
 
 import io
 
 from coinpup_api.business.invoice_fonts import STATIC_FONTS, load_invoice_fonts
+from coinpup_api.business.invoice_logo import decode_invoice_logo
 from coinpup_api.business.invoice_snapshot_reads import read_invoice_render_input
 from coinpup_api.ledger.errors import MoneyError
 
@@ -96,7 +97,9 @@ class _BoundedOutput(io.BytesIO):
         return super().write(value)
 
 
-def render_invoice_text_pdf(content, *, expected_sha256, language, font_directory):
+def render_invoice_text_pdf(
+    content, *, expected_sha256, language, font_directory, logo_content=None
+):
     """Render only verified immutable bytes, with exact amounts and literal user text.
 
     The trusted worker must additionally impose process CPU, address-space and wall-clock limits.
@@ -107,11 +110,10 @@ def render_invoice_text_pdf(content, *, expected_sha256, language, font_director
     if type(language) is not str or language not in _LABELS:
         raise _error()
     data = frozen.decode()
-    if data["logo"] is not None:
-        raise _error("invoice_render_logo_unavailable")
+    logo = decode_invoice_logo(logo_content, data["logo"])
     font_bytes = load_invoice_fonts(font_directory)
     try:
-        return _render(data, language, font_bytes)
+        return _render(data, language, font_bytes, logo)
     except MoneyError:
         raise
     except ImportError:
@@ -122,7 +124,7 @@ def render_invoice_text_pdf(content, *, expected_sha256, language, font_director
         raise _error() from None
 
 
-def _render(data, language, font_bytes):
+def _render(data, language, font_bytes, logo):
     # Optional libraries are imported only by the explicit rendering entry point.
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -230,6 +232,24 @@ def _render(data, language, font_bytes):
     labels = _LABELS[language]
     profile, document = data["profile"], data["document"]["current"]["document"]
     story = [LiteralText(labels["title"], 20), LiteralText(data["number"]["number"], 12)]
+    if logo is not None:
+        from PIL import Image
+        from reportlab.lib.utils import ImageReader
+
+        class LogoGraphic(Flowable):
+            def __init__(self):
+                super().__init__()
+                ratio = min(144 / logo.width, 72 / logo.height)
+                self.width, self.height = logo.width * ratio, logo.height * ratio
+                self.image = ImageReader(
+                    Image.frombytes("RGBA", (logo.width, logo.height), logo.pixels)
+                )
+                self.spaceAfter = 8
+
+            def draw(self):
+                self.canv.drawImage(self.image, 0, 0, self.width, self.height, mask="auto")
+
+        story = [KeepTogether([LogoGraphic(), *story])]
 
     def field(label, value):
         if value is not None:
