@@ -21,8 +21,18 @@ class DecodedInvoiceLogo:
     pixels: bytes = field(repr=False)
 
 
+class DeterministicInvoiceLogoError(MoneyError):
+    """The decoded image violates a fixed format, dimension, mode or frame rule."""
+
+
 def _error(code="invoice_render_logo_invalid"):
     return MoneyError(code, "The frozen Invoice Logo could not be decoded safely.")
+
+
+def _invalid_image(code="invoice_render_logo_invalid"):
+    return DeterministicInvoiceLogoError(
+        code, "The frozen Invoice Logo could not be decoded safely."
+    )
 
 
 def decode_invoice_logo(content, identity):
@@ -54,14 +64,14 @@ def decode_invoice_logo(content, identity):
 
     def check(image):
         if image.format != _FORMATS[identity["media_type"]]:
-            raise _error("invoice_render_integrity")
+            raise _invalid_image("invoice_render_integrity")
         width, height = image.size
         if (
             not 1 <= width <= MAX_LOGO_DIMENSION
             or not 1 <= height <= MAX_LOGO_DIMENSION
             or width * height > MAX_LOGO_PIXELS
         ):
-            raise _error("invoice_render_limit")
+            raise _invalid_image("invoice_render_limit")
         if getattr(image, "n_frames", 1) != 1 or image.mode not in {
             "1",
             "L",
@@ -71,7 +81,7 @@ def decode_invoice_logo(content, identity):
             "RGBA",
             "CMYK",
         }:
-            raise _error()
+            raise _invalid_image()
 
     try:
         if ImageFile.LOAD_TRUNCATED_IMAGES:
@@ -91,6 +101,6 @@ def decode_invoice_logo(content, identity):
     except MoneyError:
         raise
     except (Image.DecompressionBombError, Image.DecompressionBombWarning):
-        raise _error("invoice_render_limit") from None
+        raise _invalid_image("invoice_render_limit") from None
     except (OSError, ValueError, TypeError, SyntaxError, OverflowError):
         raise _error() from None

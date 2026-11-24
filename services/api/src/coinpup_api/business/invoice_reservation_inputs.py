@@ -1,6 +1,8 @@
 """Build a new, transient reservation inside the caller's locked company transaction."""
 
 import json
+from dataclasses import dataclass, field
+from uuid import UUID
 
 from sqlalchemy import func, select
 
@@ -15,9 +17,11 @@ from coinpup_api.business.invoice_profile_models import InvoiceProfile
 from coinpup_api.business.invoice_profiles import profile_response
 from coinpup_api.business.invoice_render_snapshot import (
     INVOICE_TEMPLATE_VERSION,
+    _logo_identity,
     freeze_invoice_render_input,
 )
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
+from coinpup_api.business.invoice_snapshot_reads import InvoiceLogoIdentity
 from coinpup_api.files.models import StoredFile
 from coinpup_api.files.schemas import FileResponse
 from coinpup_api.ledger.common import asset_definition
@@ -25,6 +29,20 @@ from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.idempotency import _IDEMPOTENCY_KEY
 from coinpup_api.ledger.models import AssetRecord
 from coinpup_api.ledger.service import LedgerError, _not_found, _version
+
+
+@dataclass(frozen=True, slots=True)
+class FreshInvoiceLogo:
+    profile_id: UUID
+    profile_version: int
+    identity: InvoiceLogoIdentity
+    blob_key: str = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class InvoiceLogoCheck:
+    logo: FreshInvoiceLogo
+    accepted: bool
 
 
 def _next_number(session, ledger, policy):
@@ -49,7 +67,7 @@ def _next_number(session, ledger, policy):
     return sequence, number
 
 
-def new_reservation_input(session, *, owner, ledger, command, key, raw_body=None):
+def new_reservation_input(session, *, owner, ledger, command, key, raw_body=None, logo_check=None):
     """Only for a new intent after authorization, key lookup and the ordered write locks.
 
     The caller owns the transaction. Do not use this path for replay, resuming a
@@ -116,6 +134,25 @@ def new_reservation_input(session, *, owner, ledger, command, key, raw_body=None
         raise LedgerError(
             "invoice_predecessor_conflict", 409, "Review the latest issuance and document version."
         )
+    logo = FileResponse.model_validate(file) if file is not None else None
+    candidate = None
+    if logo is not None:
+        try:
+            identity = InvoiceLogoIdentity.model_validate(_logo_identity(logo, config, ledger))
+        except ValueError:
+            raise LedgerError(
+                "invoice_reservation_integrity", 503, "The reviewed Invoice Logo is inconsistent."
+            ) from None
+        candidate = FreshInvoiceLogo(config.id, config.version, identity, file.blob_key)
+    if logo_check is None:
+        if candidate is not None:
+            return candidate
+    elif candidate != logo_check.logo:
+        raise LedgerError("version_conflict", 409, "Review the selected Invoice Logo again.")
+    elif not logo_check.accepted:
+        raise LedgerError(
+            "invoice_logo_invalid", 422, "Choose an Invoice Logo that can be decoded safely."
+        )
     sequence, number = _next_number(session, ledger, config.numbering)
     try:
         frozen = freeze_invoice_render_input(
@@ -125,7 +162,7 @@ def new_reservation_input(session, *, owner, ledger, command, key, raw_body=None
             ledger_id=ledger,
             command=command,
             sequence=str(sequence),
-            logo=FileResponse.model_validate(file) if file else None,
+            logo=logo,
         )
     except MoneyError:
         raise LedgerError(

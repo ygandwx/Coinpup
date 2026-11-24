@@ -37,10 +37,11 @@ def _limits(arguments):
 
 
 def main():
-    if sys.platform != "linux" or len(sys.argv) != 7:
+    checking_logo = len(sys.argv) == 9 and sys.argv[1] == "--check-logo"
+    if sys.platform != "linux" or (not checking_logo and len(sys.argv) != 7):
         return 70
     try:
-        _limits(sys.argv[3:])
+        _limits(sys.argv[-4:])
     except (ImportError, OSError, ValueError, OverflowError):
         return 70
     try:
@@ -49,11 +50,35 @@ def main():
         with redirect_stdout(sys.stderr):
             site.main()
             sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-            from coinpup_api.business.invoice_logo import MAX_LOGO_BYTES
-            from coinpup_api.business.invoice_pdf import render_invoice_text_pdf
-            from coinpup_api.business.invoice_render_process import CHILD_ERRORS, MAGIC
-            from coinpup_api.business.invoice_render_snapshot import MAX_RENDER_SNAPSHOT_BYTES
+            from coinpup_api.business.invoice_logo import (
+                MAX_LOGO_BYTES,
+                DeterministicInvoiceLogoError,
+                decode_invoice_logo,
+            )
+            from coinpup_api.business.invoice_render_process import (
+                CHILD_ERRORS,
+                INVALID_LOGO,
+                MAGIC,
+            )
             from coinpup_api.ledger.errors import MoneyError
+
+            if checking_logo:
+                _, media_type, digest, size = sys.argv[1:5]
+                try:
+                    decode_invoice_logo(
+                        _read_private("logo.bin", MAX_LOGO_BYTES),
+                        {"media_type": media_type, "sha256": digest, "byte_size": int(size)},
+                    )
+                except DeterministicInvoiceLogoError:
+                    return INVALID_LOGO
+                except MoneyError as error:
+                    return next(
+                        (code for code, name in CHILD_ERRORS.items() if name == error.code), 71
+                    )
+                return 0
+
+            from coinpup_api.business.invoice_pdf import render_invoice_text_pdf
+            from coinpup_api.business.invoice_render_snapshot import MAX_RENDER_SNAPSHOT_BYTES
 
             content = _read_private("snapshot.json", MAX_RENDER_SNAPSHOT_BYTES)
             try:

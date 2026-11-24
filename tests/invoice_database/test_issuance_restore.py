@@ -10,8 +10,9 @@ from uuid import uuid4
 import pytest
 from coinpup_api.business.invoice_issuance_reads import InvoiceIssuanceReads
 from coinpup_api.business.invoice_issuance_schemas import InvoiceIssuanceCreate
-from coinpup_api.business.invoice_issuance_service import InvoiceIssuanceService
+from coinpup_api.business.invoice_issuance_service import InvoiceIssuanceService, _check_logo
 from coinpup_api.business.invoice_reservation_command import InvoiceReservationCommand
+from coinpup_api.business.invoice_reservation_inputs import FreshInvoiceLogo
 from coinpup_api.files.storage import FileStore
 from psycopg import sql
 from sqlalchemy import create_engine
@@ -45,6 +46,13 @@ def corrected(s, row, previous, sequence):
     )
 
 
+def reserve_pending(engine, store, command):
+    reserve = InvoiceReservationCommand(engine).reserve
+    logo = reserve(**command)
+    assert isinstance(logo, FreshInvoiceLogo)
+    return reserve(**command, logo_check=_check_logo(store, logo))
+
+
 @pytest.mark.integration
 def test_bundle_keeps_all_tables_logo_both_originals_and_pending_retry_with_next_number(
     pending, tmp_path
@@ -68,7 +76,7 @@ def test_bundle_keeps_all_tables_logo_both_originals_and_pending_retry_with_next
     first_bytes = private_pair(s, store, first)
     advance(s, row["document_id"])
     second_cmd = corrected(s, row, first.id, 2)
-    second = InvoiceReservationCommand(s["engine"]).reserve(**second_cmd)
+    second = reserve_pending(s["engine"], store, second_cmd)
     assert (
         second.state == "pending"
         and second.sequence == "2"
@@ -106,7 +114,7 @@ def test_bundle_keeps_all_tables_logo_both_originals_and_pending_retry_with_next
         second_bytes = private_pair(new_s, restored_store, done)
         assert all(second_bytes[k] != first_bytes[k] for k in first_bytes)
         advance(new_s, row["document_id"])
-        third = InvoiceReservationCommand(engine).reserve(**corrected(new_s, row, done.id, 3))
+        third = reserve_pending(engine, restored_store, corrected(new_s, row, done.id, 3))
         assert third.sequence == "3" and third.number not in (first.number, done.number)
         continued = snapshot(target)
         assert len(continued["business_invoice_reservations"]) == 3

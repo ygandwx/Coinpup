@@ -20,6 +20,7 @@ from coinpup_api.ocr.isolation import IsolationError, _collect, _environment, _s
 _BOOTSTRAP_PATH = Path(__file__).with_name("_invoice_render_child.py")
 MAGIC = b"CPDF1\x00"
 HEADER_BYTES = len(MAGIC) + 32 + 8 + 64
+INVALID_LOGO = 78
 CHILD_ERRORS = {
     70: "invoice_render_unavailable",
     71: "invoice_render_invalid",
@@ -95,32 +96,7 @@ def _pair(output, digest):
     return tuple(result)
 
 
-def render_invoice_pair(
-    content, *, expected_sha256, font_directory, budget=DEFAULT_BUDGET, logo_content=None
-):
-    """Return both complete PDFs from authorized immutable bytes; never finalize issuance.
-
-    The caller supplies its trusted local font directory and owned reservation digest, not
-    user-selectable paths or executables. A digest alone does not authorize an issuance.
-    Original immutable input remains the recovery source after every failure.
-    """
-    if sys.platform != "linux":
-        raise _error("invoice_render_unavailable")
-    if not isinstance(budget, InvoiceRenderBudget):
-        raise _error()
-    if logo_content is not None:
-        if type(logo_content) is not bytes:
-            raise _error("invoice_render_integrity")
-        if not 1 <= len(logo_content) <= MAX_LOGO_BYTES:
-            raise _error("invoice_render_limit")
-    if (
-        type(content) is not bytes
-        or not 1 <= len(content) <= MAX_RENDER_SNAPSHOT_BYTES
-        or type(expected_sha256) is not str
-        or re.fullmatch(r"[a-f0-9]{64}", expected_sha256) is None
-        or not hmac.compare_digest(hashlib.sha256(content).hexdigest(), expected_sha256)
-    ):
-        raise _error("invoice_render_integrity")
+def _isolated_child(arguments, inputs, budget, *, checking_logo=False):
     process = temporary = None
     stopped = False
     started = time.monotonic()
@@ -132,26 +108,19 @@ def render_invoice_pair(
             stopped = True
 
     try:
-        font_path = Path(font_directory).resolve(strict=True)
-        if not font_path.is_dir():
-            raise _error("invoice_fonts_unavailable")
         temporary = tempfile.TemporaryDirectory(prefix="coinpup-invoice-")
         directory = Path(temporary.name)
         os.chmod(directory, 0o700)
-        with (directory / "snapshot.json").open("xb") as stream:
-            os.fchmod(stream.fileno(), 0o600)
-            stream.write(content)
-        if logo_content is not None:
-            with (directory / "logo.bin").open("xb") as stream:
+        for name, content in inputs.items():
+            with (directory / name).open("xb") as stream:
                 os.fchmod(stream.fileno(), 0o600)
-                stream.write(logo_content)
+                stream.write(content)
         command = [
             str(Path(sys.executable).absolute()),
             "-I",
             "-S",
             str(_BOOTSTRAP_PATH.resolve()),
-            expected_sha256,
-            str(font_path),
+            *arguments,
             str(budget.address_space_bytes),
             str(budget.cpu_seconds),
             str(budget.file_bytes),
@@ -170,6 +139,8 @@ def render_invoice_pair(
             umask=0o077,
         )
         output, _ = _collect(process, budget, started + budget.wall_seconds, stop)
+        if checking_logo and process.returncode == INVALID_LOGO and not output:
+            return None
         if process.returncode:
             import signal
 
@@ -177,7 +148,7 @@ def render_invoice_pair(
             if process.returncode in (-signal.SIGXCPU, -signal.SIGXFSZ, -signal.SIGKILL):
                 code = "invoice_render_limit"
             raise _error(code)
-        return _pair(output, expected_sha256)
+        return output
     except IsolationError as error:
         code = {
             "processor_timeout": "invoice_render_timeout",
@@ -210,3 +181,59 @@ def render_invoice_pair(
                 cleanup_failed = True
         if cleanup_failed:
             raise _error("invoice_render_cleanup_failed") from None
+
+
+def render_invoice_pair(
+    content, *, expected_sha256, font_directory, budget=DEFAULT_BUDGET, logo_content=None
+):
+    """Return both complete PDFs from authorized immutable bytes; never finalize issuance.
+
+    The caller supplies its trusted local font directory and owned reservation digest, not
+    user-selectable paths or executables. A digest alone does not authorize an issuance.
+    Original immutable input remains the recovery source after every failure.
+    """
+    if sys.platform != "linux":
+        raise _error("invoice_render_unavailable")
+    if not isinstance(budget, InvoiceRenderBudget):
+        raise _error()
+    inputs = {"snapshot.json": content}
+    if logo_content is not None:
+        if type(logo_content) is not bytes:
+            raise _error("invoice_render_integrity")
+        if not 1 <= len(logo_content) <= MAX_LOGO_BYTES:
+            raise _error("invoice_render_limit")
+        inputs["logo.bin"] = logo_content
+    if (
+        type(content) is not bytes
+        or not 1 <= len(content) <= MAX_RENDER_SNAPSHOT_BYTES
+        or type(expected_sha256) is not str
+        or re.fullmatch(r"[a-f0-9]{64}", expected_sha256) is None
+        or not hmac.compare_digest(hashlib.sha256(content).hexdigest(), expected_sha256)
+    ):
+        raise _error("invoice_render_integrity")
+    try:
+        font_path = Path(font_directory).resolve(strict=True)
+        font_directory_exists = font_path.is_dir()
+    except (OSError, TypeError, ValueError):
+        raise _error("invoice_render_unavailable") from None
+    if not font_directory_exists:
+        raise _error("invoice_fonts_unavailable")
+    output = _isolated_child((expected_sha256, str(font_path)), inputs, budget)
+    return _pair(output, expected_sha256)
+
+
+def check_invoice_logo(content, identity):
+    """Distinguish a child's explicit image verdict from unavailable validation."""
+    if sys.platform != "linux":
+        raise _error("invoice_render_unavailable")
+    if type(content) is not bytes or not 1 <= len(content) <= MAX_LOGO_BYTES:
+        raise _error("invoice_render_integrity")
+    output = _isolated_child(
+        ("--check-logo", identity.media_type, identity.sha256, str(identity.byte_size)),
+        {"logo.bin": content},
+        DEFAULT_BUDGET,
+        checking_logo=True,
+    )
+    if output:
+        raise _error()
+    return output is not None

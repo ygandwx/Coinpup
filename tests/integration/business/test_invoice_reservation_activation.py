@@ -11,6 +11,7 @@ from alembic.operations import Operations
 from coinpup_api.business.invoice_issuance_reads import InvoiceIssuanceReads
 from coinpup_api.business.invoice_profile_models import InvoiceProfile
 from coinpup_api.business.invoice_reservation_command import InvoiceReservationCommand
+from coinpup_api.business.invoice_reservation_inputs import FreshInvoiceLogo, InvoiceLogoCheck
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
 from coinpup_api.ledger.service import LedgerError
 from sqlalchemy import delete, select, text, update
@@ -37,7 +38,11 @@ def test_committed_pending_keeps_original_hash_and_number_and_replays_after_arch
     service = InvoiceReservationCommand(s["engine"])
     command = args(s, row)
     before = snapshot(s)
-    result = service.reserve(**command)
+    logo = service.reserve(**command)
+    assert isinstance(logo, FreshInvoiceLogo) and logo.identity.file_id == row["logo_file_id"]
+    assert snapshot(s) == before
+    # This storage fixture supplies synthetic file metadata without private bytes.
+    result = service.reserve(**command, logo_check=InvoiceLogoCheck(logo, True))
     assert result.state == "pending" and result.artifacts == ()
     assert (result.id, result.sequence, result.number, result.snapshot_sha256) == (
         row["id"],
