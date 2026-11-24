@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
+from coinpup_api.business.project_activity import ProjectActivityPage, ProjectActivityReads
 from coinpup_api.business.schemas import (
     PartyCreate,
     PartyResponse,
@@ -18,12 +19,14 @@ from coinpup_api.business.schemas import (
 )
 from coinpup_api.business.service import BusinessService
 from coinpup_api.config import Settings
+from coinpup_api.ledger.posting_schemas import CalendarDateFilter
 from coinpup_api.ledger.service import LedgerError
 
 
 def create_business_router(settings: Settings, engine: Engine | None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}", tags=["business master data"])
     service, access = BusinessService(engine), BrowserAccess(settings, engine)
+    activity = ProjectActivityReads(engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
     page_size = Annotated[int, Query(ge=1, le=200)]
@@ -92,5 +95,26 @@ def create_business_router(settings: Settings, engine: Engine | None) -> APIRout
     @router.patch("/business-projects/{project_id}", response_model=ProjectResponse)
     def update_project(ledger_id: UUID, project_id: UUID, body: ProjectUpdate, identity: writer):
         return execute(service.update_project, identity.id, ledger_id, project_id, body)
+
+    @router.get("/business-projects/{project_id}/activity", response_model=ProjectActivityPage)
+    def project_activity(
+        ledger_id: UUID,
+        project_id: UUID,
+        identity: reader,
+        start: CalendarDateFilter,
+        end: CalendarDateFilter,
+        limit: page_size = 50,
+        offset: page_offset = 0,
+    ):
+        return execute(
+            activity.page,
+            identity.id,
+            ledger_id,
+            project_id,
+            start=start,
+            end=end,
+            limit=limit,
+            offset=offset,
+        )
 
     return router

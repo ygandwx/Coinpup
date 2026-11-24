@@ -10175,6 +10175,111 @@
         "title": "PostingSplit",
         "type": "object"
       },
+      "ProjectActivityPage": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAssetActivity"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "project_id",
+          "start",
+          "end",
+          "offset",
+          "limit",
+          "has_more",
+          "items"
+        ],
+        "title": "ProjectActivityPage",
+        "type": "object"
+      },
+      "ProjectAssetActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "closing_payable": {
+            "maxLength": 40,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Closing Payable",
+            "type": "string"
+          },
+          "closing_receivable": {
+            "maxLength": 40,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Closing Receivable",
+            "type": "string"
+          },
+          "cost": {
+            "maxLength": 40,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Cost",
+            "type": "string"
+          },
+          "income": {
+            "maxLength": 40,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Income",
+            "type": "string"
+          },
+          "net": {
+            "maxLength": 40,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Net",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "income",
+          "cost",
+          "net",
+          "closing_receivable",
+          "closing_payable"
+        ],
+        "title": "ProjectAssetActivity",
+        "type": "object"
+      },
       "ProjectCreate": {
         "additionalProperties": false,
         "properties": {
@@ -17444,6 +17549,103 @@
           }
         },
         "summary": "Update Project",
+        "tags": [
+          "business master data"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/business-projects/{project_id}/activity": {
+      "get": {
+        "operationId": "project_activity_api_v1_ledgers__ledger_id__business_projects__project_id__activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectActivityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Project Activity",
         "tags": [
           "business master data"
         ]

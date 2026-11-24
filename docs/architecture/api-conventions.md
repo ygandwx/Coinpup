@@ -172,3 +172,8 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 `POST /ledgers/{ledger_id}/period-changes` 使用独立账本作用域 Idempotency-Key 和原JSON v2摘要，提交 action（close/reopen）、必填可空 closed_through、expected_version、非空 reason。重开必须显式缩小截止日或解除关闭；原键优先重放，版本过期为409 version_conflict。未知提交保留原键与原JSON，不能刷新版本后悄悄重试。`GET` 同路径按版本倒序分页读取不可变审计（limit 1–200，offset 0–100000）。详见ADR0017/0023。
 
 新财务命令任一日期在已关闭范围返回409 period_closed；更正检查原凭证与替代凭证，取消检查原凭证。旧成功回执仍永久重放。未启用结账的账本保持原行为。
+
+
+## 项目经营读取
+
+`GET /api/v1/ledgers/{ledger_id}/business-projects/{project_id}/activity` 要求登录，必填 `start`、`end`（含首尾的 YYYY-MM-DD）；归档项目可读。按资产身份排序、分页（limit 1–200，默认50；offset 0–100000）。income/cost/net 为期间归属额，closing_receivable/closing_payable 为截至结束日的单据控制余额。金额均按原资产精度返回带符号的字符串；不做跨币种净额。范围逆序或总额超出契约返回422。见[ADR0052](decisions/0052-project-activity.md)。
