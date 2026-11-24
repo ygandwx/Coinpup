@@ -98,6 +98,11 @@ OCR确认增加明确`entry.kind="link_payment"`，选择已有付款和操作�
 
 Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为有效的PNG/JPEG/WebP；保持原选择不会随文件标题修改而改绑字节。配置只保存当前版本，正式发行须另行冻结所审阅资料。未知资料提交沿用ADR0025，保留原UUID、正文和版本并显式核对；这些响应不是财务命令永久回执，也不表示已预留发票号码。会话、Origin/CSRF、no-store和生成字段合同沿用通用边界。
 
+`POST /api/v1/ledgers/{ledger_id}/invoice-issuances`：对公司账本当前有效 Invoice 提交已审阅的版本、配置版本、前驱及稳定意图 UUID；要求原 `Idempotency-Key`、会话、Origin 与 CSRF。同一意图成功只返回封存的 201，包含不可变号码、快照摘要、中英两份原件的私有文件 ID、长度和摘要；成功后对原键原正文的重试原样重放。原键绑定其他正文或不同意图冲突（409）。服务在短事务中先预留号码，渲染或连接中断不等于未受理，不能生成新意图、键或号码来重试。渲染资源不可用返回 503；不能据此显示发行成功。
+
+`GET /api/v1/ledgers/{ledger_id}/invoice-issuances/{issuance_id}` 只读取当前授权账本该意图的已存状态。pending 没有原件，complete 返回两份；授权访问其他公司账本下不属于该账本的意图返回 404。可用现有私有文件 content 接口下载并校验原件，不在下载时重新渲染。单据更正后以新意图、新号码关联上一条；旧回执与两份原件保留。所有响应 no-store。
+
+
 ## 周期 Invoice 草稿
 
 - `/api/v1/ledgers/{ledger_id}/recurring-invoice-rules`提供规则创建/分页读取、按ID读取、PATCH名称/显式模板刷新、PATCH归档状态；`/{rule_id}/instances`及`/{index}`只读原生成实例。均使用既有账本归属、会话、Origin/CSRF和no-store边界，没有公开生成接口。
