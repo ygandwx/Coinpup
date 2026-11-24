@@ -89,6 +89,12 @@ def test_corrected_invoice_new_http_receipt_and_all_original_downloads_stay_priv
     assert download(old) == old_bytes and all(
         a != old_bytes[k] for k, a in download(updated).items()
     )
+    history = client.get(url, params={"document_id": old["document_id"]}).json()
+    assert history["next_before"] is None
+    assert [(item["id"], item["state"], item["document_status"]) for item in history["items"]] == [
+        (updated["id"], "complete", "current"),
+        (old["id"], "complete", "superseded"),
+    ]
     sample = old["artifacts"][0]["file_id"]
     assert client.get(f"/api/v1/ledgers/{uuid4()}/files/{sample}/content").status_code == 404
     client.cookies.clear()
