@@ -1014,6 +1014,23 @@ export interface paths {
         patch: operations["update_project_api_v1_ledgers__ledger_id__business_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/business-projects/{project_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project Activity */
+        get: operations["project_activity_api_v1_ledgers__ledger_id__business_projects__project_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/business-refunds": {
         parameters: {
             query?: never;
@@ -6401,6 +6418,52 @@ export interface components {
              */
             category_id: string;
         };
+        /** ProjectActivityPage */
+        ProjectActivityPage: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["ProjectAssetActivity"][];
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
+        /** ProjectAssetActivity */
+        ProjectAssetActivity: {
+            /** Asset Id */
+            asset_id: string;
+            /** Closing Payable */
+            closing_payable: string;
+            /** Closing Receivable */
+            closing_receivable: string;
+            /** Cost */
+            cost: string;
+            /** Income */
+            income: string;
+            /** Net */
+            net: string;
+        };
         /** ProjectCreate */
         ProjectCreate: {
             /**
@@ -9878,6 +9941,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_activity_api_v1_ledgers__ledger_id__business_projects__project_id__activity_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectActivityPage"];
                 };
             };
             /** @description Validation Error */
