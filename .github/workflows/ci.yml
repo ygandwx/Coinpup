@@ -131,8 +131,11 @@ jobs:
           cache-dependency-path: |
             requirements.lock
             requirements-dev.lock
+            requirements-invoice.lock
       - name: Install locked dependencies
         run: python -m pip install -r requirements-dev.lock
+      - name: Install the locked Invoice Logo decoder
+        run: python -m pip install --require-hashes -r requirements-invoice.lock
       - name: Run disposable database checks
         id: database_checks
         # The pre-checkout service hook cannot use the existing official-image fallback.

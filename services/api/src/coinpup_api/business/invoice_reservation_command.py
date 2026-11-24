@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from coinpup_api.business.invoice_issuance_hash import invoice_issuance_hash_v2
 from coinpup_api.business.invoice_issuance_reads import _read_result
-from coinpup_api.business.invoice_reservation_inputs import new_reservation_input
+from coinpup_api.business.invoice_reservation_inputs import FreshInvoiceLogo, new_reservation_input
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
 from coinpup_api.ledger.common import PostingCore
 from coinpup_api.ledger.idempotency import _IDEMPOTENCY_KEY
@@ -20,7 +20,7 @@ def _conflict():
     )
 
 
-def _reserve_or_read(session, *, owner, ledger, entity, command, key, raw_body):
+def _reserve_or_read(session, *, owner, ledger, entity, command, key, raw_body, logo_check=None):
     """The caller has locked the owned company ledger and entity after the global write lock."""
     if entity.kind != "company":
         raise LedgerError("invoice_requires_company", 422, "Invoice issuance requires a company.")
@@ -59,15 +59,23 @@ def _reserve_or_read(session, *, owner, ledger, entity, command, key, raw_body):
             "entity_archived", 409, "Restore the company before starting an issuance."
         )
     row = new_reservation_input(
-        session, owner=owner, ledger=ledger, command=command, key=key, raw_body=raw_body
+        session,
+        owner=owner,
+        ledger=ledger,
+        command=command,
+        key=key,
+        raw_body=raw_body,
+        logo_check=logo_check,
     )
+    if isinstance(row, FreshInvoiceLogo):
+        return row
     session.add(row)
     session.flush()
     return _read_result(session, owner, ledger, row.id)
 
 
 class InvoiceReservationCommand(PostingCore):
-    def reserve(self, owner, ledger, command, key, *, raw_body=None):
+    def reserve(self, owner, ledger, command, key, *, raw_body=None, logo_check=None):
         with self._transaction(owner, write=True, read_committed=True) as session:
             _, entity = self._locked_ledger(session, owner, ledger)
             return _reserve_or_read(
@@ -78,4 +86,5 @@ class InvoiceReservationCommand(PostingCore):
                 command=command,
                 key=key,
                 raw_body=raw_body,
+                logo_check=logo_check,
             )

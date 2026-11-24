@@ -100,7 +100,7 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 
 `POST /api/v1/ledgers/{ledger_id}/invoice-issuances`：对公司账本当前有效 Invoice 提交已审阅的版本、配置版本、前驱及稳定意图 UUID；要求原 `Idempotency-Key`、会话、Origin 与 CSRF。同一意图成功只返回封存的 201，包含不可变号码、快照摘要、中英两份原件的私有文件 ID、长度和摘要；成功后对原键原正文的重试原样重放。原键绑定其他正文或不同意图冲突（409）。服务在短事务中先预留号码，渲染或连接中断不等于未受理，不能生成新意图、键或号码来重试。渲染资源不可用返回 503；不能据此显示发行成功。
 
-首次签发的私有 Logo 超过 8 MiB 时，在预留号码前返回 `422 invoice_logo_size_limit`，原幂等键仍可使用。
+新预留（含重新发行）所用的私有 Logo 超过 8 MiB 时，在预留号码前返回 `422 invoice_logo_size_limit`，原幂等键仍可使用。新预留在写事务外核验所审阅的 Logo。可确定违反解码限制时返回 `422 invoice_logo_invalid`，待更换 Logo 后重新审阅。解码环境不可用仍返回 503。已预留的意图继续使用原键、原请求及原冻结图片。
 
 `GET /api/v1/ledgers/{ledger_id}/invoice-issuances` 按账本内已预留序号倒序列出历史，含待完成和已封存条目。可选 `document_id` 过滤，`limit` 默认50、上限200。返回 `items` 与 `next_before`；下一页把游标作为 `before` 原样传回（不含该序号）。序号及游标为正整数十进制字符串，不能转浮点或按页码计算。条目包含签发时单据版本、当前版本及 current/superseded/cancelled；列表不含快照或文件，不应把它用作原命令成功回执。
 

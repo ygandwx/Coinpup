@@ -7,7 +7,12 @@ import pytest
 from coinpup_api.business.invoice_issuance_schemas import InvoiceIssuanceCreate
 from coinpup_api.business.invoice_numbering import MAX_SEQUENCE, InvoiceNumberingPolicy
 from coinpup_api.business.invoice_profile_models import InvoiceProfile
-from coinpup_api.business.invoice_reservation_inputs import _next_number, new_reservation_input
+from coinpup_api.business.invoice_reservation_inputs import (
+    FreshInvoiceLogo,
+    InvoiceLogoCheck,
+    _next_number,
+    new_reservation_input,
+)
 from coinpup_api.business.invoice_reservation_models import InvoiceReservation
 from coinpup_api.files.models import StoredFile
 from coinpup_api.ledger.service import LedgerError, LedgerService
@@ -63,6 +68,13 @@ def test_transient_candidate_matches_frozen_independent_input_and_passes_immedia
         service._ledger(session, s["owner"], s["ledger"], write=True)
         raw = json.dumps(json.loads(expected["request_json"]), indent=2).encode()
         row = build(s, session, expected, raw_body=raw)
+        if logo:
+            assert (
+                isinstance(row, FreshInvoiceLogo)
+                and row.identity.file_id == expected["logo_file_id"]
+            )
+            assert not session.new
+            row = build(s, session, expected, raw_body=raw, logo_check=InvoiceLogoCheck(row, True))
         assert inspect(row).transient and not session.new
         assert {k: getattr(row, k) for k in expected} == expected
         assert session.scalar(select(InvoiceReservation.id)) is None

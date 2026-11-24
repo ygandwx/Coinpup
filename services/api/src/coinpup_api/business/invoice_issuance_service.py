@@ -14,8 +14,10 @@ from coinpup_api.business.invoice_issuance_results import (
 )
 from coinpup_api.business.invoice_issuance_schemas import InvoiceIssuanceCreate
 from coinpup_api.business.invoice_metadata_finalize import InvoiceFinalization
-from coinpup_api.business.invoice_render_sources import InvoiceRenderSources
+from coinpup_api.business.invoice_render_process import check_invoice_logo
+from coinpup_api.business.invoice_render_sources import InvoiceRenderSources, _read_original
 from coinpup_api.business.invoice_reservation_command import InvoiceReservationCommand
+from coinpup_api.business.invoice_reservation_inputs import FreshInvoiceLogo, InvoiceLogoCheck
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.service import LedgerError
 
@@ -31,6 +33,15 @@ def _receipt(receipt, identity):
         return verify_issuance_result_identity(receipt, identity)
     except (TypeError, ValueError, AttributeError):
         raise _integrity() from None
+
+
+def _check_logo(store, source):
+    try:
+        return InvoiceLogoCheck(
+            source, check_invoice_logo(_read_original(store, source), source.identity)
+        )
+    except MoneyError as error:
+        raise LedgerError(error.code, 503, "The Invoice Logo could not be verified.") from None
 
 
 class InvoiceIssuanceService:
@@ -53,9 +64,12 @@ class InvoiceIssuanceService:
         except ValueError:
             raise LedgerError("invalid_request", 422, "The Invoice intent must be valid.") from None
         run = anyio.to_thread.run_sync
-        first = await run(
-            partial(self.reservations.reserve, owner, ledger, command, key, raw_body=raw_body)
-        )
+        reserve = partial(self.reservations.reserve, owner, ledger, command, key, raw_body=raw_body)
+        first = await run(reserve)
+        if isinstance(first, FreshInvoiceLogo):
+            # The reservation transaction is closed while reading and decoding private bytes.
+            checked = await run(partial(_check_logo, self.store, first))
+            first = await run(partial(reserve, logo_check=checked))
         if not isinstance(first, (InvoiceIssuancePending, InvoiceIssuanceComplete)):
             raise _integrity()
         try:
