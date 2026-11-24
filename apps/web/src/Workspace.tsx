@@ -1354,7 +1354,7 @@ export function BusinessWorkspace({
                         )}
                         {view === "masters" && (
                             <MasterPanel
-                                key={entity.ledger.id}
+                                key={session.user.id + ":" + entity.ledger.id}
                                 ledgerId={entity.ledger.id}
                                 locale={locale}
                                 session={session}
