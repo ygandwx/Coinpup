@@ -96,17 +96,6 @@ for (const action of ["correct", "cancel"] as const)
                     json: { detail: { code: "version_conflict" } },
                 });
             }
-            if (bodies.length === 3) {
-                const session = await page.request.get("/api/v1/auth/session");
-                expect(session.status()).toBe(200);
-                const loggedOut = await page.request.post("/api/v1/auth/logout", {
-                    headers: {
-                        Origin: new URL(page.url()).origin,
-                        "X-CSRF-Token": (await session.json()).csrf_token,
-                    },
-                });
-                expect(loggedOut.status()).toBe(204);
-            }
             await route.continue();
         });
         await doubleClick(
@@ -194,6 +183,16 @@ for (const action of ["correct", "cancel"] as const)
         expect((await injected).status()).toBe(409);
         await unknown(page);
         expect(bodies).toHaveLength(2);
+        // Finish the real session revocation before the original POST starts its client timeout.
+        const session = await page.request.get("/api/v1/auth/session");
+        expect(session.status()).toBe(200);
+        const loggedOut = await page.request.post("/api/v1/auth/logout", {
+            headers: {
+                Origin: new URL(page.url()).origin,
+                "X-CSRF-Token": (await session.json()).csrf_token,
+            },
+        });
+        expect(loggedOut.status()).toBe(204);
         const unauthorized = responseTo(page, path);
         await button(page, "Retry original request").click();
         expect((await unauthorized).status()).toBe(401);
