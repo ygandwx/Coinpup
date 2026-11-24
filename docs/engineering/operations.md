@@ -261,15 +261,17 @@ ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与
 在独立渲染环境运行 `python -m pip install --require-hashes -r requirements-invoice.lock`，
 然后运行 `python scripts/check_invoice_dependencies.py` 核对实际平台的 wheel 版本与通知。
 所有包内授权文件随制品保留，包括 ReportLab 附带字体的声明；Invoice 只使用上述固定字库。
-该环境不安装识别引擎或 fontTools 构建器，默认 API 环境不自动安装此可选组。
+该运行环境不安装识别引擎、fontTools 或 PDF 验证工具。Linux API 镜像按哈希安装此锁；普通源码开发环境仍可仅安装基础锁。
 依赖安装及审计不等于渲染服务部署、正式 Invoice 发行或 OCR 验收。
+
+构建 API 镜像时独立字体构建阶段获取已固定的源文件和许可证，重新核对大小、摘要及生成品；运行阶段仅复制两份完整静态字体和 LICENSE 到只读安装目录 `/opt/coinpup/invoice-fonts`。默认 `COINPUP_INVOICE_FONT_DIR` 指向该目录；运行账号在构建时实际读取并核验两份字库和许可证，发行时不联网、不使用系统字体。无法获得固定构建输入时明确停止构建，不替换素材。该镜像准备不等于生产部署。
 
 ## Invoice 文本渲染检查
 
 `python scripts/check.py invoice` 显式运行依赖审计与真实 PDF 检查；缺少可选包或
 `COINPUP_INVOICE_FONT_DIR` 指定的完整固定字库会失败。验证环境同时按哈希安装
 `requirements-invoice.lock` 与 `requirements-benchmark.lock`，后者仅提供构建字体和
-读取 PDF 的测试工具；默认 API 不导入这些库。CI 在必需 Quality 任务中执行该入口，
+读取 PDF 的测试工具；普通 API 请求不调用渲染器。CI 在必需 Quality 任务中执行该入口，
 不运行 OCR 正式验收或修改其门槛。
 
 另用 `python scripts/check.py invoice-db` 验证真实渲染、提交及数据库/原件恢复。仅面向一次性本机 PostgreSQL 17：显式设置 `COINPUP_ENVIRONMENT=test`、`COINPUP_RUN_DB_TESTS=1`、`COINPUP_RUN_BACKUP_TESTS=1`，使用回环地址的 coinpup 测试库和同名测试角色；需要 17 版客户端、固定字体和上述验证锁。将仓库根、`scripts`、`services/api/src` 加到 PYTHONPATH。该检查会重写测试夹具，并创建独立空库和私有文件目录；不指向已有业务库。
