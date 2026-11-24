@@ -272,6 +272,8 @@ ReportLab 5.0.1、Pillow 12.3.0 和 charset-normalizer 3.5.2；现有 API 锁与
 读取 PDF 的测试工具；默认 API 不导入这些库。CI 在必需 Quality 任务中执行该入口，
 不运行 OCR 正式验收或修改其门槛。
 
+另用 `python scripts/check.py invoice-db` 验证真实渲染、提交及数据库/原件恢复。仅面向一次性本机 PostgreSQL 17：显式设置 `COINPUP_ENVIRONMENT=test`、`COINPUP_RUN_DB_TESTS=1`、`COINPUP_RUN_BACKUP_TESTS=1`，使用回环地址的 coinpup 测试库和同名测试角色；需要 17 版客户端、固定字体和上述验证锁。将仓库根、`scripts`、`services/api/src` 加到 PYTHONPATH。该检查会重写测试夹具，并创建独立空库和私有文件目录；不指向已有业务库。
+
 文本核心仅消费已授权预留的冻结字节与保存的摘要，标签中英切换、原文直接绘制；金额
 始终使用保存的十进制字符串，不重新计价。不支持的字形明确拒绝，不替换为空白方块。
 内核限制 256 页及 8 MiB 输出；`render_invoice_pair` 在 Linux 固定子进程同时生成中英两份。
