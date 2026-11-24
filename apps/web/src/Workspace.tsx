@@ -1,3 +1,4 @@
+import { InvoiceHistoryPanel } from "./InvoiceHistoryPanel";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { ApiError, checkHealth } from "./api";
@@ -66,6 +67,7 @@ import type {
 import "./workspace.css";
 
 type View =
+    | "invoices"
     | "business-confirmations"
     | "business-settlements"
     | "business-credits"
@@ -97,6 +99,7 @@ const views: View[] = [
     "business-confirmations",
     "business-settlements",
     "business-credits",
+    "invoices",
     "recurring",
     "reminders",
     "categories",
@@ -491,6 +494,7 @@ export function BusinessWorkspace({
         "business-confirmations": t("单据确认", "Confirm documents"),
         "business-settlements": t("经营收付", "Business settlements"),
         "business-credits": t("贷项", "Credits"),
+        invoices: t("商业发票", "Commercial invoices"),
         reminders: t("提醒事项", "Reminder events"),
         categories: t("分类", "Categories"),
         details: t("账本资料", "Ledger details"),
@@ -940,6 +944,7 @@ export function BusinessWorkspace({
                                         "business-confirmations": "✓",
                                         "business-settlements": "⇄",
                                         "business-credits": "↩",
+                                        invoices: "▧",
                                         categories: "⊞",
                                         details: "▤",
                                         settings: "⚙",
@@ -1129,7 +1134,8 @@ export function BusinessWorkspace({
                             view !== "reminders" &&
                             view !== "business-confirmations" &&
                             view !== "business-settlements" &&
-                            view !== "business-credits" && (
+                            view !== "business-credits" &&
+                            view !== "invoices" && (
                                 <label className="archive-toggle">
                                     <input
                                         type="checkbox"
@@ -1144,6 +1150,23 @@ export function BusinessWorkspace({
                                 {t("正在读取此账本…", "Loading this ledger…")}
                             </p>
                         )}
+                        {view === "invoices" &&
+                            (entity.kind === "company" ? (
+                                <InvoiceHistoryPanel
+                                    key={`${session.user.id}:${entity.ledger.id}`}
+                                    ledgerId={entity.ledger.id}
+                                    locale={locale}
+                                    session={session}
+                                    onUnauthorized={onUnauthorized}
+                                />
+                            ) : (
+                                <p>
+                                    {t(
+                                        "商业发票仅适用于公司账本。",
+                                        "Commercial invoices are available for company ledgers.",
+                                    )}
+                                </p>
+                            ))}
                         {view === "business-credits" && (
                             <BusinessCreditPanel
                                 key={`${session.user.id}:${entity.ledger.id}`}
