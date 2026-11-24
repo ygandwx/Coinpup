@@ -1,3 +1,5 @@
+import { InvoiceIssuePanel } from "./InvoiceIssuePanel";
+import type { PendingInvoiceController } from "./pending-invoice";
 import { InvoiceHistoryPanel } from "./InvoiceHistoryPanel";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
@@ -339,6 +341,7 @@ export function BusinessWorkspace({
     businessConfirmations,
     settlements,
     credits,
+    invoices,
     onUnauthorized,
 }: {
     session: Session;
@@ -356,6 +359,7 @@ export function BusinessWorkspace({
     businessConfirmations: PendingBusinessConfirmationController;
     settlements: PendingBusinessSettlementController;
     credits: PendingBusinessCreditController;
+    invoices: PendingInvoiceController;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -392,6 +396,11 @@ export function BusinessWorkspace({
     const credit = useSyncExternalStore(credits.subscribe, credits.getSnapshot);
     const creditLocked = !["idle", "confirmed", "rejected"].includes(credit.status);
     const creditRecoveryLedger = creditLocked ? credit.plan?.ledgerId : undefined;
+    const invoice = useSyncExternalStore(invoices.subscribe, invoices.getSnapshot);
+    const invoiceLocked = !["idle", "confirmed", "rejected"].includes(invoice.status);
+    const invoiceRecoveryLedger = invoiceLocked ? invoice.plan?.ledgerId : undefined;
+    const [invoiceEditing, setInvoiceEditing] = useState(false);
+    const [invoiceMode, setInvoiceMode] = useState<"history" | "issue">("history");
     const [creditEditing, setCreditEditing] = useState(false);
     const [settlementEditing, setSettlementEditing] = useState(false);
     const settlement = useSyncExternalStore(settlements.subscribe, settlements.getSnapshot);
@@ -451,7 +460,9 @@ export function BusinessWorkspace({
         settlementEditing ||
         settlementLocked ||
         creditLocked ||
-        creditEditing;
+        creditEditing ||
+        invoiceLocked ||
+        invoiceEditing;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -523,7 +534,8 @@ export function BusinessWorkspace({
             !reminderLocked &&
             !businessConfirmationLocked &&
             !settlementLocked &&
-            !creditLocked
+            !creditLocked &&
+            !invoiceLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -545,6 +557,7 @@ export function BusinessWorkspace({
         businessConfirmationLocked,
         settlementLocked,
         creditLocked,
+        invoiceLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -614,6 +627,15 @@ export function BusinessWorkspace({
             setView("business-settlements");
         }
     }, [settlementRecoveryLedger, entities]);
+    useEffect(() => {
+        if (!invoiceRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === invoiceRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("invoices");
+            setInvoiceMode("issue");
+        }
+    }, [invoiceRecoveryLedger, entities]);
     useEffect(() => {
         if (!creditRecoveryLedger) return;
         const owner = entities.find((item) => item.ledger.id === creditRecoveryLedger);
@@ -1152,13 +1174,40 @@ export function BusinessWorkspace({
                         )}
                         {view === "invoices" &&
                             (entity.kind === "company" ? (
-                                <InvoiceHistoryPanel
-                                    key={`${session.user.id}:${entity.ledger.id}`}
-                                    ledgerId={entity.ledger.id}
-                                    locale={locale}
-                                    session={session}
-                                    onUnauthorized={onUnauthorized}
-                                />
+                                invoiceMode === "issue" ||
+                                invoice.plan?.ledgerId === entity.ledger.id ? (
+                                    <InvoiceIssuePanel
+                                        key={`${session.user.id}:${entity.ledger.id}`}
+                                        ledgerId={entity.ledger.id}
+                                        locale={locale}
+                                        session={session}
+                                        assets={assets}
+                                        archived={entity.archived}
+                                        available={!loading && !ledgerLoading && !!current}
+                                        controller={invoices}
+                                        onUnauthorized={onUnauthorized}
+                                        onEditing={setInvoiceEditing}
+                                        onClose={() => setInvoiceMode("history")}
+                                    />
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="secondary-button"
+                                            disabled={entity.archived || !current}
+                                            onClick={() => setInvoiceMode("issue")}
+                                        >
+                                            {t("签发商业发票", "Issue commercial invoice")}
+                                        </button>
+                                        <InvoiceHistoryPanel
+                                            key={`${session.user.id}:${entity.ledger.id}`}
+                                            ledgerId={entity.ledger.id}
+                                            locale={locale}
+                                            session={session}
+                                            onUnauthorized={onUnauthorized}
+                                        />
+                                    </>
+                                )
                             ) : (
                                 <p>
                                     {t(
