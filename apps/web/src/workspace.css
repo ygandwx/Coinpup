@@ -1260,3 +1260,21 @@
 .allocation-return-form li .field {
     margin-top: 12px;
 }
+
+.project-report {
+    overflow-wrap: anywhere;
+}
+.project-report form {
+    display: grid;
+    gap: 12px;
+    max-width: 36rem;
+}
+.project-report form button {
+    justify-self: start;
+}
+.project-report .confirmation-facts {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+}
+.project-report .confirmation-facts dd {
+    font-variant-numeric: tabular-nums;
+}

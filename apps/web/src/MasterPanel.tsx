@@ -5,6 +5,7 @@ import { listMasterData } from "./business-api";
 import type { MasterBody, MasterKind, MasterRecord, PartyCreate } from "./business-api";
 import { businessError } from "./business-errors";
 import type { Locale } from "./i18n";
+import { ProjectActivityPanel } from "./ProjectActivityPanel";
 import { MasterForm } from "./MasterForm";
 import type { MasterFields } from "./MasterForm";
 import type { PendingMasterDataController } from "./pending-business";
@@ -41,6 +42,7 @@ export function MasterPanel({
             fields: body,
         };
     });
+    const [activity, setActivity] = useState<{ id: string; name: string } | null>(null);
     const [offset, setOffset] = useState(0);
     const [refresh, setRefresh] = useState(0);
     const [failure, setFailure] = useState<{ key: string; error: unknown } | null>(null);
@@ -126,6 +128,17 @@ export function MasterPanel({
             setLocalError(error);
         }
     }
+    if (activity)
+        return (
+            <ProjectActivityPanel
+                key={activity.id}
+                project={activity}
+                ledger={ledgerId}
+                locale={locale}
+                onClose={() => setActivity(null)}
+                onUnauthorized={onUnauthorized}
+            />
+        );
     return (
         <section
             className="business-panel master-panel"
@@ -273,6 +286,19 @@ export function MasterPanel({
                                         </span>
                                     )}
                                     <p>{row.notes}</p>
+                                    {kind === "projects" && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setActivity({
+                                                    id: row.id,
+                                                    name: row.name ?? row.id,
+                                                })
+                                            }
+                                        >
+                                            {t("查看项目收支", "View project activity")}
+                                        </button>
+                                    )}
                                     <button type="button" onClick={() => edit(row)}>
                                         {archived
                                             ? t("查看资料", "View record")
