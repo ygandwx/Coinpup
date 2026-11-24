@@ -4,8 +4,9 @@ import type { Session } from "./api";
 import { getMasterData, saveMasterData } from "./business-api";
 import type { MasterBody, MasterKind, MasterRecord } from "./business-api";
 
-export type MasterStatus =
-    "idle" | "submitting" | "unknown" | "auth-required" | "confirmed" | "conflict" | "rejected";
+import { VersionedMasterController } from "./versioned-master-controller";
+import type { MasterStatus } from "./versioned-master-controller";
+export type { MasterStatus };
 export type FrozenMaster = Readonly<{
     ownerId: string;
     ledgerId: string;
@@ -22,10 +23,6 @@ export type MasterSnapshot = Readonly<{
 }>;
 type Transport = (session: Session, plan: FrozenMaster) => Promise<unknown>;
 type Reader = (plan: FrozenMaster) => Promise<unknown>;
-const terminal = ["idle", "confirmed", "conflict", "rejected"];
-const idle = (): MasterSnapshot =>
-    Object.freeze({ status: "idle", plan: null, record: null, error: null });
-
 export { masterName };
 function scoped(value: unknown, plan: FrozenMaster): value is MasterRecord {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -85,80 +82,30 @@ function matches(value: MasterRecord, plan: FrozenMaster): boolean {
     );
 }
 
-export class PendingMasterDataController {
-    private owner: string | null = null;
-    private state = idle();
-    private visible = this.state;
-    private generation = 0;
-    private uncertain = false;
-    private flight: Promise<void> | null = null;
-    private listeners = new Set<() => void>();
-    private io: Transport;
-    private read: Reader;
+export class PendingMasterDataController extends VersionedMasterController<
+    FrozenMaster,
+    MasterRecord
+> {
     constructor(
-        io: Transport = (session, plan) =>
+        io: Transport = (s, p) =>
             saveMasterData(
-                session.csrf_token,
-                plan.ledgerId,
-                plan.kind,
-                plan.id,
-                plan.method,
-                JSON.parse(plan.bodyJson),
+                s.csrf_token,
+                p.ledgerId,
+                p.kind,
+                p.id,
+                p.method,
+                JSON.parse(p.bodyJson),
             ),
-        read: Reader = (plan) => getMasterData(plan.ledgerId, plan.kind, plan.id),
+        read: Reader = (p) => getMasterData(p.ledgerId, p.kind, p.id),
     ) {
-        this.io = io;
-        this.read = read;
-    }
-    getSnapshot = (): MasterSnapshot => this.visible;
-    subscribe = (listener: () => void): (() => void) => {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    };
-    private publish(next = this.state): void {
-        this.state = Object.freeze(next);
-        this.visible =
-            (this.owner === null && next.plan) || next.status === "auth-required"
-                ? Object.freeze({ ...idle(), status: "auth-required" })
-                : this.state;
-        for (const listener of [...this.listeners]) listener();
-    }
-    private reset(): void {
-        this.generation += 1;
-        this.flight = null;
-        this.uncertain = false;
-        this.state = idle();
-    }
-    setOwner(ownerId: string | null, explicitLogout = false): void {
-        if (!explicitLogout && ownerId === this.owner) return;
-        if (
-            explicitLogout ||
-            (ownerId !== null && this.state.plan && ownerId !== this.state.plan.ownerId)
-        )
-            this.reset();
-        if (
-            ownerId !== null &&
-            ownerId === this.state.plan?.ownerId &&
-            this.state.status === "auth-required"
-        ) {
-            this.uncertain = true;
-            this.state = { ...this.state, status: "unknown", error: null };
-        }
-        this.owner = ownerId;
-        this.publish();
-    }
-    dismiss = (): boolean => {
-        if (!terminal.includes(this.state.status)) return false;
-        this.reset();
-        this.publish();
-        return true;
-    };
-    private authorized(session: Session): void {
-        if (
-            this.owner !== String(session.user.id) ||
-            (this.state.plan && this.state.plan.ownerId !== this.owner)
-        )
-            throw new ApiError("unauthorized", 401, "master_owner_changed");
+        super({
+            send: io,
+            read,
+            create: (p) => p.method === "POST",
+            scoped,
+            matches,
+            capture: (v) => Object.freeze({ ...v }),
+        });
     }
     start(
         session: Session,
@@ -168,10 +115,7 @@ export class PendingMasterDataController {
         method: "POST" | "PATCH",
         body: MasterBody,
     ): Promise<void> {
-        try {
-            this.authorized(session);
-            if (this.flight || !terminal.includes(this.state.status))
-                throw new ApiError("server", null, "pending_master_unresolved");
+        return this.begin(session, () => {
             const data = body as unknown as Record<string, unknown>;
             if (
                 !ledgerId ||
@@ -185,105 +129,14 @@ export class PendingMasterDataController {
                       (data.expected_version as number) > 2147483646)
             )
                 throw new ApiError("server", null, "invalid_master_intent");
-            this.uncertain = false;
-            this.publish({
-                ...idle(),
-                plan: Object.freeze({
-                    ownerId: this.owner!,
-                    ledgerId,
-                    kind,
-                    id,
-                    method,
-                    bodyJson: JSON.stringify(body),
-                }),
-            });
-            return this.send(session);
-        } catch (error) {
-            return Promise.reject(error);
-        }
-    }
-    retry(session: Session): Promise<void> {
-        try {
-            this.authorized(session);
-            if (
-                this.flight ||
-                !this.state.plan ||
-                !["unknown", "auth-required"].includes(this.state.status)
-            )
-                throw new ApiError("server", null, "master_retry_unavailable");
-            return this.send(session);
-        } catch (error) {
-            return Promise.reject(error);
-        }
-    }
-    private send(session: Session): Promise<void> {
-        const generation = this.generation,
-            plan = this.state.plan!;
-        this.publish({ ...this.state, status: "submitting", error: null });
-        const flight = Promise.resolve().then(async () => {
-            try {
-                if (generation !== this.generation) return;
-                if (this.owner !== String(session.user.id)) {
-                    this.publish({ ...this.state, status: "auth-required" });
-                    return;
-                }
-                const value = await this.io(session, plan);
-                if (generation !== this.generation) return;
-                if (!scoped(value, plan) || !matches(value, plan))
-                    throw new ApiError("server", 200, "invalid_response");
-                this.uncertain = false;
-                this.publish({
-                    ...this.state,
-                    status: "confirmed",
-                    record: Object.freeze({ ...value }),
-                });
-            } catch (caught) {
-                if (generation !== this.generation) return;
-                let error = caught instanceof ApiError ? caught : new ApiError("network");
-                let status: MasterStatus = "unknown";
-                let record: MasterRecord | null = null;
-                if (error.kind === "unauthorized") status = "auth-required";
-                else if (
-                    error.status === 409 &&
-                    ((plan.method === "POST" && error.code === "duplicate_record") ||
-                        (plan.method === "PATCH" && error.code === "version_conflict"))
-                ) {
-                    try {
-                        const current = await this.read(plan);
-                        if (generation !== this.generation) return;
-                        if (!scoped(current, plan))
-                            throw new ApiError("server", 200, "invalid_response");
-                        if (plan.method === "POST")
-                            status = matches(current, plan) ? "confirmed" : "conflict";
-                        else if (
-                            !this.uncertain ||
-                            current.version > JSON.parse(plan.bodyJson).expected_version
-                        )
-                            status = "conflict";
-                        if (status !== "unknown") record = Object.freeze({ ...current });
-                    } catch (readError) {
-                        if (generation !== this.generation) return;
-                        error = readError instanceof ApiError ? readError : new ApiError("network");
-                        if (error.kind === "unauthorized") status = "auth-required";
-                    }
-                } else if (
-                    !this.uncertain &&
-                    error.status !== null &&
-                    [400, 403, 404, 409, 422, 429].includes(error.status)
-                )
-                    status = "rejected";
-                this.uncertain = ["unknown", "auth-required"].includes(status);
-                this.publish({
-                    ...this.state,
-                    status,
-                    record,
-                    error: status === "confirmed" ? null : error,
-                });
-            } finally {
-                if (generation === this.generation) this.flight = null;
-            }
+            return {
+                ownerId: String(session.user.id),
+                ledgerId,
+                kind,
+                id,
+                method,
+                bodyJson: JSON.stringify(body),
+            };
         });
-        this.flight = flight;
-        return flight;
     }
 }
