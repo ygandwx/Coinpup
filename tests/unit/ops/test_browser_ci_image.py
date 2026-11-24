@@ -27,12 +27,14 @@ def test_ci_mirror_preserves_every_other_dockerfile_line_and_ocr_stage():
 @pytest.mark.parametrize(
     "replacement",
     [
-        "FROM python:3.13-slim-trixie AS api",
+        "FROM python:3.13-slim-trixie AS python-base",
         "",
-        "FROM python:3.12-slim-trixie AS api\nFROM python:3.12-slim-trixie AS api",
+        "FROM python:3.12-slim-trixie AS python-base\nFROM python:3.12-slim-trixie AS python-base",
     ],
 )
 def test_changed_missing_or_duplicated_base_is_rejected(replacement):
     source = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     with pytest.raises(ValueError, match="mapping is stale"):
-        mirrored_dockerfile(source.replace("FROM python:3.12-slim-trixie AS api", replacement))
+        mirrored_dockerfile(
+            source.replace("FROM python:3.12-slim-trixie AS python-base", replacement)
+        )
