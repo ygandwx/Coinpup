@@ -1316,6 +1316,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/invoice-issuances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue
+         * @description Finish the original reviewed intent. Only two sealed private originals yield success.
+         */
+        post: operations["issue_api_v1_ledgers__ledger_id__invoice_issuances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/invoice-issuances/{issuance_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get
+         * @description Read the saved number and completion state without allocating or rendering.
+         */
+        get: operations["get_api_v1_ledgers__ledger_id__invoice_issuances__issuance_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/invoice-profiles": {
         parameters: {
             query?: never;
@@ -5426,12 +5466,158 @@ export interface components {
             /** Lines */
             lines: components["schemas"]["AllocationLineCreate"][];
         };
+        /** InvoiceIssuanceComplete */
+        InvoiceIssuanceComplete: {
+            /** Artifacts */
+            artifacts: components["schemas"]["InvoicePdfArtifact"][];
+            /**
+             * Configuration Id
+             * Format: uuid
+             */
+            configuration_id: string;
+            /** Configuration Version */
+            configuration_version: number;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Version */
+            document_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "invoice_issuance";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Number */
+            number: string;
+            numbering: components["schemas"]["InvoiceNumberingPolicy"];
+            /** Previous Issuance Id */
+            previous_issuance_id: string | null;
+            /** Sequence */
+            sequence: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            state: "complete";
+            /** Template Version */
+            template_version: string;
+        };
+        /** InvoiceIssuanceCreate */
+        InvoiceIssuanceCreate: {
+            /**
+             * Configuration Id
+             * Format: uuid
+             */
+            configuration_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Expected Configuration Version */
+            expected_configuration_version: number;
+            /** Expected Document Version */
+            expected_document_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Previous Issuance Id */
+            previous_issuance_id: string | null;
+        };
+        /** InvoiceIssuancePending */
+        InvoiceIssuancePending: {
+            /** Artifacts */
+            artifacts: components["schemas"]["InvoicePdfArtifact"][];
+            /**
+             * Configuration Id
+             * Format: uuid
+             */
+            configuration_id: string;
+            /** Configuration Version */
+            configuration_version: number;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Version */
+            document_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "invoice_issuance";
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Number */
+            number: string;
+            numbering: components["schemas"]["InvoiceNumberingPolicy"];
+            /** Previous Issuance Id */
+            previous_issuance_id: string | null;
+            /** Sequence */
+            sequence: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            state: "pending";
+            /** Template Version */
+            template_version: string;
+        };
         /** InvoiceNumberingPolicy */
         InvoiceNumberingPolicy: {
             /** Minimum Digits */
             minimum_digits: number;
             /** Prefix */
             prefix: string;
+        };
+        /** InvoicePdfArtifact */
+        InvoicePdfArtifact: {
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * File Id
+             * Format: uuid
+             */
+            file_id: string;
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "zh" | "en";
+            /**
+             * Media Type
+             * @constant
+             */
+            media_type: "application/pdf";
+            /** Sha256 */
+            sha256: string;
         };
         /** InvoiceProfileArchive */
         InvoiceProfileArchive: {
@@ -10333,6 +10519,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_api_v1_ledgers__ledger_id__invoice_issuances_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceIssuanceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceIssuanceComplete"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_api_v1_ledgers__ledger_id__invoice_issuances__issuance_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                issuance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceIssuancePending"] | components["schemas"]["InvoiceIssuanceComplete"];
                 };
             };
             /** @description Validation Error */

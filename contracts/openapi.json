@@ -7819,6 +7819,286 @@
         "title": "InitialAllocationCreate",
         "type": "object"
       },
+      "InvoiceIssuanceComplete": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvoicePdfArtifact"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "configuration_id": {
+            "format": "uuid",
+            "title": "Configuration Id",
+            "type": "string"
+          },
+          "configuration_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Configuration Version",
+            "type": "integer"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 2147483647.0,
+            "minimum": 2.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "invoice_issuance",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "number": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Number",
+            "type": "string"
+          },
+          "numbering": {
+            "$ref": "#/components/schemas/InvoiceNumberingPolicy"
+          },
+          "previous_issuance_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Issuance Id"
+          },
+          "sequence": {
+            "maxLength": 19,
+            "minLength": 1,
+            "title": "Sequence",
+            "type": "string"
+          },
+          "snapshot_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Sha256",
+            "type": "string"
+          },
+          "state": {
+            "const": "complete",
+            "title": "State",
+            "type": "string"
+          },
+          "template_version": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "title": "Template Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "document_id",
+          "document_version",
+          "configuration_id",
+          "configuration_version",
+          "previous_issuance_id",
+          "numbering",
+          "sequence",
+          "number",
+          "snapshot_sha256",
+          "template_version",
+          "state",
+          "artifacts"
+        ],
+        "title": "InvoiceIssuanceComplete",
+        "type": "object"
+      },
+      "InvoiceIssuanceCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration_id": {
+            "format": "uuid",
+            "title": "Configuration Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "expected_configuration_version": {
+            "minimum": 1.0,
+            "title": "Expected Configuration Version",
+            "type": "integer"
+          },
+          "expected_document_version": {
+            "minimum": 1.0,
+            "title": "Expected Document Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "previous_issuance_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Issuance Id"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "expected_document_version",
+          "configuration_id",
+          "expected_configuration_version",
+          "previous_issuance_id"
+        ],
+        "title": "InvoiceIssuanceCreate",
+        "type": "object"
+      },
+      "InvoiceIssuancePending": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvoicePdfArtifact"
+            },
+            "maxItems": 0,
+            "minItems": 0,
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "configuration_id": {
+            "format": "uuid",
+            "title": "Configuration Id",
+            "type": "string"
+          },
+          "configuration_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Configuration Version",
+            "type": "integer"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 2147483647.0,
+            "minimum": 2.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "invoice_issuance",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "number": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Number",
+            "type": "string"
+          },
+          "numbering": {
+            "$ref": "#/components/schemas/InvoiceNumberingPolicy"
+          },
+          "previous_issuance_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Issuance Id"
+          },
+          "sequence": {
+            "maxLength": 19,
+            "minLength": 1,
+            "title": "Sequence",
+            "type": "string"
+          },
+          "snapshot_sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Sha256",
+            "type": "string"
+          },
+          "state": {
+            "const": "pending",
+            "title": "State",
+            "type": "string"
+          },
+          "template_version": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "title": "Template Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ledger_id",
+          "document_id",
+          "document_version",
+          "configuration_id",
+          "configuration_version",
+          "previous_issuance_id",
+          "numbering",
+          "sequence",
+          "number",
+          "snapshot_sha256",
+          "template_version",
+          "state",
+          "artifacts"
+        ],
+        "title": "InvoiceIssuancePending",
+        "type": "object"
+      },
       "InvoiceNumberingPolicy": {
         "additionalProperties": false,
         "properties": {
@@ -7839,6 +8119,51 @@
           "minimum_digits"
         ],
         "title": "InvoiceNumberingPolicy",
+        "type": "object"
+      },
+      "InvoicePdfArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "zh",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "media_type": {
+            "const": "application/pdf",
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language",
+          "file_id",
+          "sha256",
+          "byte_size",
+          "media_type"
+        ],
+        "title": "InvoicePdfArtifact",
         "type": "object"
       },
       "InvoiceProfileArchive": {
@@ -18534,6 +18859,157 @@
         "summary": "Income",
         "tags": [
           "financial operations"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/invoice-issuances": {
+      "post": {
+        "description": "Finish the original reviewed intent. Only two sealed private originals yield success.",
+        "operationId": "issue_api_v1_ledgers__ledger_id__invoice_issuances_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceIssuanceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceIssuanceComplete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue",
+        "tags": [
+          "Invoice issuance"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/invoice-issuances/{issuance_id}": {
+      "get": {
+        "description": "Read the saved number and completion state without allocating or rendering.",
+        "operationId": "get_api_v1_ledgers__ledger_id__invoice_issuances__issuance_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "issuance_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Issuance Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "complete": "#/components/schemas/InvoiceIssuanceComplete",
+                      "pending": "#/components/schemas/InvoiceIssuancePending"
+                    },
+                    "propertyName": "state"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvoiceIssuancePending"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvoiceIssuanceComplete"
+                    }
+                  ],
+                  "title": "Response Get Api V1 Ledgers  Ledger Id  Invoice Issuances  Issuance Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "Invoice issuance"
         ]
       }
     },

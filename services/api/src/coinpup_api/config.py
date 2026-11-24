@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     login_window_seconds: int = Field(default=900, ge=60, le=86400)
     login_lock_seconds: int = Field(default=900, ge=60, le=86400)
     files_directory: Path = Path("data/files")
+    invoice_font_dir: Path = Path("/opt/coinpup/invoice-fonts")
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
     upload_timeout_seconds: int = Field(default=120, ge=1, le=3600)
     ocr_enabled: bool = False
