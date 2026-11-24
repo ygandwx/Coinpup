@@ -1,12 +1,18 @@
 """Real browser session, original raw intent, scope and no-store boundaries."""
 
+import json
+import struct
 from uuid import uuid4
+from zlib import crc32
 
 import pytest
+from coinpup_api.business.invoice_logo import MAX_LOGO_BYTES
 from coinpup_api.business.invoice_reservation_command import InvoiceReservationCommand
 from coinpup_api.ledger.schemas import EntityCreate
 
+from tests.integration.business.test_document_revision_journals import confirmed
 from tests.integration.business.test_invoice_profile_storage import setup as setup
+from tests.integration.business.test_invoice_render_sources import PNG
 from tests.integration.business.test_invoice_reservation_command import args
 from tests.integration.business.test_invoice_snapshot_binding import company as company
 from tests.integration.business.test_invoice_snapshot_binding import reviewed
@@ -131,3 +137,115 @@ def test_failed_render_keeps_exact_pending_owner_body_and_does_not_expose_or_reb
     client.cookies.clear()
     assert client.get(resource).status_code == 401
     assert snapshot(s) == before
+
+
+def test_private_logo_size_is_checked_before_reserving_the_original_key_and_number(http_case):
+    s, client, row = http_case
+    ledger_path = f"/api/v1/ledgers/{s['ledger']}"
+    url = path(s["ledger"])
+    profile_url = f"{ledger_path}/invoice-profiles/{row['configuration_id']}"
+    command = json.loads(row["request_json"])
+
+    def png_at_size(size):
+        # Add a valid ancillary text chunk before IEND without increasing image dimensions.
+        text = b"Fictional\x00".ljust(size - len(PNG) - 12, b"x")
+        chunk = b"tEXt" + text
+        content = PNG[:-12] + struct.pack(">I", len(text)) + chunk
+        return content + struct.pack(">I", crc32(chunk)) + PNG[-12:]
+
+    def select_logo(content, expected_version):
+        uploaded = client.post(
+            f"{ledger_path}/uploads",
+            json={
+                "id": str(uuid4()),
+                "original_filename": "fictional-logo.png",
+                "declared_size": len(content),
+            },
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        stored = client.put(
+            f"{ledger_path}/uploads/{uploaded.json()['id']}/content",
+            content=content,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        assert stored.status_code == 200, stored.text
+        original = stored.json()
+        assert (original["byte_size"], original["media_type"]) == (len(content), "image/png")
+        chosen = client.put(
+            profile_url,
+            json={
+                "expected_version": expected_version,
+                "name": "Fictional reviewed logo",
+                "numbering": {"prefix": "虚构-", "minimum_digits": 6},
+                "logo_file_id": original["file_id"],
+                "logo_file_version": 1,
+            },
+        )
+        assert chosen.status_code == 200, chosen.text
+        assert chosen.json()["logo_file_id"] == original["file_id"]
+        return chosen.json()["version"]
+
+    oversized_logo = png_at_size(MAX_LOGO_BYTES + 1)
+    assert len(oversized_logo) == MAX_LOGO_BYTES + 1
+    command["expected_configuration_version"] = select_logo(oversized_logo, 1)
+    before = snapshot(s)
+    denied = post(client, url, row, content=json.dumps(command).encode())
+    after = snapshot(s)
+    stored = client.get(f"{url}/{command['id']}")
+    reservations = [
+        (item["sequence"], item["number"], item["idempotency_key"])
+        for item in after["business_invoice_reservations"]
+    ]
+    assert (
+        denied.status_code,
+        denied.json()["detail"]["code"],
+        stored.status_code,
+        reservations,
+    ) == (
+        422,
+        "invoice_logo_size_limit",
+        404,
+        [],
+    )
+    assert denied.headers["cache-control"] == "no-store" and after == before
+
+    # A smaller Logo can use the same key and intent after a fresh profile review.
+    command["expected_configuration_version"] = select_logo(PNG, 2)
+    accepted = post(client, url, row, content=json.dumps(command).encode())
+    assert accepted.status_code == 503  # This fixture deliberately has no rendering fonts.
+    saved = client.get(f"{url}/{command['id']}")
+    assert saved.status_code == 200
+    assert (saved.json()["sequence"], saved.json()["number"], saved.json()["state"]) == (
+        "1",
+        row["number"],
+        "pending",
+    )
+
+    # The exact cap is admissible for another confirmed document and advances by one.
+    boundary_logo = png_at_size(MAX_LOGO_BYTES)
+    assert len(boundary_logo) == MAX_LOGO_BYTES
+    profile_version = select_logo(boundary_logo, 3)
+    second, _ = confirmed(s, "invoice", 1, key="fictional-confirm-boundary-logo")
+    second_id = str(uuid4())
+    boundary = post(
+        client,
+        url,
+        row | {"idempotency_key": "fictional-boundary-logo-reservation"},
+        content=json.dumps(
+            command
+            | {
+                "id": second_id,
+                "document_id": str(second.id),
+                "expected_document_version": second.version,
+                "expected_configuration_version": profile_version,
+            }
+        ).encode(),
+    )
+    assert boundary.status_code == 503  # The exact-size Logo reached rendering as well.
+    saved = client.get(f"{url}/{second_id}")
+    assert saved.status_code == 200
+    assert (saved.json()["sequence"], saved.json()["number"], saved.json()["state"]) == (
+        "2",
+        "虚构-000002",
+        "pending",
+    )

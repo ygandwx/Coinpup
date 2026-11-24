@@ -9,6 +9,7 @@ from coinpup_api.business.invoice_issuance_hash import (
     invoice_issuance_hash_v2,
     invoice_issuance_payload,
 )
+from coinpup_api.business.invoice_logo import MAX_LOGO_BYTES
 from coinpup_api.business.invoice_numbering import MAX_SEQUENCE, candidate_number
 from coinpup_api.business.invoice_profile_models import InvoiceProfile
 from coinpup_api.business.invoice_profiles import profile_response
@@ -89,6 +90,12 @@ def new_reservation_input(session, *, owner, ledger, command, key, raw_body=None
         )
         if file is None or file.archived or file.version < config.logo_file_version:
             raise LedgerError("invoice_logo_unavailable", 409, "Review the selected Invoice Logo.")
+        if file.byte_size > MAX_LOGO_BYTES:
+            raise LedgerError(
+                "invoice_logo_size_limit",
+                422,
+                "Choose an Invoice Logo within the rendering size limit.",
+            )
     catalog = session.get(AssetRecord, current.document.asset_id)
     if catalog is None:
         raise LedgerError(
