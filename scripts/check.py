@@ -86,6 +86,21 @@ def build_steps(mode: str, fix: bool, root: Path) -> tuple[list[Step], list[str]
             ]
         )
         return fix_steps + steps, skipped
+    if mode == "invoice-db":
+        steps.extend(
+            [
+                python_step("Apply migrations", "-m", "alembic", "upgrade", "head"),
+                python_step(
+                    "Durable Invoice originals and empty-target restore",
+                    "-m",
+                    "pytest",
+                    "tests/invoice_database",
+                    "-m",
+                    "integration",
+                ),
+            ]
+        )
+        return fix_steps + steps, skipped
     if mode == "invoice":
         steps.extend(
             [
@@ -224,18 +239,66 @@ def run_steps(steps: list[Step], root: Path, skipped: list[str]) -> int:
     return exit_code
 
 
+def invoice_test_target():
+    """Allow destructive Invoice checks only in the explicit local disposable cluster."""
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.exc import ArgumentError
+
+    try:
+        target = make_url(os.environ.get("COINPUP_DATABASE_URL", ""))
+        permitted = (
+            os.environ.get("COINPUP_ENVIRONMENT") == "test"
+            and os.environ.get("COINPUP_RUN_DB_TESTS") == "1"
+            and os.environ.get("COINPUP_RUN_BACKUP_TESTS") == "1"
+            and target.drivername == "postgresql+psycopg"
+            and target.database == "coinpup"
+            and target.host in {"localhost", "127.0.0.1"}
+            and target.username == "coinpup"
+            and bool(target.password)
+            and not target.query
+            and os.environ.get("COINPUP_INVOICE_FONT_DIR")
+        )
+    except (ArgumentError, ValueError):
+        permitted = False
+    return bool(permitted)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "mode",
         nargs="?",
-        choices=("fast", "web", "db", "ocr", "corpus", "assets", "candidates", "invoice"),
+        choices=(
+            "fast",
+            "web",
+            "db",
+            "ocr",
+            "corpus",
+            "assets",
+            "candidates",
+            "invoice",
+            "invoice-db",
+        ),
         default="fast",
     )
     parser.add_argument(
         "--fix", action="store_true", help="Run lint fixes and Python/Web formatting first"
     )
     arguments = parser.parse_args(argv)
+    if arguments.mode == "invoice-db":
+        # The suite uses the destructive synthetic integration fixture and creates a
+        # second empty restore target. Validate both opt-ins before any migration.
+        if not invoice_test_target():
+            print(
+                "[FAIL] invoice-db requires an explicitly opted-in local test cluster "
+                "and pinned Invoice fonts. No checks were run.",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            "WARNING: invoice-db rewrites fictional fixtures in the disposable test database.",
+            flush=True,
+        )
     if arguments.mode == "db":
         if (
             os.environ.get("COINPUP_RUN_DB_TESTS") != "1"

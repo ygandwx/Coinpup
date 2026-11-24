@@ -278,3 +278,33 @@ def test_signalled_child_reports_raw_wait_result_and_shell_status(tmp_path, caps
         f"Child returncode {-signal.SIGTERM}, signal {int(signal.SIGTERM)}"
         in capsys.readouterr().out
     )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["production", "backup-opt-in", "nonlocal", "wrong-db", "override", "no-fonts", "invalid"],
+)
+def test_invoice_db_rejects_unintended_targets_before_any_command(monkeypatch, fault):
+    url = "postgresql+psycopg://coinpup:fictional-check@127.0.0.1/coinpup"
+    for k, v in dict(
+        COINPUP_ENVIRONMENT="test",
+        COINPUP_RUN_DB_TESTS="1",
+        COINPUP_RUN_BACKUP_TESTS="1",
+        COINPUP_DATABASE_URL=url,
+        COINPUP_INVOICE_FONT_DIR="/fictional/fonts",
+    ).items():
+        monkeypatch.setenv(k, v)
+    k, v = {
+        "production": ("COINPUP_ENVIRONMENT", "production"),
+        "backup-opt-in": ("COINPUP_RUN_BACKUP_TESTS", "0"),
+        "nonlocal": ("COINPUP_DATABASE_URL", url.replace("127.0.0.1", "db.example.invalid")),
+        "wrong-db": ("COINPUP_DATABASE_URL", url + "/other"),
+        "override": ("COINPUP_DATABASE_URL", url + "?host=elsewhere"),
+        "no-fonts": ("COINPUP_INVOICE_FONT_DIR", ""),
+        "invalid": ("COINPUP_DATABASE_URL", "not a URL"),
+    }[fault]
+    monkeypatch.setenv(k, v)
+    monkeypatch.setattr(
+        checks.subprocess, "run", lambda *a, **kw: pytest.fail("may not touch this target")
+    )
+    assert checks.main(["invoice-db"]) == 1

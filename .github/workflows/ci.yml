@@ -50,6 +50,36 @@ jobs:
           COINPUP_INVOICE_FONT_DIR: ${{ runner.temp }}/invoice-fonts
         run: python scripts/check.py invoice
 
+      - name: Verify durable Invoice originals and isolated bundle replay
+        env:
+          COINPUP_ENVIRONMENT: test
+          COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@127.0.0.1:5432/coinpup
+          COINPUP_RUN_DB_TESTS: "1"
+          COINPUP_RUN_BACKUP_TESTS: "1"
+          COINPUP_INVOICE_FONT_DIR: ${{ runner.temp }}/invoice-fonts
+          PYTHONPATH: services/api/src:scripts:.
+        run: |
+          python -m scripts.start_database_ci
+          # Use the exact PG17 client paired with the disposable server, even if
+          # the Ubuntu host ships an older pg_dump. Only archive streams cross stdin/stdout.
+          client="$RUNNER_TEMP/invoice-pg-client"
+          mkdir -m 700 "$client"
+          cat > "$client/pg_dump" <<'SH'
+          #!/bin/sh
+          set -eu
+          exec docker exec -i -e PGDATABASE -e PGUSER -e PGOPTIONS \
+            -e PGHOST=/var/run/postgresql -e PGPORT=5432 coinpup-ci-postgres pg_dump "$@"
+          SH
+          sed 's/coinpup-ci-postgres pg_dump/coinpup-ci-postgres pg_restore/' \
+            "$client/pg_dump" > "$client/pg_restore"
+          chmod 700 "$client/pg_dump" "$client/pg_restore"
+          "$client/pg_dump" --version
+          "$client/pg_restore" --version
+          PATH="$client:$PATH" python scripts/check.py invoice-db
+      - name: Remove disposable Invoice database
+        if: always()
+        run: python -m scripts.start_database_ci --stop
+
   web:
     name: Web type check and build
     runs-on: ubuntu-latest
