@@ -1323,7 +1323,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * History Page
+         * @description List saved issuance numbers, newest first, without loading original files.
+         */
+        get: operations["history_page_api_v1_ledgers__ledger_id__invoice_issuances_get"];
         put?: never;
         /**
          * Issue
@@ -5465,6 +5469,51 @@ export interface components {
             id: string;
             /** Lines */
             lines: components["schemas"]["AllocationLineCreate"][];
+        };
+        /** InvoiceHistoryItem */
+        InvoiceHistoryItem: {
+            /** Current Document Version */
+            current_document_version: number;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Document Status
+             * @enum {string}
+             */
+            document_status: "current" | "superseded" | "cancelled";
+            /** Document Version */
+            document_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Number */
+            number: string;
+            /** Previous Issuance Id */
+            previous_issuance_id: string | null;
+            /** Sequence */
+            sequence: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "complete";
+        };
+        /** InvoiceHistoryPage */
+        InvoiceHistoryPage: {
+            /** Items */
+            items: components["schemas"]["InvoiceHistoryItem"][];
+            /** Next Before */
+            next_before: string | null;
         };
         /** InvoiceIssuanceComplete */
         InvoiceIssuanceComplete: {
@@ -10519,6 +10568,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_page_api_v1_ledgers__ledger_id__invoice_issuances_get: {
+        parameters: {
+            query?: {
+                document_id?: string | null;
+                before?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceHistoryPage"];
                 };
             };
             /** @description Validation Error */

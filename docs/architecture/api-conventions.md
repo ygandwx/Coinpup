@@ -100,6 +100,8 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 
 `POST /api/v1/ledgers/{ledger_id}/invoice-issuances`：对公司账本当前有效 Invoice 提交已审阅的版本、配置版本、前驱及稳定意图 UUID；要求原 `Idempotency-Key`、会话、Origin 与 CSRF。同一意图成功只返回封存的 201，包含不可变号码、快照摘要、中英两份原件的私有文件 ID、长度和摘要；成功后对原键原正文的重试原样重放。原键绑定其他正文或不同意图冲突（409）。服务在短事务中先预留号码，渲染或连接中断不等于未受理，不能生成新意图、键或号码来重试。渲染资源不可用返回 503；不能据此显示发行成功。
 
+`GET /api/v1/ledgers/{ledger_id}/invoice-issuances` 按账本内已预留序号倒序列出历史，含待完成和已封存条目。可选 `document_id` 过滤，`limit` 默认50、上限200。返回 `items` 与 `next_before`；下一页把游标作为 `before` 原样传回（不含该序号）。序号及游标为正整数十进制字符串，不能转浮点或按页码计算。条目包含签发时单据版本、当前版本及 current/superseded/cancelled；列表不含快照或文件，不应把它用作原命令成功回执。
+
 `GET /api/v1/ledgers/{ledger_id}/invoice-issuances/{issuance_id}` 只读取当前授权账本该意图的已存状态。pending 没有原件，complete 返回两份；授权访问其他公司账本下不属于该账本的意图返回 404。可用现有私有文件 content 接口下载并校验原件，不在下载时重新渲染。单据更正后以新意图、新号码关联上一条；旧回执与两份原件保留。所有响应 no-store。
 
 

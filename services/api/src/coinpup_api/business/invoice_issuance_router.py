@@ -3,11 +3,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
+from coinpup_api.business.invoice_issuance_history import InvoiceHistoryPage, InvoiceHistoryReads
 from coinpup_api.business.invoice_issuance_reads import InvoiceIssuanceReads
 from coinpup_api.business.invoice_issuance_results import (
     InvoiceIssuanceComplete,
@@ -34,6 +35,7 @@ def create_invoice_issuance_router(settings, engine):
         Header(alias="Idempotency-Key", min_length=1, max_length=128, pattern=r"^[!-~]{1,128}$"),
     ]
     reads = InvoiceIssuanceReads(engine)
+    history = InvoiceHistoryReads(engine)
     service = InvoiceIssuanceService(
         engine,
         store=FileStore(
@@ -61,6 +63,22 @@ def create_invoice_issuance_router(settings, engine):
         try:
             return await service.issue(
                 identity.id, ledger_id, payload, idempotency_key, raw_body=raw_body
+            )
+        except (LedgerError, SQLAlchemyError) as error:
+            raise failure(error) from None
+
+    @router.get("", response_model=InvoiceHistoryPage)
+    def history_page(
+        ledger_id: UUID,
+        identity: reader,
+        document_id: UUID | None = None,
+        before: Annotated[str | None, Query(pattern=r"^[1-9][0-9]{0,18}$", max_length=19)] = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ):
+        """List saved issuance numbers, newest first, without loading original files."""
+        try:
+            return history.list(
+                identity.id, ledger_id, before=before, document_id=document_id, limit=limit
             )
         except (LedgerError, SQLAlchemyError) as error:
             raise failure(error) from None
