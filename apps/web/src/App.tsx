@@ -16,6 +16,7 @@ import { PendingRecurringController } from "./pending-recurring";
 import { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { PendingBusinessCreditController } from "./pending-business-credit";
 import { PendingInvoiceController } from "./pending-invoice";
+import { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { PendingReminderController } from "./pending-reminder";
 import { OcrCopyController } from "./ocr-copy";
@@ -338,6 +339,7 @@ export function App() {
     const [settlements] = useState(() => new PendingBusinessSettlementController());
     const [credits] = useState(() => new PendingBusinessCreditController());
     const [invoices] = useState(() => new PendingInvoiceController());
+    const [invoiceProfiles] = useState(() => new PendingInvoiceProfiles());
     const [reminders] = useState(() => new PendingReminderController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
@@ -375,6 +377,7 @@ export function App() {
                     settlements.setOwner(String(session.user.id));
                     credits.setOwner(String(session.user.id));
                     invoices.setOwner(String(session.user.id));
+                    invoiceProfiles.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -395,6 +398,7 @@ export function App() {
                     settlements.setOwner(null);
                     credits.setOwner(null);
                     invoices.setOwner(null);
+                    invoiceProfiles.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -419,6 +423,7 @@ export function App() {
         settlements,
         credits,
         invoices,
+        invoiceProfiles,
     ]);
 
     useEffect(() => {
@@ -449,6 +454,7 @@ export function App() {
             settlements.setOwner(null, true);
             credits.setOwner(null, true);
             invoices.setOwner(null, true);
+            invoiceProfiles.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -466,6 +472,7 @@ export function App() {
                 settlements.setOwner(null, true);
                 credits.setOwner(null, true);
                 invoices.setOwner(null, true);
+                invoiceProfiles.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -519,6 +526,7 @@ export function App() {
                     settlements={settlements}
                     credits={credits}
                     invoices={invoices}
+                    invoiceProfiles={invoiceProfiles}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -534,6 +542,7 @@ export function App() {
                         settlements.setOwner(null);
                         credits.setOwner(null);
                         invoices.setOwner(null);
+                        invoiceProfiles.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -589,6 +598,7 @@ export function App() {
                                         settlements.setOwner(String(session.user.id));
                                         credits.setOwner(String(session.user.id));
                                         invoices.setOwner(String(session.user.id));
+                                        invoiceProfiles.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}

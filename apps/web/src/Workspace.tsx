@@ -1,3 +1,5 @@
+import { InvoiceProfilePanel } from "./InvoiceProfilePanel";
+import type { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { InvoiceIssuePanel } from "./InvoiceIssuePanel";
 import type { PendingInvoiceController } from "./pending-invoice";
 import { InvoiceHistoryPanel } from "./InvoiceHistoryPanel";
@@ -342,6 +344,7 @@ export function BusinessWorkspace({
     settlements,
     credits,
     invoices,
+    invoiceProfiles,
     onUnauthorized,
 }: {
     session: Session;
@@ -360,6 +363,7 @@ export function BusinessWorkspace({
     settlements: PendingBusinessSettlementController;
     credits: PendingBusinessCreditController;
     invoices: PendingInvoiceController;
+    invoiceProfiles: PendingInvoiceProfiles;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -397,10 +401,13 @@ export function BusinessWorkspace({
     const creditLocked = !["idle", "confirmed", "rejected"].includes(credit.status);
     const creditRecoveryLedger = creditLocked ? credit.plan?.ledgerId : undefined;
     const invoice = useSyncExternalStore(invoices.subscribe, invoices.getSnapshot);
+    const profile = useSyncExternalStore(invoiceProfiles.subscribe, invoiceProfiles.getSnapshot);
+    const profileLocked = !["idle", "confirmed", "rejected", "conflict"].includes(profile.status);
+    const profileRecoveryLedger = profileLocked ? profile.plan?.ledgerId : undefined;
     const invoiceLocked = !["idle", "confirmed", "rejected"].includes(invoice.status);
     const invoiceRecoveryLedger = invoiceLocked ? invoice.plan?.ledgerId : undefined;
     const [invoiceEditing, setInvoiceEditing] = useState(false);
-    const [invoiceMode, setInvoiceMode] = useState<"history" | "issue">("history");
+    const [invoiceMode, setInvoiceMode] = useState<"history" | "issue" | "profile">("history");
     const [creditEditing, setCreditEditing] = useState(false);
     const [settlementEditing, setSettlementEditing] = useState(false);
     const settlement = useSyncExternalStore(settlements.subscribe, settlements.getSnapshot);
@@ -462,7 +469,8 @@ export function BusinessWorkspace({
         creditLocked ||
         creditEditing ||
         invoiceLocked ||
-        invoiceEditing;
+        invoiceEditing ||
+        profileLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -535,7 +543,8 @@ export function BusinessWorkspace({
             !businessConfirmationLocked &&
             !settlementLocked &&
             !creditLocked &&
-            !invoiceLocked
+            !invoiceLocked &&
+            !profileLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -558,6 +567,7 @@ export function BusinessWorkspace({
         settlementLocked,
         creditLocked,
         invoiceLocked,
+        profileLocked,
     ]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
@@ -627,6 +637,15 @@ export function BusinessWorkspace({
             setView("business-settlements");
         }
     }, [settlementRecoveryLedger, entities]);
+    useEffect(() => {
+        if (!profileRecoveryLedger) return;
+        const owner = entities.find((e) => e.ledger.id === profileRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("invoices");
+            setInvoiceMode("profile");
+        }
+    }, [profileRecoveryLedger, entities]);
     useEffect(() => {
         if (!invoiceRecoveryLedger) return;
         const owner = entities.find((item) => item.ledger.id === invoiceRecoveryLedger);
@@ -1174,8 +1193,21 @@ export function BusinessWorkspace({
                         )}
                         {view === "invoices" &&
                             (entity.kind === "company" ? (
-                                invoiceMode === "issue" ||
-                                invoice.plan?.ledgerId === entity.ledger.id ? (
+                                invoiceMode === "profile" ||
+                                profile.plan?.ledgerId === entity.ledger.id ? (
+                                    <InvoiceProfilePanel
+                                        key={`${session.user.id}:${entity.ledger.id}`}
+                                        ledgerId={entity.ledger.id}
+                                        session={session}
+                                        locale={locale}
+                                        archived={entity.archived}
+                                        controller={invoiceProfiles}
+                                        onUnauthorized={onUnauthorized}
+                                        onEditing={setInvoiceEditing}
+                                        onClose={() => setInvoiceMode("history")}
+                                    />
+                                ) : invoiceMode === "issue" ||
+                                  invoice.plan?.ledgerId === entity.ledger.id ? (
                                     <InvoiceIssuePanel
                                         key={`${session.user.id}:${entity.ledger.id}`}
                                         ledgerId={entity.ledger.id}
@@ -1198,6 +1230,13 @@ export function BusinessWorkspace({
                                             onClick={() => setInvoiceMode("issue")}
                                         >
                                             {t("签发商业发票", "Issue commercial invoice")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="secondary-button"
+                                            onClick={() => setInvoiceMode("profile")}
+                                        >
+                                            {t("管理签发配置", "Manage issuance profiles")}
                                         </button>
                                         <InvoiceHistoryPanel
                                             key={`${session.user.id}:${entity.ledger.id}`}
