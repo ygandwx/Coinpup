@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as paths;
@@ -9,30 +10,40 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'exact_amount.dart';
+import 'mobile_camera.dart';
 import 'mobile_http.dart';
+import 'mobile_photos.dart';
 import 'mobile_sync_feed.dart';
 import 'mobile_workspace.dart';
 import 'offline_store.dart';
 import 'ui/mobile_adapter.dart';
 
-MobileAdapter createMobileAdapter() => CoinpupMobile(
-  database: databaseFactory,
-  directory: getApplicationSupportDirectory,
-  vault: const FlutterSecureStorage(),
-);
+MobileAdapter createMobileAdapter({CaptureReceipt? retrieveCameraReceipt}) =>
+    CoinpupMobile(
+      database: databaseFactory,
+      directory: getApplicationSupportDirectory,
+      vault: const FlutterSecureStorage(),
+      retrieveCameraReceipt: retrieveCameraReceipt,
+    );
 
 final class CoinpupMobile implements MobileAdapter {
   CoinpupMobile({
     required this.database,
     required this.directory,
     required this.vault,
+    this.retrieveCameraReceipt,
   });
 
   final DatabaseFactory database;
   final Future<Directory> Function() directory;
   final FlutterSecureStorage vault;
+  final CaptureReceipt? retrieveCameraReceipt;
   static const _vaultKey = 'coinpup.active-session.v1';
+  static const _cameraKey = 'coinpup.camera-request.v1';
   _MobileSession? _active;
+  @override
+  bool get cameraRecoveryFailed => _cameraRecoveryFailed;
+  bool _cameraRecoveryFailed = false;
   Future<void> _tail = Future.value();
 
   Future<T> _serial<T>(Future<T> Function() operation) {
@@ -45,7 +56,10 @@ final class CoinpupMobile implements MobileAdapter {
   Future<MobileSnapshot?> restore() => _serial(() async {
     if (_active != null) return _active!.snapshot();
     final saved = await vault.read(key: _vaultKey);
-    if (saved == null) return null;
+    if (saved == null) {
+      _cameraRecoveryFailed = !await _recoverPhoto(null);
+      return null;
+    }
     final data = readJson(saved);
     final http = MobileHttp(
       validatedMobileServer(Uri.parse(data['server'] as String)),
@@ -59,9 +73,10 @@ final class CoinpupMobile implements MobileAdapter {
       rethrow;
     }
     if ((await _active!.store.records('sync'))['require_signin'] == 'true') {
+      _cameraRecoveryFailed = !await _recoverPhoto(null);
       return _requireSignIn(_active!);
     }
-    return _sync(_active!);
+    return _sync(_active!, restoreCamera: true);
   });
 
   @override
@@ -129,12 +144,17 @@ final class CoinpupMobile implements MobileAdapter {
       final saved = await store.records('sync');
       final device = saved['device'] ?? newMobileId();
       if (saved['device'] == null) await store.put('sync', 'device', device);
+      final scopeHash = sha256.convert(utf8.encode(jsonEncode(scope.keys)));
+      final photos = Directory(
+        paths.join(private.path, 'photos', scopeHash.toString()),
+      );
       return _MobileSession(
         http,
         store,
         device,
         owner,
         user['username'] as String,
+        photos,
       );
     } catch (_) {
       await store.close();
@@ -228,6 +248,7 @@ final class CoinpupMobile implements MobileAdapter {
         'draft',
         localEntryKey(current.draft.ledgerId, current.id),
       );
+      await session.photos.discardDraft(current);
     } else {
       await _stage(
         session,
@@ -250,6 +271,24 @@ final class CoinpupMobile implements MobileAdapter {
           )
           .firstOrNull ??
       (throw const MobileFailure(MobileErrorCode.operation));
+
+  @override
+  Future<MobileSnapshot> releasePhoto(
+    String ledger,
+    String operation,
+    String uploadId,
+  ) => _serial(() async {
+    final session = _session;
+    try {
+      await session.photos.release(ledger, operation, uploadId);
+    } on MobileHttpError catch (error) {
+      if (error.status == 401 || error.code == 'csrf_failed') {
+        return _requireSignIn(session);
+      }
+      rethrow;
+    }
+    return session.snapshot();
+  });
 
   static Json _draftState(
     String id,
@@ -276,14 +315,122 @@ final class CoinpupMobile implements MobileAdapter {
   );
 
   @override
+  Future<MobileSnapshot> capturePhoto(
+    MobileEntry entry,
+    CaptureReceipt capture,
+  ) => _serial(() async {
+    final session = _session;
+    final request = CameraRequest(
+      newMobileId(),
+      session.store.scope,
+      entry.ledgerId,
+      entry.id,
+      entry.version,
+    );
+    final current = request.current(await session.snapshot());
+    if (current == null) {
+      throw const MobileFailure(MobileErrorCode.photo);
+    }
+    // Drain any earlier native result before assigning the camera a new identity.
+    if (!await _recoverPhoto(session)) {
+      throw const MobileFailure(MobileErrorCode.photoRecovery);
+    }
+    try {
+      await vault.write(key: _cameraKey, value: request.encode());
+      final path = await capture();
+      if (path == null) {
+        await vault.delete(key: _cameraKey);
+      } else {
+        await _rememberPhotoPath(request, path);
+        await _completePhoto(session, request, current, path);
+      }
+    } on IOException {
+      throw const MobileFailure(MobileErrorCode.photo);
+    }
+    return session.snapshot();
+  });
+
+  Future<void> _rememberPhotoPath(CameraRequest request, String path) async {
+    request.path = path;
+    await vault.write(key: _cameraKey, value: request.encode());
+  }
+
+  Future<void> _completePhoto(
+    _MobileSession session,
+    CameraRequest request,
+    MobileEntry entry,
+    String path,
+  ) async {
+    await session.photos.queue(request.id, entry, path);
+    await vault.delete(key: _cameraKey);
+  }
+
+  Future<bool> _recoverPhoto(_MobileSession? session) async {
+    try {
+      final saved = await vault.read(key: _cameraKey);
+      final lost = await retrieveCameraReceipt?.call();
+      if (saved == null) return lost == null;
+      final CameraRequest request;
+      try {
+        request = CameraRequest.decode(saved);
+      } catch (_) {
+        await vault.delete(key: _cameraKey);
+        return false;
+      }
+      if (session == null || !request.owns(session.store.scope)) {
+        await vault.delete(key: _cameraKey);
+        return false;
+      }
+      // The native result is consumable once. Remember it before opening the queue.
+      if (request.path == null && lost != null) {
+        await _rememberPhotoPath(request, lost);
+      }
+      if (await session.photos.queued(
+        request.id,
+        request.ledger,
+        request.entry,
+      )) {
+        await vault.delete(key: _cameraKey);
+        return true;
+      }
+      final entry = request.current(await session.snapshot());
+      final path = request.path;
+      if (entry == null || path == null) {
+        await vault.delete(key: _cameraKey);
+        return false;
+      }
+      try {
+        await _completePhoto(session, request, entry, path);
+      } on MobileFailure {
+        await vault.delete(key: _cameraKey);
+        return false;
+      }
+      return true;
+    } catch (_) {
+      // Unavailable native or secure storage leaves the original request in place.
+      return false;
+    }
+  }
+
+  @override
   Future<MobileSnapshot> synchronize() => _serial(() => _sync(_session));
 
-  Future<MobileSnapshot> _sync(_MobileSession session) async {
+  Future<MobileSnapshot> _sync(
+    _MobileSession session, {
+    bool restoreCamera = false,
+  }) async {
+    Future<void> recover(_MobileSession? eligible) async {
+      if (!restoreCamera) return;
+      restoreCamera = false;
+      _cameraRecoveryFailed = !await _recoverPhoto(eligible);
+    }
+
     try {
       final authorization = readObject(
         await session.http.request('GET', '/auth/session'),
       );
       if (readObject(authorization['user'])['id'] != session.owner) {
+        await recover(null);
         return await _requireSignIn(session);
       }
       session.http.csrf = authorization['csrf_token'] as String;
@@ -291,7 +438,8 @@ final class CoinpupMobile implements MobileAdapter {
       // Reuse frozen envelopes before acknowledgements can advance their server checkpoint.
       await _replay(session);
       await session.feed.pull();
-      await session.workspace.refresh(session.http);
+      await session.workspace.refresh(session.http, DateTime.now());
+      await recover(session);
       await _resolvePending(session);
       for (final item in (await session.store.records('draft')).entries) {
         final staged = readJson(item.value);
@@ -300,6 +448,7 @@ final class CoinpupMobile implements MobileAdapter {
         await _replay(session);
       }
       await session.feed.pull();
+      await session.photos.send();
       await session.store.put(
         'sync',
         'last_synced',
@@ -308,6 +457,7 @@ final class CoinpupMobile implements MobileAdapter {
       return await session.snapshot(SyncStatus.synced);
     } on MobileHttpError catch (error) {
       if (error.status == 401 || error.code == 'csrf_failed') {
+        await recover(null);
         return _requireSignIn(session);
       }
       if (const {
@@ -320,12 +470,16 @@ final class CoinpupMobile implements MobileAdapter {
         return session.snapshot(SyncStatus.reviewRequired);
       }
       if (error.status >= 500 || error.status == 429 || error.status == 408) {
+        await recover(session);
         return session.snapshot(SyncStatus.offline);
       }
+      await recover(null);
       throw const MobileFailure(MobileErrorCode.sync);
     } on IOException {
+      await recover(session);
       return session.snapshot(SyncStatus.offline);
     } on TimeoutException {
+      await recover(session);
       return session.snapshot(SyncStatus.offline);
     }
   }
@@ -562,9 +716,16 @@ final class CoinpupMobile implements MobileAdapter {
 }
 
 final class _MobileSession {
-  _MobileSession(this.http, this.store, this.device, this.owner, this.label)
-    : workspace = MobileWorkspace(store),
-      feed = MobileSyncFeed(http, store, device);
+  _MobileSession(
+    this.http,
+    this.store,
+    this.device,
+    this.owner,
+    this.label,
+    Directory privatePhotos,
+  ) : workspace = MobileWorkspace(store),
+      feed = MobileSyncFeed(http, store, device),
+      photos = MobilePhotos(http, store, device, privatePhotos);
 
   final MobileHttp http;
   final OfflineStore store;
@@ -573,6 +734,7 @@ final class _MobileSession {
   final String label;
   final MobileWorkspace workspace;
   final MobileSyncFeed feed;
+  final MobilePhotos photos;
 
   Future<MobileSnapshot> snapshot([SyncStatus status = SyncStatus.ready]) =>
       workspace.snapshot(label, status);

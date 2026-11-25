@@ -44,6 +44,21 @@ String errorLabel(BuildContext context, MobileErrorCode code) => switch (code) {
     'Could not save this change.',
     '无法保存这项改动。',
   ),
+  MobileErrorCode.photo => uiText(
+    context,
+    'Could not save the receipt photo.',
+    '无法保存票据照片。',
+  ),
+  MobileErrorCode.photoRecovery => uiText(
+    context,
+    'Could not recover the receipt photo. Open the intended entry to retake it.',
+    '无法恢复票据照片。请打开对应的记录重新拍摄。',
+  ),
+  MobileErrorCode.photoRelease => uiText(
+    context,
+    'Could not release this receipt upload. Refresh the entry and try again.',
+    '无法释放此票据上传。请刷新记录后重试。',
+  ),
   MobileErrorCode.sync => uiText(
     context,
     'Sync interrupted. Saved changes can be synced again.',

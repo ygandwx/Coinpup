@@ -14,9 +14,14 @@ bool _canSubmitLocal(MobileConflict conflict) =>
     (conflict.latest ?? conflict.current)?.ledgerId == conflict.ledgerId;
 
 class CoinpupApp extends StatefulWidget {
-  const CoinpupApp({required this.adapter, super.key});
+  const CoinpupApp({
+    required this.adapter,
+    required this.captureReceipt,
+    super.key,
+  });
 
   final MobileAdapter adapter;
+  final CaptureReceipt captureReceipt;
 
   @override
   State<CoinpupApp> createState() => _CoinpupAppState();
@@ -41,9 +46,22 @@ class _CoinpupAppState extends State<CoinpupApp> {
   Future<void> _restore() async {
     try {
       final restored = await widget.adapter.restore();
-      if (mounted) setState(() => snapshot = restored);
+      if (mounted) {
+        setState(() {
+          snapshot = restored;
+          if (widget.adapter.cameraRecoveryFailed) {
+            error = MobileErrorCode.photoRecovery;
+          }
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => error = MobileErrorCode.operation);
+      if (mounted) {
+        setState(
+          () => error = widget.adapter.cameraRecoveryFailed
+              ? MobileErrorCode.photoRecovery
+              : MobileErrorCode.operation,
+        );
+      }
     } finally {
       if (mounted) setState(() => restoring = false);
     }
@@ -130,12 +148,14 @@ class _CoinpupAppState extends State<CoinpupApp> {
   Future<bool> _confirm(
     BuildContext context,
     String title,
-    String action,
-  ) async =>
+    String action, {
+    String? message,
+  }) async =>
       await showDialog<bool>(
         context: context,
         builder: (dialog) => AlertDialog(
           title: Text(title),
+          content: message == null ? null : Text(message),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
@@ -164,6 +184,43 @@ class _CoinpupAppState extends State<CoinpupApp> {
     );
     if (confirmed && mounted) {
       await _run(() => widget.adapter.delete(entry), MobileErrorCode.operation);
+    }
+  }
+
+  Future<void> _attach(MobileEntry entry) async {
+    if (busy || !entry.canAttachPhoto) return;
+    await _run(
+      () => widget.adapter.capturePhoto(entry, widget.captureReceipt),
+      MobileErrorCode.photo,
+    );
+  }
+
+  Future<void> _release(
+    BuildContext context,
+    String ledger,
+    String operation,
+    MobileAttachment attachment,
+  ) async {
+    if (busy || !attachment.canRelease) return;
+    final confirmed = await _confirm(
+      context,
+      uiText(
+        context,
+        'Release upload for ${attachment.filename}?',
+        '释放 ${attachment.filename} 的上传？',
+      ),
+      uiText(context, 'Release upload', '释放上传'),
+      message: uiText(
+        context,
+        'The original receipt stays on this device.',
+        '票据原件将保留在此设备上。',
+      ),
+    );
+    if (confirmed && mounted) {
+      await _run(
+        () => widget.adapter.releasePhoto(ledger, operation, attachment.id),
+        MobileErrorCode.photoRelease,
+      );
     }
   }
 
@@ -303,15 +360,22 @@ class _CoinpupAppState extends State<CoinpupApp> {
                     ),
                     _Entries(
                       ledger: ledger,
-                      records: current.entries
-                          .where((row) => row.ledgerId == ledger.id)
-                          .toList(),
+                      records: [
+                        ...current.entries,
+                        ...current.readOnlyPostings,
+                      ].where((row) => row.ledgerId == ledger.id).toList(),
                       locked: busy,
                       edit: (entry) => _edit(context, ledger, entry),
+                      attach: _attach,
+                      detachedReceipts: current.detachedReceipts
+                          .where((item) => item.ledgerId == ledger.id)
+                          .toList(),
+                      release: (ledgerId, operation, attachment) =>
+                          _release(context, ledgerId, operation, attachment),
                       delete: (entry) => _delete(context, entry),
                     ),
                   ],
-                ] else
+                ] else if (tab == 1)
                   _SyncView(
                     snapshot: current,
                     busy: busy,
@@ -319,7 +383,9 @@ class _CoinpupAppState extends State<CoinpupApp> {
                         _run(widget.adapter.synchronize, MobileErrorCode.sync),
                     resolve: (conflict, choice) =>
                         _resolve(context, conflict, choice),
-                  ),
+                  )
+                else
+                  _Quotes(quotes: current.quotes),
               ],
             ),
           ),
@@ -349,6 +415,10 @@ class _CoinpupAppState extends State<CoinpupApp> {
               NavigationDestination(
                 icon: const Icon(Icons.sync),
                 label: uiText(context, 'Sync', '同步'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.price_change_outlined),
+                label: uiText(context, 'Quotes', '报价'),
               ),
             ],
           ),
@@ -526,13 +596,19 @@ class _Entries extends StatelessWidget {
     required this.records,
     required this.locked,
     required this.edit,
+    required this.attach,
+    required this.detachedReceipts,
+    required this.release,
     required this.delete,
   });
 
   final MobileLedger ledger;
-  final List<MobileEntry> records;
+  final List<MobileRecord> records;
   final bool locked;
   final ValueChanged<MobileEntry> edit;
+  final ValueChanged<MobileEntry> attach;
+  final List<DetachedReceipt> detachedReceipts;
+  final void Function(String, String, MobileAttachment) release;
   final ValueChanged<MobileEntry> delete;
 
   @override
@@ -553,7 +629,27 @@ class _Entries extends StatelessWidget {
             padding: const EdgeInsets.only(top: 14),
             child: Text(t('No entries in this ledger yet.', '此账本暂无记录。')),
           ),
-        for (final record in rows) _entryCard(context, record),
+        for (final record in rows)
+          switch (record) {
+            MobileEntry() => _entryCard(context, record),
+            MobileReadOnlyPosting() => _ReadOnlyPostingCard(
+              ledger: ledger,
+              posting: record,
+            ),
+          },
+        if (detachedReceipts.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(t('Receipts outside current entries', '当前记录之外的票据')),
+          ),
+          for (final photo in detachedReceipts)
+            _attachment(
+              context,
+              photo.ledgerId,
+              photo.operationId,
+              photo.attachment,
+            ),
+        ],
       ],
     );
   }
@@ -580,6 +676,8 @@ class _Entries extends StatelessWidget {
             EntryLifecycle.posted => t('Posted', '已入账'),
             EntryLifecycle.conflict => t('Conflict to review', '待核对冲突'),
           }),
+          for (final attachment in entry.attachments)
+            _attachment(context, entry.ledgerId, entry.id, attachment),
           Wrap(
             spacing: 8,
             children: [
@@ -587,6 +685,11 @@ class _Entries extends StatelessWidget {
                 TextButton(
                   onPressed: entryLocked ? null : () => edit(entry),
                   child: Text(t('Edit entry', '编辑记录')),
+                ),
+              if (entry.canAttachPhoto)
+                TextButton(
+                  onPressed: entryLocked ? null : () => attach(entry),
+                  child: Text(t('Photograph receipt', '拍摄票据')),
                 ),
               if (entry.canDelete)
                 TextButton(
@@ -599,6 +702,122 @@ class _Entries extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _attachment(
+    BuildContext context,
+    String ledger,
+    String operation,
+    MobileAttachment attachment,
+  ) {
+    String t(String english, String chinese) =>
+        uiText(context, english, chinese);
+    return Column(
+      key: ValueKey('receipt-${attachment.id}'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(attachment.filename),
+        Text(switch (attachment.state) {
+          AttachmentState.queued => t('Receipt queued', '票据待上传'),
+          AttachmentState.uploading => t('Uploading receipt', '正在上传票据'),
+          AttachmentState.uploaded => t('Receipt uploaded', '票据已上传'),
+          AttachmentState.failed => t('Receipt upload interrupted', '票据上传中断'),
+          AttachmentState.releasing => t(
+            'Release pending. Retry when connected.',
+            '等待释放上传。请在联网后重试。',
+          ),
+          AttachmentState.released => t(
+            'Upload released. Original kept on this device.',
+            '上传已释放。原件已保留在此设备上。',
+          ),
+        }),
+        if (attachment.canRelease)
+          TextButton(
+            onPressed: locked
+                ? null
+                : () => release(ledger, operation, attachment),
+            child: Text(
+              attachment.state == AttachmentState.releasing
+                  ? t('Retry release', '重试释放')
+                  : t('Release upload', '释放上传'),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReadOnlyPostingCard extends StatelessWidget {
+  const _ReadOnlyPostingCard({required this.ledger, required this.posting});
+
+  final MobileLedger ledger;
+  final MobileReadOnlyPosting posting;
+
+  String _accountLabel(String id) =>
+      ledger.accounts.where((item) => item.id == id).firstOrNull?.name ??
+      ledger.archivedAccountNames[id] ??
+      id;
+
+  String _categoryLabel(String id) =>
+      ledger.categories.where((item) => item.id == id).firstOrNull?.name ?? id;
+
+  static String _quantity(MobilePostingAmount value) =>
+      '${value.amount} ${value.assetId}';
+
+  @override
+  Widget build(BuildContext context) {
+    String t(String english, String chinese) =>
+        uiText(context, english, chinese);
+    final title = switch (posting.kind) {
+      ReadOnlyPostingKind.opening => t('Opening balance', '期初余额'),
+      ReadOnlyPostingKind.transfer => t('Transfer', '转账'),
+      ReadOnlyPostingKind.exchange => t('Currency exchange', '换汇'),
+    };
+    final primary = posting.primary;
+    final destination = posting.destination;
+    return Card(
+      key: ValueKey('read-only-posting-${posting.id}'),
+      margin: const EdgeInsets.only(top: 12),
+      child: ExpansionTile(
+        title: Text(title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(posting.date),
+            if (destination == null)
+              Text(_quantity(primary))
+            else ...[
+              Text('${t('Sent', '转出')} ${_quantity(primary)}'),
+              Text('${t('Received', '转入')} ${_quantity(destination)}'),
+            ],
+          ],
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (destination == null)
+            Text('${t('Account', '账户')} ${_accountLabel(primary.accountId)}')
+          else ...[
+            Text(
+              '${t('From account', '转出账户')} ${_accountLabel(primary.accountId)}',
+            ),
+            Text(
+              '${t('To account', '转入账户')} ${_accountLabel(destination.accountId)}',
+            ),
+          ],
+          if (posting.recognitionDate != posting.date)
+            Text('${t('Recognition date', '归属日期')} ${posting.recognitionDate}'),
+          if (posting.description.isNotEmpty) Text(posting.description),
+          for (final fee in posting.fees)
+            Text(
+              '${t('Fee', '手续费')} ${_quantity(fee.quantity)} · '
+              '${_accountLabel(fee.quantity.accountId)} · '
+              '${_categoryLabel(fee.categoryId)}',
+            ),
+          Text(t('Read only', '仅供查看')),
         ],
       ),
     );
@@ -784,6 +1003,48 @@ class _References extends StatelessWidget {
     return Text(
       '${uiText(context, 'Account', '账户')} $account · '
       '${uiText(context, 'Category', '分类')} $category',
+    );
+  }
+}
+
+class _Quotes extends StatelessWidget {
+  const _Quotes({required this.quotes});
+
+  final List<MobileQuote> quotes;
+
+  @override
+  Widget build(BuildContext context) {
+    String t(String english, String chinese) =>
+        uiText(context, english, chinese);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t('Cached quotes', '缓存报价'),
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        if (quotes.isEmpty)
+          Text(t('No quotes cached on this device.', '此设备暂无缓存报价。')),
+        for (final quote in quotes)
+          Card(
+            child: ListTile(
+              title: Text('${quote.assetId} / ${quote.displayAssetId}'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(quote.price ?? t('Price unavailable', '暂无价格')),
+                  Text('${t('Price date', '报价日期')} ${quote.priceDate}'),
+                  if (quote.observedAt case final time?)
+                    Text('${t('Observed at', '观察时间')} $time'),
+                  if (quote.cachedAt case final time?)
+                    Text('${t('Cached at', '缓存时间')} $time'),
+                  if (quote.source case final source?)
+                    Text('${t('Source', '来源')} $source'),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
