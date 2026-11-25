@@ -6,6 +6,7 @@ from datetime import date
 from uuid import UUID
 
 from coinpup_api.ledger import Amount, AssetDefinition
+from coinpup_api.ledger.money import AggregateAmount
 from coinpup_api.quotes.valuation import DirectQuote, Valuation
 from coinpup_api.reporting.asset_totals import (
     OriginalSubtotal,
@@ -28,7 +29,7 @@ class SourceRow:
 
     ledger_id: UUID
     source_id: UUID
-    original: Amount
+    original: Amount | AggregateAmount
 
     @property
     def reference(self) -> SourceReference:

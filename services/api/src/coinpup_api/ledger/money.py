@@ -19,6 +19,42 @@ def _require_asset(asset):
         raise MoneyError("asset_required", "A validated asset definition is required.")
 
 
+def format_minor_units(units: int, scale: int) -> str:
+    whole, fraction = divmod(abs(units), 10**scale)
+    decimal = f".{fraction:0{scale}d}" if scale else ""
+    return f"{'-' if units < 0 else ''}{whole}{decimal}"
+
+
+@dataclass(frozen=True, slots=True)
+class AggregateAmount:
+    """Read-only sum of stored quantities, which can exceed one posting's bound."""
+
+    asset: AssetDefinition
+    minor_units: int
+
+    def __post_init__(self):
+        _require_asset(self.asset)
+        if type(self.minor_units) is not int:
+            raise MoneyError("amount_units", "Minimum units must be an integer, not bool or float.")
+
+    @classmethod
+    def from_sum(cls, value: Decimal, asset: AssetDefinition) -> "AggregateAmount":
+        """Convert a PostgreSQL SUM of bounded amounts without a decimal context."""
+        _require_asset(asset)
+        if not isinstance(value, Decimal):
+            raise MoneyError("amount_type", "Database quantity must be a Decimal.")
+        if not value.is_finite():
+            raise MoneyError("amount_finite", "Amount must be finite.")
+        numerator, denominator = value.as_integer_ratio()
+        units, remainder = divmod(numerator * 10**asset.scale, denominator)
+        if remainder:
+            raise MoneyError("amount_precision", "Database amount exceeds its asset precision.")
+        return cls(asset, units)
+
+    def to_string(self) -> str:
+        return format_minor_units(self.minor_units, self.asset.scale)
+
+
 @total_ordering
 @dataclass(frozen=True, slots=True)
 class Amount:
@@ -87,12 +123,7 @@ class Amount:
         return cls(asset, -units if sign else units)
 
     def to_string(self) -> str:
-        digits = str(abs(self.minor_units))
-        scale = self.asset.scale
-        if scale:
-            digits = digits.zfill(scale + 1)
-            digits = digits[:-scale] + "." + digits[-scale:]
-        return ("-" if self.minor_units < 0 else "") + digits
+        return format_minor_units(self.minor_units, self.asset.scale)
 
     def to_decimal(self) -> Decimal:
         # Decimal construction from a validated string is exact and context-independent.

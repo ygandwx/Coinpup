@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from fractions import Fraction
 
 from coinpup_api.ledger import Amount, AssetDefinition, get_asset
+from coinpup_api.ledger.money import AggregateAmount
 
 _DISPLAY = tuple(get_asset(code) for code in ("USD", "GBP", "EUR", "HKD", "CNY"))
 _PRICE = re.compile(r"(?:0|[1-9][0-9]{0,19})(?:\.[0-9]{1,18})?")
@@ -52,12 +53,12 @@ class DirectQuote:
 
 @dataclass(frozen=True, slots=True)
 class Valuation:
-    original: Amount
+    original: Amount | AggregateAmount
     display: AssetDefinition
     quote: DirectQuote | None = None
 
     def __post_init__(self):
-        if not isinstance(self.original, Amount) or self.display not in _DISPLAY:
+        if not isinstance(self.original, (Amount, AggregateAmount)) or self.display not in _DISPLAY:
             raise ValueError("Expected an original amount and a supported display currency.")
         if self.quote is not None and (
             not isinstance(self.quote, DirectQuote)

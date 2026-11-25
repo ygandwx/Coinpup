@@ -17,7 +17,7 @@ from coinpup_api.ledger.models import (
     Journal,
     JournalLine,
 )
-from coinpup_api.ledger.money import Amount
+from coinpup_api.ledger.money import AggregateAmount, Amount
 from coinpup_api.reporting.statement import CashRepaymentLink, SourceRow
 from coinpup_api.settlement.models import InterledgerGroup
 
@@ -129,7 +129,7 @@ def balance_facts(session, scope, end):
             SourceRow(
                 account.ledger_id,
                 account.id,
-                Amount.from_decimal(
+                AggregateAmount.from_sum(
                     amount if amount is not None else Decimal(0), asset_definition(record)
                 ),
             ),

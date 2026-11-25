@@ -4,17 +4,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from coinpup_api.ledger import Amount, AssetDefinition
+from coinpup_api.ledger.money import AggregateAmount, format_minor_units
 from coinpup_api.quotes.valuation import Valuation, ValuationTotal, total_valuations
 
 
 def _key(asset):
     return asset.asset_id, asset.kind, asset.scale
-
-
-def _decimal_units(units, scale):
-    whole, fraction = divmod(abs(units), 10**scale)
-    decimal = f".{fraction:0{scale}d}" if scale else ""
-    return f"{'-' if units < 0 else ''}{whole}{decimal}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,17 +20,17 @@ class OriginalSubtotal:
     @property
     def quantity(self) -> str:
         # A sum can exceed one NUMERIC(38,18) posting. Never insert or clamp report totals.
-        return _decimal_units(self.minor, self.asset.scale)
+        return format_minor_units(self.minor, self.asset.scale)
 
 
 def _groups(values):
     return tuple(OriginalSubtotal(asset, values[asset]) for asset in sorted(values, key=_key))
 
 
-def original_subtotals(amounts: Iterable[Amount]) -> tuple[OriginalSubtotal, ...]:
+def original_subtotals(amounts: Iterable[Amount | AggregateAmount]) -> tuple[OriginalSubtotal, ...]:
     values = {}
     for amount in amounts:
-        if not isinstance(amount, Amount):
+        if not isinstance(amount, (Amount, AggregateAmount)):
             raise ValueError("Expected an original asset amount.")
         values[amount.asset] = values.get(amount.asset, 0) + amount.minor_units
     return _groups(values)
@@ -50,7 +45,7 @@ class ValuedSubtotals:
     @property
     def display_quantity(self) -> str | None:
         minor = self.display.rounded_minor
-        return None if minor is None else _decimal_units(minor, self.display.display.scale)
+        return None if minor is None else format_minor_units(minor, self.display.display.scale)
 
 
 def valued_subtotals(display: AssetDefinition, lines: Iterable[Valuation]) -> ValuedSubtotals:

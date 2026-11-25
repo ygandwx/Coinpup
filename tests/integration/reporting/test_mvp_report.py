@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 from coinpup_api.ledger.posting_schemas import OpeningCreate
-from coinpup_api.ledger.schemas import AccountCreate
+from coinpup_api.ledger.schemas import AccountCreate, EntityCreate
 from coinpup_api.ledger.service import LedgerService
 from coinpup_api.settlement.schemas import InterledgerRepaymentCreate
 from coinpup_api.sync.service import ChangeService
@@ -184,3 +184,57 @@ def test_historical_balances_keep_original_units_and_explain_missing_quote(
     _report(client, "balances", payer, uuid4(), expected=404)
     _report(client, "balances", payer, from_date="2026-11-01", expected=422)
     _report(client, "cash", payer, price_date=PRICE["price_date"], expected=422)
+
+
+def test_backdated_balances_can_exceed_the_bound_of_individual_postings(authenticated_client):
+    client, engine, owner = authenticated_client
+    structure = LedgerService(engine)
+    ledger = structure.create_entity(
+        owner,
+        EntityCreate(
+            kind="personal",
+            name="Fictional as-of ledger",
+            base_asset_id="USD",
+            template_key="personal_default",
+        ),
+    ).ledger.id
+    account = structure.create_account(
+        owner,
+        ledger,
+        AccountCreate(name="Fictional historical bank", kind="bank", asset_ids=["USD"]),
+    ).id
+    categories = {item.kind: str(item.id) for item in structure.list_categories(owner, ledger)}
+    prefix = f"/api/v1/ledgers/{ledger}"
+
+    def post(path, amount, day, kind=None):
+        body = {
+            "account_id": str(account),
+            "asset_id": "USD",
+            "amount": amount,
+            "transaction_date": day,
+        }
+        if kind:
+            body["recognition_date"] = day
+            body["splits"] = [{"category_id": categories[kind], "amount": amount}]
+        response = client.post(prefix + path, json=body, headers={"Idempotency-Key": path[1:]})
+        assert response.status_code == 201, response.text
+
+    post("/opening-balances", "90000000000000000000.00", "2026-11-01")
+    post("/expenses", "80000000000000000000.00", "2026-11-03", "expense")
+    post("/income", "50000000000000000000.00", "2026-11-02", "income")
+    assert _report(client, "balances", ledger)["rows"][0]["amount"] == "60000000000000000000.00"
+
+    saved = client.put(QUOTES, json=PRICE | {"price": "1.25"})
+    assert saved.status_code == 200, saved.text
+    past = _report(
+        client,
+        "balances",
+        ledger,
+        to_date="2026-11-02",
+        price_date=PRICE["price_date"],
+        display_asset_id="EUR",
+    )
+    exact = "140000000000000000000.00"
+    assert past["originals"][0]["amount"] == past["rows"][0]["amount"] == exact
+    assert past["rows"][0]["price"] == saved.json()
+    assert past["valuation"]["amount"] == "175000000000000000000.00"
