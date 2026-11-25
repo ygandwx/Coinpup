@@ -17,6 +17,7 @@ export const smokeSpecs = [
     "business-refunds.spec.ts",
     "business-invoice-issuance.spec.ts",
     "business-project-activity.spec.ts",
+    "interledger.spec.ts",
 ];
 
 export default defineConfig({ ...base, testMatch: smokeSpecs });

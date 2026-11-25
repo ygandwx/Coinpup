@@ -32,9 +32,13 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
     )
     current = runpy.run_path(str(versions / "20261021_0039_business_credit_validation.py"))
     assert current["_OLD_KINDS"] == migration["_KINDS"]
-    assert str(constraint.sqltext) == current["_KINDS"]
+    interledger = runpy.run_path(str(versions / "20261125_0106_interledger.py"))
+    assert f"kind IN ({interledger['_OLD_KINDS']})" == current["_KINDS"]
+    assert (
+        str(constraint.sqltext) == f"kind IN ({interledger['_OLD_KINDS']}, 'advance', 'repayment')"
+    )
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261114_0105"]
+    assert scripts.get_heads() == ["20261125_0106"]
     assert scripts.get_revision("20261015_0036").down_revision == "20261015_0035"
 
 

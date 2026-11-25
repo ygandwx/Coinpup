@@ -21,6 +21,8 @@ def test_frozen_reservation_schema_matches_model_and_current_notification_types(
     assert migration["_OLD_ENTITY_TYPES"] == previous["_OLD_ENTITY_TYPES"] + previous["_TABLES"]
     assert tuple(get_args(EntityType)) == migration["_OLD_ENTITY_TYPES"] + migration["_TABLES"] + (
         "business_invoice_completions",
+        "interledger_settings",
+        "interledger_groups",
     )
     assert InvoiceReservation.__table__.c.logo_file_id.references(StoredFile.__table__.c.id)
     statement = CreateTable(InvoiceReservation.__table__).compile(dialect=dialect())

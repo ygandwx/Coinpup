@@ -25,6 +25,8 @@ def test_confirmed_revision_header_relations_and_previous_catalog_match_the_ddl(
         "business_invoice_profiles",
         "business_invoice_reservations",
         "business_invoice_completions",
+        "interledger_settings",
+        "interledger_groups",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())
@@ -47,6 +49,8 @@ def test_document_line_ddl_matches_composite_fks_and_current_additive_catalog():
         "business_invoice_profiles",
         "business_invoice_reservations",
         "business_invoice_completions",
+        "interledger_settings",
+        "interledger_groups",
     )
     original_fks = [
         fk for fk in table.foreign_key_constraints if fk.name != "fk_document_revision_line_source"
@@ -108,6 +112,8 @@ def test_accrual_links_have_the_frozen_scoped_journal_and_source_constraints():
         "business_invoice_profiles",
         "business_invoice_reservations",
         "business_invoice_completions",
+        "interledger_settings",
+        "interledger_groups",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())

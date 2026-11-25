@@ -27,6 +27,8 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
         "business_invoice_profiles",
         "business_invoice_reservations",
         "business_invoice_completions",
+        "interledger_settings",
+        "interledger_groups",
     }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32
