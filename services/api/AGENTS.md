@@ -56,8 +56,8 @@
 | T07 代付报销 | `coinpup_api/settlement/` |
 | T08 汇总估值 | `coinpup_api/reporting/`（只读查询）和 `coinpup_api/quotes/` |
 | T09 提醒 | `coinpup_api/reminders/` |
-| T11 同步（延期） | `coinpup_api/sync/` |
-| T12 App（延期） | `apps/mobile/`（Flutter） |
+| T11 同步（阶段二） | `coinpup_api/sync/` |
+| T12 App（阶段二） | `apps/mobile/`（Flutter） |
 
 - **OCR**：与 API 共用同一个 Python 包。OCR 的重依赖放进 `pyproject.toml` 的可选依赖组 `ocr`；Dockerfile 增加一个 `worker` 构建目标，API 镜像不安装 OCR 依赖。任务队列用 PostgreSQL 表加 `SELECT … FOR UPDATE SKIP LOCKED` 实现，任务和业务数据在同一个库里，自然会进入备份 bundle。不引入 Redis 或 Celery。识别结果只生成草稿，必须经用户确认后才调用财务命令入账。
 - **定时任务**（行情、周期 Invoice 草稿、提醒、备份）：由 `coinpup_api.jobs` 提供 CLI 子命令，用 Compose 中一个简单的调度容器或宿主机 cron 调用；每个任务用数据库唯一键保证幂等。
