@@ -3,7 +3,10 @@ set -euo pipefail
 
 test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 36
 grep -Ex 'Pkg.Revision *= *2' "$ANDROID_HOME/system-images/android-36/default/x86_64/source.properties"
-"$ANDROID_HOME/emulator/emulator" -version
+# Query the running headless emulator. Invoking another emulator process
+# directly requires the audio libraries that the pinned launch disables.
+adb emu avd name
+test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1
 
 app_id=dev.coinpup.coinpup_mobile
 adb install apps/mobile/build/app/outputs/flutter-apk/app-release.apk
