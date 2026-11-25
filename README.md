@@ -75,7 +75,6 @@ python -m piptools compile pyproject.toml --extra dev --output-file requirements
 | 开发规则与接续 | [AGENTS.md](AGENTS.md) |
 | 最新授权、进度、限制和下一步 | [status.md](docs/engineering/status.md) |
 | 任务依赖与验收条件 | [roadmap.md](docs/engineering/roadmap.md) |
-| 优化工作包与状态 | [optimization-plan.md](docs/engineering/optimization-plan.md) |
 | 产品需求与业务验收 | [requirements.md](docs/product/requirements.md)、[acceptance.md](docs/product/acceptance.md) |
 | 提醒规则来源与实施边界 | [reminder-rules.md](docs/product/reminder-rules.md) |
 | 稳定架构与业务不变量 | [overview.md](docs/architecture/overview.md) |

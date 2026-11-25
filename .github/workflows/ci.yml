@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Nightly full tier: every stress/bound case and the complete browser suite.
+    - cron: "23 18 * * *"
 
 permissions:
   contents: read
@@ -18,6 +21,37 @@ env:
   PYTHONUTF8: "1"
 
 jobs:
+  scope:
+    # PRs use the fast tier; main, nightly and manual runs use the full tier.
+    # Docs-only PRs skip database and container work; the required checks still report.
+    name: Select CI tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      heavy: ${{ steps.select.outputs.heavy }}
+      tier: ${{ steps.select.outputs.tier }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "tier=full" >> "$GITHUB_OUTPUT"
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tier=pr" >> "$GITHUB_OUTPUT"
+          changed=$(git diff --name-only "$BASE...$HEAD")
+          printf '%s\n' "$changed"
+          code=$(printf '%s\n' "$changed" | grep -Ev '^(docs/.*|.*\.md|LICENSE)$' | grep -c . || true)
+          if [ "$code" = 0 ]; then echo "heavy=false" >> "$GITHUB_OUTPUT"; else echo "heavy=true" >> "$GITHUB_OUTPUT"; fi
+
   quality:
     name: Lint, unit tests and documentation
     runs-on: ubuntu-latest
@@ -107,15 +141,18 @@ jobs:
 
   database-parts:
     name: PostgreSQL integration partition ${{ matrix.part }}
+    needs: scope
+    if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        part: [0, 1, 2, 3, 4]
+        part: [0, 1, 2, 3, 4, 5, 6, 7]
     timeout-minutes: 40
     env:
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@localhost:5432/coinpup
       COINPUP_RUN_DB_TESTS: "1"
+      COINPUP_DB_CI_TIER: ${{ needs.scope.outputs.tier }}
       # A slow test prints its threads without interrupting setup, calls or teardown.
       PYTEST_ADDOPTS: "-vv --durations=20 -p scripts.db_ci_pytest"
     steps:
@@ -185,53 +222,44 @@ jobs:
 
   database:
     name: PostgreSQL migrations and integration tests
-    needs: database-parts
+    needs: [scope, database-parts]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Docs-only change needs no database run
+        if: needs.scope.outputs.heavy == 'false'
+        run: echo "Docs-only pull request; documentation checks run in the quality job."
       - name: Require all database partitions to succeed
+        if: needs.scope.outputs.heavy != 'false'
         env:
           PARTS_RESULT: ${{ needs.database-parts.result }}
         run: test "$PARTS_RESULT" = success
       - name: Check out source
+        if: needs.scope.outputs.heavy != 'false'
         uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/setup-python@v5
+        if: needs.scope.outputs.heavy != 'false'
         with:
           python-version: "3.12"
       - uses: actions/download-artifact@v4
+        if: needs.scope.outputs.heavy != 'false'
         with:
-          name: db-ci-part-0
-          path: ${{ runner.temp }}/db-ci-part-0
-      - uses: actions/download-artifact@v4
-        with:
-          name: db-ci-part-1
-          path: ${{ runner.temp }}/db-ci-part-1
-      - uses: actions/download-artifact@v4
-        with:
-          name: db-ci-part-2
-          path: ${{ runner.temp }}/db-ci-part-2
-      - uses: actions/download-artifact@v4
-        with:
-          name: db-ci-part-3
-          path: ${{ runner.temp }}/db-ci-part-3
-      - uses: actions/download-artifact@v4
-        with:
-          name: db-ci-part-4
-          path: ${{ runner.temp }}/db-ci-part-4
+          pattern: db-ci-part-*
+          path: ${{ runner.temp }}/db-ci
+          merge-multiple: true
       - name: Verify complete integration test execution
+        if: needs.scope.outputs.heavy != 'false'
         run: >-
           python -m scripts.db_ci_manifest verify
-          "$RUNNER_TEMP/db-ci-part-0/part-0.json"
-          "$RUNNER_TEMP/db-ci-part-1/part-1.json"
-          "$RUNNER_TEMP/db-ci-part-2/part-2.json"
-          "$RUNNER_TEMP/db-ci-part-3/part-3.json"
-          "$RUNNER_TEMP/db-ci-part-4/part-4.json"
+          $(for i in 0 1 2 3 4 5 6 7; do printf '%s ' "$RUNNER_TEMP/db-ci/part-$i.json"; done)
 
   container:
     name: Container, real browser login and backup restoration
+    needs: scope
+    if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -275,7 +303,15 @@ jobs:
       - name: Verify recurring maintenance CLI
         run: docker compose exec -T api python -m coinpup_api.jobs recurring-invoices --per-rule 1
       - name: Verify real browser authentication
-        run: npm --prefix apps/web run test:e2e
+        # PR tier runs the smoke specs; main, nightly and manual runs use the full suite.
+        env:
+          TIER: ${{ needs.scope.outputs.tier }}
+        run: |
+          if [ "$TIER" = pr ]; then
+            npm --prefix apps/web run test:e2e:smoke
+          else
+            npm --prefix apps/web run test:e2e
+          fi
       - name: Verify database and private-file bundles in isolated recovery targets
         run: >-
           docker compose exec -T

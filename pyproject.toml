@@ -29,6 +29,7 @@ addopts = "-ra --import-mode=importlib"
 markers = [
   "invoice: requires the separately locked Invoice dependencies and complete pinned fonts",
   "integration: requires an explicitly configured disposable PostgreSQL database",
+  "slow: scale or bound stress case; skipped by the PR database tier, run on main and nightly",
   "ocr: requires the separately locked optional OCR dependencies",
   "benchmark: requires the separately locked fictional-corpus build dependencies and fonts",
   "engine_assets: requires the explicitly fetched and hash-verified fixed OCR engine inputs",

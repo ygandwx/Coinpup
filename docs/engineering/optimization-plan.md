@@ -1,5 +1,7 @@
 # Coinpup 优化计划（Codex 执行版）
 
+> **已归档（2026-11-25）**：本计划不再执行。当前流程见 [AGENTS.md](../../AGENTS.md)，范围见 [路线图 MVP 冲刺](roadmap.md)。OPT-09 可选，OPT-24 由 MVP 冲刺 M4（T07 最简版）取代。下文仅作历史记录。
+
 > **给用户的使用方法**
 >
 > 1. 把本文件放到仓库的 `docs/engineering/optimization-plan.md`，并在 `AGENTS.md` 末尾加一行：

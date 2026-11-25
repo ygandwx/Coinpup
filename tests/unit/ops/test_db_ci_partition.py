@@ -12,7 +12,17 @@ from scripts.db_ci_manifest import PART_COUNT, check_part, partition_for
 
 ROOT = Path(__file__).resolve().parents[3]
 SHA = "a3" * 20
-MODULES = ("test_sample_10", "test_last", "test_first", "test_sample_0", "test_sample_2")
+# One fictional module per runner, ordered by its SHA-256 modulo-eight partition.
+MODULES = (
+    "test_last",
+    "test_sample_10",
+    "test_sample_23",
+    "test_sample_20",
+    "test_sample_17",
+    "test_sample_1",
+    "test_sample_0",
+    "test_sample_6",
+)
 
 
 def suite(directory):
@@ -37,9 +47,12 @@ def suite(directory):
     return modules
 
 
-def run_part(directory, part, *extra):
+def run_part(directory, part, *extra, tier=None):
     destination = directory / f"part-{part}.json"
     env = os.environ.copy()
+    env.pop("COINPUP_DB_CI_TIER", None)
+    if tier is not None:
+        env["COINPUP_DB_CI_TIER"] = tier
     env.update(
         PYTHONPATH=str(ROOT),
         PYTEST_DISABLE_PLUGIN_AUTOLOAD="1",
@@ -94,7 +107,7 @@ def good(tmp_path_factory):
     return directory, paths
 
 
-def test_five_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
+def test_eight_real_runs_execute_each_selected_module_in_order_and_verify_without_pytest(good):
     directory, paths = good
     assert (directory / "trace.txt").read_text().splitlines() == [
         f"{module} {item}" for module in MODULES for item in ("one", "two")
@@ -117,7 +130,8 @@ def test_five_real_runs_execute_each_selected_module_in_order_and_verify_without
         ]
     result = aggregate(paths)
     assert result.returncode == 0, result.stderr
-    assert "10 passed (part 0: 2, part 1: 2, part 2: 2, part 3: 2, part 4: 2)" in result.stdout
+    sizes = ", ".join(f"part {i}: 2" for i in range(PART_COUNT))
+    assert f"(full tier): {2 * PART_COUNT} passed ({sizes})" in result.stdout
     assert SHA in result.stdout
 
 
@@ -251,14 +265,8 @@ def test_every_required_runner_must_supply_complete_success(good, tmp_path, part
     assert aggregate(paths).returncode != 0
 
 
-def test_default_partition_uses_module_sha256_modulo_five_and_never_param_or_class_names():
-    for path, expected in [
-        ("test_sample_10", 0),
-        ("test_last", 1),
-        ("test_first", 2),
-        ("test_sample_0", 3),
-        ("test_sample_2", 4),
-    ]:
+def test_default_partition_uses_module_sha256_modulo_eight_and_never_param_or_class_names():
+    for expected, path in enumerate(MODULES):
         for suffix in ["test_short", "TestGroup::test_case[with::param]", "test_param[ü]"]:
             assert partition_for(f"tests/integration/{path}.py::{suffix}") == expected
     for invalid in [
@@ -273,18 +281,18 @@ def test_default_partition_uses_module_sha256_modulo_five_and_never_param_or_cla
 
 
 @pytest.mark.parametrize("suffix", ["test_single", "TestGroup::test_case[200]"])
-def test_expensive_scenarios_share_five_runners_by_complete_module(suffix):
+def test_expensive_scenarios_share_eight_runners_by_complete_module(suffix):
     for name, expected in [
         ("boundaries", 2),
         ("history", 0),
         ("current", 1),
         ("reads", 2),
-        ("lifecycle", 0),
+        ("lifecycle", 6),
     ]:
         node = f"tests/integration/business/test_credit_revision_{name}.py::{suffix}"
         assert partition_for(node) == expected
     assert (
-        partition_for(f"tests/integration/ocr/test_payment_confirmation_schema.py::{suffix}") == 4
+        partition_for(f"tests/integration/ocr/test_payment_confirmation_schema.py::{suffix}") == 6
     )
 
 
@@ -308,19 +316,23 @@ def test_slow_diagnostic_reports_the_live_case_without_interrupting_or_losing_ph
     check_part(json.loads(destination.read_text()), part, SHA)
 
 
-def test_rebalanced_complete_modules_execute_each_case_once_in_five_real_processes(tmp_path):
+def test_rebalanced_complete_modules_execute_each_case_once_in_eight_real_processes(tmp_path):
     folder = tmp_path / "tests/integration/business"
     folder.mkdir(parents=True)
     (tmp_path / "pytest.ini").write_text(
         "[pytest]\nmarkers = integration: fictional database case\n"
     )
     groups = (
-        ("credit_revision_history", "credit_revision_lifecycle"),
+        ("credit_revision_history", "credit_service"),
         ("credit_versioned_create", "credit_revision_current"),
         ("credit_revision_reads", "credit_revision_boundaries"),
         ("credit_versioned_corrections",),
+        ("return_complete_lifecycle",),
         ("document_allocation_native",),
+        ("credit_revision_lifecycle",),
+        ("settlement_service",),
     )
+    total = 2 * sum(len(names) for names in groups)
     for names in groups:
         for name in names:
             (folder / f"test_{name}.py").write_text(
@@ -335,9 +347,71 @@ def test_rebalanced_complete_modules_execute_each_case_once_in_five_real_process
         assert result.returncode == 0, result.stdout + result.stderr
         report = json.loads(path.read_text())
         selected = check_part(report, part, SHA)
-        assert len(report["manifest"]) == 16 and len(selected) == 2 * len(names)
+        assert len(report["manifest"]) == total and len(selected) == 2 * len(names)
         assert {node.split("::")[0] for node in selected} == {
             f"tests/integration/business/test_{name}.py" for name in names
         }
         paths.append(path)
     assert aggregate(paths).returncode == 0
+
+
+def tiered_suite(directory):
+    modules = suite(directory)
+    (modules / "test_sample_0.py").write_text(
+        "import pytest\n"
+        "@pytest.mark.integration\n"
+        "@pytest.mark.parametrize('members', [1, 200])\n"
+        "def test_bound(members): pass\n"
+        "@pytest.mark.integration\n"
+        "def test_two_hundred_members_replay(): pass\n"
+        "@pytest.mark.integration\n"
+        "@pytest.mark.slow\n"
+        "def test_marked(): pass\n"
+        "@pytest.mark.integration\n"
+        "@pytest.mark.parametrize('amount', ['200.00', '2000'])\n"
+        "def test_amount(amount): pass\n",
+        encoding="utf-8",
+    )
+    (directory / "pytest.ini").write_text(
+        "[pytest]\nmarkers =\n    integration: fictional database case\n    slow: stress\n"
+    )
+
+
+def test_pr_tier_skips_bound_and_marked_stress_cases_and_full_tier_runs_them(tmp_path):
+    tiered_suite(tmp_path)
+    part = MODULES.index("test_sample_0")
+    prefix = "tests/integration/test_sample_0.py::"
+    for tier, expected in [
+        ("pr", ["test_amount[200.00]", "test_amount[2000]", "test_bound[1]"]),
+        (
+            "full",
+            [
+                "test_amount[200.00]",
+                "test_amount[2000]",
+                "test_bound[1]",
+                "test_bound[200]",
+                "test_marked",
+                "test_two_hundred_members_replay",
+            ],
+        ),
+    ]:
+        result, path = run_part(tmp_path, part, tier=tier)
+        assert result.returncode == 0, result.stdout + result.stderr
+        report = json.loads(path.read_text())
+        assert report["tier"] == tier
+        selected = check_part(report, part, SHA)
+        assert sorted(selected) == [prefix + name for name in expected]
+        path.unlink()
+
+
+def test_mixed_or_unknown_tiers_are_rejected(tmp_path):
+    suite(tmp_path)
+    paths = []
+    for part in range(PART_COUNT):
+        result, path = run_part(tmp_path, part, tier="pr" if part else "full")
+        assert result.returncode == 0, result.stdout + result.stderr
+        paths.append(path)
+    assert aggregate(paths).returncode != 0
+    (tmp_path / "unused").mkdir()
+    result, _ = run_part(tmp_path / "unused", 0, tier="quick")
+    assert result.returncode != 0
