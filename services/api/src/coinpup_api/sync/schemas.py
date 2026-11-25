@@ -83,6 +83,7 @@ EntityType = Literal[
     "business_invoice_completions",
     "interledger_settings",
     "interledger_groups",
+    "manual_prices",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 

@@ -13,12 +13,16 @@ function checkScale(scale: number): void {
     if (!Number.isInteger(scale) || scale < 0 || scale > 18) throw new AmountError("asset_scale");
 }
 
-function parts(amount: string): { negative: boolean; integer: string; fraction: string } {
-    if (typeof amount !== "string" || amount.length > 40) throw new AmountError("amount_range");
+function parts(
+    amount: string,
+    aggregate = false,
+): { negative: boolean; integer: string; fraction: string } {
+    if (typeof amount !== "string" || (!aggregate && amount.length > 40))
+        throw new AmountError("amount_range");
     if (!/^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/u.test(amount)) throw new AmountError("amount_format");
     const negative = amount.startsWith("-");
     const [integer, fraction = ""] = (negative ? amount.slice(1) : amount).split(".");
-    if (integer.length > 20) throw new AmountError("amount_range");
+    if (!aggregate && integer.length > 20) throw new AmountError("amount_range");
     if (fraction.length > 18) throw new AmountError("amount_precision");
     return { negative, integer, fraction };
 }
@@ -53,7 +57,15 @@ export function sumAmounts(amounts: readonly string[], scale: number): string {
 
 /** Keep every original fractional digit; Intl only formats the integer BigInt. */
 export function formatAmount(amount: string, locale = "en"): string {
-    const { negative, integer, fraction } = parts(amount);
+    return formatParts(parts(amount), locale);
+}
+
+/** Reports preserve totals larger than a single stored posting. */
+export function formatReportAmount(amount: string, locale = "en"): string {
+    return formatParts(parts(amount, true), locale);
+}
+
+function formatParts({ negative, integer, fraction }: ReturnType<typeof parts>, locale: string) {
     const language = locale === "zh" ? "zh-CN" : locale;
     const grouped = new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(
         BigInt(integer),

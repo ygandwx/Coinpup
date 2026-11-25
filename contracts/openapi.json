@@ -3872,7 +3872,8 @@
               "business_invoice_reservations",
               "business_invoice_completions",
               "interledger_settings",
-              "interledger_groups"
+              "interledger_groups",
+              "manual_prices"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -9516,6 +9517,159 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "ManualPricePage": {
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManualPriceResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "ManualPricePage",
+        "type": "object"
+      },
+      "ManualPricePut": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "display_asset_id": {
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "HKD",
+              "CNY"
+            ],
+            "title": "Display Asset Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "price": {
+            "maxLength": 39,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]{0,19})([.][0-9]{1,18})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "price_date": {
+            "format": "date",
+            "title": "Price Date",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "display_asset_id",
+          "price_date",
+          "price",
+          "source",
+          "expected_version"
+        ],
+        "title": "ManualPricePut",
+        "type": "object"
+      },
+      "ManualPriceResponse": {
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "display_asset_id": {
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "HKD",
+              "CNY"
+            ],
+            "title": "Display Asset Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "price": {
+            "maxLength": 39,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]{0,19})([.][0-9]{1,18})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "price_date": {
+            "format": "date",
+            "title": "Price Date",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "asset_id",
+          "display_asset_id",
+          "price_date",
+          "price",
+          "source",
+          "version",
+          "updated_at"
+        ],
+        "title": "ManualPriceResponse",
+        "type": "object"
+      },
       "OpeningCreate": {
         "additionalProperties": false,
         "properties": {
@@ -12419,6 +12573,295 @@
           "action"
         ],
         "title": "ReminderTransition",
+        "type": "object"
+      },
+      "ReportOriginal": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "inflow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inflow"
+          },
+          "outflow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outflow"
+          }
+        },
+        "required": [
+          "asset_id",
+          "amount",
+          "inflow",
+          "outflow"
+        ],
+        "title": "ReportOriginal",
+        "type": "object"
+      },
+      "ReportResponse": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "originals": {
+            "items": {
+              "$ref": "#/components/schemas/ReportOriginal"
+            },
+            "title": "Originals",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "valuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportValuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "view": {
+            "enum": [
+              "balances",
+              "cash",
+              "operating"
+            ],
+            "title": "View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "rows",
+          "originals",
+          "valuation",
+          "total_rows",
+          "limit",
+          "offset"
+        ],
+        "title": "ReportResponse",
+        "type": "object"
+      },
+      "ReportRow": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "excluded_repayment_group": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Repayment Group"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation Id"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManualPriceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repayment_group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repayment Group Id"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "valuation_state": {
+            "enum": [
+              "not_requested",
+              "identity",
+              "quoted",
+              "missing",
+              "excluded"
+            ],
+            "title": "Valuation State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "source_id",
+          "asset_id",
+          "amount",
+          "date",
+          "operation_id",
+          "account_id",
+          "category_id",
+          "description",
+          "repayment_group_id",
+          "excluded_repayment_group",
+          "valuation_state",
+          "price"
+        ],
+        "title": "ReportRow",
+        "type": "object"
+      },
+      "ReportValuation": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "display_asset_id": {
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "HKD",
+              "CNY"
+            ],
+            "title": "Display Asset Id",
+            "type": "string"
+          },
+          "missing_asset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Asset Ids",
+            "type": "array"
+          },
+          "missing_rows": {
+            "title": "Missing Rows",
+            "type": "integer"
+          },
+          "price_date": {
+            "format": "date",
+            "title": "Price Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_asset_id",
+          "price_date",
+          "amount",
+          "missing_asset_ids",
+          "missing_rows"
+        ],
+        "title": "ReportValuation",
         "type": "object"
       },
       "ReturnGroupFact": {
@@ -23789,6 +24232,324 @@
         "summary": "Upload Content",
         "tags": [
           "private documents"
+        ]
+      }
+    },
+    "/api/v1/quotes/manual": {
+      "get": {
+        "operationId": "list_manual_prices_api_v1_quotes_manual_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "price_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Price Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "display_asset_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "USD",
+                "GBP",
+                "EUR",
+                "HKD",
+                "CNY"
+              ],
+              "title": "Display Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPricePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Manual Prices",
+        "tags": [
+          "reporting"
+        ]
+      },
+      "put": {
+        "operationId": "put_manual_price_api_v1_quotes_manual_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualPricePut"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualPriceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Manual Price",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reports/mvp": {
+      "get": {
+        "operationId": "read_mvp_report_api_v1_reports_mvp_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ledger_ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Ledger Ids",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "enum": [
+                "balances",
+                "cash",
+                "operating"
+              ],
+              "title": "View",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "display_asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "USD",
+                    "GBP",
+                    "EUR",
+                    "HKD",
+                    "CNY"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Display Asset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "price_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Price Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Mvp Report",
+        "tags": [
+          "reporting"
         ]
       }
     }

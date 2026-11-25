@@ -32,6 +32,7 @@ def test_refund_revision_migration_extends_the_catalog_with_one_gated_table():
         "business_invoice_completions",
         "interledger_settings",
         "interledger_groups",
+        "manual_prices",
     }
     table = BusinessRefundRevision.__table__
     sql = " ".join(str(CreateTable(table).compile(dialect=dialect())).split())
