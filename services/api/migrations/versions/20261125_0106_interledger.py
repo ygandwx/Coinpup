@@ -15,6 +15,7 @@ _OLD_KINDS = (
     "'invoice_accrual', 'bill_accrual', 'payment', 'allocation', 'unallocation', 'refund', "
     "'invoice_credit', 'bill_credit'"
 )
+_INTERLEDGER_KINDS = _OLD_KINDS + ", 'advance', 'repayment'"
 _OLD_TYPES = (
     "'entities', 'ledgers', 'accounts', 'account_assets', 'categories', 'assets', "
     "'financial_operations', 'stored_files', 'operation_file_links', "
@@ -35,24 +36,22 @@ _OLD_TYPES = (
 )
 
 
-def _install_checks(kinds, types):
+def _install_operation_kinds(kinds):
     op.drop_constraint("ck_financial_operations_kind", "financial_operations", type_="check")
     op.create_check_constraint(
         "ck_financial_operations_kind", "financial_operations", f"kind IN ({kinds})"
     )
+
+
+def _install_checks(kinds, types):
+    _install_operation_kinds(kinds)
     op.drop_constraint("ck_change_log_entity_type", "change_log", type_="check")
     op.create_check_constraint(
         "ck_change_log_entity_type", "change_log", f"entity_type IN ({types})"
     )
 
 
-def upgrade():
-    op.execute("SELECT pg_advisory_xact_lock(18945999704708432)")
-    _install_checks(
-        _OLD_KINDS + ", 'advance', 'repayment'",
-        _OLD_TYPES + ", 'interledger_settings', 'interledger_groups'",
-    )
-    op.execute((_SQL / "interledger.sql").read_text(encoding="utf-8"))
+def _install_interledger_dispatch():
     before = (_SQL / "prior_dispatch.sql").read_text(encoding="utf-8")
     boundary = "        ELSE RAISE EXCEPTION"
     if before.count(boundary) != 1:
@@ -64,6 +63,16 @@ def upgrade():
         + boundary,
     )
     op.execute(after)
+
+
+def upgrade():
+    op.execute("SELECT pg_advisory_xact_lock(18945999704708432)")
+    _install_checks(
+        _INTERLEDGER_KINDS,
+        _OLD_TYPES + ", 'interledger_settings', 'interledger_groups'",
+    )
+    op.execute((_SQL / "interledger.sql").read_text(encoding="utf-8"))
+    _install_interledger_dispatch()
 
 
 def downgrade():

@@ -1262,6 +1262,17 @@ def credit_validation_migration():
     def upgrade():
         frozen["upgrade"]()
         credit_revision_migration()["upgrade"]()
+        bind = op.get_bind()
+        if bind.scalar(text("SELECT to_regclass('public.interledger_groups') IS NOT NULL")):
+            # The frozen 0039 layer recreates the shared kind check and dispatcher.
+            current = runpy.run_path(
+                str(
+                    Path(__file__).resolve().parents[2]
+                    / "services/api/migrations/versions/20261125_0106_interledger.py"
+                )
+            )
+            current["_install_operation_kinds"](current["_INTERLEDGER_KINDS"])
+            current["_install_interledger_dispatch"]()
 
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
