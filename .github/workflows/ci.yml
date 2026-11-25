@@ -119,6 +119,7 @@ jobs:
 
   web:
     name: Web type check and build
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -141,6 +142,20 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run build
+      - name: Check Flutter workspace
+        if: ${{ needs.scope.outputs.heavy == 'true' && hashFiles('apps/mobile/pubspec.yaml') != '' }}
+        working-directory: apps/mobile
+        env:
+          FLUTTER_SUPPRESS_ANALYTICS: "true"
+        run: |
+          sdk="$RUNNER_TEMP/coinpup-flutter"
+          git clone --quiet --depth 1 --branch 3.50.0 https://github.com/flutter/flutter.git "$sdk"
+          test "$(git -C "$sdk" rev-parse HEAD)" = ab2912035e160d9cad6306df307576da6128ebdb
+          "$sdk/bin/flutter" --version
+          "$sdk/bin/flutter" pub get --enforce-lockfile
+          "$sdk/bin/dart" format --output=none --set-exit-if-changed lib test
+          "$sdk/bin/flutter" analyze --fatal-infos
+          "$sdk/bin/flutter" test
 
   database-parts:
     name: PostgreSQL integration partition ${{ matrix.part }}
