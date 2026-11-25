@@ -34,7 +34,7 @@ def isolated_ocr_schema(engine, action):
     """Only the pre-existing empty 0008 probe removes/reinstates the frozen OCR schema."""
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_heads() == ("20261125_0109",)
+        assert context.get_current_heads() == ("20261125_0110",)
         with Operations.context(context):
             if action == "downgrade":
                 payment_confirmation_migration()[action]()
@@ -43,7 +43,7 @@ def isolated_ocr_schema(engine, action):
             if action == "upgrade":
                 confirmation_schema_migration()[action]()
                 payment_confirmation_migration()[action]()
-        assert context.get_current_heads() == ("20261125_0109",)
+        assert context.get_current_heads() == ("20261125_0110",)
 
 
 def confirmation_schema_migration():
@@ -254,7 +254,7 @@ def document_accrual_member_migration():
         # frozen round trip must restore the later notification type as well.
         bind = op.get_bind()
         if MigrationContext.configure(bind).get_current_heads() == (
-            "20261125_0109",
+            "20261125_0110",
         ) and bind.scalar(
             text("SELECT to_regclass('public.business_invoice_profiles') IS NOT NULL")
         ):
@@ -351,7 +351,7 @@ def _with_allocation_document_facts(migration):
         migration["upgrade"]()
         bind = op.get_bind()
         if (
-            MigrationContext.configure(bind).get_current_heads() == ("20261125_0109",)
+            MigrationContext.configure(bind).get_current_heads() == ("20261125_0110",)
             and not installed()
             and bind.scalar(
                 text(
@@ -397,7 +397,7 @@ def credit_document_source_migration():
 
     def upgrade():
         frozen["upgrade"]()
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0109",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0110",):
             credit_source_plan_migration()["upgrade"]()
         _restore_credit_document_origin()
 
@@ -460,7 +460,7 @@ def credit_bound_receipt_migration():
 
 def _restore_credit_bound_receipt():
     bind = op.get_bind()
-    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0109",) and bind.scalar(
+    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0110",) and bind.scalar(
         text(
             "SELECT to_regprocedure('public.coinpup_bind_credit_document_version()') IS NOT NULL "
             "AND to_regprocedure('public.coinpup_business_credit_revision_response(uuid)') "
@@ -473,7 +473,7 @@ def _restore_credit_bound_receipt():
 def _restore_credit_document_origin():
     # The SQL receipt projection needs both the old group tables and the new bound header.
     bind = op.get_bind()
-    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0109",) and bind.scalar(
+    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0110",) and bind.scalar(
         text(
             "SELECT to_regprocedure('public.coinpup_bind_credit_document_version()') IS NOT NULL "
             "AND to_regprocedure('public.coinpup_validate_credit_origin_facts(uuid)') IS NOT NULL"
@@ -497,7 +497,7 @@ def _restore_credit_document_capacity():
     bind = op.get_bind()
     if _CREDIT_HISTORY_LAYER.get() or _REFUND_HISTORY_LAYER.get():
         return
-    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0109",) and bind.scalar(
+    if MigrationContext.configure(bind).get_current_heads() == ("20261125_0110",) and bind.scalar(
         text(
             "SELECT to_regprocedure('public.coinpup_bind_credit_document_version()') IS NOT NULL "
             "AND to_regprocedure('public.coinpup_validate_business_credit(uuid)') IS NOT NULL"
@@ -525,7 +525,7 @@ def _with_credit_document_sources(migration):
         migration["upgrade"]()
         bind = op.get_bind()
         if (
-            MigrationContext.configure(bind).get_current_heads() == ("20261125_0109",)
+            MigrationContext.configure(bind).get_current_heads() == ("20261125_0110",)
             and not installed()
             and bind.scalar(
                 text(
@@ -771,7 +771,7 @@ def return_document_source_migration():
 def _with_pinned_return_definition(migration, definition):
     def upgrade():
         migration["upgrade"]()
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0109",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0110",):
             op.execute(return_document_source_migration()[definition])
 
     return migration | {"upgrade": upgrade}
@@ -818,7 +818,7 @@ def effective_return_capacity_migration():
     def upgrade():
         effective["upgrade"]()
         # 0064 owns the predecessor of the allocation validator replaced at 0085.
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0109",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0110",):
             allocation_document_validation_migration()["upgrade"]()
         _restore_credit_document_capacity()
 
@@ -1164,7 +1164,7 @@ def credit_fact_migration():
     def upgrade():
         frozen["upgrade"]()
         credit_group_migration()["upgrade"]()
-        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0109",):
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0110",):
             credit_document_validation_migration()["upgrade"]()
         _restore_credit_document_origin()
 
@@ -1407,13 +1407,35 @@ def reminder_migration():
     return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
-def device_checkpoints_migration():
+def financial_device_push_migration():
     return runpy.run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "services/api/migrations/versions/20261125_0110_financial_device_push.py"
+        )
+    )
+
+
+def device_checkpoints_migration():
+    frozen = runpy.run_path(
         str(
             Path(__file__).resolve().parents[2]
             / "services/api/migrations/versions/20261125_0109_device_checkpoints.py"
         )
     )
+
+    def downgrade():
+        bind = op.get_bind()
+        if bind.scalar(text("SELECT to_regclass('public.sync_financial_pushes') IS NOT NULL")):
+            financial_device_push_migration()["downgrade"]()
+        frozen["downgrade"]()
+
+    def upgrade():
+        frozen["upgrade"]()
+        if MigrationContext.configure(op.get_bind()).get_current_heads() == ("20261125_0110",):
+            financial_device_push_migration()["upgrade"]()
+
+    return frozen | {"downgrade": downgrade, "upgrade": upgrade}
 
 
 def reminder_email_migration():
@@ -1446,7 +1468,7 @@ def delivery_config_migration():
         frozen["upgrade"]()
         connection = op.get_bind()
         on_email_head = MigrationContext.configure(connection).get_current_heads() == (
-            "20261125_0109",
+            "20261125_0110",
         )
         if on_email_head:
             reminder_email_migration()["upgrade"]()
@@ -1762,9 +1784,10 @@ def structure_database(request):
             # Keep foreign-key-connected tables together and skip completely empty groups.
             truncate_groups = (
                 "change_log",
-                "sync_page_acknowledgements, sync_device_revisions",
                 "manual_prices, manual_price_audits",
                 "interledger_settings",
+                "sync_financial_conflict_resolutions, sync_financial_pushes, "
+                "sync_page_acknowledgements, sync_device_revisions, "
                 "interledger_groups, ocr_confirmations, ocr_drafts, ocr_jobs, file_uploads, "
                 "operation_file_links, stored_files, business_postings, business_confirmations, "
                 "business_document_accruals, business_document_revision_lines, "
@@ -2023,7 +2046,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261125_0109",
+                    "20261125_0110",
                 )
                 refund_definitions = definitions(connection)
                 refund_lifecycle_migration()["downgrade"]()
@@ -2034,7 +2057,7 @@ def structure_database(request):
                 Operations.context(MigrationContext.configure(connection)),
             ):
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261125_0109",
+                    "20261125_0110",
                 )
                 credit_definitions = definitions(connection)
                 refund_current_capacity_migration()["downgrade"]()
@@ -2065,7 +2088,7 @@ def structure_database(request):
                     credit_lifecycle_migration()["upgrade"]()
                     refund_current_capacity_migration()["upgrade"]()
                     assert MigrationContext.configure(connection).get_current_heads() == (
-                        "20261125_0109",
+                        "20261125_0110",
                     )
                     assert definitions(connection) == credit_definitions
             finally:
@@ -2078,7 +2101,7 @@ def structure_database(request):
             ):
                 refund_lifecycle_migration()["upgrade"]()
                 assert MigrationContext.configure(connection).get_current_heads() == (
-                    "20261125_0109",
+                    "20261125_0110",
                 )
                 assert definitions(connection) == refund_definitions
         if ocr_detached:

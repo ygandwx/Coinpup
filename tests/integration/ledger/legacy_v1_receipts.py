@@ -113,7 +113,7 @@ def _old_hash(action, ledger, body, operation=None):
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
-def create_legacy_v1_receipts(engine, owner):
+def create_legacy_v1_receipts(engine, owner, *, stable_create_ids=False):
     """Only the opted-in, already-cleaned fixture database may run this migration cycle."""
     config = Config(str(ROOT / "alembic.ini"))
     before = financial_snapshot(engine)
@@ -187,6 +187,8 @@ def create_legacy_v1_receipts(engine, owner):
         }
 
         def remember(name, action, operation, body, suffix, *, status=201):
+            if stable_create_ids and status == 201:
+                body["id"] = str(operation)
             with historical_reader_session(engine) as session:
                 record = session.get(FinancialOperation, operation)
                 response = (
@@ -294,7 +296,7 @@ def create_legacy_v1_receipts(engine, owner):
         reason = revisions["REASON"]
         with engine.begin() as connection:
             revisions["_revise"](connection, fixture, operation)
-        replacement = body | {
+        replacement = {key: value for key, value in body.items() if key != "id"} | {
             "kind": "expense",
             "amount": "120",
             "description": "Replacement fictional entry",

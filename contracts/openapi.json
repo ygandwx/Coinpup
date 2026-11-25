@@ -7904,6 +7904,249 @@
         "title": "FileUpdate",
         "type": "object"
       },
+      "FinancialConflictKeepCurrent": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_current_version": {
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Expected Current Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_current_version"
+        ],
+        "title": "FinancialConflictKeepCurrent",
+        "type": "object"
+      },
+      "FinancialConflictResolution": {
+        "properties": {
+          "accepted_version": {
+            "title": "Accepted Version",
+            "type": "integer"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "resolved_at": {
+            "format": "date-time",
+            "title": "Resolved At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "device_id",
+          "accepted_version",
+          "resolved_at"
+        ],
+        "title": "FinancialConflictResolution",
+        "type": "object"
+      },
+      "FinancialPushApplied": {
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "outcome": {
+            "const": "applied",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "exchange": "#/components/schemas/ExchangeResponse",
+                    "expense": "#/components/schemas/OperationResponse",
+                    "income": "#/components/schemas/OperationResponse",
+                    "opening": "#/components/schemas/OperationResponse",
+                    "transfer": "#/components/schemas/TransferResponse"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/OperationResponse"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TransferResponse"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExchangeResponse"
+                  }
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/OperationState"
+              }
+            ],
+            "title": "Receipt"
+          }
+        },
+        "required": [
+          "intent_id",
+          "device_id",
+          "ledger_id",
+          "operation_id",
+          "outcome",
+          "receipt"
+        ],
+        "title": "FinancialPushApplied",
+        "type": "object"
+      },
+      "FinancialPushConflict": {
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/HistoryEntry"
+          },
+          "command_kind": {
+            "enum": [
+              "correct",
+              "cancel"
+            ],
+            "title": "Command Kind",
+            "type": "string"
+          },
+          "competing": {
+            "$ref": "#/components/schemas/HistoryEntry"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "intent_id": {
+            "format": "uuid",
+            "title": "Intent Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "original_payload": {
+            "title": "Original Payload",
+            "type": "string"
+          },
+          "outcome": {
+            "const": "conflict",
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_id",
+          "device_id",
+          "ledger_id",
+          "operation_id",
+          "outcome",
+          "command_kind",
+          "original_payload",
+          "basis",
+          "competing"
+        ],
+        "title": "FinancialPushConflict",
+        "type": "object"
+      },
+      "FinancialPushRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "checkpoint": {
+            "$ref": "#/components/schemas/DeviceRegistration"
+          },
+          "command": {
+            "discriminator": {
+              "mapping": {
+                "cancel": "#/components/schemas/PushCancellation",
+                "correct": "#/components/schemas/PushCorrection",
+                "exchange": "#/components/schemas/PushExchange",
+                "expense": "#/components/schemas/PushExpense",
+                "income": "#/components/schemas/PushIncome",
+                "opening": "#/components/schemas/PushOpening",
+                "transfer": "#/components/schemas/PushTransfer"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PushOpening"
+              },
+              {
+                "$ref": "#/components/schemas/PushIncome"
+              },
+              {
+                "$ref": "#/components/schemas/PushExpense"
+              },
+              {
+                "$ref": "#/components/schemas/PushTransfer"
+              },
+              {
+                "$ref": "#/components/schemas/PushExchange"
+              },
+              {
+                "$ref": "#/components/schemas/PushCorrection"
+              },
+              {
+                "$ref": "#/components/schemas/PushCancellation"
+              }
+            ],
+            "title": "Command"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]{1,128}$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "idempotency_key",
+          "checkpoint",
+          "command"
+        ],
+        "title": "FinancialPushRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -11446,6 +11689,482 @@
           "expected_version"
         ],
         "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "PushCancellation": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "cancel",
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CancellationCreate"
+          }
+        },
+        "required": [
+          "kind",
+          "operation_id",
+          "payload"
+        ],
+        "title": "PushCancellation",
+        "type": "object"
+      },
+      "PushCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "correct",
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CorrectionCreate"
+          }
+        },
+        "required": [
+          "kind",
+          "operation_id",
+          "payload"
+        ],
+        "title": "PushCorrection",
+        "type": "object"
+      },
+      "PushExchange": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "exchange",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PushExchangePayload"
+          }
+        },
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "title": "PushExchange",
+        "type": "object"
+      },
+      "PushExchangePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_date",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount"
+        ],
+        "title": "PushExchangePayload",
+        "type": "object"
+      },
+      "PushExpense": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "expense",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PushExpensePayload"
+          }
+        },
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "title": "PushExpense",
+        "type": "object"
+      },
+      "PushExpensePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id",
+          "recognition_date",
+          "splits"
+        ],
+        "title": "PushExpensePayload",
+        "type": "object"
+      },
+      "PushIncome": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "income",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PushIncomePayload"
+          }
+        },
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "title": "PushIncome",
+        "type": "object"
+      },
+      "PushIncomePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recognition_date": {
+            "format": "date",
+            "title": "Recognition Date",
+            "type": "string"
+          },
+          "splits": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSplit"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Splits",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id",
+          "recognition_date",
+          "splits"
+        ],
+        "title": "PushIncomePayload",
+        "type": "object"
+      },
+      "PushOpening": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "opening",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PushOpeningPayload"
+          }
+        },
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "title": "PushOpening",
+        "type": "object"
+      },
+      "PushOpeningPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "account_id"
+        ],
+        "title": "PushOpeningPayload",
+        "type": "object"
+      },
+      "PushTransfer": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "transfer",
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PushTransferPayload"
+          }
+        },
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "title": "PushTransfer",
+        "type": "object"
+      },
+      "PushTransferPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_date",
+          "asset_id",
+          "amount",
+          "source_account_id",
+          "destination_account_id"
+        ],
+        "title": "PushTransferPayload",
         "type": "object"
       },
       "ReceivedPage": {
@@ -25999,6 +26718,305 @@
         "summary": "Checkpoint",
         "tags": [
           "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/financial-pushes/{intent_id}": {
+      "get": {
+        "operationId": "get_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Intent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "applied": "#/components/schemas/FinancialPushApplied",
+                      "conflict": "#/components/schemas/FinancialPushConflict"
+                    },
+                    "propertyName": "outcome"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/FinancialPushApplied"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FinancialPushConflict"
+                    }
+                  ],
+                  "title": "Response Get Financial Push Api V1 Sync Devices  Device Id  Financial Pushes  Intent Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Financial Push",
+        "tags": [
+          "sync financial pushes"
+        ]
+      },
+      "put": {
+        "description": "Apply one stable intent or return its immutable applied or conflict outcome.",
+        "operationId": "submit_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Intent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinancialPushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "applied": "#/components/schemas/FinancialPushApplied",
+                      "conflict": "#/components/schemas/FinancialPushConflict"
+                    },
+                    "propertyName": "outcome"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/FinancialPushApplied"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FinancialPushConflict"
+                    }
+                  ],
+                  "title": "Response Submit Financial Push Api V1 Sync Devices  Device Id  Financial Pushes  Intent Id  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Financial Push",
+        "tags": [
+          "sync financial pushes"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/financial-pushes/{intent_id}/resolution": {
+      "get": {
+        "operationId": "get_financial_conflict_resolution_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Intent Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FinancialConflictResolution"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Financial Conflict Resolution Api V1 Sync Devices  Device Id  Financial Pushes  Intent Id  Resolution Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Financial Conflict Resolution",
+        "tags": [
+          "sync financial pushes"
+        ]
+      },
+      "put": {
+        "operationId": "accept_current_financial_version_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "intent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Intent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinancialConflictKeepCurrent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialConflictResolution"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Current Financial Version",
+        "tags": [
+          "sync financial pushes"
         ]
       }
     },

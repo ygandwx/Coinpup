@@ -2346,6 +2346,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/devices/{device_id}/financial-pushes/{intent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Financial Push */
+        get: operations["get_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__get"];
+        /**
+         * Submit Financial Push
+         * @description Apply one stable intent or return its immutable applied or conflict outcome.
+         */
+        put: operations["submit_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/financial-pushes/{intent_id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Financial Conflict Resolution */
+        get: operations["get_financial_conflict_resolution_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_get"];
+        /** Accept Current Financial Version */
+        put: operations["accept_current_financial_version_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sync/devices/{device_id}/history": {
         parameters: {
             query?: never;
@@ -5784,6 +5823,111 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** FinancialConflictKeepCurrent */
+        FinancialConflictKeepCurrent: {
+            /** Expected Current Version */
+            expected_current_version: number;
+        };
+        /** FinancialConflictResolution */
+        FinancialConflictResolution: {
+            /** Accepted Version */
+            accepted_version: number;
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Resolved At
+             * Format: date-time
+             */
+            resolved_at: string;
+        };
+        /** FinancialPushApplied */
+        FinancialPushApplied: {
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            outcome: "applied";
+            /** Receipt */
+            receipt: (components["schemas"]["OperationResponse"] | components["schemas"]["TransferResponse"] | components["schemas"]["ExchangeResponse"]) | components["schemas"]["OperationState"];
+        };
+        /** FinancialPushConflict */
+        FinancialPushConflict: {
+            basis: components["schemas"]["HistoryEntry"];
+            /**
+             * Command Kind
+             * @enum {string}
+             */
+            command_kind: "correct" | "cancel";
+            competing: components["schemas"]["HistoryEntry"];
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /**
+             * Intent Id
+             * Format: uuid
+             */
+            intent_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Original Payload */
+            original_payload: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            outcome: "conflict";
+        };
+        /** FinancialPushRequest */
+        FinancialPushRequest: {
+            checkpoint: components["schemas"]["DeviceRegistration"];
+            /** Command */
+            command: components["schemas"]["PushOpening"] | components["schemas"]["PushIncome"] | components["schemas"]["PushExpense"] | components["schemas"]["PushTransfer"] | components["schemas"]["PushExchange"] | components["schemas"]["PushCorrection"] | components["schemas"]["PushCancellation"];
+            /** Idempotency Key */
+            idempotency_key: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -7279,6 +7423,250 @@ export interface components {
             name?: string | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** PushCancellation */
+        PushCancellation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "cancel";
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            payload: components["schemas"]["CancellationCreate"];
+        };
+        /** PushCorrection */
+        PushCorrection: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "correct";
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            payload: components["schemas"]["CorrectionCreate"];
+        };
+        /** PushExchange */
+        PushExchange: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "exchange";
+            payload: components["schemas"]["PushExchangePayload"];
+        };
+        /** PushExchangePayload */
+        PushExchangePayload: {
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Destination Account Id
+             * Format: uuid
+             */
+            destination_account_id: string;
+            /** Destination Amount */
+            destination_amount: string;
+            /** Destination Asset Id */
+            destination_asset_id: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /** Source Amount */
+            source_amount: string;
+            /** Source Asset Id */
+            source_asset_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** PushExpense */
+        PushExpense: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "expense";
+            payload: components["schemas"]["PushExpensePayload"];
+        };
+        /** PushExpensePayload */
+        PushExpensePayload: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Splits */
+            splits: components["schemas"]["PostingSplit"][];
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** PushIncome */
+        PushIncome: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "income";
+            payload: components["schemas"]["PushIncomePayload"];
+        };
+        /** PushIncomePayload */
+        PushIncomePayload: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Recognition Date
+             * Format: date
+             */
+            recognition_date: string;
+            /** Splits */
+            splits: components["schemas"]["PostingSplit"][];
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** PushOpening */
+        PushOpening: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "opening";
+            payload: components["schemas"]["PushOpeningPayload"];
+        };
+        /** PushOpeningPayload */
+        PushOpeningPayload: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** PushTransfer */
+        PushTransfer: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "transfer";
+            payload: components["schemas"]["PushTransferPayload"];
+        };
+        /** PushTransferPayload */
+        PushTransferPayload: {
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Destination Account Id
+             * Format: uuid
+             */
+            destination_account_id: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
         };
         /** ReceivedPage */
         ReceivedPage: {
@@ -14086,6 +14474,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangeStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+                intent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialPushApplied"] | components["schemas"]["FinancialPushConflict"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_financial_push_api_v1_sync_devices__device_id__financial_pushes__intent_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                device_id: string;
+                intent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinancialPushRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialPushApplied"] | components["schemas"]["FinancialPushConflict"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_financial_conflict_resolution_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+                intent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialConflictResolution"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_current_financial_version_api_v1_sync_devices__device_id__financial_pushes__intent_id__resolution_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                device_id: string;
+                intent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinancialConflictKeepCurrent"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialConflictResolution"];
                 };
             };
             /** @description Validation Error */

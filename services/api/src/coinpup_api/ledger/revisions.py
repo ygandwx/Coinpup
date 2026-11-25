@@ -150,6 +150,86 @@ def prepare_replacement(service, session, ledger_id, journal_id, payload, catalo
     return lines, prepare_journal_lines(lines, catalog), recognition_date
 
 
+def history_at_versions(session, operation, versions, *, require_sealed=False):
+    """Read fixed history using the caller's existing owned ledger snapshot."""
+    ledger_id, operation_id = operation.ledger_id, operation.id
+    journals = session.scalars(
+        select(Journal).where(
+            Journal.operation_id == operation_id,
+            Journal.ledger_id == ledger_id,
+            Journal.operation_version.in_(versions),
+        )
+    ).all()
+    result = []
+    for version in versions:
+        revision = sorted(
+            [journal for journal in journals if journal.operation_version == version],
+            key=lambda journal: journal.journal_kind != "reversal",
+        )
+        if not revision:
+            continue
+        if require_sealed and any(not journal.sealed for journal in revision):
+            raise LedgerError("ledger_integrity", 503, "Financial revision history is unsealed.")
+        action = "create" if version == 1 else "correct" if len(revision) == 2 else "cancel"
+        audits = []
+        for journal in revision:
+            lines = session.scalars(
+                select(JournalLine)
+                .where(JournalLine.journal_id == journal.id, JournalLine.ledger_id == ledger_id)
+                .order_by(JournalLine.line_no)
+            ).all()
+            output = []
+            for line in lines:
+                definition = asset_definition(session.get(AssetRecord, line.asset_id))
+                try:
+                    amount = Amount.from_decimal(line.amount, definition).to_string()
+                except MoneyError:
+                    raise LedgerError(
+                        "ledger_integrity", 503, "Stored audit quantities are inconsistent."
+                    ) from None
+                output.append(
+                    LineAudit(
+                        id=line.id,
+                        line_no=line.line_no,
+                        component_no=line.component_no,
+                        role=line.role,
+                        asset_id=line.asset_id,
+                        amount=amount,
+                        account_id=line.account_id,
+                        category_id=line.category_id,
+                        project_id=line.project_id,
+                        party_id=line.party_id,
+                        counterparty_entity_id=line.counterparty_entity_id,
+                        document_id=line.document_id,
+                        document_line_id=line.document_line_id,
+                    )
+                )
+            audits.append(
+                JournalAudit(
+                    id=journal.id,
+                    kind=journal.journal_kind,
+                    reverses_journal_id=journal.reverses_journal_id,
+                    transaction_date=journal.transaction_date,
+                    recognition_date=journal.recognition_date,
+                    description=journal.description,
+                    reason=journal.revision_reason,
+                    recorded_at=journal.created_at,
+                    lines=output,
+                )
+            )
+        result.append(
+            HistoryEntry(
+                version=version,
+                action=action,
+                actor_id=operation.created_by,
+                reason=revision[0].revision_reason,
+                recorded_at=revision[0].created_at,
+                journals=audits,
+            )
+        )
+    return result
+
+
 class RevisionService(
     ClassifiedCommands,
     TransferCommands,
@@ -368,77 +448,7 @@ class RevisionService(
                 .limit(limit)
                 .offset(offset)
             ).all()
-            journals = session.scalars(
-                select(Journal).where(
-                    Journal.operation_id == operation_id,
-                    Journal.ledger_id == ledger_id,
-                    Journal.operation_version.in_(versions),
-                )
-            ).all()
-            result = []
-            for version in versions:
-                revision = sorted(
-                    [journal for journal in journals if journal.operation_version == version],
-                    key=lambda journal: journal.journal_kind != "reversal",
-                )
-                action = "create" if version == 1 else "correct" if len(revision) == 2 else "cancel"
-                audits = []
-                for journal in revision:
-                    lines = session.scalars(
-                        select(JournalLine)
-                        .where(JournalLine.journal_id == journal.id)
-                        .order_by(JournalLine.line_no)
-                    ).all()
-                    output = []
-                    for line in lines:
-                        definition = asset_definition(session.get(AssetRecord, line.asset_id))
-                        try:
-                            amount = Amount.from_decimal(line.amount, definition).to_string()
-                        except MoneyError:
-                            raise LedgerError(
-                                "ledger_integrity", 503, "Stored audit quantities are inconsistent."
-                            ) from None
-                        output.append(
-                            LineAudit(
-                                id=line.id,
-                                line_no=line.line_no,
-                                component_no=line.component_no,
-                                role=line.role,
-                                asset_id=line.asset_id,
-                                amount=amount,
-                                account_id=line.account_id,
-                                category_id=line.category_id,
-                                project_id=line.project_id,
-                                party_id=line.party_id,
-                                counterparty_entity_id=line.counterparty_entity_id,
-                                document_id=line.document_id,
-                                document_line_id=line.document_line_id,
-                            )
-                        )
-                    audits.append(
-                        JournalAudit(
-                            id=journal.id,
-                            kind=journal.journal_kind,
-                            reverses_journal_id=journal.reverses_journal_id,
-                            transaction_date=journal.transaction_date,
-                            recognition_date=journal.recognition_date,
-                            description=journal.description,
-                            reason=journal.revision_reason,
-                            recorded_at=journal.created_at,
-                            lines=output,
-                        )
-                    )
-                result.append(
-                    HistoryEntry(
-                        version=version,
-                        action=action,
-                        actor_id=operation.created_by,
-                        reason=revision[0].revision_reason,
-                        recorded_at=revision[0].created_at,
-                        journals=audits,
-                    )
-                )
-            return result
+            return history_at_versions(session, operation, versions)
 
     def correct_operation(
         self,
