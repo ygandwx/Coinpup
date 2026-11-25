@@ -1,14 +1,27 @@
 """Exact sequence text and owner-scoped change notification responses."""
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel, Field, StrictInt, StrictStr
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StrictStr,
+    field_validator,
+)
 
 MAX_CURSOR = (1 << 63) - 1
 _CURSOR = re.compile(r"(?:0|[1-9][0-9]*)")
+_NOTICE_TIMESTAMP = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]+)?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})"
+)
 
 
 def cursor_value(value) -> int:
@@ -104,3 +117,44 @@ class ChangeRecord(BaseModel):
 class ChangePage(BaseModel):
     changes: list[ChangeRecord]
     next_cursor: Cursor
+
+
+def notice_utc_time(value: datetime) -> datetime:
+    try:
+        if value.utcoffset() is not None:
+            return value.astimezone(UTC)
+    except (OverflowError, ValueError):
+        pass
+    raise ValueError("Change evidence requires a zoned timestamp representable in UTC.")
+
+
+class SavedNotice(ChangeRecord):
+    model_config = ConfigDict(extra="forbid")
+    changed_at: AwareDatetime
+
+    @field_validator("changed_at", mode="before")
+    @classmethod
+    def timestamp_text(cls, value):
+        # Internal callers may construct a witness from an already validated notice.
+        if isinstance(value, datetime) or (
+            isinstance(value, str) and _NOTICE_TIMESTAMP.fullmatch(value)
+        ):
+            return value
+        raise ValueError("Use an RFC 3339 timestamp string with a time zone.")
+
+    @field_validator("changed_at")
+    @classmethod
+    def representable_in_utc(cls, value):
+        notice_utc_time(value)
+        return value
+
+
+class ChangeStart(BaseModel):
+    cursor: Cursor
+    witness: ChangeRecord | None
+
+
+class DeviceRegistration(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    cursor: Cursor
+    witness: SavedNotice | None

@@ -38,6 +38,8 @@ from coinpup_api.ocr.router import create_ocr_router
 from coinpup_api.reminders.router import create_reminder_router
 from coinpup_api.reporting.router import create_reporting_router
 from coinpup_api.settlement.router import create_interledger_router
+from coinpup_api.sync.ack_router import create_ack_router
+from coinpup_api.sync.device_router import create_device_router
 from coinpup_api.sync.router import create_sync_router
 
 logger = logging.getLogger("coinpup")
@@ -142,6 +144,8 @@ def create_app(
     app.include_router(create_interledger_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_document_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_sync_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_device_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_ack_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_draft_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_review_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_confirmation_router(settings, getattr(probe, "engine", None)))
