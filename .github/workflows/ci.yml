@@ -47,13 +47,15 @@ jobs:
             exit 0
           fi
           echo "tier=pr" >> "$GITHUB_OUTPUT"
-          changed=$(git diff --name-only "$BASE...$HEAD")
+          # Count the source path when a file moves into documentation.
+          changed=$(git diff --no-renames --name-only "$BASE...$HEAD")
           printf '%s\n' "$changed"
           code=$(printf '%s\n' "$changed" | grep -Ev '^(docs/.*|.*\.md|LICENSE)$' | grep -c . || true)
           if [ "$code" = 0 ]; then echo "heavy=false" >> "$GITHUB_OUTPUT"; else echo "heavy=true" >> "$GITHUB_OUTPUT"; fi
 
   quality:
     name: Lint, unit tests and documentation
+    needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -85,6 +87,7 @@ jobs:
         run: python scripts/check.py invoice
 
       - name: Verify durable Invoice originals and isolated bundle replay
+        if: needs.scope.outputs.heavy == 'true'
         env:
           COINPUP_ENVIRONMENT: test
           COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:test-only@127.0.0.1:5432/coinpup
@@ -111,7 +114,7 @@ jobs:
           "$client/pg_restore" --version
           PATH="$client:$PATH" python scripts/check.py invoice-db
       - name: Remove disposable Invoice database
-        if: always()
+        if: ${{ always() && needs.scope.outputs.heavy == 'true' }}
         run: python -m scripts.start_database_ci --stop
 
   web:
