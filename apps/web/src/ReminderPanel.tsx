@@ -7,6 +7,7 @@ import type { Reminder, ReminderRule, ReminderTransition } from "./reminder-api"
 import type { PendingReminderController } from "./pending-reminder";
 import type { PendingReminderEmail } from "./pending-reminder-email";
 import { ReminderEmailPanel } from "./ReminderEmailPanel";
+import { ReminderInbox } from "./ReminderInbox";
 import { scopedReminder } from "./reminder-intent";
 import {
     createReminderBody,
@@ -435,6 +436,13 @@ export function ReminderPanel({
                 </>
             ) : (
                 <>
+                    <ReminderInbox
+                        ledger={ledgerId}
+                        session={session}
+                        locale={locale}
+                        onUnauthorized={onUnauthorized}
+                        openEvent={(id) => void open(id)}
+                    />
                     <div className="form-actions">
                         <button disabled={disabled || !data} onClick={() => begin("create")}>
                             {t("新增提醒事项", "New reminder event")}

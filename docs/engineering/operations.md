@@ -218,8 +218,21 @@ docker compose exec -T api python -m coinpup_api.jobs recurring-invoices --per-r
 python -m coinpup_api.jobs reminder-email --owner "$owner_id" --ledger "$ledger_id"
 ```
 
+双渠道任务支持按所有者扫描，也可以通过 `--ledger` 限制为一个账本。站内通知独立执行。设置测试 SMTP 捕获开关后，同次任务也处理启用的邮件，两个结果分别计数。
+
+```bash
+python -m coinpup_api.jobs reminder-delivery --owner "$owner_id"
+```
+
+用部署现有的定时器周期调用该单次任务。任务每次核对最新日期与渠道同意，处理已到计划时点的事项。原有成功投递和首个已读时间随数据库与原件 bundle 保留。将已交付实例复制为恢复目标时，沿用下面的调度暂停流程。
+
 升级切换和恢复演练期间暂停提醒任务。恢复目标保持默认关闭。先核对恢复点后的 SMTP 接受记录，再决定恢复目标上的后续任务。邮件结果未知时保留原投递证据，待核实后标记收到或停止通知。生产 SMTP 配置需要单独授权。[ADR0038](../architecture/decisions/0038-reminder-delivery.md)
 
+### 生产提醒邮件
+
+在获授权的提醒任务环境配置 `COINPUP_ENVIRONMENT=production`，并显式启用 `COINPUP_REMINDER_MAIL_SMTP_ENABLED`。通过任务的私有部署配置提供 `COINPUP_REMINDER_MAIL_SMTP_HOST`、`COINPUP_REMINDER_MAIL_SMTP_PORT`、`COINPUP_REMINDER_MAIL_SMTP_MODE` 和 `COINPUP_REMINDER_MAIL_SMTP_SENDER`。模式为 `starttls` 或 `ssl`，使用系统信任库核对服务器证书和主机身份。需要认证的中继通过 `COINPUP_REMINDER_MAIL_SMTP_USERNAME` 与 `COINPUP_REMINDER_MAIL_SMTP_PASSWORD` 成对配置。允许免认证的中继可同时省略两项。
+
+生产传输默认关闭。启用后，`reminder-email` 和 `reminder-delivery` 使用上述传输。配置无效时，双渠道任务仍执行站内通知，邮件结果为空，并返回非零退出码。SMTP 已接受或发送结果未知的状态继续遵循原重放边界。恢复目标保持生产传输关闭。[ADR0038](../architecture/decisions/0038-reminder-delivery.md)
 
 ## 公共报价更新
 

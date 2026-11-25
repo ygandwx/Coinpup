@@ -12,6 +12,7 @@ from coinpup_api.config import Settings
 from coinpup_api.ledger.service import LedgerError
 from coinpup_api.reminders.delivery_commands import ConfigureDelivery, ReminderDeliveryCommands
 from coinpup_api.reminders.delivery_reads import ReminderDeliveryReads, ReminderDeliveryView
+from coinpup_api.reminders.inbox_service import ReminderInboxService, ReminderInboxView
 from coinpup_api.reminders.mail_schemas import ReminderEmailDecision, ReminderEmailView
 from coinpup_api.reminders.mail_service import ReminderEmailService
 from coinpup_api.reminders.schemas import (
@@ -33,6 +34,7 @@ def create_reminder_router(settings: Settings, engine: Engine | None) -> APIRout
     delivery_reads = ReminderDeliveryReads(engine)
     delivery_commands = ReminderDeliveryCommands(engine)
     email = ReminderEmailService(engine)
+    inbox = ReminderInboxService(engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
     page_size = Annotated[int, Query(ge=1, le=200)]
@@ -70,6 +72,27 @@ def create_reminder_router(settings: Settings, engine: Engine | None) -> APIRout
     @router.get("/rules", response_model=list[ReminderRuleResponse])
     def list_rules(ledger_id: UUID, identity: reader):
         return execute(service.list_rules, identity.id, ledger_id)
+
+    @router.get("/inbox", response_model=list[ReminderInboxView])
+    def list_inbox(
+        ledger_id: UUID,
+        identity: reader,
+        unread_only: bool = False,
+        limit: page_size = 50,
+        offset: page_offset = 0,
+    ):
+        return execute(
+            inbox.list_deliveries,
+            identity.id,
+            ledger_id,
+            unread_only=unread_only,
+            limit=limit,
+            offset=offset,
+        )
+
+    @router.put("/inbox/{notification_id}/read", response_model=ReminderInboxView)
+    def mark_inbox_read(ledger_id: UUID, notification_id: UUID, identity: writer):
+        return execute(inbox.mark_read, identity.id, ledger_id, notification_id)
 
     @router.get("/{event_id}/delivery-config", response_model=ReminderDeliveryView)
     def read_delivery_config(ledger_id: UUID, event_id: UUID, identity: reader):

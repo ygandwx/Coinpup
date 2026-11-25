@@ -47,7 +47,7 @@ test("an event keeps its in-app setting and shows the bilingual email schedule a
     await page.getByRole("article").filter({ hasText: event.title }).getByRole("button").click();
     const button = (name: string) => page.getByRole("button", { name, exact: true });
     const field = (name: string) => page.getByLabel(name, { exact: true });
-    await button("View email reminders").click();
+    await button("View delivery settings").click();
     await field("Enable email reminders").check();
     const recipient = `fictional-${randomUUID().slice(0, 8)}@example.invalid`;
     await field("Email recipient").fill(recipient);
@@ -62,9 +62,9 @@ test("an event keeps its in-app setting and shows the bilingual email schedule a
         await expect(field("Email recipient")).toHaveValue(recipient);
         await expectNoOverflow(page);
     }
-    await button("Save email settings").click();
-    const displayed = page.getByRole("region", { name: "Email reminders", exact: true });
-    await expect(displayed).toContainText("Email settings saved.");
+    await button("Save delivery settings").click();
+    const displayed = page.getByRole("region", { name: "Reminder delivery", exact: true });
+    await expect(displayed).toContainText("Delivery settings saved.");
     await expect(displayed).toContainText(due + "T00:00:00Z");
     await expect(displayed).toContainText("No email deliveries yet.");
     const stored = await api<DeliveryView>(page, "GET", path + "/delivery-config");

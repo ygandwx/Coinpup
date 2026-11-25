@@ -7,6 +7,8 @@ from smtplib import SMTP
 from coinpup_api.reminders.mail_attempt import MailLeaseEnded, attempt_live_mail, single_mailbox
 from coinpup_api.reminders.mail_service import ReminderEmailService
 
+CAPTURE_SENDER = "reminders@coinpup.invalid"
+
 
 def capture_connection(port):
     return SMTP("127.0.0.1", port, timeout=10)

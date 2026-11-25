@@ -126,6 +126,8 @@ def test_reminder_contract_has_no_delete_or_financial_command(client):
     assert set(path for path in paths if path.startswith(prefix)) == {
         prefix,
         prefix + "/rules",
+        prefix + "/inbox",
+        prefix + "/inbox/{notification_id}/read",
         prefix + "/{event_id}",
         prefix + "/{event_id}/manual-date",
         prefix + "/{event_id}/recalculate",

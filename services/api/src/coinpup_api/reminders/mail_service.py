@@ -6,18 +6,20 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 
-from coinpup_api.ledger.service import LedgerError, _not_found, _page, _touch, _version
-from coinpup_api.reminders.delivery_commands import store_clock
-from coinpup_api.reminders.delivery_models import ReminderDeliveryConfig as Config
+from coinpup_api.ledger.service import LedgerError, _not_found, _page, _version
 from coinpup_api.reminders.delivery_models import ReminderDeliveryConfigRevision as ConfigRevision
 from coinpup_api.reminders.delivery_plan import project_delivery_plan
+from coinpup_api.reminders.delivery_work import (
+    ReminderDeliveryWork,
+    delivery_revisions,
+    get_delivery_config,
+)
 from coinpup_api.reminders.mail_attempt import ReminderMail
 from coinpup_api.reminders.mail_lifecycle import AttemptConflict, AttemptState, MailAttempt
 from coinpup_api.reminders.mail_models import ReminderEmailDelivery as Delivery
 from coinpup_api.reminders.mail_models import ReminderEmailEvidence as Evidence
 from coinpup_api.reminders.mail_schemas import ReminderEmailView
 from coinpup_api.reminders.models import ReminderEventRevision as EventRevision
-from coinpup_api.reminders.service import ReminderService
 
 LEASE = timedelta(seconds=90)
 
@@ -26,12 +28,6 @@ LEASE = timedelta(seconds=90)
 class EmailClaim:
     token: UUID
     message: ReminderMail = field(repr=False)
-
-
-def _config(session, ledger, event):
-    return session.scalar(
-        select(Config).where(Config.ledger_id == ledger, Config.event_id == event)
-    )
 
 
 def _latest(delivery_id):
@@ -129,15 +125,7 @@ def _open_lease(fact, token, now):
     return fact.state == AttemptState.SENDING and fact.id == token and now < fact.lease_until
 
 
-class ReminderEmailService(ReminderService):
-    def candidate_events(self, owner, ledger, *, after=None, limit=50):
-        with self._transaction(owner, read_only=True) as session:
-            self._ledger(session, owner, ledger)
-            statement = select(Config.event_id).where(Config.ledger_id == ledger)
-            if after is not None:
-                statement = statement.where(Config.event_id > after)
-            return session.scalars(statement.order_by(Config.event_id).limit(limit)).all()
-
+class ReminderEmailService(ReminderDeliveryWork):
     def list_deliveries(self, owner, ledger, event, *, limit=50, offset=0):
         _page(limit, offset)
         with self._transaction(owner, read_only=True) as session:
@@ -146,30 +134,12 @@ class ReminderEmailService(ReminderService):
             statement = _events(ledger, event).order_by(Delivery.planned_at.desc(), Delivery.id)
             return [_view(*row) for row in session.execute(statement.limit(limit).offset(offset))]
 
-    def _write_scope(self, session, owner, ledger):
-        # Check archive state while holding the change lock. An archived entity may
-        # finish historical evidence, but only active entities may claim new mail.
-        _, entity = self._ledger(session, owner, ledger)
-        if not entity.archived:
-            _, entity = self._ledger(session, owner, ledger, write=True)
-        return entity
-
     @staticmethod
     def _delivery(session, ledger, identifier, *, event=None):
         row = session.get(Delivery, identifier)
         if row is None or row.ledger_id != ledger or (event is not None and row.event_id != event):
             raise _not_found()
         return row, session.scalar(_latest(identifier).limit(1))
-
-    @staticmethod
-    def _plan(session, owner, event, config, entity):
-        decision = project_delivery_plan(config, event, entity_archived=entity.archived)
-        if decision.requires_update:
-            store_clock(config, decision)
-            config.last_actor_id, config.last_action = owner, "plan"
-            _touch(config)
-            session.flush()
-        return decision
 
     @staticmethod
     def _reconcile(session, ledger, event, planned_at, now):
@@ -189,7 +159,7 @@ class ReminderEmailService(ReminderService):
         with self._transaction(owner, write=True, read_committed=True) as session:
             entity = self._write_scope(session, owner, ledger)
             event = self._event(session, ledger, identifier)
-            config = _config(session, ledger, identifier)
+            config = get_delivery_config(session, ledger, identifier)
             if config is None:
                 return None
             decision = self._plan(session, owner, event, config, entity)
@@ -229,20 +199,7 @@ class ReminderEmailService(ReminderService):
 
             envelope = _message(event, config, delivery, sender, decision.plan.inputs.due)
             envelope.message()
-            event_revision = session.scalar(
-                select(EventRevision.id).where(
-                    EventRevision.ledger_id == ledger,
-                    EventRevision.event_id == event.id,
-                    EventRevision.version == event.version,
-                )
-            )
-            config_revision = session.scalar(
-                select(ConfigRevision.id).where(
-                    ConfigRevision.ledger_id == ledger,
-                    ConfigRevision.config_id == config.id,
-                    ConfigRevision.version == config.version,
-                )
-            )
+            event_revision, config_revision = delivery_revisions(session, ledger, event, config)
             snapshot = asdict(envelope)
             snapshot.pop("delivery_id")
             fact = _append(
@@ -265,7 +222,7 @@ class ReminderEmailService(ReminderService):
             if entity.archived or not _open_lease(fact, claim.token, now):
                 return False
             event = self._event(session, ledger, delivery.event_id)
-            config = _config(session, ledger, event.id)
+            config = get_delivery_config(session, ledger, event.id)
             event_revision = session.get(EventRevision, fact.event_revision_id)
             config_revision = session.get(ConfigRevision, fact.config_revision_id)
             return (
@@ -286,7 +243,7 @@ class ReminderEmailService(ReminderService):
                 result = attempt.expire(now)
             elif smtp_result is None:
                 event = self._event(session, ledger, delivery.event_id)
-                config = _config(session, ledger, event.id)
+                config = get_delivery_config(session, ledger, event.id)
                 result = attempt.cancel_unsent()
                 if config is not None and config.email_enabled:
                     decision = self._plan(session, owner, event, config, entity)
@@ -306,7 +263,7 @@ class ReminderEmailService(ReminderService):
             attempt = _attempt(delivery, prior)
             try:
                 if payload.action == "retry":
-                    config = _config(session, ledger, event_id)
+                    config = get_delivery_config(session, ledger, event_id)
                     self._authorize_retry(config, event, entity, delivery, now)
                     result = attempt.retry_explicitly(now)
                 else:
