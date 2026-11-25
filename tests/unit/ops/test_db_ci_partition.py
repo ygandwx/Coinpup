@@ -365,6 +365,12 @@ def tiered_suite(directory):
         "@pytest.mark.integration\n"
         "def test_two_hundred_members_replay(): pass\n"
         "@pytest.mark.integration\n"
+        "def test_corrects_200_members(): pass\n"
+        "@pytest.mark.integration\n"
+        "def test_keeps_2000_rows(): pass\n"
+        "@pytest.mark.integration\n"
+        "def test_original_200_replays(): pass\n"
+        "@pytest.mark.integration\n"
         "@pytest.mark.slow\n"
         "def test_marked(): pass\n"
         "@pytest.mark.integration\n"
@@ -382,7 +388,16 @@ def test_pr_tier_skips_bound_and_marked_stress_cases_and_full_tier_runs_them(tmp
     part = MODULES.index("test_sample_0")
     prefix = "tests/integration/test_sample_0.py::"
     for tier, expected in [
-        ("pr", ["test_amount[200.00]", "test_amount[2000]", "test_bound[1]"]),
+        (
+            "pr",
+            [
+                "test_amount[200.00]",
+                "test_amount[2000]",
+                "test_bound[1]",
+                "test_keeps_2000_rows",
+                "test_original_200_replays",
+            ],
+        ),
         (
             "full",
             [
@@ -390,7 +405,10 @@ def test_pr_tier_skips_bound_and_marked_stress_cases_and_full_tier_runs_them(tmp
                 "test_amount[2000]",
                 "test_bound[1]",
                 "test_bound[200]",
+                "test_corrects_200_members",
+                "test_keeps_2000_rows",
                 "test_marked",
+                "test_original_200_replays",
                 "test_two_hundred_members_replay",
             ],
         ),

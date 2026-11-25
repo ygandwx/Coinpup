@@ -16,13 +16,15 @@ SLOW_TEST_SECONDS = 60
 # "pr" skips scale/bound stress cases; push to main, nightly and manual runs use "full".
 TIERS = ("pr", "full")
 _BOUND_PARAMETER = re.compile(r"\[(?:.*-)?200(?:-.*)?\]$")
+# "200" alone often means an HTTP 200 replay, which stays in the PR tier.
+_BOUND_NAME = re.compile(r"two_hundred|(?:^|_)200_(?:members?|lines?|cross_asset)(?:_|$)")
 
 
 def is_slow(item):
     """Explicit @pytest.mark.slow, or a 200-member bound case by name or parameter."""
     return (
         item.get_closest_marker("slow") is not None
-        or "two_hundred" in item.name
+        or _BOUND_NAME.search(item.originalname or item.name) is not None
         or _BOUND_PARAMETER.search(item.name) is not None
     )
 

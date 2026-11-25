@@ -208,6 +208,7 @@ def test_allocation_and_credit_revision_compete_for_the_same_committed_capacity(
     assert snapshot(s) == before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("retained", [True, False])
 def test_full_document_scale_preserves_every_transition_and_identity(drafts, retained):
     s = drafts
