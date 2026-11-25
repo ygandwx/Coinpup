@@ -30,3 +30,19 @@ export const listEmailDeliveries = (
     signal?: AbortSignal,
 ): Promise<EmailDelivery[]> =>
     readJson(path(ledger, event) + `/email-deliveries?offset=${offset}&limit=${limit}`, signal);
+
+export type EmailDecision = Schema["ReminderEmailDecision"];
+
+export function saveEmailDecision(
+    csrf: string,
+    ledger: string,
+    event: string,
+    delivery: string,
+    body: EmailDecision,
+) {
+    return writeJson<EmailDelivery>(
+        path(ledger, event) + `/email-deliveries/${encodeURIComponent(delivery)}/decision`,
+        csrf,
+        body,
+    );
+}

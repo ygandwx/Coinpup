@@ -42,9 +42,10 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
             "reminder_email_deliveries",
             "reminder_email_evidence",
             "quote_observations",
+            "reminder_inbox_deliveries",
         }
     )
-    assert len(set(get_args(EntityType))) == 54
+    assert len(set(get_args(EntityType))) == 55
     table = BusinessCreditRevision.__table__
     original_fks = [
         fk
@@ -80,5 +81,5 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
         assert unchanged not in source
     assert "complete group validation" in migration["_GUARDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261125_0112"]
+    assert scripts.get_heads() == ["20261125_0113"]
     assert scripts.get_revision("20261106_0040").down_revision == "20261021_0039"

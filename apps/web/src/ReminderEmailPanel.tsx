@@ -7,6 +7,7 @@ import type { PendingReminderEmail } from "./pending-reminder-email";
 import { listEmailDeliveries, readDelivery } from "./reminder-email-api";
 import type { DeliverySettings, DeliveryView, EmailDelivery } from "./reminder-email-api";
 import { reminderError } from "./reminder-errors";
+import { ReminderEmailDecision } from "./ReminderEmailDecision";
 
 const labels = {
     sending: ["正在投递", "Sending"],
@@ -48,7 +49,8 @@ function Settings({
     save: (body: DeliverySettings) => void;
 }) {
     const c = view.config;
-    const [enabled, setEnabled] = useState(c?.email_enabled ?? false);
+    const [enabled, setEnabled] = useState(Boolean(c?.enabled && c.email_enabled));
+    const [inbox, setInbox] = useState(Boolean(c?.enabled && c.inbox_enabled));
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (blocked) return;
@@ -58,8 +60,8 @@ function Settings({
         save({
             expected_event_version: view.event_version,
             expected_config_version: c?.version ?? 0,
-            enabled: enabled || Boolean(c?.enabled && c.inbox_enabled),
-            inbox_enabled: c?.inbox_enabled ?? false,
+            enabled: enabled || inbox,
+            inbox_enabled: inbox,
             email_enabled: enabled,
             email_recipient: value("recipient").trim() || null,
             lead_days: Number(value("lead")),
@@ -71,7 +73,15 @@ function Settings({
     return (
         <form aria-label={t("邮件设置", "Email settings")} onSubmit={submit}>
             <fieldset disabled={blocked} className="reminder-email-fields">
-                <legend>{t("邮件设置", "Email settings")}</legend>
+                <legend>{t("投递设置", "Delivery settings")}</legend>
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={inbox}
+                        onChange={(event) => setInbox(event.target.checked)}
+                    />
+                    {t("启用站内提醒", "Enable inbox reminders")}
+                </label>
                 <label>
                     <input
                         type="checkbox"
@@ -133,7 +143,7 @@ function Settings({
                         </select>
                     </div>
                 </div>
-                <button type="submit">{t("保存邮件设置", "Save email settings")}</button>
+                <button type="submit">{t("保存投递设置", "Save delivery settings")}</button>
             </fieldset>
         </form>
     );
@@ -174,8 +184,9 @@ export function ReminderEmailPanel({
     latest.current = { key, onUnauthorized };
     const data = read?.key === key ? read : null;
     const error = failure?.key === key ? failure.error : null;
+    const deciding = pending.plan?.kind === "decision";
     const effectiveSettings =
-        scoped && pending.status === "confirmed" && pending.record
+        scoped && pending.status === "confirmed" && pending.record && "config" in pending.record
             ? pending.record
             : read?.settings;
     useEffect(() => {
@@ -224,7 +235,7 @@ export function ReminderEmailPanel({
         if (error instanceof ApiError && error.status === 401) latest.current.onUnauthorized();
         else setFailure({ key, error });
     }
-    const title = t("邮件提醒", "Email reminders");
+    const title = t("提醒投递", "Reminder delivery");
     const config = effectiveSettings?.config;
     return (
         <section className="reminder-email-panel" aria-label={title}>
@@ -236,8 +247,8 @@ export function ReminderEmailPanel({
                 onClick={() => setOpen(!open)}
             >
                 {open
-                    ? t("收起邮件提醒", "Hide email reminders")
-                    : t("查看邮件提醒", "View email reminders")}
+                    ? t("收起投递设置", "Hide delivery settings")
+                    : t("查看投递设置", "View delivery settings")}
             </button>
             {open && (
                 <>
@@ -248,13 +259,20 @@ export function ReminderEmailPanel({
                     {scoped && pending.status === "unknown" && (
                         <div role="alert">
                             <p>
-                                {t(
-                                    "邮件设置保存结果尚未确认。",
-                                    "The email settings save is unconfirmed.",
-                                )}
+                                {deciding
+                                    ? t(
+                                          "处理结果尚未确认。",
+                                          "The delivery decision is unconfirmed.",
+                                      )
+                                    : t(
+                                          "邮件设置保存结果尚未确认。",
+                                          "The email settings save is unconfirmed.",
+                                      )}
                             </p>
                             <button onClick={() => void controller.retry(session).catch(fail)}>
-                                {t("重试原设置请求", "Retry original settings request")}
+                                {deciding
+                                    ? t("重试原处理请求", "Retry original outcome request")
+                                    : t("重试原设置请求", "Retry original settings request")}
                             </button>
                         </div>
                     )}
@@ -278,7 +296,11 @@ export function ReminderEmailPanel({
                         <p role="alert">{reminderError(pending.error, locale)}</p>
                     )}
                     {scoped && pending.status === "confirmed" && (
-                        <p role="status">{t("邮件设置已保存。", "Email settings saved.")}</p>
+                        <p role="status">
+                            {deciding
+                                ? t("投递处理已保存。", "Delivery decision saved.")
+                                : t("投递设置已保存。", "Delivery settings saved.")}
+                        </p>
                     )}
                     {effectiveSettings && (
                         <>
@@ -355,6 +377,20 @@ export function ReminderEmailPanel({
                                             <time dateTime={row.retry_at}>{row.retry_at}</time>
                                         </p>
                                     )}
+                                    <ReminderEmailDecision
+                                        row={row}
+                                        locale={locale}
+                                        disabled={
+                                            readOnly ||
+                                            locked ||
+                                            (scoped && pending.status === "conflict")
+                                        }
+                                        decide={(body) =>
+                                            void controller
+                                                .decide(session, ledger, event, row.id, body)
+                                                .catch(fail)
+                                        }
+                                    />
                                 </li>
                             ))}
                         </ol>

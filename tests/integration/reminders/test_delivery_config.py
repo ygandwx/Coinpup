@@ -238,7 +238,8 @@ def test_empty_round_trip_and_guarded_downgrade(ledger_setup, history):
         target = (
             "change_log"
             if history == "rows"
-            else "reminder_email_evidence, " + ", ".join(reversed(migration["_TABLES"]))
+            else "reminder_inbox_deliveries, reminder_email_evidence, "
+            + ", ".join(reversed(migration["_TABLES"]))
         )
         c.exec_driver_sql("TRUNCATE TABLE " + target + " RESTRICT")
     before = snapshot(s)

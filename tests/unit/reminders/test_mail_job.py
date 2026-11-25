@@ -36,6 +36,14 @@ def test_capture_settings_default_off_for_an_empty_target():
     assert Settings(_env_file=None).reminder_mail_capture_enabled is False
 
 
+def test_dual_channel_job_reports_database_failure_without_connection_details(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "Database", Mock(side_effect=ValueError("private connection")))
+    assert cli.main(["reminder-delivery", "--owner", str(OWNER)]) == 1
+    assert capsys.readouterr().err == (
+        "Reminder delivery job unavailable; check configuration and database access.\n"
+    )
+
+
 def test_enabled_job_passes_only_loopback_connector_and_bounded_scope(monkeypatch):
     settings = Settings(
         _env_file=None,

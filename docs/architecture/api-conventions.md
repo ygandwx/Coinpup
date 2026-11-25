@@ -175,6 +175,7 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 
 - `/{event_id}/delivery-config` 读取当前配置、已保存的日期计划和只读预览。PUT 需要同时提交事项与配置版本，配置尚不存在时使用版本 `0`。保存以明确的时区和当地分钟计算的 UTC 时点。[ADR0038](decisions/0038-reminder-delivery.md)
 - `/{event_id}/email-deliveries` 按计划时点倒序返回邮件现状。每个事项、渠道及计划时点只有一个邮件标识。`/email-deliveries/{delivery_id}/decision` 需要当前投递版本。明确失败可请求重试，结果未知可记录核实收到或停止投递的理由。邮件服务器接受仅表示 SMTP 接收确认。[ADR0038](decisions/0038-reminder-delivery.md)
+- `/inbox` 在账本内按计划时点倒序分页，支持 `unread_only`。通知保留原事项标题、类型、到期日、日期依据、计划与实际投递时点、语言和事项／配置修订身份。PUT `/inbox/{notification_id}/read` 返回同一条通知及其首个已读时间。重复调用返回同一已读事实。已读、事项完成和邮件结果各自独立。
 
 ## 可选期间关闭
 

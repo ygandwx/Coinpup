@@ -9,7 +9,7 @@ from coinpup_api.models import Base
 from coinpup_api.ocr import models as ocr_models  # noqa: F401
 from coinpup_api.quotes import market_models  # noqa: F401
 from coinpup_api.quotes import models as quote_models  # noqa: F401
-from coinpup_api.reminders import mail_models  # noqa: F401
+from coinpup_api.reminders import inbox_models, mail_models  # noqa: F401
 from coinpup_api.settlement import models as settlement_models  # noqa: F401
 from coinpup_api.sync import ack_models, device_models, financial_sync_models  # noqa: F401
 from coinpup_api.sync import models as sync_models  # noqa: F401

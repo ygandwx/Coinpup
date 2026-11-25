@@ -209,9 +209,9 @@ def test_empty_round_trip_and_protected_downgrade(ledger_setup, history):
             + (
                 "change_log"
                 if history == "rows"
-                else "reminder_email_evidence, reminder_email_deliveries, "
-                "reminder_delivery_revisions, reminder_delivery_configs, "
-                "reminder_event_revisions, reminder_events"
+                else "reminder_inbox_deliveries, reminder_email_evidence, "
+                "reminder_email_deliveries, reminder_delivery_revisions, "
+                "reminder_delivery_configs, reminder_event_revisions, reminder_events"
             )
             + " RESTRICT"
         )
