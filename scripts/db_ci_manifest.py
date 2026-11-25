@@ -7,29 +7,29 @@ import os
 import re
 from pathlib import Path, PurePosixPath
 
-# Full 2567-case native runs measured 134 minutes total; keep complete modules together.
-PART_COUNT = 5
+# Full runs measured ~100 minutes of serial DB time; keep complete modules together.
+PART_COUNT = 8
 _HEAVY_MODULE_PARTS = {
     "tests/integration/business/test_allocation_return_revision_receipts.py": 1,
     "tests/integration/business/test_credit_projections.py": 3,
     "tests/integration/business/test_credit_revision_boundaries.py": 2,
     "tests/integration/business/test_credit_revision_current.py": 1,
     "tests/integration/business/test_credit_revision_history.py": 0,
-    "tests/integration/business/test_credit_revision_lifecycle.py": 0,
+    "tests/integration/business/test_credit_revision_lifecycle.py": 6,
     "tests/integration/business/test_credit_revision_reads.py": 2,
     "tests/integration/business/test_credit_service.py": 0,
     "tests/integration/business/test_credit_versioned_corrections.py": 3,
     "tests/integration/business/test_credit_versioned_create.py": 1,
     "tests/integration/business/test_current_allocation_return_members.py": 2,
-    "tests/integration/business/test_document_allocation_native.py": 4,
+    "tests/integration/business/test_document_allocation_native.py": 5,
     "tests/integration/business/test_return_command_current.py": 2,
     "tests/integration/business/test_return_complete_lifecycle.py": 4,
-    "tests/integration/business/test_return_current_http.py": 3,
-    "tests/integration/business/test_return_revision_history_http.py": 0,
+    "tests/integration/business/test_return_current_http.py": 5,
+    "tests/integration/business/test_return_revision_history_http.py": 7,
     "tests/integration/business/test_return_revision_service.py": 2,
     "tests/integration/business/test_return_source_history.py": 1,
-    "tests/integration/business/test_settlement_service.py": 4,
-    "tests/integration/ocr/test_payment_confirmation_schema.py": 4,
+    "tests/integration/business/test_settlement_service.py": 7,
+    "tests/integration/ocr/test_payment_confirmation_schema.py": 6,
     "tests/integration/ocr/test_payment_confirmation_service.py": 3,
     "tests/integration/ocr/test_payment_evidence_reads.py": 0,
 }
@@ -103,11 +103,14 @@ def verify(paths):
     manifest = reports[0]["manifest"]
     if any(report["manifest"] != manifest for report in reports[1:]):
         raise ValueError("The runners collected different integration manifests")
+    tiers = {report.get("tier", "full") for report in reports}
+    if len(tiers) != 1:
+        raise ValueError("The runners used different database test tiers")
     executed = [node for selected in assignments for node in selected]
     if len(executed) != len(set(executed)) or set(executed) != set(manifest):
         raise ValueError("The assignments overlap or omit integration tests")
     sizes = ", ".join(f"part {i}: {len(selected)}" for i, selected in enumerate(assignments))
-    print(f"PostgreSQL integration: {len(manifest)} passed ({sizes}) at {sha}")
+    print(f"PostgreSQL integration ({tiers.pop()} tier): {len(manifest)} passed ({sizes}) at {sha}")
 
 
 def main():

@@ -3,6 +3,7 @@
 import faulthandler
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from threading import Timer
@@ -12,10 +13,25 @@ import pytest
 from scripts.db_ci_manifest import PART_COUNT, check_part, github_sha, partition_for
 
 SLOW_TEST_SECONDS = 60
+# "pr" skips scale/bound stress cases; push to main, nightly and manual runs use "full".
+TIERS = ("pr", "full")
+_BOUND_PARAMETER = re.compile(r"\[(?:.*-)?200(?:-.*)?\]$")
+
+
+def is_slow(item):
+    """Explicit @pytest.mark.slow, or a 200-member bound case by name or parameter."""
+    return (
+        item.get_closest_marker("slow") is not None
+        or "two_hundred" in item.name
+        or _BOUND_PARAMETER.search(item.name) is not None
+    )
 
 
 def pytest_configure(config):
     part = os.environ.get("COINPUP_DB_CI_PART")
+    tier = os.environ.get("COINPUP_DB_CI_TIER", "full")
+    if tier not in TIERS:
+        raise pytest.UsageError(f"COINPUP_DB_CI_TIER must be one of {TIERS}")
     destination = os.environ.get("COINPUP_DB_CI_REPORT")
     if part not in {str(i) for i in range(PART_COUNT)} or not destination:
         raise pytest.UsageError(
@@ -37,12 +53,13 @@ def pytest_configure(config):
     # Keep the original stderr across per-test fd capture.
     diagnostic = os.fdopen(os.dup(sys.__stderr__.fileno()), "w", encoding="utf-8")
     config.add_cleanup(diagnostic.close)
-    config.pluginmanager.register(DatabasePartition(int(part), sha, path, diagnostic))
+    config.pluginmanager.register(DatabasePartition(int(part), sha, path, diagnostic, tier))
 
 
 class DatabasePartition:
-    def __init__(self, part, sha, destination, diagnostic):
+    def __init__(self, part, sha, destination, diagnostic, tier="full"):
         self.part = part
+        self.tier = tier
         self.sha = sha
         self.destination = destination
         self.diagnostic = diagnostic
@@ -63,6 +80,10 @@ class DatabasePartition:
         if len(self.manifest) != len(set(self.manifest)):
             raise pytest.UsageError("Duplicate integration node IDs in the complete collection")
         keep, other = [], []
+        if self.tier == "pr":
+            other.extend(item for item in items if is_slow(item))
+            items[:] = [item for item in items if not is_slow(item)]
+            self.manifest = [item.nodeid for item in items]
         for item in items:
             (keep if partition_for(item.nodeid) == self.part else other).append(item)
         config.hook.pytest_deselected(items=other)
@@ -100,6 +121,7 @@ class DatabasePartition:
         report = {
             "sha": self.sha,
             "part": self.part,
+            "tier": self.tier,
             "manifest": self.manifest,
             "events": self.events,
             "collection_errors": self.collection_errors,

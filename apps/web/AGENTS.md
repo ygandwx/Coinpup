@@ -34,5 +34,6 @@
 
 - 从仓库根目录运行 `python scripts/check.py web`，覆盖 TypeScript 检查、网页单元测试及构建；PR 完成前同时遵守根规则的统一检查要求。涉及提交恢复的修改要覆盖响应丢失、同意图重试、401、用户切换和迟到响应。
 - e2e 只连接明确的一次性测试服务，设置该服务的 `BASE_URL`、`E2E_USERNAME`、`E2E_PASSWORD`，使用虚构数据；禁止指向真实管理员或生产账本。初始化方式参考 [CI 配置](../../.github/workflows/ci.yml)，再运行 `npm --prefix apps/web run test:e2e`。没有测试服务时报告限制，不把跳过写成通过。
-- **OPT-06 完成后**，提交前要求在本目录运行 `npm run format` 与 `npm run lint`。在该工作包落地前，不假定已有这些脚本或相关配置。
-- **OPT-07 完成后**，API 类型只能来自 `src/generated/openapi.ts`，生成文件不得手改。在该工作包落地前，按 [OpenAPI 契约](../../contracts/openapi.json) 核对已有类型；不提前引入占位生成文件或声称生成流程存在。
+- 提交前在本目录运行 `npm run format` 与 `npm run lint`。API 类型只能来自 `src/generated/openapi.ts`（`npm run gen:api` 生成），不得手改。
+- PR 的 CI 只跑 [冒烟集](playwright.smoke.config.ts)，main/夜间跑全量。新增核心流程时把对应 spec 加入冒烟集；边界、恢复和重复提交类 spec 放全量层即可。
+- MVP 期间新的财务/业务提交优先复用 `PendingCommandController` 等现有控制器，不为每类单据新建控制器和 ADR；只要遵守上面的"未知结果"规则即可。
