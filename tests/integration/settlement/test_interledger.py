@@ -413,3 +413,82 @@ def test_same_key_receipt_and_competing_capacity_serialize(pair):
         competing = list(pool.map(run, ["shortage-one", "shortage-two"], ["50.00", "50.00"]))
     assert competing.count("over_repayment") == 1
     assert service.detail(owner, row.id).outstanding_amount == "20.00"
+
+
+def test_mixed_sync_page_hydrates_cash_tombstone_and_owned_non_cash_identity(
+    pair, authenticated_client
+):
+    client, _, _ = authenticated_client
+    start = client.get("/api/v1/changes/start").json()
+    device = f"/api/v1/sync/devices/{uuid4()}"
+    assert client.put(device, json=start).status_code == 200
+    advance = _create(pair)
+    payer = str(pair["payer"])
+    beneficiary = str(pair["beneficiary"])
+    prefix = f"/api/v1/ledgers/{beneficiary}"
+    expense = client.post(
+        prefix + "/expenses",
+        headers={"Idempotency-Key": "fictional-mixed-sync-expense"},
+        json={
+            "account_id": pair["repayment"]["beneficiary_payment_account_id"],
+            "asset_id": "USD",
+            "amount": "0.01",
+            "transaction_date": "2026-11-04",
+            "recognition_date": "2026-11-04",
+            "splits": [{"category_id": pair["advance"]["expense_category_id"], "amount": "0.01"}],
+        },
+    )
+    assert expense.status_code == 201, expense.json()
+    operation = prefix + "/operations/" + expense.json()["id"]
+    active = client.get(operation + "/sync-projection").json()
+    assert active["status"] == "active" and active["posting"] == client.get(operation).json()
+    cancelled = client.post(
+        operation + "/cancellations",
+        headers={"Idempotency-Key": "fictional-mixed-sync-cancellation"},
+        json={"expected_version": 1, "reason": "Fictional terminal record"},
+    )
+    assert cancelled.status_code == 200, cancelled.json()
+
+    until = client.get("/api/v1/changes/start").json()
+    query = {"after": start["cursor"], "through": until["cursor"], "limit": 100}
+    page = client.get("/api/v1/changes", params=query).json()
+    before = snapshot(pair)
+    ids = []
+    for change in page["changes"]:
+        if change["entity_type"] != "financial_operations":
+            continue
+        ledger, identifier = change["ledger_id"], change["entity_id"]
+        ids.append(identifier)
+        row = client.get(f"/api/v1/ledgers/{ledger}/operations/{identifier}/sync-projection")
+        assert row.status_code == 200, row.json()
+        view = row.json()
+        assert (view["id"], view["ledger_id"]) == (identifier, ledger)
+        assert view["version"] >= change["entity_version"]
+        if identifier in {str(advance.payer_operation_id), str(advance.beneficiary_operation_id)}:
+            assert view["version"] == 1 and view["status"] == "active" and view["posting"] is None
+        else:
+            assert view["status"] == "cancelled" and view["version"] == 2
+            assert view["posting"] == cancelled.json()
+    assert ids == [
+        str(advance.payer_operation_id),
+        str(advance.beneficiary_operation_id),
+        expense.json()["id"],
+        expense.json()["id"],
+    ]
+    for identifier in (advance.payer_operation_id, uuid4()):
+        result = client.get(f"{prefix}/operations/{identifier}/sync-projection")
+        assert result.status_code == 404 and result.json()["detail"]["code"] == "not_found"
+    legacy = f"/api/v1/ledgers/{payer}/operations/{advance.payer_operation_id}"
+    assert client.get(legacy).status_code == 404
+    assert snapshot(pair) == before
+    confirm = client.post(
+        device + "/acknowledgements",
+        json={
+            "limit": 100,
+            "prior": start["witness"],
+            "received": page,
+            "after": start["cursor"],
+            "through": until["cursor"],
+        },
+    )
+    assert confirm.status_code == 200 and confirm.json()["cursor"] == until["cursor"]

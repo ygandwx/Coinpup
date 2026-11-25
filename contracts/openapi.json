@@ -10609,6 +10609,52 @@
         "title": "OperationState",
         "type": "object"
       },
+      "OperationSyncProjection": {
+        "description": "Metadata for every operation, with the cash history view when available.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OperationState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "version",
+          "status",
+          "posting"
+        ],
+        "title": "OperationSyncProjection",
+        "type": "object"
+      },
       "PageAcknowledgementRequest": {
         "additionalProperties": false,
         "properties": {
@@ -15369,6 +15415,77 @@
           "response"
         ],
         "title": "UploadResponse",
+        "type": "object"
+      },
+      "UploadResumeCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256"
+        ],
+        "title": "UploadResumeCreate",
+        "type": "object"
+      },
+      "UploadResumeStatus": {
+        "properties": {
+          "declared_size": {
+            "title": "Declared Size",
+            "type": "integer"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "max_chunk_bytes": {
+            "title": "Max Chunk Bytes",
+            "type": "integer"
+          },
+          "next_offset": {
+            "title": "Next Offset",
+            "type": "integer"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "ready",
+              "abandoned"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "ledger_id",
+          "device_id",
+          "sha256",
+          "declared_size",
+          "next_offset",
+          "max_chunk_bytes",
+          "state"
+        ],
+        "title": "UploadResumeStatus",
         "type": "object"
       },
       "UserResponse": {
@@ -24179,6 +24296,60 @@
         ]
       }
     },
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}/sync-projection": {
+      "get": {
+        "description": "Read an owned change's current identity, state, and supported cash posting.",
+        "operationId": "sync_projection_api_v1_ledgers__ledger_id__operations__operation_id__sync_projection_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationSyncProjection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Projection",
+        "tags": [
+          "financial operations"
+        ]
+      }
+    },
     "/api/v1/ledgers/{ledger_id}/period": {
       "get": {
         "operationId": "state_api_v1_ledgers__ledger_id__period_get",
@@ -26107,6 +26278,23 @@
           },
           {
             "in": "header",
+            "name": "X-Coinpup-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Coinpup-Device-Id"
+            }
+          },
+          {
+            "in": "header",
             "name": "X-CSRF-Token",
             "required": false,
             "schema": {
@@ -26156,6 +26344,405 @@
           }
         },
         "summary": "Upload Content",
+        "tags": [
+          "private documents"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable": {
+      "get": {
+        "operationId": "resume_status_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Coinpup-Device-Id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "X-Coinpup-Device-Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResumeStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Status",
+        "tags": [
+          "private documents"
+        ]
+      },
+      "put": {
+        "operationId": "initialize_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Coinpup-Device-Id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "X-Coinpup-Device-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadResumeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResumeStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Initialize Resume",
+        "tags": [
+          "private documents"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/abandon": {
+      "post": {
+        "operationId": "abandon_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_abandon_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResumeStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abandon Resume",
+        "tags": [
+          "private documents"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/chunks/{offset}": {
+      "put": {
+        "operationId": "upload_chunk_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_chunks__offset__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "offset",
+            "required": true,
+            "schema": {
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Coinpup-Device-Id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "X-Coinpup-Device-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResumeStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Chunk",
+        "tags": [
+          "private documents"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/complete": {
+      "post": {
+        "operationId": "complete_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Coinpup-Device-Id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "X-Coinpup-Device-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadCompletion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Resume",
         "tags": [
           "private documents"
         ]

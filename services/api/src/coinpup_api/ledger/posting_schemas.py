@@ -330,6 +330,16 @@ class OperationState(BaseModel):
         return data
 
 
+class OperationSyncProjection(BaseModel):
+    """Metadata for every operation, with the cash history view when available."""
+
+    id: UUID
+    ledger_id: UUID
+    version: int
+    status: Literal["active", "cancelled"]
+    posting: OperationState | None
+
+
 class LineAudit(BaseModel):
     id: UUID
     line_no: int
