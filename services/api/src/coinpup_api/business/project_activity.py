@@ -5,9 +5,10 @@ from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, func, literal, or_, select, union_all
 
 from coinpup_api.business.models import BusinessProject
+from coinpup_api.business.project_payment_buckets import project_payment_buckets
 from coinpup_api.ledger.common import asset_definition
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import Account, AssetRecord, Journal, JournalLine
@@ -25,6 +26,8 @@ class ProjectAssetActivity(BaseModel):
     net: Quantity
     closing_receivable: Quantity
     closing_payable: Quantity
+    attributed_received: Quantity
+    attributed_paid: Quantity
 
 
 class ProjectActivityPage(BaseModel):
@@ -95,23 +98,44 @@ class ProjectActivityReads(LedgerService):
                 .group_by(line.asset_id)
                 .subquery()
             )
-            b = buckets.c
+            accrual = buckets.c
+            paid = project_payment_buckets(ledger, project, start, end).subquery().c
+            facts = (
+                union_all(
+                    select(
+                        accrual.asset_id,
+                        accrual.income,
+                        accrual.cost,
+                        accrual.receivable,
+                        accrual.payable,
+                        literal(0).label("received"),
+                        literal(0).label("paid"),
+                    ),
+                    select(paid.asset_id, 0, 0, 0, 0, paid.received, paid.paid),
+                )
+                .subquery()
+                .c
+            )
+            cols = ("income", "cost", "receivable", "payable", "received", "paid")
+            combined = (
+                select(facts.asset_id, *(func.sum(facts[k]).label(k) for k in cols))
+                .group_by(facts.asset_id)
+                .subquery()
+            )
+            b = combined.c
             rows = session.execute(
-                select(AssetRecord, b.income, b.cost, b.receivable, b.payable)
-                .join(buckets, b.asset_id == AssetRecord.asset_id)
-                .where(or_(b.income != 0, b.cost != 0, b.receivable != 0, b.payable != 0))
+                select(AssetRecord, *(b[k] for k in cols))
+                .join(combined, b.asset_id == AssetRecord.asset_id)
+                .where(or_(*(b[k] != 0 for k in cols)))
                 .order_by(AssetRecord.asset_id)
                 .limit(limit + 1)
                 .offset(offset)
             ).all()
             items = []
             try:
-                for asset, revenue, cost, unpaid_in, unpaid_out in rows[:limit]:
+                for asset, *values in rows[:limit]:
                     catalog = asset_definition(asset)
-                    i, c, r, p = (
-                        Amount.from_decimal(v, catalog)
-                        for v in (revenue, cost, unpaid_in, unpaid_out)
-                    )
+                    i, c, r, p, received, paid = (Amount.from_decimal(v, catalog) for v in values)
                     items.append(
                         ProjectAssetActivity(
                             asset_id=asset.asset_id,
@@ -120,6 +144,8 @@ class ProjectActivityReads(LedgerService):
                             net=(i - c).to_string(),
                             closing_receivable=r.to_string(),
                             closing_payable=p.to_string(),
+                            attributed_received=received.to_string(),
+                            attributed_paid=paid.to_string(),
                         )
                     )
             except MoneyError as exc:

@@ -6453,6 +6453,10 @@ export interface components {
         ProjectAssetActivity: {
             /** Asset Id */
             asset_id: string;
+            /** Attributed Paid */
+            attributed_paid: string;
+            /** Attributed Received */
+            attributed_received: string;
             /** Closing Payable */
             closing_payable: string;
             /** Closing Receivable */

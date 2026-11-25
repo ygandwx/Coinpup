@@ -71,7 +71,11 @@ def test_fx_allocation_and_return_never_duplicate_revenue_or_fee(drafts, directi
     assert page(s, "2026-10-01", "2026-10-01").items == ()
     submit_return(s, cmd)
     before = snapshot(s)
-    (full,) = page(s).items
+    full, usd = page(s).items
+    assert totals(usd) == ("USD", "0.00", "0.00", "0.00", "0.00", "0.00")
+    assert (usd.attributed_received, usd.attributed_paid) == (
+        ("88.00", "0.00") if direction == "receipt" else ("0.00", "88.00")
+    )
     (october,) = page(s, "2026-10-01", "2026-10-01").items
     if direction == "receipt":
         assert totals(full) == ("EUR", "100.00", "0.00", "100.00", "20.00", "0.00")
