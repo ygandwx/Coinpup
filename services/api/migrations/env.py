@@ -3,6 +3,7 @@
 from alembic import context
 from coinpup_api.config import Settings
 from coinpup_api.files import models as document_models  # noqa: F401
+from coinpup_api.files import resume_models  # noqa: F401
 from coinpup_api.ledger import models as ledger_models  # noqa: F401
 from coinpup_api.models import Base
 from coinpup_api.ocr import models as ocr_models  # noqa: F401

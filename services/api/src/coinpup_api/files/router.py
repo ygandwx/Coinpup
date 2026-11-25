@@ -7,7 +7,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 import anyio
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -16,6 +16,9 @@ from starlette.requests import ClientDisconnect
 
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
+from coinpup_api.files.resume_models import CHUNK_BYTES
+from coinpup_api.files.resume_schemas import UploadResumeCreate, UploadResumeStatus
+from coinpup_api.files.resume_service import ResumableUploads, ResumeAlreadyComplete
 from coinpup_api.files.schemas import (
     MEDIA_TYPES,
     FileConfiguration,
@@ -32,6 +35,13 @@ from coinpup_api.files.storage import FileStore, FileStoreError
 from coinpup_api.ledger.service import LedgerError
 
 logger = logging.getLogger("coinpup.documents")
+
+BINARY_CONTENT = {
+    "requestBody": {
+        "required": True,
+        "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
+    }
+}
 
 
 def _failure(code, status, message):
@@ -50,9 +60,23 @@ def _execute(operation, *args, **kwargs):
         raise _failure("file_unavailable", 503, "File storage is unavailable.") from None
 
 
+def _raw_length(request):
+    if request.headers.get("content-encoding", "identity").lower() != "identity":
+        raise _failure("unsupported_content_encoding", 415, "Compressed uploads are not supported.")
+    if request.headers.get("content-type", "").lower() != "application/octet-stream":
+        raise _failure("unsupported_content_type", 415, "Use application/octet-stream for uploads.")
+    lengths = request.headers.getlist("content-length")
+    if not lengths:
+        return None
+    if len(lengths) != 1 or not re.fullmatch(r"[0-9]{1,20}", lengths[0]):
+        raise _failure("invalid_content_length", 422, "Content length is invalid.")
+    return int(lengths[0])
+
+
 def create_document_router(settings, engine, store=None) -> APIRouter:
     router = APIRouter(prefix="/api/v1", tags=["private documents"])
     service = DocumentService(engine, settings.max_upload_bytes)
+    resumable = ResumableUploads(engine, settings.max_upload_bytes)
     store = (
         store
         if store is not None
@@ -65,6 +89,62 @@ def create_document_router(settings, engine, store=None) -> APIRouter:
     writer = Annotated[Identity, Depends(access.write)]
     page_size = Annotated[int, Query(ge=1, le=200)]
     page_offset = Annotated[int, Query(ge=0, le=100000)]
+
+    upload_device = Annotated[UUID, Header(alias="X-Coinpup-Device-Id")]
+    optional_device = Annotated[UUID | None, Header(alias="X-Coinpup-Device-Id")]
+    upload_offset = Annotated[int, Path(ge=0, le=2**63 - 1)]
+
+    async def authorize_write(request, owner):
+        current = await run_in_threadpool(
+            access.write, request, request.headers.get("x-csrf-token")
+        )
+        if current.id != owner:
+            raise _failure("authentication_required", 401, "Authentication is required.")
+
+    async def stage(chunks, declared_size):
+        try:
+            return await store.stage(chunks, declared_size)
+        except FileStoreError as error:
+            raise _failure(
+                error.code, error.status_code, "The file could not be processed."
+            ) from None
+        except OSError:
+            raise _failure("file_unavailable", 503, "File storage is unavailable.") from None
+        except ClientDisconnect:
+            raise _failure("upload_interrupted", 400, "The upload was interrupted.") from None
+
+    async def verify_blob(key, digest, size):
+        def verify():
+            with store.open_blob(key, digest, size):
+                pass
+
+        await run_in_threadpool(_execute, verify)
+
+    async def discard(staged):
+        if staged is not None:
+            with anyio.CancelScope(shield=True):
+                try:
+                    await run_in_threadpool(store.discard, staged)
+                except (OSError, FileStoreError):
+                    logger.warning("Private document staging cleanup incomplete")
+
+    async def finish(request, owner, ledger, upload, staged, device):
+        await authorize_write(request, owner)
+        options = {"device_id": device} if device is not None else {}
+        publish = await run_in_threadpool(
+            _execute, service.needs_publish, owner, ledger, upload, staged, **options
+        )
+        if publish:
+            blob_key = await run_in_threadpool(_execute, store.publish, staged)
+        else:
+            existing = await run_in_threadpool(
+                _execute, service.get_existing_blob, owner, ledger, upload, staged, **options
+            )
+            await verify_blob(*existing)
+            blob_key = None
+        return await run_in_threadpool(
+            _execute, service.finalize_upload, owner, ledger, upload, staged, blob_key, **options
+        )
 
     @router.get("/files/configuration", response_model=FileConfiguration)
     def configuration(identity: reader):
@@ -85,93 +165,155 @@ def create_document_router(settings, engine, store=None) -> APIRouter:
     @router.put(
         "/ledgers/{ledger_id}/uploads/{upload_id}/content",
         response_model=UploadCompletion,
-        openapi_extra={
-            "requestBody": {
-                "required": True,
-                "content": {
-                    "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}
-                },
-            }
-        },
+        openapi_extra=BINARY_CONTENT,
     )
-    async def upload_content(ledger_id: UUID, upload_id: UUID, request: Request, identity: writer):
-        # Do not declare a Body/UploadFile parameter: request.stream() must remain incremental.
-        if request.headers.get("content-encoding", "identity").lower() != "identity":
-            raise _failure(
-                "unsupported_content_encoding", 415, "Compressed uploads are not supported."
-            )
-        if request.headers.get("content-type", "").lower() != "application/octet-stream":
-            raise _failure(
-                "unsupported_content_type", 415, "Use application/octet-stream for uploads."
-            )
+    async def upload_content(
+        ledger_id: UUID,
+        upload_id: UUID,
+        request: Request,
+        identity: writer,
+        device_id: optional_device = None,
+    ):
+        length = _raw_length(request)
+        device = {"device_id": device_id} if device_id is not None else {}
         upload = await run_in_threadpool(
-            _execute, service.get_upload, identity.id, ledger_id, upload_id, for_upload=True
+            _execute,
+            service.get_upload,
+            identity.id,
+            ledger_id,
+            upload_id,
+            for_upload=True,
+            **device,
         )
-        # Declared length is an early rejection only; stage enforces each actual byte received.
-        lengths = request.headers.getlist("content-length")
-        if lengths:
-            if len(lengths) != 1 or not re.fullmatch(r"[0-9]{1,20}", lengths[0]):
-                raise _failure("invalid_content_length", 422, "Content length is invalid.")
-            length = int(lengths[0])
-            if length > settings.max_upload_bytes:
-                raise _failure("file_too_large", 413, "The file exceeds the upload limit.")
-            if length != upload.declared_size:
-                raise _failure(
-                    "upload_size_mismatch", 422, "Content length does not match the reservation."
-                )
-        if upload.declared_size > settings.max_upload_bytes:
+        if upload.declared_size > settings.max_upload_bytes or (
+            length is not None and length > settings.max_upload_bytes
+        ):
             raise _failure("file_too_large", 413, "The file exceeds the upload limit.")
+        if length is not None and length != upload.declared_size:
+            raise _failure(
+                "upload_size_mismatch", 422, "Content length does not match the reservation."
+            )
+        staged = None
+        try:
+            staged = await stage(request.stream(), upload.declared_size)
+            return await finish(request, identity.id, ledger_id, upload_id, staged, device_id)
+        finally:
+            await discard(staged)
+
+    @router.put(
+        "/ledgers/{ledger_id}/uploads/{upload_id}/resumable", response_model=UploadResumeStatus
+    )
+    def initialize_resume(
+        ledger_id: UUID,
+        upload_id: UUID,
+        body: UploadResumeCreate,
+        identity: writer,
+        device_id: upload_device,
+    ):
+        return _execute(
+            resumable.initialize, identity.id, ledger_id, upload_id, device_id, body.sha256
+        )
+
+    @router.get(
+        "/ledgers/{ledger_id}/uploads/{upload_id}/resumable", response_model=UploadResumeStatus
+    )
+    def resume_status(ledger_id: UUID, upload_id: UUID, identity: reader, device_id: upload_device):
+        return _execute(resumable.status, identity.id, ledger_id, upload_id, device_id)
+
+    @router.post(
+        "/ledgers/{ledger_id}/uploads/{upload_id}/resumable/abandon",
+        response_model=UploadResumeStatus,
+    )
+    def abandon_resume(ledger_id: UUID, upload_id: UUID, identity: writer):
+        return _execute(resumable.abandon, identity.id, ledger_id, upload_id)
+
+    @router.put(
+        "/ledgers/{ledger_id}/uploads/{upload_id}/resumable/chunks/{offset}",
+        response_model=UploadResumeStatus,
+        openapi_extra=BINARY_CONTENT,
+    )
+    async def upload_chunk(
+        ledger_id: UUID,
+        upload_id: UUID,
+        offset: upload_offset,
+        request: Request,
+        identity: writer,
+        device_id: upload_device,
+    ):
+        length = _raw_length(request)
+        if length is not None and length > CHUNK_BYTES:
+            raise _failure(
+                "upload_chunk_too_large", 413, "The upload part exceeds the chunk limit."
+            )
+        await run_in_threadpool(
+            _execute, resumable.status, identity.id, ledger_id, upload_id, device_id
+        )
+        content = bytearray()
+        try:
+            with anyio.fail_after(settings.upload_timeout_seconds):
+                async for chunk in request.stream():
+                    if len(content) + len(chunk) > CHUNK_BYTES:
+                        raise _failure(
+                            "upload_chunk_too_large",
+                            413,
+                            "The upload part exceeds the chunk limit.",
+                        )
+                    content.extend(chunk)
+        except TimeoutError:
+            raise _failure("upload_timeout", 408, "The upload was interrupted.") from None
+        except (ClientDisconnect, ConnectionError):
+            raise _failure("upload_interrupted", 400, "The upload was interrupted.") from None
+        if length is not None and len(content) != length:
+            raise _failure("upload_size_mismatch", 422, "Content length does not match the part.")
+        await authorize_write(request, identity.id)
+        return await run_in_threadpool(
+            _execute,
+            resumable.append,
+            identity.id,
+            ledger_id,
+            upload_id,
+            device_id,
+            offset,
+            bytes(content),
+        )
+
+    @router.post(
+        "/ledgers/{ledger_id}/uploads/{upload_id}/resumable/complete",
+        response_model=UploadCompletion,
+    )
+    async def complete_resume(
+        ledger_id: UUID,
+        upload_id: UUID,
+        request: Request,
+        identity: writer,
+        device_id: upload_device,
+    ):
+        status = await run_in_threadpool(
+            _execute, resumable.status, identity.id, ledger_id, upload_id, device_id
+        )
+        iterator = resumable.parts(identity.id, ledger_id, upload_id, device_id)
+
+        async def chunks(first):
+            if first is not None:
+                yield first
+            while (value := await run_in_threadpool(_execute, next, iterator, None)) is not None:
+                yield value
+
         staged = None
         try:
             try:
-                staged = await store.stage(request.stream(), upload.declared_size)
-            except FileStoreError as error:
-                raise _failure(
-                    error.code, error.status_code, "The file could not be processed."
-                ) from None
-            except OSError:
-                raise _failure("file_unavailable", 503, "File storage is unavailable.") from None
-            except ClientDisconnect:
-                raise _failure("upload_interrupted", 400, "The upload was interrupted.") from None
-            # The session may have expired while the client was sending the body.
-            current = await run_in_threadpool(
-                access.write, request, request.headers.get("x-csrf-token")
-            )
-            if current.id != identity.id:
-                raise _failure("authentication_required", 401, "Authentication is required.")
-            publish = await run_in_threadpool(
-                _execute, service.needs_publish, identity.id, ledger_id, upload_id, staged
-            )
-            if publish:
-                blob_key = await run_in_threadpool(_execute, store.publish, staged)
-            else:
-                existing = await run_in_threadpool(
-                    _execute, service.get_existing_blob, identity.id, ledger_id, upload_id, staged
-                )
-
-                def verify_existing():
-                    with store.open_blob(*existing):
-                        pass
-
-                await run_in_threadpool(_execute, verify_existing)
-                blob_key = None
-            return await run_in_threadpool(
-                _execute,
-                service.finalize_upload,
-                identity.id,
-                ledger_id,
-                upload_id,
-                staged,
-                blob_key,
-            )
+                first = await run_in_threadpool(_execute, next, iterator, None)
+            except ResumeAlreadyComplete as done:
+                response = done.completed.response
+                await verify_blob(done.completed.blob_key, response.sha256, response.byte_size)
+                await authorize_write(request, identity.id)
+                return response
+            staged = await stage(chunks(first), status.declared_size)
+            return await finish(request, identity.id, ledger_id, upload_id, staged, device_id)
         finally:
-            if staged is not None:
-                with anyio.CancelScope(shield=True):
-                    try:
-                        await run_in_threadpool(store.discard, staged)
-                    except (OSError, FileStoreError):
-                        # Cleanup failure must not mask a committed receipt.
-                        logger.warning("Private document staging cleanup incomplete")
+            with anyio.CancelScope(shield=True):
+                await run_in_threadpool(iterator.close)
+            await discard(staged)
 
     @router.get("/ledgers/{ledger_id}/files", response_model=list[FileResponse])
     def list_files(

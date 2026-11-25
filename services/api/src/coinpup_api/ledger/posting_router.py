@@ -24,6 +24,7 @@ from coinpup_api.ledger.posting_schemas import (
     OpeningCreate,
     OperationResponse,
     OperationState,
+    OperationSyncProjection,
     TransferCreate,
     TransferResponse,
 )
@@ -202,6 +203,14 @@ def create_posting_router(settings: Settings, engine: Engine | None) -> APIRoute
     @router.get("/operations/{operation_id}", response_model=OperationState)
     def get_operation(ledger_id: UUID, operation_id: UUID, identity: reader):
         return execute(service.get_operation, identity.id, ledger_id, operation_id)
+
+    @router.get(
+        "/operations/{operation_id}/sync-projection",
+        response_model=OperationSyncProjection,
+    )
+    def sync_projection(ledger_id: UUID, operation_id: UUID, identity: reader):
+        """Read an owned change's current identity, state, and supported cash posting."""
+        return execute(service.sync_operation, identity.id, ledger_id, operation_id)
 
     @router.get("/operations/{operation_id}/history", response_model=list[HistoryEntry])
     def operation_history(

@@ -1868,6 +1868,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/operations/{operation_id}/sync-projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sync Projection
+         * @description Read an owned change's current identity, state, and supported cash posting.
+         */
+        get: operations["sync_projection_api_v1_ledgers__ledger_id__operations__operation_id__sync_projection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/period": {
         parameters: {
             query?: never;
@@ -2228,6 +2248,75 @@ export interface paths {
         /** Upload Content */
         put: operations["upload_content_api_v1_ledgers__ledger_id__uploads__upload_id__content_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resume Status */
+        get: operations["resume_status_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_get"];
+        /** Initialize Resume */
+        put: operations["initialize_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Abandon Resume */
+        post: operations["abandon_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_abandon_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/chunks/{offset}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upload Chunk */
+        put: operations["upload_chunk_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_chunks__offset__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Resume */
+        post: operations["complete_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_complete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7050,6 +7139,30 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * OperationSyncProjection
+         * @description Metadata for every operation, with the cash history view when available.
+         */
+        OperationSyncProjection: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            posting: components["schemas"]["OperationState"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /** Version */
+            version: number;
+        };
         /** PageAcknowledgementRequest */
         PageAcknowledgementRequest: {
             /** After */
@@ -8975,6 +9088,42 @@ export interface components {
              * @enum {string}
              */
             state: "pending" | "ready";
+        };
+        /** UploadResumeCreate */
+        UploadResumeCreate: {
+            /** Sha256 */
+            sha256: string;
+        };
+        /** UploadResumeStatus */
+        UploadResumeStatus: {
+            /** Declared Size */
+            declared_size: number;
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Max Chunk Bytes */
+            max_chunk_bytes: number;
+            /** Next Offset */
+            next_offset: number;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "ready" | "abandoned";
+            /**
+             * Upload Id
+             * Format: uuid
+             */
+            upload_id: string;
         };
         /** UserResponse */
         UserResponse: {
@@ -13275,6 +13424,38 @@ export interface operations {
             };
         };
     };
+    sync_projection_api_v1_ledgers__ledger_id__operations__operation_id__sync_projection_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationSyncProjection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     state_api_v1_ledgers__ledger_id__period_get: {
         parameters: {
             query?: {
@@ -14209,6 +14390,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Coinpup-Device-Id"?: string | null;
                 "X-CSRF-Token"?: string | null;
             };
             path: {
@@ -14222,6 +14404,188 @@ export interface operations {
                 "application/octet-stream": string;
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadCompletion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_status_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_get: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Coinpup-Device-Id": string;
+            };
+            path: {
+                ledger_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResumeStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    initialize_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_put: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Coinpup-Device-Id": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadResumeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResumeStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    abandon_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_abandon_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResumeStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_chunk_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_chunks__offset__put: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Coinpup-Device-Id": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                upload_id: string;
+                offset: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResumeStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_resume_api_v1_ledgers__ledger_id__uploads__upload_id__resumable_complete_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Coinpup-Device-Id": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

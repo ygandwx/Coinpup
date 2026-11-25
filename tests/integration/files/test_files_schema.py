@@ -16,6 +16,8 @@ from coinpup_api.ledger.service import LedgerService
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
+from tests.integration.conftest import resumable_upload_migration
+
 pytestmark = pytest.mark.integration
 
 
@@ -416,6 +418,8 @@ def test_empty_documents_migration_round_trip(documents_structure):
     )
     with s["engine"].begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
+            resumable_upload_migration()["downgrade"]()
             migration["downgrade"]()
             migration["upgrade"]()
+            resumable_upload_migration()["upgrade"]()
         connection.execute(insert(StoredFile).values(_file(s)))

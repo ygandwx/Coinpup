@@ -130,6 +130,7 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 - 流水列表 `order` 默认 `created_at`，按创建时间、业务 ID 倒序；可选 `transaction_date` 按当前入账凭证的交易日、创建时间、业务 ID 倒序。`from_date` 和 `to_date` 使用严格 `YYYY-MM-DD`，按同一当前凭证的交易日作闭区间筛选；反向区间返回 422。已取消业务仍使用最后一张入账凭证的交易日。网页显式选择交易日排序，不改变 API 的默认响应。
 - 变更通知通过 `GET /api/v1/changes` 按所有者过滤，`after` 默认 `"0"`、`limit` 默认 100（1–200），返回 `changes` 和 `next_cursor`。`seq`/游标是精确十进制字符串；非空页只推进至最后交付的序号，空页保留原游标，序号允许回滚空洞。归档/停用、恢复及取消分别通知为 archive、restore、cancel，记录本身保留。来源：[ADR 0015](decisions/0015-ordered-change-log.md)。
 - 同步客户端用 `GET /api/v1/changes/start` 获取已提交的 `cursor` 和完整 `witness`，可用 `/changes/at/{seq}` 核对保存证据。首次全量读取可以用这组证据登记起点。`/changes` 的可选 `through` 固定本次包含的上限。
+- 处理 `financial_operations` 通知时读取 `/api/v1/ledgers/{ledger_id}/operations/{operation_id}/sync-projection`。响应始终包含已存在操作的身份、版本和状态，普通资金流水额外返回现有 `OperationState`。经营及跨账本业务的该投影字段为 `null`，不存在或不属于该账本的操作返回 404。
 - `PUT /api/v1/sync/devices/{device_id}` 使用会话登记设备。保存的起点不可变，默认用零起点和空证据。`/retirement` 保存退役，`/history` 读取原登记和退役证据。设备 UUID 只标识登记项。
 - 持久化完整页后 POST `/sync/devices/{device_id}/acknowledgements`（`/api/v1` 下），传入 `after`、`through`、`limit`、前置通知 `prior` 和原页 `received`。服务端核对实际顺序、归属及整页内容。通知证据的时间使用带时区的 RFC 3339 字符串，按 UTC 时点核对。空页保留当前进度，无需提交确认。成功页重放返回原回执。`/acknowledgements/latest` 读取最新页回执，`/checkpoint` 读取当前进度与通知证据，包括尚未确认首个非空页的登记起点。恢复后的证据差异返回 409，设备据此暂停并重新对账。[ADR0062](decisions/0062-device-sync-and-resumable-upload.md)
 - 首次同步先取得起始游标，再分页读取全量对象，最后从该游标读取后续通知；允许重复获取同一对象。资产使用完整文本 ID，account_assets 使用 `account_uuid:asset_id` 并要求重读父账户，不能因父版本相同而忽略关联变更。通知用于重读当前记录；设备、离线写入和冲突处理由后续完整同步协议定义。来源：[ADR 0015](decisions/0015-ordered-change-log.md)。
@@ -143,10 +144,14 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 ## 私有原件协议
 
 - 两步上传：先在账本内预留稳定上传 UUID、原文件名、长度和可选流水引用，再以 `application/octet-stream` PUT 完整原件；写鉴权先于读流。同预留 ID/元数据返回原预留，改变请求冲突；拒绝压缩传输，实际字节长度也要符合预留与限额。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
-- 限额和支持格式从配置接口读取；PDF/JPEG/PNG/WebP 的格式边界检查不代表完整解析或恶意内容扫描。没有分块续传，重试须重传相同完整原件；已完成上传仍验证字节大小与摘要。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
+- 限额和支持格式从配置接口读取；PDF/JPEG/PNG/WebP 的格式边界检查不代表完整解析或恶意内容扫描。整文件接口用原上传 ID 重传相同完整原件；已完成上传仍验证字节大小与摘要。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
 - SHA-256 与大小只在同账本内查重；重复提示不是业务重复判断，不返回其他账本身份。上传和证据关联不创建费用，原件与关联可以分别归档，流水取消或更正仍保留证据。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 下载只能走鉴权接口，不把私有目录映射为静态网址。服务器以已验证的打开句柄输出 attachment，附 no-store、nosniff 与 sandbox CSP；浏览器核对大小、媒体类型及 SHA-256，再创建并及时释放 ObjectURL。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 文件存储位置、上传超时配置及数据库/原件一致 bundle 的操作命令见 [运维说明](../engineering/operations.md)；数据库单独备份不包含原件。上传、识别与财务确认具有分别的生命周期。来源：[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
+- 续传沿用两步上传的预留 UUID。PUT `/api/v1/ledgers/{ledger_id}/uploads/{upload_id}/resumable` 提交原件 `sha256`，GET 同路径读取 `next_offset`、`max_chunk_bytes` 和文件状态。续传接口携带 `X-Coinpup-Device-Id` 及现有会话。服务端绑定原账本、登记设备和摘要，退役设备仍可核对已提交的原回执。
+- PUT `/resumable/chunks/{offset}` 使用原始字节。每段按返回的上限提交，末段提交剩余字节。相同偏移和字节重放原段的接收结果。新增段从 GET 返回的当前 `next_offset` 开始。待完成的字节额度按所有者累计，最多为实例单文件限额的四倍。已经初始化续传的预留可用同设备及同摘要通过原整文件入口提交。
+- POST `/resumable/complete` 在核对总长、格式和摘要后封存原件，返回既有上传完成回执。提交完成回执时释放暂存字节并保留每段的大小和摘要。待完成的已提交段与原件一起由通用 bundle 覆盖。协议进度独立于现有文件及关联的业务变更通知。[ADR 0062](decisions/0062-device-sync-and-resumable-upload.md)
+- POST `/resumable/abandon` 由拥有该账本的已登录会话确认放弃，无需设备头。它保留最后的已确认偏移与分块回执，释放暂存字节并返回可重放的 `abandoned` 终态。设备退役后仍可放弃；已完成的上传拒绝放弃，其原件和回执继续有效。已由整文件入口完成的旧预留拒绝事后绑定续传设备，原请求可按原样重放。
 
 ## 网页未知结果
 

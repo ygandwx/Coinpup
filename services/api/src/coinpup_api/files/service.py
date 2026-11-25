@@ -8,6 +8,11 @@ from uuid import uuid4
 from sqlalchemy import func, select
 
 from coinpup_api.files.models import FileUpload, OperationFileLink, StoredFile
+from coinpup_api.files.resume_guard import (
+    check_resume,
+    require_active_device,
+    require_not_abandoned,
+)
 from coinpup_api.files.schemas import (
     MEDIA_TYPES,
     FileResponse,
@@ -137,20 +142,32 @@ class DocumentService(LedgerService):
             session.flush()
             return UploadResponse.model_validate(upload)
 
-    def get_upload(self, owner_id, ledger_id, upload_id, *, for_upload=False) -> UploadResponse:
+    def get_upload(
+        self, owner_id, ledger_id, upload_id, *, for_upload=False, device_id=None
+    ) -> UploadResponse:
         with self._transaction(owner_id) as session:
             _, entity = self._ledger(session, owner_id, ledger_id)
             upload = self._record(session, FileUpload, ledger_id, upload_id)
-            if for_upload and upload.state != "ready":
-                _active(entity)
+            if for_upload:
+                require_not_abandoned(check_resume(session, upload, device_id))
+                if upload.state != "ready":
+                    _active(entity)
             return UploadResponse.model_validate(upload)
 
-    def needs_publish(self, owner_id, ledger_id, upload_id, staged) -> bool:
+    @staticmethod
+    def _verify_resume(session, upload, owner, device, digest):
+        manifest = check_resume(session, upload, device, digest=digest)
+        require_not_abandoned(manifest)
+        if manifest is not None and upload.state != "ready":
+            require_active_device(session, owner, device)
+
+    def needs_publish(self, owner_id, ledger_id, upload_id, staged, *, device_id=None) -> bool:
         """A hint only: finalize repeats these checks while holding the ledger lock."""
         with self._transaction(owner_id) as session:
             _, entity = self._ledger(session, owner_id, ledger_id)
             upload = self._record(session, FileUpload, ledger_id, upload_id)
             self._verify_staged(upload, staged)
+            self._verify_resume(session, upload, owner_id, device_id, staged.sha256)
             if upload.state == "ready":
                 self._same_content(
                     self._record(session, StoredFile, ledger_id, upload.file_id), staged
@@ -162,12 +179,13 @@ class DocumentService(LedgerService):
                 self._same_content(file, staged)
             return file is None
 
-    def get_existing_blob(self, owner_id, ledger_id, upload_id, staged):
+    def get_existing_blob(self, owner_id, ledger_id, upload_id, staged, *, device_id=None):
         """Return immutable blob identity for verification outside the DB transaction."""
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
             upload = self._record(session, FileUpload, ledger_id, upload_id)
             self._verify_staged(upload, staged)
+            self._verify_resume(session, upload, owner_id, device_id, staged.sha256)
             file = (
                 self._record(session, StoredFile, ledger_id, upload.file_id)
                 if upload.state == "ready"
@@ -207,13 +225,14 @@ class DocumentService(LedgerService):
         return link
 
     def finalize_upload(
-        self, owner_id, ledger_id, upload_id, staged, blob_key=None
+        self, owner_id, ledger_id, upload_id, staged, blob_key=None, *, device_id=None
     ) -> UploadCompletion:
         """Commit metadata only after the caller has durably published a complete blob."""
-        with self._transaction(owner_id, write=True) as session:
+        with self._transaction(owner_id, write=True, read_committed=True) as session:
             entity = self._locked_scope(session, owner_id, ledger_id)
             upload = self._record(session, FileUpload, ledger_id, upload_id)
             self._verify_staged(upload, staged)
+            self._verify_resume(session, upload, owner_id, device_id, staged.sha256)
             if upload.state == "ready":
                 self._same_content(
                     self._record(session, StoredFile, ledger_id, upload.file_id), staged

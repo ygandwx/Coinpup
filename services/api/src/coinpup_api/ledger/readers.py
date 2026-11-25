@@ -15,6 +15,7 @@ from coinpup_api.ledger.posting_schemas import (
     FeeResponse,
     OperationResponse,
     OperationState,
+    OperationSyncProjection,
     SplitResponse,
     TransferResponse,
     validate_calendar_date_input,
@@ -300,19 +301,41 @@ class PostingReaders:
             fees=fees,
         )
 
+    @staticmethod
+    def _scoped_operation(session, ledger_id, operation_id):
+        operation = session.scalar(
+            select(FinancialOperation).where(
+                FinancialOperation.id == operation_id,
+                FinancialOperation.ledger_id == ledger_id,
+            )
+        )
+        if operation is None:
+            raise _not_found()
+        return operation
+
     def get_operation(self, owner_id, ledger_id, operation_id):
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
-            operation = session.scalar(
-                select(FinancialOperation).where(
-                    FinancialOperation.id == operation_id,
-                    FinancialOperation.ledger_id == ledger_id,
-                    FinancialOperation.kind.in_(LEGACY_OPERATION_KINDS),
-                )
-            )
-            if operation is None:
+            operation = self._scoped_operation(session, ledger_id, operation_id)
+            if operation.kind not in LEGACY_OPERATION_KINDS:
                 raise _not_found()
             return operation_state(session, operation)
+
+    def sync_operation(self, owner_id, ledger_id, operation_id):
+        with self._transaction(owner_id, read_only=True) as session:
+            self._ledger(session, owner_id, ledger_id)
+            operation = self._scoped_operation(session, ledger_id, operation_id)
+            return OperationSyncProjection(
+                id=operation.id,
+                ledger_id=operation.ledger_id,
+                version=operation.version,
+                status=operation.status,
+                posting=(
+                    operation_state(session, operation)
+                    if operation.kind in LEGACY_OPERATION_KINDS
+                    else None
+                ),
+            )
 
     def list_operations(
         self,
