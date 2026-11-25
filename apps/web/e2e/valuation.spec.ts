@@ -195,6 +195,9 @@ test("consolidates selected ledgers, prices exact dates and shows the original a
 test("shows cached quote evidence and historical missing coverage in both languages", async ({
     page,
 }) => {
+    await page.addInitScript(() => {
+        if (!localStorage.getItem("coinpup.locale")) localStorage.setItem("coinpup.locale", "en");
+    });
     await login(page);
     const { entity } = await company(page, "cached quotes", "100", "10");
     const crypto = await api<Account>(page, "POST", ledgerPath(entity) + "/accounts", {
