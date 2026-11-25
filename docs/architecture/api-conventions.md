@@ -177,3 +177,5 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 ## 项目经营读取
 
 `GET /api/v1/ledgers/{ledger_id}/business-projects/{project_id}/activity` 要求登录，必填 `start`、`end`（含首尾的 YYYY-MM-DD）；归档项目可读。按资产身份排序、分页（limit 1–200，默认50；offset 0–100000）。income/cost/net 为期间归属额，closing_receivable/closing_payable 为截至结束日的单据控制余额。金额均按原资产精度返回带符号的字符串；不做跨币种净额。范围逆序或总额超出契约返回422。见[ADR0052](decisions/0052-project-activity.md)。
+
+项目活动另含 attributed_received/attributed_paid：报告期间原付款日、截至结束日明确归属于项目的未退回应用本金，以付款资产列示；不包含未分摊的预付款或未指定项目的费用。见[ADR0053](decisions/0053-attributed-project-payments.md)。
