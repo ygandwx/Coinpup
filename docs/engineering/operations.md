@@ -6,6 +6,129 @@
 
 `COINPUP_ALLOWED_ORIGINS` 是 JSON 格式的精确 scheme/host/port 列表，开发来源示例见 [.env.example](../../.env.example)。生产模式须显式设置 HTTPS 来源，并核对反向代理、TLS 与 Cookie 的 Secure 行为。默认登录限制为 15 分钟内 5 次失败后限制 15 分钟，会话默认 12 小时；可配置项以 [Settings](../../services/api/src/coinpup_api/config.py) 为准。来源、CSRF 和会话不是可互相替代的检查，见 [API 约定](../architecture/api-conventions.md)。
 
+## 测试服务器部署
+
+使用获授权的 `rootless` Docker context、Docker Engine 28 或更新版本及 Compose v2。将测试实例放在独立的 `main` 检出目录和 `coinpup-mvp` Compose 项目中。Git 检出使用常规文件权限，私有环境文件单独限制为仅部署账户可读。只使用明确虚构的数据。邮件保持关闭，测试邮件只投递到隔离的本地捕获器。参见 [Docker 回环端口发布](https://docs.docker.com/engine/network/port-publishing/)。
+
+在检出目录按 [README 的 Docker Compose 步骤](../../README.md#docker-compose)执行。`docker info` 的安全选项应包含 `rootless`，服务器版本应满足上述条件。管理员密码通过 CLI 的隐藏提示输入。
+
+```sh
+docker --context rootless version --format '{{.Server.Version}}'
+docker --context rootless info --format '{{json .SecurityOptions}}'
+(umask 077; python scripts/init_env.py)
+docker --context rootless compose -p coinpup-mvp up -d --build
+docker --context rootless compose -p coinpup-mvp exec api python -m alembic upgrade head
+docker --context rootless compose -p coinpup-mvp exec api python -m coinpup_api.admin create --username admin
+docker --context rootless compose -p coinpup-mvp ps
+docker --context rootless compose -p coinpup-mvp port api 8000
+docker --context rootless compose -p coinpup-mvp port postgres 5432
+```
+
+为定时备份保留源服务。首次启动或重新创建项目容器后，按项目容器设置重启策略。
+
+```sh
+api_id=$(docker --context rootless compose -p coinpup-mvp ps -q api)
+pg_id=$(docker --context rootless compose -p coinpup-mvp ps -q postgres)
+test -n "$api_id" && test -n "$pg_id" &&
+  docker --context rootless update --restart unless-stopped "$api_id" "$pg_id"
+```
+
+确认网页和 PostgreSQL 的两个发布端口仅绑定宿主机 IPv4 回环，客户端只通过现有 SSH 入口转发网页端口。替换命令中的占位符，打开 [README 所示的回环网页](../../README.md#docker-compose)，确认服务就绪并验证登录。沿用网页端口以匹配 Compose 允许的浏览器来源。
+
+```sh
+ssh -N -o ExitOnForwardFailure=yes \
+  -L '<客户端回环地址>:8000:<服务器回环地址>:8000' '<已有 SSH 登录目标>'
+```
+
+### 每日数据库与原件备份
+
+先在 `rootless` context 创建独立专用卷，在容器内为 API 运行用户建立私有目录。
+
+```sh
+docker --context rootless volume create --label com.coinpup.test-project=coinpup-mvp coinpup-mvp-backups
+docker --context rootless volume create --label com.coinpup.test-project=coinpup-mvp coinpup-mvp-recovery
+docker --context rootless compose -p coinpup-mvp run --rm --no-deps --user 0:0 \
+  -v coinpup-mvp-backups:/backups -v coinpup-mvp-recovery:/recovery \
+  api install -d -m 0700 -o coinpup -g coinpup /backups/bundles /recovery/files
+```
+
+在独立检出目录把由 `scripts/init_env.py` 生成的 `.env` 保持为 `0600`。备份程序从该文件读取生成的测试数据库密码，显式指定本项目源库。将以下程序保存到 `~/.local/bin/coinpup-mvp-backup` 并设为仅部署用户可执行。
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+[[ -f .env && ! -L .env && -O .env && $(stat -c '%a' .env) == 600 ]]
+mapfile -t passwords < <(awk '/^POSTGRES_PASSWORD=/{print substr($0,19)}' .env)
+[[ ${#passwords[@]} == 1 && ${passwords[0]} =~ ^[0-9a-f]{48}$ ]]
+export COINPUP_BACKUP_DATABASE_URL="postgresql+psycopg://coinpup:${passwords[0]}@postgres:5432/coinpup"
+exec docker --context rootless compose -p coinpup-mvp run -T --rm --no-deps \
+  -v coinpup-mvp-backups:/backups -e COINPUP_BACKUP_DATABASE_URL \
+  api python scripts/backup_bundle.py --storage-root /app/data/files \
+  --output "/backups/bundles/$(date -u +bundle-%Y%m%dT%H%M%SZ)-$$"
+```
+
+将以下单元保存在部署用户的 systemd 用户配置目录。将 `WorkingDirectory` 改为独立检出目录。定时器依赖服务器已提供的持久用户服务环境。
+
+`coinpup-mvp-backup.service`
+
+```ini
+[Unit]
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/coinpup-mvp
+UMask=0077
+ExecStart=%h/.local/bin/coinpup-mvp-backup
+```
+
+`coinpup-mvp-backup.timer`
+
+```ini
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+先使用测试管理员添加一份虚构原件，再启动定时器和一次手动备份。按 [bundle 说明](#包含票据与证件的-bundle)核对 dump、私有原件与最终发布的 `manifest.json`，保留数据卷和备份卷。
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now coinpup-mvp-backup.timer
+systemctl --user list-timers coinpup-mvp-backup.timer
+systemctl --user start coinpup-mvp-backup.service
+journalctl --user -u coinpup-mvp-backup.service -n 20
+```
+
+### 手动空目标演练
+
+将已完成且包含虚构原件的 bundle 目录名设为 `COINPUP_MVP_BUNDLE`。以 Bash 运行下列命令创建新的隔离空库，然后通过隐藏提示输入只指向该空库的恢复 URL。测试应用继续连接原测试库，恢复命令在独立目录创建原件。
+
+```bash
+(
+  set -e
+  bundle_dir=${COINPUP_MVP_BUNDLE:?Set the completed bundle directory name}
+  restore_db="coinpup_restore_$(date -u +%Y%m%d_%H%M%S)"
+  docker --context rootless compose -p coinpup-mvp exec -T postgres \
+    createdb --username coinpup --template template0 "$restore_db"
+  read -r -s -p 'Empty recovery database URL: ' COINPUP_RESTORE_DATABASE_URL
+  printf '\n'
+  export COINPUP_RESTORE_DATABASE_URL
+  exec docker --context rootless compose -p coinpup-mvp run --rm --no-deps \
+    -v coinpup-mvp-backups:/backups:ro -v coinpup-mvp-recovery:/recovery \
+    -e COINPUP_RESTORE_DATABASE_URL api python scripts/restore_bundle.py \
+    --backup "/backups/bundles/$bundle_dir" --storage-root "/recovery/files/$restore_db" \
+    --confirm-empty-database "$restore_db"
+)
+```
+
+对照同次备份核对迁移版本、虚构主体、账务金额和原件 SHA-256。保留源实例及演练证据，实测结果记入相应 PR。
+
 ## 可选文字解析环境
 
 默认 API 使用 `requirements.lock`，开发检查使用 `requirements-dev.lock`；PDF 依赖另锁在 `requirements-ocr.lock`，受默认锁约束并包含安装哈希。安装可选组不会自动启用 OCR 任务；固定选型及人工复核策略见 [ADR 0020](../architecture/decisions/0020-ocr-prefill-and-review.md)。
