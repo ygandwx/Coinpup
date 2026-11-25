@@ -208,6 +208,18 @@ docker compose exec -T api python -m coinpup_api.jobs recurring-invoices --per-r
 
 此入口只生成草稿，不入账、不分配正式编号、不发送客户邮件。尚未自动部署定时器；T10再配置宿主机cron或简单Compose调度容器。升级/恢复期间停止调用，核对数据库与原件后恢复调度；已恢复实例不得重复生成。
 
+### 提醒邮件测试捕获
+
+测试实例使用与任务容器共享网络命名空间的本地 SMTP 捕获器。禁用捕获器的邮件转发和公网端口，仅使用虚构地址与事项。任务连接捕获器的回环端口，默认 1025，可用 `COINPUP_REMINDER_MAIL_CAPTURE_PORT` 选择测试端口。
+
+启用源测试实例的调度时，为任务单独设置 `COINPUP_REMINDER_MAIL_CAPTURE_ENABLED=true`。以下命令只处理指定所有者及账本，输出扫描数和投递状态计数。
+
+```bash
+python -m coinpup_api.jobs reminder-email --owner "$owner_id" --ledger "$ledger_id"
+```
+
+升级切换和恢复演练期间暂停提醒任务。恢复目标保持默认关闭。先核对恢复点后的 SMTP 接受记录，再决定恢复目标上的后续任务。邮件结果未知时保留原投递证据，待核实后标记收到或停止通知。生产 SMTP 配置需要单独授权。[ADR0038](../architecture/decisions/0038-reminder-delivery.md)
+
 
 ## 备份范围
 

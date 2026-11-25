@@ -27,6 +27,7 @@ import type { PendingBusinessSettlementController } from "./pending-business-set
 import type { PendingBusinessConfirmationController } from "./pending-business-confirmation";
 import { ReminderPanel } from "./ReminderPanel";
 import type { PendingReminderController } from "./pending-reminder";
+import type { PendingReminderEmail } from "./pending-reminder-email";
 import type { PendingRecurringController } from "./pending-recurring";
 import type { PendingBusinessDraftController } from "./pending-business-drafts";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
@@ -348,6 +349,7 @@ export function BusinessWorkspace({
     drafts,
     recurring,
     reminders,
+    reminderEmail,
     businessConfirmations,
     settlements,
     credits,
@@ -369,6 +371,7 @@ export function BusinessWorkspace({
     drafts: PendingBusinessDraftController;
     recurring: PendingRecurringController;
     reminders: PendingReminderController;
+    reminderEmail: PendingReminderEmail;
     businessConfirmations: PendingBusinessConfirmationController;
     settlements: PendingBusinessSettlementController;
     credits: PendingBusinessCreditController;
@@ -430,10 +433,16 @@ export function BusinessWorkspace({
     const settlementLocked = !["idle", "confirmed", "rejected"].includes(settlement.status);
     const settlementRecoveryLedger = settlementLocked ? settlement.plan?.ledgerId : undefined;
     const reminderState = useSyncExternalStore(reminders.subscribe, reminders.getSnapshot);
-    const reminderLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
-        reminderState.status,
-    );
-    const reminderRecoveryLedger = reminderLocked ? reminderState.plan?.ledgerId : undefined;
+    const mailState = useSyncExternalStore(reminderEmail.subscribe, reminderEmail.getSnapshot);
+    const unresolvedReminder = (status: string) =>
+        !["idle", "rejected", "confirmed", "conflict"].includes(status);
+    const reminderLocked =
+        unresolvedReminder(reminderState.status) || unresolvedReminder(mailState.status);
+    const reminderRecoveryLedger = unresolvedReminder(reminderState.status)
+        ? reminderState.plan?.ledgerId
+        : unresolvedReminder(mailState.status)
+          ? mailState.plan?.ledgerId
+          : undefined;
     const [reminderEditing, setReminderEditing] = useState(false);
     const [draftTarget, setDraftTarget] = useState<{ entityId: string; id: string } | null>(() => {
         const params = new URLSearchParams(window.location.search);
@@ -1363,6 +1372,7 @@ export function BusinessWorkspace({
                                 locale={locale}
                                 session={session}
                                 controller={reminders}
+                                emailController={reminderEmail}
                                 archived={entity.archived}
                                 dataLoading={loading || ledgerLoading || !current}
                                 onUnauthorized={onUnauthorized}

@@ -33,3 +33,14 @@
 .reminder-notes {
     white-space: pre-wrap;
 }
+.reminder-email-fields {
+    margin-block: 1rem;
+    min-width: 0;
+}
+.reminder-email-fields input,
+.reminder-email-fields select {
+    max-width: 100%;
+}
+.reminder-email-panel ol {
+    padding-left: 1.25rem;
+}

@@ -5,6 +5,8 @@ import type { Locale } from "./i18n";
 import { getReminder, listReminders, listReminderRules } from "./reminder-api";
 import type { Reminder, ReminderRule, ReminderTransition } from "./reminder-api";
 import type { PendingReminderController } from "./pending-reminder";
+import type { PendingReminderEmail } from "./pending-reminder-email";
+import { ReminderEmailPanel } from "./ReminderEmailPanel";
 import { scopedReminder } from "./reminder-intent";
 import {
     createReminderBody,
@@ -34,6 +36,7 @@ export function ReminderPanel({
     session,
     locale,
     controller,
+    emailController,
     archived,
     dataLoading,
     onEditing,
@@ -43,6 +46,7 @@ export function ReminderPanel({
     session: Session;
     locale: Locale;
     controller: PendingReminderController;
+    emailController: PendingReminderEmail;
     archived: boolean;
     dataLoading: boolean;
     onEditing: (editing: boolean) => void;
@@ -58,9 +62,13 @@ export function ReminderPanel({
               : t("证件到期", "Certificate expiry");
     const pending = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
     const plan = pending.plan?.ledgerId === ledgerId ? pending.plan : null;
-    const [editor, setEditor] = useState<Editor | null>(() =>
-        plan ? { id: plan.id, row: null, mode: null, fields: null } : null,
-    );
+    const email = useSyncExternalStore(emailController.subscribe, emailController.getSnapshot);
+    const emailLocked = ["submitting", "unknown", "auth-required"].includes(email.status);
+    const emailPlan = email.plan?.ledgerId === ledgerId ? email.plan : null;
+    const [editor, setEditor] = useState<Editor | null>(() => {
+        const active = plan ?? (emailLocked ? emailPlan : null);
+        return active ? { id: active.id, row: null, mode: null, fields: null } : null;
+    });
     const [offset, setOffset] = useState(0),
         [refresh, setRefresh] = useState(0);
     const [result, setResult] = useState<{
@@ -129,7 +137,7 @@ export function ReminderPanel({
         else setLocalError(error);
     }
     function finish() {
-        if (!controller.dismiss()) return;
+        if (emailLocked || !controller.dismiss()) return;
         detailAbort.current?.abort();
         setReading(false);
         setEditor(null);
@@ -137,7 +145,7 @@ export function ReminderPanel({
         setRefresh((value) => value + 1);
     }
     async function open(id: string) {
-        if (reading || !controller.dismiss()) return;
+        if (reading || emailLocked || !controller.dismiss()) return;
         detailAbort.current?.abort();
         const abort = new AbortController();
         detailAbort.current = abort;
@@ -160,7 +168,7 @@ export function ReminderPanel({
             if (active()) setReading(false);
         }
     }
-    const disabled = archived || dataLoading || reading || unresolved;
+    const disabled = archived || dataLoading || reading || unresolved || emailLocked;
     function begin(mode: ReminderEditorMode) {
         if (disabled || !controller.dismiss()) return;
         setLocalError(null);
@@ -223,8 +231,8 @@ export function ReminderPanel({
             <h2>{t("提醒事项", "Reminder events")}</h2>
             <p className="help-text">
                 {t(
-                    "日期与历史可在此管理；站内和邮件投递尚未启用。刷新或关闭页面会丢失未保存输入和内存请求。",
-                    "Manage dates and history here; inbox and email delivery are not enabled yet. Reloading or closing loses unsaved input and in-memory requests.",
+                    "刷新或关闭页面会丢失未保存的输入与待确认请求。",
+                    "Reloading or closing the page clears unsaved input and unconfirmed requests.",
                 )}
             </p>
             {archived && (
@@ -343,7 +351,7 @@ export function ReminderPanel({
                                             ? t("恢复事项", "Restore event")
                                             : t("归档事项", "Archive event")}
                                     </button>
-                                    <button disabled={reading} onClick={finish}>
+                                    <button disabled={reading || emailLocked} onClick={finish}>
                                         {t("返回事项列表", "Back to events")}
                                     </button>
                                 </div>
@@ -387,7 +395,10 @@ export function ReminderPanel({
                             )}
                             {!editor.row && !editor.mode && !unresolved && !conflict && (
                                 <div className="form-actions">
-                                    <button disabled={reading} onClick={() => void open(editor.id)}>
+                                    <button
+                                        disabled={reading || emailLocked}
+                                        onClick={() => void open(editor.id)}
+                                    >
                                         {t("重试读取事项", "Retry loading event")}
                                     </button>
                                     <button onClick={finish}>
@@ -397,6 +408,18 @@ export function ReminderPanel({
                             )}
                         </>
                     )}
+                    {!editor.mode && (displayed || emailPlan?.id === editor.id) && (
+                        <ReminderEmailPanel
+                            key={editor.id}
+                            ledger={ledgerId}
+                            event={editor.id}
+                            session={session}
+                            locale={locale}
+                            controller={emailController}
+                            readOnly={archived || !!displayed?.archived || unresolved}
+                            onUnauthorized={onUnauthorized}
+                        />
+                    )}
                     {displayed && (
                         <ReminderHistory
                             key={`${ownerId}:${ledgerId}:${displayed.id}:${displayed.version}`}
@@ -404,7 +427,7 @@ export function ReminderPanel({
                             ledgerId={ledgerId}
                             eventId={displayed.id}
                             locale={locale}
-                            locked={unresolved}
+                            locked={unresolved || emailLocked}
                             onUnauthorized={onUnauthorized}
                         />
                     )}

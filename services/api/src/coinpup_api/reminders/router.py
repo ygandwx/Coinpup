@@ -10,6 +10,10 @@ from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
 from coinpup_api.config import Settings
 from coinpup_api.ledger.service import LedgerError
+from coinpup_api.reminders.delivery_commands import ConfigureDelivery, ReminderDeliveryCommands
+from coinpup_api.reminders.delivery_reads import ReminderDeliveryReads, ReminderDeliveryView
+from coinpup_api.reminders.mail_schemas import ReminderEmailDecision, ReminderEmailView
+from coinpup_api.reminders.mail_service import ReminderEmailService
 from coinpup_api.reminders.schemas import (
     ReminderCreate,
     ReminderEdit,
@@ -26,6 +30,9 @@ from coinpup_api.reminders.service import ReminderService
 def create_reminder_router(settings: Settings, engine: Engine | None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/ledgers/{ledger_id}/reminders", tags=["reminders"])
     service, access = ReminderService(engine), BrowserAccess(settings, engine)
+    delivery_reads = ReminderDeliveryReads(engine)
+    delivery_commands = ReminderDeliveryCommands(engine)
+    email = ReminderEmailService(engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
     page_size = Annotated[int, Query(ge=1, le=200)]
@@ -63,6 +70,45 @@ def create_reminder_router(settings: Settings, engine: Engine | None) -> APIRout
     @router.get("/rules", response_model=list[ReminderRuleResponse])
     def list_rules(ledger_id: UUID, identity: reader):
         return execute(service.list_rules, identity.id, ledger_id)
+
+    @router.get("/{event_id}/delivery-config", response_model=ReminderDeliveryView)
+    def read_delivery_config(ledger_id: UUID, event_id: UUID, identity: reader):
+        return execute(delivery_reads.get, identity.id, ledger_id, event_id)
+
+    @router.put("/{event_id}/delivery-config", response_model=ReminderDeliveryView)
+    def configure_delivery(
+        ledger_id: UUID, event_id: UUID, body: ConfigureDelivery, identity: writer
+    ):
+        return execute(delivery_commands.configure, identity.id, ledger_id, event_id, body)
+
+    @router.get("/{event_id}/email-deliveries", response_model=list[ReminderEmailView])
+    def list_email_deliveries(
+        ledger_id: UUID,
+        event_id: UUID,
+        identity: reader,
+        limit: page_size = 50,
+        offset: page_offset = 0,
+    ):
+        return execute(
+            email.list_deliveries,
+            identity.id,
+            ledger_id,
+            event_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    @router.post(
+        "/{event_id}/email-deliveries/{delivery_id}/decision", response_model=ReminderEmailView
+    )
+    def decide_email_delivery(
+        ledger_id: UUID,
+        event_id: UUID,
+        delivery_id: UUID,
+        body: ReminderEmailDecision,
+        identity: writer,
+    ):
+        return execute(email.decide, identity.id, ledger_id, event_id, delivery_id, body)
 
     @router.get("/{event_id}", response_model=ReminderResponse)
     def get_event(ledger_id: UUID, event_id: UUID, identity: reader):

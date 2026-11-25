@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
     upload_timeout_seconds: int = Field(default=120, ge=1, le=3600)
     ocr_enabled: bool = False
+    reminder_mail_capture_enabled: bool = False
+    reminder_mail_capture_port: int = Field(default=1025, ge=1, le=65535)
 
     @field_validator("allowed_origins")
     @classmethod

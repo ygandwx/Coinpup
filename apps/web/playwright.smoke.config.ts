@@ -19,6 +19,7 @@ export const smokeSpecs = [
     "business-project-activity.spec.ts",
     "interledger.spec.ts",
     "valuation.spec.ts",
+    "reminder-email.spec.ts",
 ];
 
 export default defineConfig({ ...base, testMatch: smokeSpecs });

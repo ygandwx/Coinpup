@@ -30,6 +30,8 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
         "interledger_settings",
         "interledger_groups",
         "manual_prices",
+        "reminder_email_deliveries",
+        "reminder_email_evidence",
     }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32

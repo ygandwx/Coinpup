@@ -33,6 +33,8 @@ def test_refund_revision_migration_extends_the_catalog_with_one_gated_table():
         "interledger_settings",
         "interledger_groups",
         "manual_prices",
+        "reminder_email_deliveries",
+        "reminder_email_evidence",
     }
     table = BusinessRefundRevision.__table__
     sql = " ".join(str(CreateTable(table).compile(dialect=dialect())).split())
