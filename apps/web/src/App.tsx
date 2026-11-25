@@ -21,6 +21,7 @@ import { PendingInterledger } from "./pending-interledger";
 import { PendingPrice } from "./pending-price";
 import { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { PendingReminderController } from "./pending-reminder";
+import { PendingReminderEmail } from "./pending-reminder-email";
 import { OcrCopyController } from "./ocr-copy";
 
 type IconName =
@@ -345,6 +346,7 @@ export function App() {
     const [interledger] = useState(() => new PendingInterledger());
     const [prices] = useState(() => new PendingPrice());
     const [reminders] = useState(() => new PendingReminderController());
+    const [reminderEmail] = useState(() => new PendingReminderEmail());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
     const [retryKey, setRetryKey] = useState(0);
@@ -377,6 +379,7 @@ export function App() {
                     drafts.setOwner(String(session.user.id));
                     recurring.setOwner(String(session.user.id));
                     reminders.setOwner(String(session.user.id));
+                    reminderEmail.setOwner(String(session.user.id));
                     businessConfirmations.setOwner(String(session.user.id));
                     settlements.setOwner(String(session.user.id));
                     credits.setOwner(String(session.user.id));
@@ -400,6 +403,7 @@ export function App() {
                     drafts.setOwner(null);
                     recurring.setOwner(null);
                     reminders.setOwner(null);
+                    reminderEmail.setOwner(null);
                     businessConfirmations.setOwner(null);
                     settlements.setOwner(null);
                     credits.setOwner(null);
@@ -427,6 +431,7 @@ export function App() {
         drafts,
         recurring,
         reminders,
+        reminderEmail,
         businessConfirmations,
         settlements,
         credits,
@@ -460,6 +465,7 @@ export function App() {
             drafts.setOwner(null, true);
             recurring.setOwner(null, true);
             reminders.setOwner(null, true);
+            reminderEmail.setOwner(null, true);
             businessConfirmations.setOwner(null, true);
             settlements.setOwner(null, true);
             credits.setOwner(null, true);
@@ -480,6 +486,7 @@ export function App() {
                 drafts.setOwner(null, true);
                 recurring.setOwner(null, true);
                 reminders.setOwner(null, true);
+                reminderEmail.setOwner(null, true);
                 businessConfirmations.setOwner(null, true);
                 settlements.setOwner(null, true);
                 credits.setOwner(null, true);
@@ -536,6 +543,7 @@ export function App() {
                     drafts={drafts}
                     recurring={recurring}
                     reminders={reminders}
+                    reminderEmail={reminderEmail}
                     businessConfirmations={businessConfirmations}
                     settlements={settlements}
                     credits={credits}
@@ -554,6 +562,7 @@ export function App() {
                         drafts.setOwner(null);
                         recurring.setOwner(null);
                         reminders.setOwner(null);
+                        reminderEmail.setOwner(null);
                         businessConfirmations.setOwner(null);
                         settlements.setOwner(null);
                         credits.setOwner(null);
@@ -612,6 +621,7 @@ export function App() {
                                         drafts.setOwner(String(session.user.id));
                                         recurring.setOwner(String(session.user.id));
                                         reminders.setOwner(String(session.user.id));
+                                        reminderEmail.setOwner(String(session.user.id));
                                         businessConfirmations.setOwner(String(session.user.id));
                                         settlements.setOwner(String(session.user.id));
                                         credits.setOwner(String(session.user.id));

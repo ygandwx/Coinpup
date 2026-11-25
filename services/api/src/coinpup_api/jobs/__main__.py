@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -11,6 +12,7 @@ from coinpup_api.business.recurring_job import run_recurring
 from coinpup_api.config import Settings
 from coinpup_api.database import Database
 from coinpup_api.ledger.service import LedgerError
+from coinpup_api.reminders.mail_job import capture_connection, run_reminder_email
 
 
 def limit(value):
@@ -33,19 +35,40 @@ def main(argv=None):
         default=10,
         help="Maximum occurrences per rule in this invocation (1–100)",
     )
+    email = commands.add_parser(
+        "reminder-email", help="Process scoped reminder email via local capture"
+    )
+    email.add_argument("--owner", type=UUID, required=True)
+    email.add_argument("--ledger", type=UUID, required=True)
+    email.add_argument("--page-size", type=limit, default=50)
     args = parser.parse_args(argv)
     database = None
     try:
-        database = Database(Settings())
+        settings = Settings()
+        if args.job == "reminder-email":
+            if not settings.reminder_mail_capture_enabled or settings.environment == "production":
+                print("Local reminder email capture is disabled.", file=sys.stderr)
+                return 1
+            database = Database(settings)
+            result = run_reminder_email(
+                database.engine,
+                args.owner,
+                args.ledger,
+                sender="reminders@coinpup.invalid",
+                connect=lambda: capture_connection(settings.reminder_mail_capture_port),
+                page_size=args.page_size,
+            )
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        database = Database(settings)
         result = run_recurring(database.engine, now=datetime.now(UTC), per_rule=args.per_rule)
         print(json.dumps(result, sort_keys=True))
         return 1 if result["failures"] else 0
     except KeyboardInterrupt:
         return 130
     except (SQLAlchemyError, LedgerError, OSError, ValueError):
-        print(
-            "Recurring job unavailable; check configuration and database access.", file=sys.stderr
-        )
+        label = "Reminder email job" if args.job == "reminder-email" else "Recurring job"
+        print(f"{label} unavailable; check configuration and database access.", file=sys.stderr)
         return 1
     finally:
         if database is not None:

@@ -131,5 +131,8 @@ def test_reminder_contract_has_no_delete_or_financial_command(client):
         prefix + "/{event_id}/recalculate",
         prefix + "/{event_id}/transition",
         prefix + "/{event_id}/revisions",
+        prefix + "/{event_id}/delivery-config",
+        prefix + "/{event_id}/email-deliveries",
+        prefix + "/{event_id}/email-deliveries/{delivery_id}/decision",
     }
     assert all("delete" not in paths[path] for path in paths if path.startswith(prefix))

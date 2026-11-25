@@ -3873,7 +3873,9 @@
               "business_invoice_completions",
               "interledger_settings",
               "interledger_groups",
-              "manual_prices"
+              "manual_prices",
+              "reminder_email_deliveries",
+              "reminder_email_evidence"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -3917,6 +3919,132 @@
           "changed_at"
         ],
         "title": "ChangeRecord",
+        "type": "object"
+      },
+      "ClockWitness": {
+        "additionalProperties": false,
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "requested_minute": {
+            "title": "Requested Minute",
+            "type": "integer"
+          },
+          "resolved_minute": {
+            "title": "Resolved Minute",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "format": "date-time",
+            "title": "Scheduled At",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tzdata_version": {
+            "title": "Tzdata Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "due_date",
+          "lead_days",
+          "timezone",
+          "requested_minute",
+          "resolved_minute",
+          "scheduled_at",
+          "tzdata_version"
+        ],
+        "title": "ClockWitness",
+        "type": "object"
+      },
+      "ConfigureDelivery": {
+        "additionalProperties": false,
+        "properties": {
+          "email_enabled": {
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "email_recipient": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Recipient"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expected_config_version": {
+            "minimum": 0.0,
+            "title": "Expected Config Version",
+            "type": "integer"
+          },
+          "expected_event_version": {
+            "minimum": 1.0,
+            "title": "Expected Event Version",
+            "type": "integer"
+          },
+          "inbox_enabled": {
+            "title": "Inbox Enabled",
+            "type": "boolean"
+          },
+          "lead_days": {
+            "maximum": 3660.0,
+            "minimum": 0.0,
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "locale": {
+            "enum": [
+              "zh",
+              "en"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "minute": {
+            "maximum": 1439.0,
+            "minimum": 0.0,
+            "title": "Minute",
+            "type": "integer"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_event_version",
+          "expected_config_version",
+          "enabled",
+          "lead_days",
+          "timezone",
+          "minute",
+          "locale",
+          "inbox_enabled",
+          "email_enabled",
+          "email_recipient"
+        ],
+        "title": "ConfigureDelivery",
         "type": "object"
       },
       "ConfirmationCreate": {
@@ -5538,6 +5666,150 @@
           "created_at"
         ],
         "title": "CreditSummary",
+        "type": "object"
+      },
+      "DeliveryConfigView": {
+        "additionalProperties": false,
+        "properties": {
+          "email_enabled": {
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "email_recipient": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Recipient"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inbox_enabled": {
+            "title": "Inbox Enabled",
+            "type": "boolean"
+          },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "locale": {
+            "enum": [
+              "zh",
+              "en"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "minute": {
+            "title": "Minute",
+            "type": "integer"
+          },
+          "needs_refresh": {
+            "title": "Needs Refresh",
+            "type": "boolean"
+          },
+          "preview_blocked_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "unplanned",
+                  "missing_date",
+                  "completed",
+                  "archived_event",
+                  "archived_entity",
+                  "timezone_unavailable",
+                  "date_out_of_range",
+                  "local_date_unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Blocked Reason"
+          },
+          "preview_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClockWitness"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "saved_blocked_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "unplanned",
+                  "missing_date",
+                  "completed",
+                  "archived_event",
+                  "archived_entity",
+                  "timezone_unavailable",
+                  "date_out_of_range",
+                  "local_date_unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Blocked Reason"
+          },
+          "saved_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClockWitness"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "enabled",
+          "lead_days",
+          "timezone",
+          "minute",
+          "locale",
+          "inbox_enabled",
+          "email_enabled",
+          "email_recipient",
+          "saved_plan",
+          "saved_blocked_reason",
+          "preview_plan",
+          "preview_blocked_reason",
+          "needs_refresh"
+        ],
+        "title": "DeliveryConfigView",
         "type": "object"
       },
       "DocumentAccrualPosting": {
@@ -12153,6 +12425,43 @@
         "title": "ReminderCreate",
         "type": "object"
       },
+      "ReminderDeliveryView": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryConfigView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_version": {
+            "title": "Event Version",
+            "type": "integer"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "event_id",
+          "event_version",
+          "config"
+        ],
+        "title": "ReminderDeliveryView",
+        "type": "object"
+      },
       "ReminderEdit": {
         "additionalProperties": false,
         "properties": {
@@ -12185,6 +12494,138 @@
           "title"
         ],
         "title": "ReminderEdit",
+        "type": "object"
+      },
+      "ReminderEmailDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "retry",
+              "verify_received",
+              "stop"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "action"
+        ],
+        "title": "ReminderEmailDecision",
+        "type": "object"
+      },
+      "ReminderEmailView": {
+        "properties": {
+          "attempt_no": {
+            "title": "Attempt No",
+            "type": "integer"
+          },
+          "channel": {
+            "const": "email",
+            "title": "Channel",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "planned_at": {
+            "format": "date-time",
+            "title": "Planned At",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "retry_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry At"
+          },
+          "smtp_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Code"
+          },
+          "state": {
+            "enum": [
+              "sending",
+              "retry_wait",
+              "failed",
+              "unknown",
+              "accepted",
+              "cancelled",
+              "verified_received",
+              "stopped"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ledger_id",
+          "event_id",
+          "channel",
+          "planned_at",
+          "version",
+          "attempt_no",
+          "state",
+          "recorded_at",
+          "retry_at",
+          "smtp_code"
+        ],
+        "title": "ReminderEmailView",
         "type": "object"
       },
       "ReminderManual": {
@@ -23626,6 +24067,306 @@
           }
         },
         "summary": "Edit Event",
+        "tags": [
+          "reminders"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/delivery-config": {
+      "get": {
+        "operationId": "read_delivery_config_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeliveryView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Delivery Config",
+        "tags": [
+          "reminders"
+        ]
+      },
+      "put": {
+        "operationId": "configure_delivery_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureDelivery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeliveryView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Configure Delivery",
+        "tags": [
+          "reminders"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/email-deliveries": {
+      "get": {
+        "operationId": "list_email_deliveries_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderEmailView"
+                  },
+                  "title": "Response List Email Deliveries Api V1 Ledgers  Ledger Id  Reminders  Event Id  Email Deliveries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Email Deliveries",
+        "tags": [
+          "reminders"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/email-deliveries/{delivery_id}/decision": {
+      "post": {
+        "operationId": "decide_email_delivery_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries__delivery_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderEmailDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderEmailView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Email Delivery",
         "tags": [
           "reminders"
         ]

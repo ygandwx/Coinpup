@@ -235,7 +235,11 @@ def test_empty_round_trip_and_guarded_downgrade(ledger_setup, history):
         migration["upgrade"]()
     create(s, create_event(s))
     with s["engine"].begin() as c:
-        target = "change_log" if history == "rows" else ", ".join(reversed(migration["_TABLES"]))
+        target = (
+            "change_log"
+            if history == "rows"
+            else "reminder_email_evidence, " + ", ".join(reversed(migration["_TABLES"]))
+        )
         c.exec_driver_sql("TRUNCATE TABLE " + target + " RESTRICT")
     before = snapshot(s)
     with pytest.raises(IntegrityError) as error:

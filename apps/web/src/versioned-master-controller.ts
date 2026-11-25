@@ -23,6 +23,7 @@ type ReplyPolicy<P, R> = {
 export type MasterPolicy<P, R> = ReplyPolicy<P, R> & {
     read: (p: P) => Promise<unknown>;
     create: (p: P) => boolean;
+    changed?: (value: R, plan: P) => boolean;
 };
 const terminal = ["idle", "confirmed", "conflict", "rejected"];
 const idle = <P, R>(): VersionedSnapshot<P, R> =>
@@ -172,9 +173,10 @@ export class VersionedMasterController<P extends MasterIdentity, R extends objec
                             status = policy.matches(current, plan) ? "confirmed" : "conflict";
                         else if (
                             !this.uncertain ||
-                            ("version" in current &&
-                                typeof current.version === "number" &&
-                                current.version > JSON.parse(plan.bodyJson).expected_version)
+                            (policy.changed?.(current, plan) ??
+                                ("version" in current &&
+                                    typeof current.version === "number" &&
+                                    current.version > JSON.parse(plan.bodyJson).expected_version))
                         )
                             status = "conflict";
                         if (status !== "unknown") record = policy.capture(current);

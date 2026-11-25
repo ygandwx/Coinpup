@@ -163,7 +163,10 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 - `/api/v1/ledgers/{ledger_id}/reminders`提供事项创建/分页读取；`/rules`返回版本化规则及依据，`/{event_id}`读取/PATCH标题说明，`/revisions`分页读取不可变修订。列表支持include_archived/include_completed，默认均包含；limit 1–200、offset 0–100000。
 - `/{event_id}/recalculate` POST显式规则ID/版本和必要参数，主体注册资料由服务器读取；`/manual-date` PATCH设置日期或显式null清除，均要求理由；`/transition` POST指定complete/reopen/archive/restore。所有修改携带原expected_version，归档事项须先恢复；重复ID/过期版本返回409，不自动换ID或版本。
 - 计算依据、推算日期与人工覆盖分别保存；effective_date优先人工值，其次仅采用calculated状态日期。读取不重算，重算不清除人工覆盖或完成状态。创建可以不选规则以保存手动税务等事项；未知规则版本/事项类型不匹配为422，待核验/缺资料/不适用有独立状态。
-- 全部接口沿用会话归属、Origin/CSRF与no-store，事项/修订不可硬删除，不写财务分录，不等于启用站内或邮件投递。来源：[ADR0035](decisions/0035-reminder-rule-evaluation.md)、[ADR0036](decisions/0036-reminder-event-history.md)。
+- 全部接口沿用会话归属、Origin/CSRF与no-store。事项和修订保留历史，提醒操作不会生成财务分录。来源：[ADR0035](decisions/0035-reminder-rule-evaluation.md)、[ADR0036](decisions/0036-reminder-event-history.md)。
+
+- `/{event_id}/delivery-config` 读取当前配置、已保存的日期计划和只读预览。PUT 需要同时提交事项与配置版本，配置尚不存在时使用版本 `0`。保存以明确的时区和当地分钟计算的 UTC 时点。[ADR0038](decisions/0038-reminder-delivery.md)
+- `/{event_id}/email-deliveries` 按计划时点倒序返回邮件现状。每个事项、渠道及计划时点只有一个邮件标识。`/email-deliveries/{delivery_id}/decision` 需要当前投递版本。明确失败可请求重试，结果未知可记录核实收到或停止投递的理由。邮件服务器接受仅表示 SMTP 接收确认。[ADR0038](decisions/0038-reminder-delivery.md)
 
 ## 可选期间关闭
 

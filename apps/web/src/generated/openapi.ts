@@ -2003,6 +2003,58 @@ export interface paths {
         patch: operations["edit_event_api_v1_ledgers__ledger_id__reminders__event_id__patch"];
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/delivery-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Delivery Config */
+        get: operations["read_delivery_config_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_get"];
+        /** Configure Delivery */
+        put: operations["configure_delivery_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/email-deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Email Deliveries */
+        get: operations["list_email_deliveries_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/email-deliveries/{delivery_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Email Delivery */
+        post: operations["decide_email_delivery_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries__delivery_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/reminders/{event_id}/manual-date": {
         parameters: {
             query?: never;
@@ -3970,7 +4022,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -3982,6 +4034,55 @@ export interface components {
             owner_id: string;
             /** Seq */
             seq: string;
+        };
+        /** ClockWitness */
+        ClockWitness: {
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Lead Days */
+            lead_days: number;
+            /** Requested Minute */
+            requested_minute: number;
+            /** Resolved Minute */
+            resolved_minute: number;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Timezone */
+            timezone: string;
+            /** Tzdata Version */
+            tzdata_version: string;
+        };
+        /** ConfigureDelivery */
+        ConfigureDelivery: {
+            /** Email Enabled */
+            email_enabled: boolean;
+            /** Email Recipient */
+            email_recipient: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Expected Config Version */
+            expected_config_version: number;
+            /** Expected Event Version */
+            expected_event_version: number;
+            /** Inbox Enabled */
+            inbox_enabled: boolean;
+            /** Lead Days */
+            lead_days: number;
+            /**
+             * Locale
+             * @enum {string}
+             */
+            locale: "zh" | "en";
+            /** Minute */
+            minute: number;
+            /** Timezone */
+            timezone: string;
         };
         /** ConfirmationCreate */
         ConfirmationCreate: {
@@ -4608,6 +4709,43 @@ export interface components {
             party_id: string;
             /** Reason */
             reason: string;
+        };
+        /** DeliveryConfigView */
+        DeliveryConfigView: {
+            /** Email Enabled */
+            email_enabled: boolean;
+            /** Email Recipient */
+            email_recipient: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Inbox Enabled */
+            inbox_enabled: boolean;
+            /** Lead Days */
+            lead_days: number;
+            /**
+             * Locale
+             * @enum {string}
+             */
+            locale: "zh" | "en";
+            /** Minute */
+            minute: number;
+            /** Needs Refresh */
+            needs_refresh: boolean;
+            /** Preview Blocked Reason */
+            preview_blocked_reason: ("disabled" | "unplanned" | "missing_date" | "completed" | "archived_event" | "archived_entity" | "timezone_unavailable" | "date_out_of_range" | "local_date_unavailable") | null;
+            preview_plan: components["schemas"]["ClockWitness"] | null;
+            /** Saved Blocked Reason */
+            saved_blocked_reason: ("disabled" | "unplanned" | "missing_date" | "completed" | "archived_event" | "archived_entity" | "timezone_unavailable" | "date_out_of_range" | "local_date_unavailable") | null;
+            saved_plan: components["schemas"]["ClockWitness"] | null;
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
         };
         /** DocumentAccrualPosting */
         DocumentAccrualPosting: {
@@ -7448,6 +7586,22 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ReminderDeliveryView */
+        ReminderDeliveryView: {
+            config: components["schemas"]["DeliveryConfigView"] | null;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Event Version */
+            event_version: number;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+        };
         /** ReminderEdit */
         ReminderEdit: {
             /** Expected Version */
@@ -7456,6 +7610,64 @@ export interface components {
             notes?: string | null;
             /** Title */
             title: string;
+        };
+        /** ReminderEmailDecision */
+        ReminderEmailDecision: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "retry" | "verify_received" | "stop";
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ReminderEmailView */
+        ReminderEmailView: {
+            /** Attempt No */
+            attempt_no: number;
+            /**
+             * Channel
+             * @constant
+             */
+            channel: "email";
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Planned At
+             * Format: date-time
+             */
+            planned_at: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Retry At */
+            retry_at: string | null;
+            /** Smtp Code */
+            smtp_code: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "sending" | "retry_wait" | "failed" | "unknown" | "accepted" | "cancelled" | "verified_received" | "stopped";
+            /** Version */
+            version: number;
         };
         /** ReminderManual */
         ReminderManual: {
@@ -12862,6 +13074,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReminderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_delivery_config_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderDeliveryView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configure_delivery_api_v1_ledgers__ledger_id__reminders__event_id__delivery_config_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigureDelivery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderDeliveryView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_email_deliveries_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderEmailView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_email_delivery_api_v1_ledgers__ledger_id__reminders__event_id__email_deliveries__delivery_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                event_id: string;
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderEmailDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderEmailView"];
                 };
             };
             /** @description Validation Error */

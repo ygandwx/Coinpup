@@ -40,14 +40,7 @@ def _zone(key: str) -> ZoneInfo:
         raise DeliveryClockError("reminder_delivery_timezone") from None
 
 
-def schedule_delivery(due_date: date, lead_days: int, timezone: str, minute: int) -> DeliveryTime:
-    """Resolve an explicit civil minute, preferring the first fold and staying on its date."""
-    if type(due_date) is not date:
-        raise DeliveryClockError("reminder_delivery_date")
-    if type(lead_days) is not int or not 0 <= lead_days <= 3660:
-        raise DeliveryClockError("reminder_delivery_lead_days")
-    if type(minute) is not int or not 0 <= minute < 1440:
-        raise DeliveryClockError("reminder_delivery_minute")
+def delivery_zone(timezone: str) -> ZoneInfo:
     if (
         type(timezone) is not str
         or not timezone
@@ -56,7 +49,18 @@ def schedule_delivery(due_date: date, lead_days: int, timezone: str, minute: int
         or timezone.startswith(("posix/", "right/"))
     ):
         raise DeliveryClockError("reminder_delivery_timezone")
-    zone = _zone(timezone)
+    return _zone(timezone)
+
+
+def schedule_delivery(due_date: date, lead_days: int, timezone: str, minute: int) -> DeliveryTime:
+    """Resolve an explicit civil minute, preferring the first fold and staying on its date."""
+    if type(due_date) is not date:
+        raise DeliveryClockError("reminder_delivery_date")
+    if type(lead_days) is not int or not 0 <= lead_days <= 3660:
+        raise DeliveryClockError("reminder_delivery_lead_days")
+    if type(minute) is not int or not 0 <= minute < 1440:
+        raise DeliveryClockError("reminder_delivery_minute")
+    zone = delivery_zone(timezone)
     try:
         local_date = due_date - timedelta(days=lead_days)
         for resolved in range(minute, 1440):

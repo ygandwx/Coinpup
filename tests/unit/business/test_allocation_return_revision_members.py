@@ -35,6 +35,8 @@ def test_member_freezes_the_real_table_and_extends_only_the_accepted_header_cata
         "interledger_settings",
         "interledger_groups",
         "manual_prices",
+        "reminder_email_deliveries",
+        "reminder_email_evidence",
     }
     for stmt in (CreateTable(t), *(CreateIndex(i) for i in t.indexes)):
         assert " ".join(str(stmt.compile(dialect=dialect())).split()) in " ".join(
