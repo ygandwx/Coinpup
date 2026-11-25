@@ -129,6 +129,38 @@ journalctl --user -u coinpup-mvp-backup.service -n 20
 
 对照同次备份核对迁移版本、虚构主体、账务金额和原件 SHA-256。保留源实例及演练证据，实测结果记入相应 PR。
 
+### 测试实例升级与回滚
+
+1. 确认目标为仅使用虚构数据的测试项目。保存运行中的 Git 提交、API 镜像 ID 和对应的私有配置。暂停升级目标的写入和定时任务，从旧版本先生成一份数据库与原件 bundle，等待命令成功并确认 `manifest.json` 已发布。保留该 bundle、旧镜像和旧检出目录。对正在使用的测试实例做演练时，从 bundle 恢复出隔离副本，源实例仍可使用。
+2. 取得 `origin/main` 的准确提交，确认该提交通过 CI，在独立检出目录构建候选 API 镜像。将镜像及提交对应起来，保留候选的确切镜像 ID。按[手动空目标演练](#手动空目标演练)准备独立数据库和新的原件目录。演练的迁移和应用均使用该副本自己的 `COINPUP_DATABASE_URL`，连接前核对目标是本次隔离库。
+
+```sh
+git fetch origin main
+new_commit=$(git rev-parse FETCH_HEAD)
+git worktree add --detach "$upgrade_checkout" "$new_commit"
+```
+
+3. 在同一测试网络中用候选镜像执行 `python -m alembic upgrade head`，记录前后的 `python -m alembic current`。然后用候选镜像启动应用至单独的回环端口，用 `/api/v1/health/ready` 验证就绪。登录核对虚构主体、账务、版本和私有原件。记录运行 `upgrade head` 前后的实际版本，即使版本保持一致也记录。
+
+```sh
+docker --context rootless run --rm --network "$test_network" \
+  -e COINPUP_DATABASE_URL "$new_image" python -m alembic upgrade head
+```
+
+4. 回滚演练另外新建一个 `template0` 空库与一个从未使用的原件目录，恢复步骤 1 已验证的 bundle。把备份卷只读挂载，用旧镜像执行 `restore_bundle.py`，传入与实际空库名一致的 `--confirm-empty-database`。随后只让旧镜像连接这套恢复目标，检查它的就绪端点、数据库版本和同一批虚构数据与原件。禁止对升级后的数据库运行 `alembic downgrade`，也禁止将旧镜像指向已升级的库。保留升级目标供检查，切换连接与清理副本另行处理。
+
+以下命令使用先前记录的 `old_image`。通过私有环境将 `COINPUP_DATABASE_URL` 指向回滚空库的恢复结果，使 `COINPUP_FILES_DIRECTORY` 指向恢复原件目录，并将 `rollback_bind` 与 `COINPUP_ALLOWED_ORIGINS` 设置为对应的回环地址和端口。
+
+```sh
+docker --context rootless run -d --rm --name "$rollback_api" --network "$test_network" \
+  --publish "${rollback_bind:?Set the selected loopback host and port}:8000" \
+  --mount type=volume,src=coinpup-mvp-recovery,dst=/recovery,readonly \
+  -e COINPUP_ENVIRONMENT=development -e COINPUP_DATABASE_URL \
+  -e COINPUP_FILES_DIRECTORY -e COINPUP_ALLOWED_ORIGINS "$old_image"
+```
+
+为演练应用显式配置回环发布地址和对应的 `COINPUP_ALLOWED_ORIGINS`。源实例与两个演练目标使用各自的数据库和文件路径。恢复验证期间保持两目标的调度关闭。结束后停止临时应用，确认源测试实例仍就绪，将命令、版本、就绪与业务比对结果记录到对应 PR。
+
 ## 可选文字解析环境
 
 默认 API 使用 `requirements.lock`，开发检查使用 `requirements-dev.lock`；PDF 依赖另锁在 `requirements-ocr.lock`，受默认锁约束并包含安装哈希。安装可选组不会自动启用 OCR 任务；固定选型及人工复核策略见 [ADR 0020](../architecture/decisions/0020-ocr-prefill-and-review.md)。
