@@ -2323,6 +2323,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quotes/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Effective Prices
+         * @description List exact-day owner prices, with explicit identity and missing states.
+         */
+        get: operations["read_effective_prices_api_v1_quotes_effective_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quotes/manual": {
         parameters: {
             query?: never;
@@ -3103,6 +3123,40 @@ export interface components {
             enabled: boolean;
             /** Expected Version */
             expected_version: number;
+        };
+        /** AutomaticPriceResponse */
+        AutomaticPriceResponse: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Display Asset Id
+             * @enum {string}
+             */
+            display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Observed At */
+            observed_at: string | null;
+            /** Price */
+            price: string;
+            /**
+             * Price Date
+             * Format: date
+             */
+            price_date: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "Frankfurter / ECB" | "Coinbase Exchange";
         };
         /** BalanceResponse */
         BalanceResponse: {
@@ -4304,7 +4358,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -5490,6 +5544,33 @@ export interface components {
              * Format: uuid
              */
             target_ledger_id: string;
+        };
+        /** EffectivePricePage */
+        EffectivePricePage: {
+            /**
+             * Display Asset Id
+             * @enum {string}
+             */
+            display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+            /** Items */
+            items: components["schemas"]["EffectivePriceResponse"][];
+            /**
+             * Price Date
+             * Format: date
+             */
+            price_date: string;
+        };
+        /** EffectivePriceResponse */
+        EffectivePriceResponse: {
+            /** Asset Id */
+            asset_id: string;
+            automatic_price?: components["schemas"]["AutomaticPriceResponse"] | null;
+            manual_price?: components["schemas"]["ManualPriceResponse"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "identity" | "manual" | "automatic" | "missing";
         };
         /** EntityCreate */
         EntityCreate: {
@@ -8601,6 +8682,7 @@ export interface components {
             amount: string;
             /** Asset Id */
             asset_id: string;
+            automatic_price?: components["schemas"]["AutomaticPriceResponse"] | null;
             /** Category Id */
             category_id: string | null;
             /** Date */
@@ -8643,11 +8725,8 @@ export interface components {
             missing_asset_ids: string[];
             /** Missing Rows */
             missing_rows: number;
-            /**
-             * Price Date
-             * Format: date
-             */
-            price_date: string;
+            /** Price Date */
+            price_date: string | null;
         };
         /** ReturnGroupFact */
         ReturnGroupFact: {
@@ -8828,7 +8907,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -14607,6 +14686,39 @@ export interface operations {
             };
         };
     };
+    read_effective_prices_api_v1_quotes_effective_get: {
+        parameters: {
+            query: {
+                asset_ids: string[];
+                display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+                price_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectivePricePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_manual_prices_api_v1_quotes_manual_get: {
         parameters: {
             query: {
@@ -14686,6 +14798,7 @@ export interface operations {
                 to_date?: string | null;
                 display_asset_id?: ("USD" | "GBP" | "EUR" | "HKD" | "CNY") | null;
                 price_date?: string | null;
+                price_mode?: ("latest" | "historical") | null;
                 limit?: number;
                 offset?: number;
             };

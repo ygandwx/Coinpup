@@ -15,6 +15,8 @@ import "./valuation.css";
 const displayAssets = ["USD", "GBP", "EUR", "HKD", "CNY"] as const;
 type DisplayAsset = ManualPriceInput["display_asset_id"];
 type View = MvpReport["view"];
+type PriceBasis = "exact" | NonNullable<ReportQuery["price_mode"]>;
+type AutomaticPrice = NonNullable<MvpReport["rows"][number]["automatic_price"]>;
 type Translate = (zh: string, en: string) => string;
 type AssetName = (assetId: string) => string;
 type ViewProps = { t: Translate; locale: Locale; onUnauthorized: () => void; assetName: AssetName };
@@ -107,6 +109,42 @@ function PageButtons({
     );
 }
 
+function AutomaticPriceEvidence({
+    quote,
+    t,
+    assetName,
+}: {
+    quote: AutomaticPrice;
+    t: Translate;
+    assetName: AssetName;
+}) {
+    return (
+        <>
+            <dt>{t("使用的自动报价", "Cached automatic price applied")}</dt>
+            <dd>
+                {quote.price} {quote.display_asset_id} / {assetName(quote.asset_id)} ·{" "}
+                {quote.price_date} · {quote.source}
+            </dd>
+            {quote.observed_at && (
+                <>
+                    <dt>{t("报价时点（UTC）", "Observed time (UTC)")}</dt>
+                    <dd>
+                        <time dateTime={quote.observed_at}>{quote.observed_at}</time>
+                    </dd>
+                </>
+            )}
+            <dt>{t("获取时间（UTC）", "Fetched time (UTC)")}</dt>
+            <dd>
+                <time dateTime={quote.fetched_at}>{quote.fetched_at}</time>
+            </dd>
+            <dt>{t("报价记录", "Price observation")}</dt>
+            <dd>
+                <code>{quote.id}</code>
+            </dd>
+        </>
+    );
+}
+
 function ReportPanel({
     entities,
     initialLedger,
@@ -120,16 +158,20 @@ function ReportPanel({
     const ledgerIds = selection ?? (initialLedger ? [initialLedger] : []);
     const [view, setView] = useState<View>("balances");
     const [display, setDisplay] = useState<DisplayAsset | "">("");
+    const [priceBasis, setPriceBasis] = useState<PriceBasis>("exact");
+    const [priceDate, setPriceDate] = useState("");
     const [query, setQuery] = useState<ReportQuery | null>(null);
     const currentQuote =
-        query?.price_date === savedPrice?.price_date &&
-        query?.display_asset_id === savedPrice?.display_asset_id
+        savedPrice &&
+        query?.display_asset_id === savedPrice.display_asset_id &&
+        (!query.price_date || query.price_date === savedPrice.price_date)
             ? savedPrice
             : null;
     const result = useRead(readMvpReport, query, onUnauthorized, currentQuote);
     const page = result && "page" in result ? result.page : null;
     const names = new Map(entities.map(({ ledger, name }) => [ledger.id, name]));
     const balances = view === "balances";
+    const historicalBalance = balances && Boolean(display) && priceBasis === "historical";
     const displayAmount = (amount: string, id: string) =>
         `${formatReportAmount(amount, locale)} ${assetName(id)}`;
     const reportName = t("原币汇总与估值", "Original-currency totals and valuation");
@@ -140,7 +182,8 @@ function ReportPanel({
         const value = (name: string) => String(fields.get(name) ?? "");
         const from_date = balances ? "" : value("from_date");
         const to_date = value("to_date");
-        const price_date = value("price_date");
+        const prices =
+            priceBasis === "exact" ? { price_date: priceDate } : { price_mode: priceBasis };
         const display_asset_id = display;
         if (selection === null) setSelection(ledgerIds);
         setQuery({
@@ -148,7 +191,7 @@ function ReportPanel({
             view,
             ...(from_date && { from_date }),
             ...(to_date && { to_date }),
-            ...(display_asset_id && { display_asset_id, price_date }),
+            ...(display_asset_id && { display_asset_id, ...prices }),
             offset: 0,
             limit: pageSize,
         });
@@ -198,12 +241,14 @@ function ReportPanel({
                     )}
                     <SimpleField
                         label={
-                            balances
-                                ? t("余额截止日（可选）", "Balance as of (optional)")
-                                : t("结束日期", "Through date")
+                            historicalBalance
+                                ? t("余额截止日", "Balance as of")
+                                : balances
+                                  ? t("余额截止日（可选）", "Balance as of (optional)")
+                                  : t("结束日期", "Through date")
                         }
                     >
-                        <input name="to_date" type="date" />
+                        <input name="to_date" type="date" required={historicalBalance} />
                     </SimpleField>
                     <SimpleField label={t("折算为", "Value in")}>
                         <select
@@ -217,8 +262,32 @@ function ReportPanel({
                         </select>
                     </SimpleField>
                     {display && (
+                        <SimpleField label={t("报价口径", "Price basis")}>
+                            <select
+                                value={priceBasis}
+                                onChange={(event) =>
+                                    setPriceBasis(event.target.value as PriceBasis)
+                                }
+                            >
+                                <option value="exact">{t("指定日期", "Specified date")}</option>
+                                <option value="latest">
+                                    {t("最新缓存报价", "Latest cached prices")}
+                                </option>
+                                <option value="historical">
+                                    {t("历史报价", "Historical prices")}
+                                </option>
+                            </select>
+                        </SimpleField>
+                    )}
+                    {display && priceBasis === "exact" && (
                         <SimpleField label={t("指定报价日期", "Price date")}>
-                            <input name="price_date" type="date" required />
+                            <input
+                                name="price_date"
+                                type="date"
+                                value={priceDate}
+                                onChange={(event) => setPriceDate(event.target.value)}
+                                required
+                            />
                         </SimpleField>
                     )}
                 </div>
@@ -274,7 +343,11 @@ function ReportPanel({
                     {page.valuation && (
                         <section aria-label={t("折算结果", "Valuation result")}>
                             <h3>
-                                {t("折算结果", "Valuation result")} · {page.valuation.price_date}
+                                {t("折算结果", "Valuation result")} ·{" "}
+                                {page.valuation.price_date ??
+                                    (query?.price_mode === "latest"
+                                        ? t("最新缓存报价", "Latest cached prices")
+                                        : t("历史报价", "Historical prices"))}
                             </h3>
                             {page.valuation.amount === null ? (
                                 <p role="status">
@@ -382,14 +455,31 @@ function ReportPanel({
                                                 </dd>
                                             </>
                                         )}
+                                        {row.automatic_price && (
+                                            <AutomaticPriceEvidence
+                                                quote={row.automatic_price}
+                                                t={t}
+                                                assetName={assetName}
+                                            />
+                                        )}
                                         {row.valuation_state === "missing" && (
                                             <>
                                                 <dt>{t("折算结果", "Valuation result")}</dt>
                                                 <dd>
-                                                    {t(
-                                                        "缺少所选日期的报价",
-                                                        "No price for the selected date",
-                                                    )}
+                                                    {query?.price_mode === "latest"
+                                                        ? t(
+                                                              "缺少可用的缓存报价",
+                                                              "No available cached price",
+                                                          )
+                                                        : query?.price_mode === "historical"
+                                                          ? t(
+                                                                "缺少该记录对应日期的报价",
+                                                                "No price for this record’s date",
+                                                            )
+                                                          : t(
+                                                                "缺少所选日期的报价",
+                                                                "No price for the selected date",
+                                                            )}
                                                 </dd>
                                             </>
                                         )}
@@ -425,8 +515,8 @@ function reportError(error: unknown, t: Translate, locale: Locale) {
         return t("读取失败，请重试。", "The report could not be loaded. Try again.");
     if (error instanceof ApiError && error.status === 422)
         return t(
-            "请核对主体、日期范围和报价日期。",
-            "Check the selected entities, date range and price date.",
+            "请核对主体、日期范围和报价口径。",
+            "Check the selected entities, date range and price basis.",
         );
     return businessError(error, locale);
 }

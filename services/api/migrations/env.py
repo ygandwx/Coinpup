@@ -7,6 +7,7 @@ from coinpup_api.files import resume_models  # noqa: F401
 from coinpup_api.ledger import models as ledger_models  # noqa: F401
 from coinpup_api.models import Base
 from coinpup_api.ocr import models as ocr_models  # noqa: F401
+from coinpup_api.quotes import market_models  # noqa: F401
 from coinpup_api.quotes import models as quote_models  # noqa: F401
 from coinpup_api.reminders import mail_models  # noqa: F401
 from coinpup_api.settlement import models as settlement_models  # noqa: F401

@@ -1359,6 +1359,81 @@
         "title": "AssetUpdate",
         "type": "object"
       },
+      "AutomaticPriceResponse": {
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "display_asset_id": {
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "HKD",
+              "CNY"
+            ],
+            "title": "Display Asset Id",
+            "type": "string"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "price": {
+            "maxLength": 39,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]{0,19})([.][0-9]{1,18})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "price_date": {
+            "format": "date",
+            "title": "Price Date",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "Frankfurter / ECB",
+              "Coinbase Exchange"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "asset_id",
+          "display_asset_id",
+          "price_date",
+          "price",
+          "source",
+          "observed_at",
+          "fetched_at"
+        ],
+        "title": "AutomaticPriceResponse",
+        "type": "object"
+      },
       "BalanceResponse": {
         "properties": {
           "account_archived": {
@@ -3875,7 +3950,8 @@
               "interledger_groups",
               "manual_prices",
               "reminder_email_deliveries",
-              "reminder_email_evidence"
+              "reminder_email_evidence",
+              "quote_observations"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -6848,6 +6924,86 @@
           "created_at"
         ],
         "title": "DuplicateConfirmation",
+        "type": "object"
+      },
+      "EffectivePricePage": {
+        "properties": {
+          "display_asset_id": {
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "HKD",
+              "CNY"
+            ],
+            "title": "Display Asset Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EffectivePriceResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "price_date": {
+            "format": "date",
+            "title": "Price Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "price_date",
+          "display_asset_id",
+          "items"
+        ],
+        "title": "EffectivePricePage",
+        "type": "object"
+      },
+      "EffectivePriceResponse": {
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "automatic_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutomaticPriceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManualPriceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "identity",
+              "manual",
+              "automatic",
+              "missing"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "state"
+        ],
+        "title": "EffectivePriceResponse",
         "type": "object"
       },
       "EntityCreate": {
@@ -14159,6 +14315,16 @@
             "title": "Asset Id",
             "type": "string"
           },
+          "automatic_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutomaticPriceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category_id": {
             "anyOf": [
               {
@@ -14309,9 +14475,16 @@
             "type": "integer"
           },
           "price_date": {
-            "format": "date",
-            "title": "Price Date",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Date"
           }
         },
         "required": [
@@ -14846,7 +15019,8 @@
               "interledger_groups",
               "manual_prices",
               "reminder_email_deliveries",
-              "reminder_email_evidence"
+              "reminder_email_evidence",
+              "quote_observations"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -26748,6 +26922,82 @@
         ]
       }
     },
+    "/api/v1/quotes/effective": {
+      "get": {
+        "description": "List exact-day owner prices, with explicit identity and missing states.",
+        "operationId": "read_effective_prices_api_v1_quotes_effective_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "asset_ids",
+            "required": true,
+            "schema": {
+              "items": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Asset Ids",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "display_asset_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "USD",
+                "GBP",
+                "EUR",
+                "HKD",
+                "CNY"
+              ],
+              "title": "Display Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "price_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Price Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectivePricePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Effective Prices",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/quotes/manual": {
       "get": {
         "operationId": "list_manual_prices_api_v1_quotes_manual_get",
@@ -27011,6 +27261,26 @@
                 }
               ],
               "title": "Price Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "price_mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "latest",
+                    "historical"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Price Mode"
             }
           },
           {

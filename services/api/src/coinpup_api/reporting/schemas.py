@@ -6,9 +6,10 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from coinpup_api.quotes.schemas import DisplayAsset, ManualPriceResponse
+from coinpup_api.quotes.schemas import AutomaticPriceResponse, DisplayAsset, ManualPriceResponse
 
 ReportView = Literal["balances", "cash", "operating"]
+PriceMode = Literal["latest", "historical"]
 ValuationState = Literal["not_requested", "identity", "quoted", "missing", "excluded"]
 
 
@@ -26,6 +27,7 @@ class ReportRow(BaseModel):
     excluded_repayment_group: UUID | None
     valuation_state: ValuationState
     price: ManualPriceResponse | None
+    automatic_price: AutomaticPriceResponse | None = None
 
 
 class ReportOriginal(BaseModel):
@@ -37,7 +39,7 @@ class ReportOriginal(BaseModel):
 
 class ReportValuation(BaseModel):
     display_asset_id: DisplayAsset
-    price_date: date
+    price_date: date | None
     amount: str | None
     missing_asset_ids: tuple[str, ...]
     missing_rows: int

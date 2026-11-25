@@ -30,6 +30,7 @@ def test_confirmed_revision_header_relations_and_previous_catalog_match_the_ddl(
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())
@@ -57,6 +58,7 @@ def test_document_line_ddl_matches_composite_fks_and_current_additive_catalog():
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     )
     original_fks = [
         fk for fk in table.foreign_key_constraints if fk.name != "fk_document_revision_line_source"
@@ -123,6 +125,7 @@ def test_accrual_links_have_the_frozen_scoped_journal_and_source_constraints():
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     )
     sql = str(CreateTable(table).compile(dialect=dialect()))
     assert " ".join(sql.split()) in " ".join(current["_SCHEMA_SQL"].split())

@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { api, expectNoOverflow, fictionalName, login } from "./helpers";
 import type { Account, Category, Entity } from "../src/ledger-api";
 import type { InterledgerAdvance, InterledgerRepayment } from "../src/interledger-api";
+import type { MvpReport } from "../src/valuation-api";
 
 const advances = "/api/v1/interledger/advances";
 const quotes = "/api/v1/quotes/manual";
@@ -189,4 +190,128 @@ test("consolidates selected ledgers, prices exact dates and shows the original a
     await expect(original("USD")).toContainText("Expenses 100.00 USD");
     await expect(summary).toHaveCount(1);
     await expect(summary).toContainText(beneficiary.entity.name!);
+});
+
+test("shows cached quote evidence and historical missing coverage in both languages", async ({
+    page,
+}) => {
+    await login(page);
+    const { entity } = await company(page, "cached quotes", "100", "10");
+    const crypto = await api<Account>(page, "POST", ledgerPath(entity) + "/accounts", {
+        name: fictionalName("valuation BTC wallet"),
+        kind: "cash",
+        asset_ids: ["BTC"],
+    });
+    await api(page, "POST", ledgerPath(entity) + "/opening-balances", {
+        account_id: crypto.id,
+        asset_id: "BTC",
+        amount: "0.01",
+        transaction_date: "2026-01-01",
+        description: "Fictional crypto opening",
+    });
+
+    const requestedModes: string[] = [];
+    const cachedDate = "2026-07-10";
+    const observed = cachedDate + "T09:41:12Z";
+    const fetched = cachedDate + "T10:00:00Z";
+    await page.route(
+        (url) => url.pathname === "/api/v1/reports/mvp",
+        async (route) => {
+            const request = new URL(route.request().url());
+            const mode = request.searchParams.get("price_mode");
+            if (!mode) return route.continue();
+            requestedModes.push(mode);
+            expect(request.searchParams.has("price_date")).toBe(false);
+            const response = await route.fetch();
+            expect(response.ok()).toBe(true);
+            const result = (await response.json()) as MvpReport;
+            const latest = mode === "latest";
+            const effectiveDate = latest ? cachedDate : "2026-01-01";
+            // Only the provider cache evidence is simulated. The report scope and original facts
+            // above come through the authenticated API on its disposable PostgreSQL database.
+            result.rows = result.rows.map((row) => {
+                if (row.asset_id === "USD") return row;
+                if (row.asset_id === "BTC" && !latest)
+                    return {
+                        ...row,
+                        valuation_state: "missing",
+                        price: null,
+                        automatic_price: null,
+                    };
+                const bitcoin = row.asset_id === "BTC";
+                return {
+                    ...row,
+                    valuation_state: "quoted",
+                    price: null,
+                    automatic_price: {
+                        id: bitcoin
+                            ? "00000000-0000-4000-8000-000000000010"
+                            : "00000000-0000-4000-8000-000000000011",
+                        asset_id: row.asset_id,
+                        display_asset_id: "USD",
+                        price: bitcoin ? "50000.00" : "1.250000",
+                        price_date: effectiveDate,
+                        source: bitcoin ? "Coinbase Exchange" : "Frankfurter / ECB",
+                        observed_at: bitcoin ? observed : null,
+                        fetched_at: fetched,
+                    },
+                };
+            });
+            result.valuation = {
+                display_asset_id: "USD",
+                price_date: null,
+                amount: latest ? "612.50" : null,
+                missing_asset_ids: latest ? [] : ["BTC"],
+                missing_rows: latest ? 0 : 1,
+            };
+            await route.fulfill({ response, json: result });
+        },
+    );
+
+    await page.goto(`/?entity=${entity.id}&view=valuation`);
+    const field = (name: string) => page.getByLabel(name, { exact: true });
+    const button = (name: string) => page.getByRole("button", { name, exact: true });
+    const totals = (name: string) => page.getByRole("region", { name, exact: true });
+    const details = (asset: string) =>
+        page.locator(".valuation-details details").filter({ hasText: asset });
+    await field("Value in").selectOption("USD");
+    await field("Price basis").selectOption("latest");
+    await expect(field("Price date")).toHaveCount(0);
+    await button("Run report").click();
+    await expect(totals("Valuation result")).toContainText("612.50 USD");
+    await expect(totals("Valuation result")).toContainText("Latest cached prices");
+    const euro = details("EUR");
+    await euro.locator("summary").click();
+    await expect(euro).toContainText("Frankfurter / ECB");
+    await expect(euro.locator("time")).toHaveAttribute("datetime", fetched);
+    await expect(euro.getByText("Observed time (UTC)", { exact: true })).toHaveCount(0);
+    const bitcoin = details("BTC");
+    await bitcoin.locator("summary").click();
+    await expect(bitcoin).toContainText("Coinbase Exchange");
+    await expect(bitcoin.locator("time").first()).toHaveAttribute("datetime", observed);
+    await expect(bitcoin.locator("time").last()).toHaveAttribute("datetime", fetched);
+    await expect(bitcoin).toContainText("00000000-0000-4000-8000-000000000010");
+
+    for (const width of [1440, 375, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        await button("中文").click();
+        await expect(field("报价口径")).toHaveValue("latest");
+        await expect(totals("折算结果")).toContainText("最新缓存报价");
+        await expect(bitcoin).toContainText("报价时点（UTC）");
+        await expect(euro).toContainText("获取时间（UTC）");
+        await expectNoOverflow(page);
+        await button("English").click();
+        await expect(totals("Valuation result")).toContainText("612.50 USD");
+        await expectNoOverflow(page);
+    }
+
+    await field("Price basis").selectOption("historical");
+    await field("Balance as of").fill("2026-01-01");
+    await button("Run report").click();
+    await expect(totals("Valuation result")).toContainText("Historical prices");
+    await expect(totals("Valuation result")).toContainText("BTC");
+    await expect(totals("Valuation result")).not.toContainText("EUR");
+    await details("BTC").locator("summary").click();
+    await expect(details("BTC")).toContainText("No price for this record’s date");
+    expect(requestedModes).toEqual(["latest", "historical"]);
 });

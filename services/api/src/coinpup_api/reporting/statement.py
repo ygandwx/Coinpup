@@ -1,6 +1,6 @@
 """Build a read-only report from one already authorized database snapshot."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
@@ -62,7 +62,7 @@ class ManualPrice:
 @dataclass(frozen=True, slots=True)
 class StatementRow:
     source: SourceRow
-    price: ManualPrice | None
+    price: ManualPrice | DirectQuote | None
     excluded_repayment_group: UUID | None
 
 
@@ -105,9 +105,13 @@ def build_statement(
     display: AssetDefinition | None = None,
     manual_prices: Iterable[ManualPrice] = (),
     cash_repayments: Iterable[CashRepaymentLink] = (),
+    selected_prices: Mapping[SourceReference, DirectQuote] | None = None,
 ) -> Statement:
     """Only explicit links can eliminate cash principal. Original facts remain visible."""
-    if (valuation_day is None) != (display is None) or (
+    if selected_prices is not None:
+        if display is None or valuation_day is not None or manual_prices:
+            raise ValueError("Selected prices need their display currency and one price basis.")
+    elif (valuation_day is None) != (display is None) or (
         valuation_day is not None and type(valuation_day) is not date
     ):
         raise ValueError("Supply both a valuation date and display currency, or neither.")
@@ -128,8 +132,11 @@ def build_statement(
                 raise ValueError("Manual price selection is ambiguous for that date.")
             prices[price.quote.base] = price
 
+    def selection(ref):
+        return prices.get(ref.asset) if selected_prices is None else selected_prices.get(ref)
+
     rows = tuple(
-        StatementRow(row, None if ref in exclusions else prices.get(ref.asset), exclusions.get(ref))
+        StatementRow(row, None if ref in exclusions else selection(ref), exclusions.get(ref))
         for ref, row in by_reference.items()
     )
     included = (row for row in rows if row.excluded_repayment_group is None)
@@ -138,7 +145,11 @@ def build_statement(
     valuation = valued_subtotals(
         display,
         (
-            Valuation(row.source.original, display, row.price.quote if row.price else None)
+            Valuation(
+                row.source.original,
+                display,
+                row.price.quote if isinstance(row.price, ManualPrice) else row.price,
+            )
             for row in included
         ),
     )

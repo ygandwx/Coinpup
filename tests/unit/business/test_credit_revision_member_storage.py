@@ -37,8 +37,9 @@ def test_member_ddl_catalog_and_operation_history_keys():
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     }
-    assert len(get_args(EntityType)) == 53
+    assert len(get_args(EntityType)) == 54
     table = BusinessCreditRevisionMember.__table__
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         migration["_SCHEMA_SQL"].split()
