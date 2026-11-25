@@ -36,9 +36,11 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
             "business_invoice_profiles",
             "business_invoice_reservations",
             "business_invoice_completions",
+            "interledger_settings",
+            "interledger_groups",
         }
     )
-    assert len(set(get_args(EntityType))) == 48
+    assert len(set(get_args(EntityType))) == 50
     table = BusinessCreditRevision.__table__
     original_fks = [
         fk
@@ -74,5 +76,5 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
         assert unchanged not in source
     assert "complete group validation" in migration["_GUARDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261114_0105"]
+    assert scripts.get_heads() == ["20261125_0106"]
     assert scripts.get_revision("20261106_0040").down_revision == "20261021_0039"

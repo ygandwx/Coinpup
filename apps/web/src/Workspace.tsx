@@ -30,6 +30,8 @@ import type { PendingReminderController } from "./pending-reminder";
 import type { PendingRecurringController } from "./pending-recurring";
 import type { PendingBusinessDraftController } from "./pending-business-drafts";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
+import { InterledgerPanel } from "./InterledgerPanel";
+import type { PendingInterledger } from "./pending-interledger";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
 import { OcrCopyStatus } from "./OcrCopyStatus";
@@ -81,6 +83,7 @@ type View =
     | "masters"
     | "periods"
     | "controls"
+    | "interledger"
     | "ocr"
     | "files"
     | "transactions"
@@ -97,6 +100,7 @@ const views: View[] = [
     "ocr",
     "accounts",
     "controls",
+    "interledger",
     "periods",
     "masters",
     "drafts",
@@ -345,6 +349,7 @@ export function BusinessWorkspace({
     credits,
     invoices,
     invoiceProfiles,
+    interledger,
     onUnauthorized,
 }: {
     session: Session;
@@ -364,6 +369,7 @@ export function BusinessWorkspace({
     credits: PendingBusinessCreditController;
     invoices: PendingInvoiceController;
     invoiceProfiles: PendingInvoiceProfiles;
+    interledger: PendingInterledger;
     onUnauthorized: () => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
@@ -402,6 +408,8 @@ export function BusinessWorkspace({
     const creditRecoveryLedger = creditLocked ? credit.plan?.ledgerId : undefined;
     const invoice = useSyncExternalStore(invoices.subscribe, invoices.getSnapshot);
     const profile = useSyncExternalStore(invoiceProfiles.subscribe, invoiceProfiles.getSnapshot);
+    const interledgerState = useSyncExternalStore(interledger.subscribe, interledger.getSnapshot);
+    const interledgerLocked = !["idle", "rejected", "confirmed"].includes(interledgerState.status);
     const profileLocked = !["idle", "confirmed", "rejected", "conflict"].includes(profile.status);
     const profileRecoveryLedger = profileLocked ? profile.plan?.ledgerId : undefined;
     const invoiceLocked = !["idle", "confirmed", "rejected"].includes(invoice.status);
@@ -470,7 +478,8 @@ export function BusinessWorkspace({
         creditEditing ||
         invoiceLocked ||
         invoiceEditing ||
-        profileLocked;
+        profileLocked ||
+        interledgerLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
         () => new URLSearchParams(window.location.search).get("entity") ?? "",
@@ -506,6 +515,7 @@ export function BusinessWorkspace({
         overview: t("总览", "Overview"),
         accounts: t("账户", "Accounts"),
         controls: t("往来余额", "Control balances"),
+        interledger: t("代付与偿还", "Advances and repayments"),
         periods: t("结账与重开", "Period closing"),
         masters: t("往来与项目", "Parties and projects"),
         drafts: t("经营草稿", "Business drafts"),
@@ -544,7 +554,8 @@ export function BusinessWorkspace({
             !settlementLocked &&
             !creditLocked &&
             !invoiceLocked &&
-            !profileLocked
+            !profileLocked &&
+            !interledgerLocked
         )
             return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -568,7 +579,11 @@ export function BusinessWorkspace({
         creditLocked,
         invoiceLocked,
         profileLocked,
+        interledgerLocked,
     ]);
+    useEffect(() => {
+        if (interledgerLocked) setView("interledger");
+    }, [interledgerLocked]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -977,6 +992,7 @@ export function BusinessWorkspace({
                                         overview: "◫",
                                         accounts: "▣",
                                         controls: "⇆",
+                                        interledger: "⇄",
                                         periods: "▣",
                                         masters: "◇",
                                         drafts: "▤",
@@ -1133,6 +1149,18 @@ export function BusinessWorkspace({
                         onChanged={reload}
                         onUnauthorized={onUnauthorized}
                         onEditingChange={setFinancialEditing}
+                    />
+                ) : view === "interledger" ? (
+                    <InterledgerPanel
+                        key={session.user.id}
+                        locale={locale}
+                        session={session}
+                        entities={entities}
+                        assets={assets}
+                        controller={interledger}
+                        refresh={refresh}
+                        onChanged={reload}
+                        onUnauthorized={onUnauthorized}
                     />
                 ) : loading && !entities.length ? (
                     <div className="business-panel" role="status">

@@ -220,6 +220,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interledger/advances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Advances */
+        get: operations["list_advances_api_v1_interledger_advances_get"];
+        put?: never;
+        /** Create Advance */
+        post: operations["create_advance_api_v1_interledger_advances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interledger/advances/{advance_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Advance Detail */
+        get: operations["advance_detail_api_v1_interledger_advances__advance_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interledger/advances/{advance_id}/repayments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Repayment */
+        post: operations["create_repayment_api_v1_interledger_advances__advance_id__repayments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interledger/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings */
+        get: operations["get_settings_api_v1_interledger_settings_get"];
+        /** Set Settings */
+        put: operations["set_settings_api_v1_interledger_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}": {
         parameters: {
             query?: never;
@@ -3865,7 +3935,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -5486,6 +5556,219 @@ export interface components {
             id: string;
             /** Lines */
             lines: components["schemas"]["AllocationLineCreate"][];
+        };
+        /** InterledgerAdvance */
+        InterledgerAdvance: {
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Beneficiary Ledger Id
+             * Format: uuid
+             */
+            beneficiary_ledger_id: string;
+            /**
+             * Beneficiary Operation Id
+             * Format: uuid
+             */
+            beneficiary_operation_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Expense Category Id
+             * Format: uuid
+             */
+            expense_category_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Outstanding Amount */
+            outstanding_amount: string;
+            /**
+             * Payer Account Id
+             * Format: uuid
+             */
+            payer_account_id: string;
+            /**
+             * Payer Ledger Id
+             * Format: uuid
+             */
+            payer_ledger_id: string;
+            /**
+             * Payer Operation Id
+             * Format: uuid
+             */
+            payer_operation_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** InterledgerAdvanceCreate */
+        InterledgerAdvanceCreate: {
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Beneficiary Ledger Id
+             * Format: uuid
+             */
+            beneficiary_ledger_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Expense Category Id
+             * Format: uuid
+             */
+            expense_category_id: string;
+            /**
+             * Payer Account Id
+             * Format: uuid
+             */
+            payer_account_id: string;
+            /**
+             * Payer Ledger Id
+             * Format: uuid
+             */
+            payer_ledger_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** InterledgerDetail */
+        InterledgerDetail: {
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Beneficiary Ledger Id
+             * Format: uuid
+             */
+            beneficiary_ledger_id: string;
+            /**
+             * Beneficiary Operation Id
+             * Format: uuid
+             */
+            beneficiary_operation_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Expense Category Id
+             * Format: uuid
+             */
+            expense_category_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Outstanding Amount */
+            outstanding_amount: string;
+            /**
+             * Payer Account Id
+             * Format: uuid
+             */
+            payer_account_id: string;
+            /**
+             * Payer Ledger Id
+             * Format: uuid
+             */
+            payer_ledger_id: string;
+            /**
+             * Payer Operation Id
+             * Format: uuid
+             */
+            payer_operation_id: string;
+            /** Repayments */
+            repayments: components["schemas"]["InterledgerRepayment"][];
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** InterledgerRepayment */
+        InterledgerRepayment: {
+            /**
+             * Advance Id
+             * Format: uuid
+             */
+            advance_id: string;
+            /** Amount */
+            amount: string;
+            /**
+             * Beneficiary Operation Id
+             * Format: uuid
+             */
+            beneficiary_operation_id: string;
+            /**
+             * Beneficiary Payment Account Id
+             * Format: uuid
+             */
+            beneficiary_payment_account_id: string;
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Payer Operation Id
+             * Format: uuid
+             */
+            payer_operation_id: string;
+            /**
+             * Payer Receipt Account Id
+             * Format: uuid
+             */
+            payer_receipt_account_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** InterledgerRepaymentCreate */
+        InterledgerRepaymentCreate: {
+            /** Amount */
+            amount: string;
+            /**
+             * Beneficiary Payment Account Id
+             * Format: uuid
+             */
+            beneficiary_payment_account_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Payer Receipt Account Id
+             * Format: uuid
+             */
+            payer_receipt_account_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** InterledgerSettings */
+        InterledgerSettings: {
+            /** Enabled */
+            enabled: boolean;
         };
         /** InvoiceHistoryItem */
         InvoiceHistoryItem: {
@@ -8093,6 +8376,198 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    list_advances_api_v1_interledger_advances_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerAdvance"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_advance_api_v1_interledger_advances_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterledgerAdvanceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerAdvance"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    advance_detail_api_v1_interledger_advances__advance_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                advance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_repayment_api_v1_interledger_advances__advance_id__repayments_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                advance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterledgerRepaymentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerRepayment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_api_v1_interledger_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerSettings"];
+                };
+            };
+        };
+    };
+    set_settings_api_v1_interledger_settings_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterledgerSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterledgerSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -3870,7 +3870,9 @@
               "business_document_accruals",
               "business_invoice_profiles",
               "business_invoice_reservations",
-              "business_invoice_completions"
+              "business_invoice_completions",
+              "interledger_settings",
+              "interledger_groups"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -7817,6 +7819,360 @@
           "lines"
         ],
         "title": "InitialAllocationCreate",
+        "type": "object"
+      },
+      "InterledgerAdvance": {
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "beneficiary_ledger_id": {
+            "format": "uuid",
+            "title": "Beneficiary Ledger Id",
+            "type": "string"
+          },
+          "beneficiary_operation_id": {
+            "format": "uuid",
+            "title": "Beneficiary Operation Id",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "expense_category_id": {
+            "format": "uuid",
+            "title": "Expense Category Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outstanding_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Outstanding Amount",
+            "type": "string"
+          },
+          "payer_account_id": {
+            "format": "uuid",
+            "title": "Payer Account Id",
+            "type": "string"
+          },
+          "payer_ledger_id": {
+            "format": "uuid",
+            "title": "Payer Ledger Id",
+            "type": "string"
+          },
+          "payer_operation_id": {
+            "format": "uuid",
+            "title": "Payer Operation Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "transaction_date",
+          "description",
+          "payer_operation_id",
+          "beneficiary_operation_id",
+          "payer_ledger_id",
+          "beneficiary_ledger_id",
+          "payer_account_id",
+          "expense_category_id",
+          "asset_id",
+          "outstanding_amount"
+        ],
+        "title": "InterledgerAdvance",
+        "type": "object"
+      },
+      "InterledgerAdvanceCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "beneficiary_ledger_id": {
+            "format": "uuid",
+            "title": "Beneficiary Ledger Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "expense_category_id": {
+            "format": "uuid",
+            "title": "Expense Category Id",
+            "type": "string"
+          },
+          "payer_account_id": {
+            "format": "uuid",
+            "title": "Payer Account Id",
+            "type": "string"
+          },
+          "payer_ledger_id": {
+            "format": "uuid",
+            "title": "Payer Ledger Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "transaction_date",
+          "payer_ledger_id",
+          "beneficiary_ledger_id",
+          "payer_account_id",
+          "expense_category_id",
+          "asset_id"
+        ],
+        "title": "InterledgerAdvanceCreate",
+        "type": "object"
+      },
+      "InterledgerDetail": {
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "beneficiary_ledger_id": {
+            "format": "uuid",
+            "title": "Beneficiary Ledger Id",
+            "type": "string"
+          },
+          "beneficiary_operation_id": {
+            "format": "uuid",
+            "title": "Beneficiary Operation Id",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "expense_category_id": {
+            "format": "uuid",
+            "title": "Expense Category Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outstanding_amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Outstanding Amount",
+            "type": "string"
+          },
+          "payer_account_id": {
+            "format": "uuid",
+            "title": "Payer Account Id",
+            "type": "string"
+          },
+          "payer_ledger_id": {
+            "format": "uuid",
+            "title": "Payer Ledger Id",
+            "type": "string"
+          },
+          "payer_operation_id": {
+            "format": "uuid",
+            "title": "Payer Operation Id",
+            "type": "string"
+          },
+          "repayments": {
+            "items": {
+              "$ref": "#/components/schemas/InterledgerRepayment"
+            },
+            "title": "Repayments",
+            "type": "array"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "transaction_date",
+          "description",
+          "payer_operation_id",
+          "beneficiary_operation_id",
+          "payer_ledger_id",
+          "beneficiary_ledger_id",
+          "payer_account_id",
+          "expense_category_id",
+          "asset_id",
+          "outstanding_amount",
+          "repayments"
+        ],
+        "title": "InterledgerDetail",
+        "type": "object"
+      },
+      "InterledgerRepayment": {
+        "properties": {
+          "advance_id": {
+            "format": "uuid",
+            "title": "Advance Id",
+            "type": "string"
+          },
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "beneficiary_operation_id": {
+            "format": "uuid",
+            "title": "Beneficiary Operation Id",
+            "type": "string"
+          },
+          "beneficiary_payment_account_id": {
+            "format": "uuid",
+            "title": "Beneficiary Payment Account Id",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payer_operation_id": {
+            "format": "uuid",
+            "title": "Payer Operation Id",
+            "type": "string"
+          },
+          "payer_receipt_account_id": {
+            "format": "uuid",
+            "title": "Payer Receipt Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "transaction_date",
+          "description",
+          "payer_operation_id",
+          "beneficiary_operation_id",
+          "advance_id",
+          "beneficiary_payment_account_id",
+          "payer_receipt_account_id"
+        ],
+        "title": "InterledgerRepayment",
+        "type": "object"
+      },
+      "InterledgerRepaymentCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "beneficiary_payment_account_id": {
+            "format": "uuid",
+            "title": "Beneficiary Payment Account Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "payer_receipt_account_id": {
+            "format": "uuid",
+            "title": "Payer Receipt Account Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "transaction_date",
+          "beneficiary_payment_account_id",
+          "payer_receipt_account_id"
+        ],
+        "title": "InterledgerRepaymentCreate",
+        "type": "object"
+      },
+      "InterledgerSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "InterledgerSettings",
         "type": "object"
       },
       "InvoiceHistoryItem": {
@@ -13767,6 +14123,338 @@
         "summary": "Readiness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/interledger/advances": {
+      "get": {
+        "operationId": "list_advances_api_v1_interledger_advances_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InterledgerAdvance"
+                  },
+                  "title": "Response List Advances Api V1 Interledger Advances Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Advances",
+        "tags": [
+          "interledger"
+        ]
+      },
+      "post": {
+        "operationId": "create_advance_api_v1_interledger_advances_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterledgerAdvanceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterledgerAdvance"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Advance",
+        "tags": [
+          "interledger"
+        ]
+      }
+    },
+    "/api/v1/interledger/advances/{advance_id}": {
+      "get": {
+        "operationId": "advance_detail_api_v1_interledger_advances__advance_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "advance_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Advance Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterledgerDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Advance Detail",
+        "tags": [
+          "interledger"
+        ]
+      }
+    },
+    "/api/v1/interledger/advances/{advance_id}/repayments": {
+      "post": {
+        "operationId": "create_repayment_api_v1_interledger_advances__advance_id__repayments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "advance_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Advance Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterledgerRepaymentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterledgerRepayment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Repayment",
+        "tags": [
+          "interledger"
+        ]
+      }
+    },
+    "/api/v1/interledger/settings": {
+      "get": {
+        "operationId": "get_settings_api_v1_interledger_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterledgerSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Settings",
+        "tags": [
+          "interledger"
+        ]
+      },
+      "put": {
+        "operationId": "set_settings_api_v1_interledger_settings_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterledgerSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterledgerSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Settings",
+        "tags": [
+          "interledger"
         ]
       }
     },

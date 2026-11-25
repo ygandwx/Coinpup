@@ -36,6 +36,7 @@ from coinpup_api.ocr.draft_reads import create_draft_router
 from coinpup_api.ocr.review_router import create_review_router
 from coinpup_api.ocr.router import create_ocr_router
 from coinpup_api.reminders.router import create_reminder_router
+from coinpup_api.settlement.router import create_interledger_router
 from coinpup_api.sync.router import create_sync_router
 
 logger = logging.getLogger("coinpup")
@@ -136,6 +137,7 @@ def create_app(
     app.include_router(create_posting_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_period_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_control_router(settings, getattr(probe, "engine", None)))
+    app.include_router(create_interledger_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_document_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_sync_router(settings, getattr(probe, "engine", None)))
     app.include_router(create_draft_router(settings, getattr(probe, "engine", None)))

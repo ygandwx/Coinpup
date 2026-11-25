@@ -479,6 +479,16 @@
 .form-panel {
     max-width: 950px;
 }
+.interledger-panel fieldset {
+    min-width: 0;
+    border: 0;
+    margin: 12px 0 0;
+    padding: 0;
+}
+.interledger-panel li,
+.interledger-panel code {
+    overflow-wrap: anywhere;
+}
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -14,18 +14,20 @@ export type VersionedSnapshot<P, R> = Readonly<{
     record: R | null;
     error: ApiError | null;
 }>;
-export type MasterPolicy<P, R> = {
+type ReplyPolicy<P, R> = {
     send: (s: Session, p: P) => Promise<unknown>;
-    read: (p: P) => Promise<unknown>;
-    create: (p: P) => boolean;
     scoped: (v: unknown, p: P) => v is R;
     matches: (v: R, p: P) => boolean;
     capture: (v: R) => R;
 };
+export type MasterPolicy<P, R> = ReplyPolicy<P, R> & {
+    read: (p: P) => Promise<unknown>;
+    create: (p: P) => boolean;
+};
 const terminal = ["idle", "confirmed", "conflict", "rejected"];
 const idle = <P, R>(): VersionedSnapshot<P, R> =>
     Object.freeze({ status: "idle", plan: null, record: null, error: null });
-export class VersionedMasterController<P extends MasterIdentity, R extends { version: number }> {
+export class VersionedMasterController<P extends MasterIdentity, R extends object> {
     private owner: string | null = null;
     private state: VersionedSnapshot<P, R> = idle();
     private visible = this.state;
@@ -33,8 +35,8 @@ export class VersionedMasterController<P extends MasterIdentity, R extends { ver
     private uncertain = false;
     private flight: Promise<void> | null = null;
     private listeners = new Set<() => void>();
-    private policy: MasterPolicy<P, R>;
-    constructor(policy: MasterPolicy<P, R>) {
+    private policy: ReplyPolicy<P, R> | MasterPolicy<P, R>;
+    constructor(policy: ReplyPolicy<P, R> | MasterPolicy<P, R>) {
         this.policy = policy;
     }
     getSnapshot = (): VersionedSnapshot<P, R> => this.visible;
@@ -130,7 +132,8 @@ export class VersionedMasterController<P extends MasterIdentity, R extends { ver
     }
     private send(session: Session): Promise<void> {
         const generation = this.generation,
-            plan = this.state.plan!;
+            plan = this.state.plan!,
+            policy = this.policy;
         const flight = Promise.resolve().then(async () => {
             try {
                 if (generation !== this.generation) return;
@@ -138,15 +141,15 @@ export class VersionedMasterController<P extends MasterIdentity, R extends { ver
                     this.publish({ ...this.state, status: "auth-required" });
                     return;
                 }
-                const value = await this.policy.send(session, plan);
+                const value = await policy.send(session, plan);
                 if (generation !== this.generation) return;
-                if (!this.policy.scoped(value, plan) || !this.policy.matches(value, plan))
+                if (!policy.scoped(value, plan) || !policy.matches(value, plan))
                     throw new ApiError("server", 200, "invalid_response");
                 this.uncertain = false;
                 this.publish({
                     ...this.state,
                     status: "confirmed",
-                    record: this.policy.capture(value),
+                    record: policy.capture(value),
                 });
             } catch (caught) {
                 if (generation !== this.generation) return;
@@ -155,23 +158,26 @@ export class VersionedMasterController<P extends MasterIdentity, R extends { ver
                 let record: R | null = null;
                 if (error.kind === "unauthorized") status = "auth-required";
                 else if (
+                    "read" in policy &&
                     error.status === 409 &&
-                    ((this.policy.create(plan) && error.code === "duplicate_record") ||
-                        (!this.policy.create(plan) && error.code === "version_conflict"))
+                    ((policy.create(plan) && error.code === "duplicate_record") ||
+                        (!policy.create(plan) && error.code === "version_conflict"))
                 ) {
                     try {
-                        const current = await this.policy.read(plan);
+                        const current = await policy.read(plan);
                         if (generation !== this.generation) return;
-                        if (!this.policy.scoped(current, plan))
+                        if (!policy.scoped(current, plan))
                             throw new ApiError("server", 200, "invalid_response");
-                        if (this.policy.create(plan))
-                            status = this.policy.matches(current, plan) ? "confirmed" : "conflict";
+                        if (policy.create(plan))
+                            status = policy.matches(current, plan) ? "confirmed" : "conflict";
                         else if (
                             !this.uncertain ||
-                            current.version > JSON.parse(plan.bodyJson).expected_version
+                            ("version" in current &&
+                                typeof current.version === "number" &&
+                                current.version > JSON.parse(plan.bodyJson).expected_version)
                         )
                             status = "conflict";
-                        if (status !== "unknown") record = this.policy.capture(current);
+                        if (status !== "unknown") record = policy.capture(current);
                     } catch (readError) {
                         if (generation !== this.generation) return;
                         error = readError instanceof ApiError ? readError : new ApiError("network");
