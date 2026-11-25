@@ -43,11 +43,18 @@ const serverConflict = MobileDraft(
 
 class FixtureAdapter implements MobileAdapter {
   final entries = <MobileEntry>[];
+  final readOnlyPostings = <MobileReadOnlyPosting>[];
+  final detachedReceipts = <DetachedReceipt>[];
   final conflicts = <MobileConflict>[];
   Uri? signedInto;
   MobileDraft? savedDraft;
+  String? receiptPath;
+  final releaseRequests = <String>[];
+  bool leaveReleasePending = false;
   ConflictChoice? choice;
   bool signedIn = false;
+  @override
+  bool cameraRecoveryFailed = false;
   int offset = 0;
 
   MobileSnapshot get snapshot => MobileSnapshot(
@@ -55,9 +62,35 @@ class FixtureAdapter implements MobileAdapter {
     ledgers: const [alpha, beta],
     assets: const [usd],
     entries: List.of(entries),
+    readOnlyPostings: List.of(readOnlyPostings),
+    detachedReceipts: List.of(detachedReceipts),
     conflicts: List.of(conflicts),
     pendingCount: entries.length,
     syncStatus: SyncStatus.offline,
+    quotes: const [
+      MobileQuote(
+        assetId: 'USDT:fictional',
+        displayAssetId: 'USD',
+        priceDate: '2026-11-20',
+        observedAt: '2026-11-20T08:09:10Z',
+        cachedAt: '2026-11-20T08:12:13Z',
+        price: '0.990000000000000001',
+        source: 'Fictional manual source',
+      ),
+      MobileQuote(
+        assetId: 'EUR',
+        displayAssetId: 'USD',
+        priceDate: '2026-11-20',
+      ),
+      MobileQuote(
+        assetId: 'GBP',
+        displayAssetId: 'USD',
+        priceDate: '2026-11-20',
+        price: '1.2',
+        cachedAt: '2026-11-20T08:25:30Z',
+        source: 'Fictional date-only source',
+      ),
+    ],
   );
 
   @override
@@ -90,6 +123,8 @@ class FixtureAdapter implements MobileAdapter {
       lifecycle: EntryLifecycle.queued,
       canEdit: true,
       canDelete: true,
+      canAttachPhoto: true,
+      attachments: previous?.attachments ?? [],
     );
     if (previous != null) entries.removeWhere((item) => item.id == previous.id);
     entries.add(row);
@@ -99,6 +134,82 @@ class FixtureAdapter implements MobileAdapter {
   @override
   Future<MobileSnapshot> delete(MobileEntry entry) async {
     entries.removeWhere((item) => item.id == entry.id);
+    return snapshot;
+  }
+
+  @override
+  Future<MobileSnapshot> capturePhoto(
+    MobileEntry entry,
+    CaptureReceipt capture,
+  ) async {
+    final temporaryPath = await capture();
+    if (temporaryPath == null) return snapshot;
+    receiptPath = temporaryPath;
+    return _withAttachments(entry, [
+      ...entry.attachments,
+      const MobileAttachment('photo-1', 'receipt.jpg', AttachmentState.queued),
+    ]);
+  }
+
+  @override
+  Future<MobileSnapshot> releasePhoto(
+    String ledger,
+    String operation,
+    String uploadId,
+  ) async {
+    final entry = entries
+        .where((item) => item.ledgerId == ledger && item.id == operation)
+        .firstOrNull;
+    releaseRequests.add(uploadId);
+    if (entry == null) {
+      final index = detachedReceipts.indexWhere(
+        (row) =>
+            row.ledgerId == ledger &&
+            row.operationId == operation &&
+            row.attachment.id == uploadId,
+      );
+      final row = detachedReceipts[index];
+      detachedReceipts[index] = (
+        ledgerId: row.ledgerId,
+        operationId: row.operationId,
+        attachment: MobileAttachment(
+          uploadId,
+          row.attachment.filename,
+          AttachmentState.released,
+        ),
+      );
+      return snapshot;
+    }
+    return _withAttachments(entry, [
+      for (final photo in entry.attachments)
+        if (photo.id == uploadId)
+          MobileAttachment(
+            photo.id,
+            photo.filename,
+            leaveReleasePending
+                ? AttachmentState.releasing
+                : AttachmentState.released,
+          )
+        else
+          photo,
+    ]);
+  }
+
+  MobileSnapshot _withAttachments(
+    MobileEntry entry,
+    List<MobileAttachment> photos,
+  ) {
+    final index = entries.indexWhere((item) => item.id == entry.id);
+    entries[index] = MobileEntry(
+      id: entry.id,
+      version: entry.version,
+      draft: entry.draft,
+      lifecycle: entry.lifecycle,
+      canEdit: entry.canEdit,
+      canDelete: entry.canDelete,
+      canAttachPhoto: entry.canAttachPhoto,
+      attachments: photos,
+    );
     return snapshot;
   }
 
@@ -146,12 +257,134 @@ void main() {
       tester.view.resetDevicePixelRatio();
       tester.binding.platformDispatcher.clearLocaleTestValue();
     });
-    await tester.pumpWidget(CoinpupApp(adapter: fixture));
+    await tester.pumpWidget(
+      CoinpupApp(
+        adapter: fixture,
+        captureReceipt: () async => '/fixture/receipt.jpg',
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
+  testWidgets('unmatched camera recovery asks for a retake in both languages', (
+    tester,
+  ) async {
+    final fixture = FixtureAdapter()..cameraRecoveryFailed = true;
+    await start(tester, fixture);
+    expect(find.byKey(const ValueKey('sign-in')), findsOneWidget);
+    expect(find.textContaining('Open the intended entry'), findsOneWidget);
+    await tap(tester, key('app-language'));
+    expect(find.textContaining('请打开对应的记录重新拍摄'), findsOneWidget);
+    expect(fixture.receiptPath, isNull);
+  });
+
+  testWidgets('release confirms one named receipt and hides sealed controls', (
+    tester,
+  ) async {
+    final fixture = FixtureAdapter()..signedIn = true;
+    fixture.entries.add(
+      const MobileEntry(
+        id: 'one-entry',
+        version: 1,
+        draft: localConflict,
+        lifecycle: EntryLifecycle.posted,
+        attachments: [
+          MobileAttachment(
+            'one',
+            'fictional-first.jpg',
+            AttachmentState.failed,
+          ),
+          MobileAttachment(
+            'two',
+            'fictional-second.jpg',
+            AttachmentState.queued,
+          ),
+          MobileAttachment(
+            'sealed',
+            'fictional-sealed.jpg',
+            AttachmentState.uploaded,
+          ),
+        ],
+      ),
+    );
+    await start(tester, fixture);
+    await tap(tester, find.text('12.30 USD'));
+
+    Finder action(String id, String label) =>
+        find.descendant(of: key('receipt-$id'), matching: find.text(label));
+
+    expect(action('sealed', 'Release upload'), findsNothing);
+    await tap(tester, action('one', 'Release upload'));
+    expect(
+      find.text('Release upload for fictional-first.jpg?'),
+      findsOneWidget,
+    );
+    await tap(tester, find.text('Back'));
+    expect(fixture.releaseRequests, isEmpty);
+
+    await tap(tester, key('app-language'));
+    fixture.leaveReleasePending = true;
+    await tap(tester, action('one', '释放上传'));
+    expect(find.text('票据原件将保留在此设备上。'), findsOneWidget);
+    await tap(tester, find.widgetWithText(FilledButton, '释放上传'));
+    expect(fixture.releaseRequests, ['one']);
+    expect(action('one', '等待释放上传。请在联网后重试。'), findsOneWidget);
+
+    fixture.leaveReleasePending = false;
+    await tap(tester, action('one', '重试释放'));
+    await tap(tester, find.widgetWithText(FilledButton, '释放上传'));
+    expect(fixture.releaseRequests, ['one', 'one']);
+    expect(action('one', '上传已释放。原件已保留在此设备上。'), findsOneWidget);
+    expect(action('one', '释放上传'), findsNothing);
+    expect(action('two', '释放上传'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a hidden entry still exposes its own queued receipt release', (
+    tester,
+  ) async {
+    final fixture = FixtureAdapter()..signedIn = true;
+    fixture.detachedReceipts.addAll(const [
+      (
+        ledgerId: 'alpha',
+        operationId: 'canceled',
+        attachment: MobileAttachment(
+          'detached',
+          'fictional-detached.jpg',
+          AttachmentState.uploading,
+        ),
+      ),
+      (
+        ledgerId: 'beta',
+        operationId: 'another',
+        attachment: MobileAttachment(
+          'another',
+          'fictional-other-ledger.jpg',
+          AttachmentState.queued,
+        ),
+      ),
+    ]);
+    await start(tester, fixture);
+    expect(key('entry-canceled'), findsNothing);
+    expect(find.text('fictional-other-ledger.jpg'), findsNothing);
+    expect(find.text('Receipts outside current entries'), findsOneWidget);
+    await tap(tester, find.text('Release upload'));
+    expect(
+      find.text('Release upload for fictional-detached.jpg?'),
+      findsOneWidget,
+    );
+    await tap(tester, find.widgetWithText(FilledButton, 'Release upload'));
+    expect(fixture.releaseRequests, ['detached']);
+    expect(
+      find.text('Upload released. Original kept on this device.'),
+      findsOneWidget,
+    );
+    expect(find.text('Release upload'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'sign in, switch language in a draft, edit and remove an offline entry',
+    'sign in, switch language in a draft, attach and remove an offline entry',
     (tester) async {
       final fixture = FixtureAdapter();
       await start(tester, fixture);
@@ -198,6 +431,9 @@ void main() {
 
       await tap(tester, key('app-language'));
       await tap(tester, find.text('12.30 USD'));
+      await tap(tester, find.text('Photograph receipt'));
+      expect(fixture.receiptPath, '/fixture/receipt.jpg');
+      expect(find.text('Receipt queued'), findsOneWidget);
       await tap(tester, find.text('Edit entry'));
       await tester.enterText(key('entry-amount'), '12.40');
       await tester.scrollUntilVisible(
@@ -229,8 +465,108 @@ void main() {
     },
   );
 
+  testWidgets('read-only posting details retain both legs at phone width', (
+    tester,
+  ) async {
+    final fixture = FixtureAdapter()..signedIn = true;
+    fixture.readOnlyPostings.addAll(const [
+      MobileReadOnlyPosting(
+        id: 'opening',
+        ledgerId: 'alpha',
+        kind: ReadOnlyPostingKind.opening,
+        primary: (accountId: 'bank', assetId: 'USD', amount: '-25.00'),
+        date: '2026-11-20',
+        recognitionDate: '2026-11-20',
+        description: 'Fictional opening balance',
+      ),
+      MobileReadOnlyPosting(
+        id: 'transfer',
+        ledgerId: 'alpha',
+        kind: ReadOnlyPostingKind.transfer,
+        primary: (accountId: 'bank', assetId: 'USD', amount: '31.01'),
+        destination: (accountId: 'old-bank', assetId: 'USD', amount: '31.01'),
+        date: '2026-11-21',
+        recognitionDate: '2026-11-21',
+        description: '',
+      ),
+      MobileReadOnlyPosting(
+        id: 'fx',
+        ledgerId: 'alpha',
+        kind: ReadOnlyPostingKind.exchange,
+        primary: (
+          accountId: 'bank',
+          assetId: 'token:chain-a:FictionalUnit',
+          amount: '1.000000000000000001',
+        ),
+        destination: (
+          accountId: 'bank',
+          assetId: 'token:chain-b:FictionalUnit',
+          amount: '0.999999999999999998',
+        ),
+        date: '2026-11-22',
+        recognitionDate: '2026-11-23',
+        description: '',
+        fees: [
+          (
+            quantity: (accountId: 'old-bank', assetId: 'USD', amount: '0.01'),
+            categoryId: 'supplies',
+          ),
+        ],
+      ),
+    ]);
+    await start(tester, fixture);
+    expect(find.text('Working offline'), findsOneWidget);
+    final fx = key('read-only-posting-fx');
+    await tap(tester, find.text('Currency exchange'));
+    expect(
+      find.text('Sent 1.000000000000000001 token:chain-a:FictionalUnit'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Received 0.999999999999999998 token:chain-b:FictionalUnit'),
+      findsOneWidget,
+    );
+    expect(find.text('Recognition date 2026-11-23'), findsOneWidget);
+    expect(
+      find.text('Fee 0.01 USD · Fictional older bank · Fictional supplies'),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: fx, matching: find.byType(TextButton)),
+      findsNothing,
+    );
+    await tap(tester, key('app-language'));
+    expect(find.text('换汇'), findsOneWidget);
+    expect(
+      find.text('转出 1.000000000000000001 token:chain-a:FictionalUnit'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('转入 0.999999999999999998 token:chain-b:FictionalUnit'),
+      findsOneWidget,
+    );
+    expect(find.text('仅供查看'), findsOneWidget);
+    await tap(tester, find.text('换汇'));
+    await tap(tester, find.text('转账'));
+    expect(find.text('转出 31.01 USD'), findsOneWidget);
+    expect(find.text('转入 31.01 USD'), findsOneWidget);
+    expect(find.text('转入账户 Fictional older bank'), findsOneWidget);
+    await tap(tester, find.text('转账'));
+    await tap(tester, find.text('期初余额'));
+    expect(find.text('-25.00 USD'), findsOneWidget);
+    expect(find.text('账户 Fictional bank'), findsOneWidget);
+    expect(find.text('取消记录'), findsNothing);
+    expect(find.text('编辑记录'), findsNothing);
+    expect(find.text('拍摄票据'), findsNothing);
+    await tap(tester, key('ledger'));
+    await tap(tester, find.text('Fictional Beta').last);
+    expect(find.text('此账本暂无记录。'), findsOneWidget);
+    expect(find.text('期初余额'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'a conflict keeps both sides and a deletion cannot be resurrected',
+    'quotes and exact source time are visible and a deletion cannot be resurrected',
     (tester) async {
       final fixture = FixtureAdapter()..signedIn = true;
       fixture.conflicts.addAll(const [
@@ -255,6 +591,19 @@ void main() {
         ),
       ]);
       await start(tester, fixture);
+      await tap(tester, find.text('Quotes'));
+      expect(find.text('0.990000000000000001'), findsOneWidget);
+      expect(find.text('Observed at 2026-11-20T08:09:10Z'), findsOneWidget);
+      expect(find.text('Price unavailable'), findsOneWidget);
+      expect(find.text('Cached at 2026-11-20T08:12:13Z'), findsOneWidget);
+      expect(find.text('Cached at 2026-11-20T08:25:30Z'), findsOneWidget);
+      expect(find.text('Observed at 2026-11-20T08:25:30Z'), findsNothing);
+      await tap(tester, key('app-language'));
+      expect(find.text('观察时间 2026-11-20T08:09:10Z'), findsOneWidget);
+      expect(find.text('缓存时间 2026-11-20T08:12:13Z'), findsOneWidget);
+      expect(find.text('缓存时间 2026-11-20T08:25:30Z'), findsOneWidget);
+      expect(find.text('观察时间 2026-11-20T08:25:30Z'), findsNothing);
+      await tap(tester, key('app-language'));
       await tap(tester, find.text('Sync'));
       await tap(tester, key('sync-now'));
       await tap(tester, key('conflict-live'));

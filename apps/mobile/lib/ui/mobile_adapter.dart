@@ -1,6 +1,10 @@
+typedef CaptureReceipt = Future<String?> Function();
+
 /// Copy-safe data for the active server and owner on this device.
 abstract interface class MobileAdapter {
   Future<MobileSnapshot?> restore();
+
+  bool get cameraRecoveryFailed;
 
   Future<MobileSnapshot> signIn(Uri server, String username, String password);
 
@@ -10,6 +14,18 @@ abstract interface class MobileAdapter {
 
   Future<MobileSnapshot> delete(MobileEntry entry);
 
+  /// Record the selected entry before opening the native camera.
+  Future<MobileSnapshot> capturePhoto(
+    MobileEntry entry,
+    CaptureReceipt capture,
+  );
+
+  Future<MobileSnapshot> releasePhoto(
+    String ledger,
+    String operation,
+    String uploadId,
+  );
+
   Future<MobileSnapshot> synchronize();
 
   Future<MobileSnapshot> resolveConflict(String id, ConflictChoice choice);
@@ -17,7 +33,18 @@ abstract interface class MobileAdapter {
 
 enum EntryKind { income, expense }
 
+enum ReadOnlyPostingKind { opening, transfer, exchange }
+
 enum EntryLifecycle { queued, posted, conflict }
+
+enum AttachmentState {
+  queued,
+  uploading,
+  uploaded,
+  failed,
+  releasing,
+  released,
+}
 
 enum SyncStatus {
   ready,
@@ -35,6 +62,9 @@ enum MobileErrorCode {
   signIn,
   serverAddress,
   operation,
+  photo,
+  photoRecovery,
+  photoRelease,
   sync,
   conflict,
 }
@@ -122,7 +152,13 @@ final class MobileDraft {
   final String description;
 }
 
-final class MobileEntry {
+sealed class MobileRecord {
+  String get id;
+  String get ledgerId;
+  String get date;
+}
+
+final class MobileEntry implements MobileRecord {
   const MobileEntry({
     required this.id,
     required this.version,
@@ -130,18 +166,75 @@ final class MobileEntry {
     required this.lifecycle,
     this.canEdit = false,
     this.canDelete = false,
+    this.canAttachPhoto = false,
+    this.attachments = const [],
   });
 
+  @override
   final String id;
   final int version;
   final MobileDraft draft;
   final EntryLifecycle lifecycle;
   final bool canEdit;
   final bool canDelete;
+  final bool canAttachPhoto;
+  final List<MobileAttachment> attachments;
 
+  @override
   String get ledgerId => draft.ledgerId;
 
+  @override
   String get date => draft.date;
+}
+
+final class MobileAttachment {
+  const MobileAttachment(this.id, this.filename, this.state);
+
+  final String id;
+  final String filename;
+  final AttachmentState state;
+
+  bool get canRelease =>
+      state != AttachmentState.uploaded && state != AttachmentState.released;
+}
+
+typedef DetachedReceipt = ({
+  String ledgerId,
+  String operationId,
+  MobileAttachment attachment,
+});
+
+typedef MobilePostingAmount = ({
+  String accountId,
+  String assetId,
+  String amount,
+});
+
+final class MobileReadOnlyPosting implements MobileRecord {
+  const MobileReadOnlyPosting({
+    required this.id,
+    required this.ledgerId,
+    required this.kind,
+    required this.primary,
+    this.destination,
+    required this.date,
+    required this.recognitionDate,
+    required this.description,
+    this.fees = const [],
+  });
+
+  @override
+  final String id;
+  @override
+  final String ledgerId;
+  final ReadOnlyPostingKind kind;
+  final MobilePostingAmount primary;
+  final MobilePostingAmount? destination;
+  @override
+  final String date;
+  final String recognitionDate;
+  final String description;
+  final List<({MobilePostingAmount quantity, String categoryId})> fees;
 }
 
 final class MobileConflict {
@@ -172,12 +265,35 @@ final class MobileConflict {
   final bool canKeepLocal;
 }
 
+final class MobileQuote {
+  const MobileQuote({
+    required this.assetId,
+    required this.displayAssetId,
+    required this.priceDate,
+    this.price,
+    this.source,
+    this.observedAt,
+    this.cachedAt,
+  });
+
+  final String assetId;
+  final String displayAssetId;
+  final String priceDate;
+  final String? price;
+  final String? source;
+  final String? observedAt;
+  final String? cachedAt;
+}
+
 final class MobileSnapshot {
   const MobileSnapshot({
     required this.ownerLabel,
     this.ledgers = const [],
     this.assets = const [],
     this.entries = const [],
+    this.readOnlyPostings = const [],
+    this.detachedReceipts = const [],
+    this.quotes = const [],
     this.conflicts = const [],
     this.syncStatus = SyncStatus.ready,
     this.pendingCount = 0,
@@ -188,6 +304,9 @@ final class MobileSnapshot {
   final List<MobileLedger> ledgers;
   final List<MobileAsset> assets;
   final List<MobileEntry> entries;
+  final List<MobileReadOnlyPosting> readOnlyPostings;
+  final List<DetachedReceipt> detachedReceipts;
+  final List<MobileQuote> quotes;
   final List<MobileConflict> conflicts;
   final SyncStatus syncStatus;
   final int pendingCount;

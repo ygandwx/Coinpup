@@ -114,6 +114,16 @@ final class OfflineStore {
 
   Future<void> close() => _db.close();
 
+  Future<String?> record(String namespace, String id) async {
+    final rows = await _db.query(
+      'workspace',
+      columns: ['body_json'],
+      where: '$_workspace AND id = ?',
+      whereArgs: [...scope.keys, namespace, id],
+    );
+    return rows.firstOrNull?['body_json'] as String?;
+  }
+
   Future<Map<String, String>> records(String namespace) async {
     final rows = await _db.query(
       'workspace',

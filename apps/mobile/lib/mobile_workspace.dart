@@ -47,6 +47,60 @@ bool isSimplePosting(Json posting) =>
     readRows(posting['fees'] ?? []).isEmpty &&
     posting['transaction_date'] == posting['recognition_date'];
 
+MobilePostingAmount _postingAmount(Json posting, {String leg = ''}) => (
+  accountId: posting['${leg}account_id'] as String,
+  assetId: posting['${leg}asset_id'] as String,
+  amount: posting['${leg}amount'] as String,
+);
+
+MobileReadOnlyPosting? _readOnlyPosting(CachedOperation cached, Json posting) {
+  final kind = switch (posting['kind']) {
+    'opening' => ReadOnlyPostingKind.opening,
+    'transfer' => ReadOnlyPostingKind.transfer,
+    'exchange' => ReadOnlyPostingKind.exchange,
+    _ => null,
+  };
+  if (kind == null) return null;
+  // A transfer carries a single quantity for both accounts. Each FX leg carries its own.
+  final primary = switch (kind) {
+    ReadOnlyPostingKind.opening => _postingAmount(posting),
+    ReadOnlyPostingKind.transfer => (
+      accountId: posting['source_account_id'] as String,
+      assetId: posting['asset_id'] as String,
+      amount: posting['amount'] as String,
+    ),
+    ReadOnlyPostingKind.exchange => _postingAmount(posting, leg: 'source_'),
+  };
+  return MobileReadOnlyPosting(
+    id: cached.id,
+    ledgerId: cached.ledgerId,
+    kind: kind,
+    primary: primary,
+    destination: switch (kind) {
+      ReadOnlyPostingKind.opening => null,
+      ReadOnlyPostingKind.transfer => (
+        accountId: posting['destination_account_id'] as String,
+        assetId: primary.assetId,
+        amount: primary.amount,
+      ),
+      ReadOnlyPostingKind.exchange => _postingAmount(
+        posting,
+        leg: 'destination_',
+      ),
+    },
+    date: posting['transaction_date'] as String,
+    recognitionDate: posting['recognition_date'] as String,
+    description: posting['description'] as String,
+    fees: [
+      for (final fee in readRows(posting['fees'] ?? []))
+        (
+          quantity: _postingAmount(fee),
+          categoryId: fee['category_id'] as String,
+        ),
+    ],
+  );
+}
+
 MobileDraft? draftFromHistory(String ledger, EntryKind kind, Json history) {
   if (history['action'] == 'cancel') return null;
   for (final journal in readRows(history['journals'])) {
@@ -83,7 +137,7 @@ final class MobileWorkspace {
 
   final OfflineStore store;
 
-  Future<void> refresh(MobileHttp http) async {
+  Future<void> refresh(MobileHttp http, DateTime now) async {
     const archived = {'include_archived': 'true'};
     final assets = await http.list('/assets');
     final entities = await http.list('/entities', filters: archived);
@@ -107,11 +161,107 @@ final class MobileWorkspace {
         'categories': categories,
       });
     }
+    final date = now.toUtc().toIso8601String().substring(0, 10);
+    final quotes = <Json>[];
+    final displayAssets = ledgers
+        .map((ledger) => ledger['base_asset_id'] as String)
+        .toSet();
+    for (final display in displayAssets) {
+      final ids = [
+        for (final asset in assets)
+          if (asset['enabled'] == true && asset['asset_id'] != display)
+            asset['asset_id'] as String,
+      ];
+      quotes.addAll(
+        await _readQuotes(
+          http,
+          ids,
+          display,
+          date,
+          now.toUtc().toIso8601String(),
+        ),
+      );
+    }
     await store.put(
       'sync',
       'catalog',
-      jsonEncode({'assets': assets, 'ledgers': ledgers}),
+      jsonEncode({'assets': assets, 'ledgers': ledgers, 'quotes': quotes}),
     );
+  }
+
+  static Future<List<Json>> _readQuotes(
+    MobileHttp http,
+    List<String> ids,
+    String display,
+    String date,
+    String cachedAt,
+  ) async {
+    final base = {'price_date': date, 'display_asset_id': display};
+    final values = <String, Json>{};
+    try {
+      for (var offset = 0; offset < ids.length; offset += 100) {
+        final requested = ids.skip(offset).take(100).toList();
+        final page = readObject(
+          await http.request(
+            'GET',
+            '/quotes/effective',
+            query: {...base, 'asset_ids': requested},
+          ),
+        );
+        final rows = readRows(page['items']);
+        if (rows.length != requested.length ||
+            page['display_asset_id'] != display ||
+            page['price_date'] != date) {
+          throw const FormatException('Quote scope differs');
+        }
+        for (final (index, row) in rows.indexed) {
+          final id = requested[index];
+          if (row['asset_id'] != id) {
+            throw const FormatException('Quote asset differs');
+          }
+          final evidence = switch (row['state']) {
+            'manual' => readObject(row['manual_price']),
+            'automatic' => readObject(row['automatic_price']),
+            'missing' => null,
+            _ => throw const FormatException('Unrecognized quote state'),
+          };
+          if (evidence == null) continue;
+          if (evidence['asset_id'] != id ||
+              evidence['display_asset_id'] != display ||
+              evidence['price_date'] != date ||
+              evidence['price'] is! String) {
+            throw const FormatException('Quote evidence differs');
+          }
+          values[id] = evidence;
+        }
+      }
+    } on MobileHttpError catch (error) {
+      if (error.status != 404) rethrow;
+      final manual = await http.list(
+        '/quotes/manual',
+        filters: base,
+        items: 'items',
+      );
+      values
+        ..clear()
+        ..addEntries(
+          manual.map((row) => MapEntry(row['asset_id'] as String, row)),
+        );
+    }
+    return [
+      for (final id in ids)
+        {
+          ...base,
+          'asset_id': id,
+          'price': values[id]?['price'],
+          'source': values[id]?['source'],
+          'observed_at':
+              values[id]?['observed_at'] ?? values[id]?['updated_at'],
+          'cached_at': values[id] == null
+              ? null
+              : (values[id]?['fetched_at'] ?? cachedAt),
+        },
+    ];
   }
 
   Future<MobileSnapshot> snapshot(String label, SyncStatus status) async {
@@ -120,19 +270,38 @@ final class MobileWorkspace {
         ? null
         : readJson(metadata['catalog']!);
     final draftRows = await store.records('draft');
+    final attachments = (await store.records('photo'))
+        .map((id, value) => MapEntry(id, readJson(value)));
     final resolutions = await store.records('resolution');
     final intents = await store.intentions();
     final entries = <String, MobileEntry>{};
+    final readOnlyPostings = <MobileReadOnlyPosting>[];
     final conflicts = <MobileConflict>[];
     final busy = <String>{};
     final ledgers = catalog == null ? <Json>[] : readRows(catalog['ledgers']);
+    MobileAttachment attachment(String id, Json photo) => MobileAttachment(
+      id,
+      photo['filename'] as String,
+      AttachmentState.values.byName(photo['state'] as String),
+    );
+    List<MobileAttachment> photosFor(String ledger, String operation) => [
+      for (final item in attachments.entries)
+        if (item.value['ledger_id'] == ledger &&
+            item.value['operation_id'] == operation)
+          attachment(item.key, item.value),
+    ];
+
     for (final ledger in ledgers) {
       final ledgerId = ledger['id'] as String;
       for (final cached in await store.operations(ledgerId)) {
         final operation = readJson(cached.json);
         final posting = readObject(operation['latest_posting']);
         final draft = draftFromPosting(ledgerId, posting);
-        if (draft == null) continue;
+        if (draft == null) {
+          final readOnly = _readOnlyPosting(cached, posting);
+          if (readOnly != null) readOnlyPostings.add(readOnly);
+          continue;
+        }
         final active = ledger['archived'] != true;
         entries[localEntryKey(ledgerId, cached.id)] = MobileEntry(
           id: cached.id,
@@ -141,6 +310,8 @@ final class MobileWorkspace {
           lifecycle: EntryLifecycle.posted,
           canEdit: active && isSimplePosting(posting),
           canDelete: active,
+          canAttachPhoto: active,
+          attachments: photosFor(ledgerId, cached.id),
         );
       }
     }
@@ -168,6 +339,7 @@ final class MobileWorkspace {
             version: (payload['expected_version'] ?? 0) as int,
             draft: draft,
             lifecycle: EntryLifecycle.queued,
+            attachments: photosFor(ledger, id),
           );
         } else {
           entries.remove(entryKey);
@@ -194,6 +366,7 @@ final class MobileWorkspace {
             version: version,
             draft: draft,
             lifecycle: EntryLifecycle.posted,
+            attachments: photosFor(ledger, id),
           );
         }
         continue;
@@ -255,8 +428,13 @@ final class MobileWorkspace {
             : EntryLifecycle.queued,
         canEdit: !busy.contains(row.key),
         canDelete: !busy.contains(row.key),
+        canAttachPhoto: true,
+        attachments: photosFor(draft.ledgerId, operationId),
       );
     }
+    final photosPending = attachments.values
+        .where((photo) => !{'released', 'uploaded'}.contains(photo['state']))
+        .length;
     final assets = readRows(catalog?['assets'] ?? []);
     final disabledAssetIds = {
       for (final asset in assets)
@@ -275,13 +453,40 @@ final class MobileWorkspace {
       ],
       entries: entries.values.toList()
         ..sort((a, b) => b.draft.date.compareTo(a.draft.date)),
+      readOnlyPostings: readOnlyPostings,
+      detachedReceipts: [
+        for (final item in attachments.entries)
+          if (!entries.containsKey(
+            localEntryKey(
+              item.value['ledger_id'] as String,
+              item.value['operation_id'] as String,
+            ),
+          ))
+            (
+              ledgerId: item.value['ledger_id'] as String,
+              operationId: item.value['operation_id'] as String,
+              attachment: attachment(item.key, item.value),
+            ),
+      ],
+      quotes: [
+        for (final price in readRows(catalog?['quotes'] ?? []))
+          MobileQuote(
+            assetId: price['asset_id'] as String,
+            displayAssetId: price['display_asset_id'] as String,
+            priceDate: price['price_date'] as String,
+            price: price['price'] as String?,
+            source: price['source'] as String?,
+            observedAt: price['observed_at'] as String?,
+            cachedAt: price['cached_at'] as String?,
+          ),
+      ],
       conflicts: conflicts,
       syncStatus:
           (status == SyncStatus.ready || status == SyncStatus.synced) &&
-              pending + draftRows.length > 0
+              pending + draftRows.length + photosPending > 0
           ? SyncStatus.pending
           : status,
-      pendingCount: pending + draftRows.length,
+      pendingCount: pending + draftRows.length + photosPending,
       lastSyncedAt: metadata['last_synced'],
     );
   }
