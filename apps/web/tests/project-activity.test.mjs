@@ -22,6 +22,8 @@ const row = {
     net: "-0.000000000000000001",
     closing_receivable: "0.000000000000000000",
     closing_payable: "-0.000000000000000001",
+    attributed_received: "0.000000000000000001",
+    attributed_paid: "0.000000000000000000",
 };
 const page = () => ({
     ledger_id: q.ledger,
@@ -44,6 +46,8 @@ test("retain all 38 digits and signed closing balances; reject malformed or mism
         { income: "1e20" },
         { income: "100000000000000000000" },
         { closing_payable: null },
+        { attributed_paid: "-0.000000000000000001" },
+        { attributed_received: "0.00" },
     ]) {
         assert.equal(checkActivity({ ...page(), items: [{ ...row, ...detail }] }, q), false);
     }

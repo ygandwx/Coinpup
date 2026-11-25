@@ -108,7 +108,15 @@ test("archived project shows recognized costs and partial payments in their own 
     await start.fill("2026-09-01");
     await end.fill("2026-09-30");
     await button("Show activity").press("Enter");
-    await expect(usd.locator("dd")).toHaveText(["0.00", "300.00", "-300.00", "0.00", "200.00"]);
+    await expect(usd.locator("dd")).toHaveText([
+        "0.00",
+        "300.00",
+        "-300.00",
+        "0.00",
+        "200.00",
+        "0.00",
+        "100.00",
+    ]);
     const btc = page
         .locator(".project-report li")
         .filter({ has: page.getByRole("heading", { name: "BTC", exact: true }) });
@@ -118,6 +126,8 @@ test("archived project shows recognized costs and partial payments in their own 
         "-0.00000001",
         "0.00000000",
         "0.00000001",
+        "0.00000000",
+        "0.00000000",
     ]);
     for (const width of [1440, 375, 320])
         for (const lang of ["zh", "en"]) {
@@ -128,7 +138,7 @@ test("archived project shows recognized costs and partial payments in their own 
             ).toBeVisible();
             await expectNoOverflow(page);
             await page.screenshot({
-                path: info.outputPath("project-activity-" + lang + "-" + width + ".png"),
+                path: info.outputPath("project-payment-" + lang + "-" + width + ".png"),
                 fullPage: true,
             });
         }
@@ -137,7 +147,15 @@ test("archived project shows recognized costs and partial payments in their own 
     await expect(usd).toHaveCount(0);
     await end.fill("2026-10-31");
     await button("Show activity").click();
-    await expect(usd.locator("dd")).toHaveText(["0.00", "0.00", "0.00", "0.00", "150.00"]);
+    await expect(usd.locator("dd")).toHaveText([
+        "0.00",
+        "0.00",
+        "0.00",
+        "0.00",
+        "150.00",
+        "0.00",
+        "50.00",
+    ]);
     const path = "**" + s.ledger + "/business-projects/" + project.id + "/activity?*";
     await page.route(path, async (r) => {
         const response = await r.fetch();

@@ -56,6 +56,8 @@ export function ProjectActivityPanel({
         net: t("经营结余", "Net income"),
         closing_receivable: t("期末未收", "Closing receivables"),
         closing_payable: t("期末未付", "Closing payables"),
+        attributed_received: t("已归属收款", "Attributed receipts"),
+        attributed_paid: t("已归属付款", "Attributed payouts"),
     };
     return (
         <section
@@ -73,6 +75,12 @@ export function ProjectActivityPanel({
                 {t(
                     "收支按所选归属日统计；未收、未付截至结束日，含以前期间的未结余额。不同资产分别显示。",
                     "Income and cost use recognition dates. Closing balances include earlier open items through the end date. Each asset is shown separately.",
+                )}
+            </p>
+            <p className="help-text">
+                {t(
+                    "收付款按实际交易日及付款原币列示，仅计截至结束日已分到该项目的本金。未应用款及无项目手续费除外。",
+                    "Receipts and payouts use the payment date and currency. Only principal allocated to this project by the end date is included; unapplied funds and unassigned fees are excluded.",
                 )}
             </p>
             <form

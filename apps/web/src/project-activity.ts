@@ -9,6 +9,8 @@ export const amountFields = [
     "net",
     "closing_receivable",
     "closing_payable",
+    "attributed_received",
+    "attributed_paid",
 ] as const;
 export const limit = 25;
 export type ActivityQuery = {
@@ -65,7 +67,7 @@ export function checkActivity(value: unknown, q: ActivityQuery): value is Activi
                 if (amountFromMinorUnits(n, scale) !== s) throw new Error();
                 return n;
             });
-            if (units[0] - units[1] !== units[2]) return false;
+            if (units[0] - units[1] !== units[2] || units[5] < 0n || units[6] < 0n) return false;
         } catch {
             return false;
         }
