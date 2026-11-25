@@ -3921,6 +3921,33 @@
         "title": "ChangeRecord",
         "type": "object"
       },
+      "ChangeStart": {
+        "properties": {
+          "cursor": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Cursor",
+            "type": "string"
+          },
+          "witness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangeRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cursor",
+          "witness"
+        ],
+        "title": "ChangeStart",
+        "type": "object"
+      },
       "ClockWitness": {
         "additionalProperties": false,
         "properties": {
@@ -5810,6 +5837,100 @@
           "needs_refresh"
         ],
         "title": "DeliveryConfigView",
+        "type": "object"
+      },
+      "DeviceHistory": {
+        "properties": {
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceRecord"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Revisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revisions"
+        ],
+        "title": "DeviceHistory",
+        "type": "object"
+      },
+      "DeviceRecord": {
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/components/schemas/ChangeStart"
+          },
+          "state": {
+            "enum": [
+              "registered",
+              "retired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner_id",
+          "device_id",
+          "version",
+          "state",
+          "recorded_at",
+          "start"
+        ],
+        "title": "DeviceRecord",
+        "type": "object"
+      },
+      "DeviceRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Cursor",
+            "type": "string"
+          },
+          "witness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SavedNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cursor",
+          "witness"
+        ],
+        "title": "DeviceRegistration",
         "type": "object"
       },
       "DocumentAccrualPosting": {
@@ -10245,6 +10366,113 @@
         "title": "OperationState",
         "type": "object"
       },
+      "PageAcknowledgementRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "After",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "prior": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SavedNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "received": {
+            "$ref": "#/components/schemas/ReceivedPage"
+          },
+          "through": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Through",
+            "type": "string"
+          }
+        },
+        "required": [
+          "after",
+          "through",
+          "limit",
+          "prior",
+          "received"
+        ],
+        "title": "PageAcknowledgementRequest",
+        "type": "object"
+      },
+      "PageReceipt": {
+        "properties": {
+          "after": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "After",
+            "type": "string"
+          },
+          "count": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "cursor": {
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Cursor",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "through": {
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Through",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_id",
+          "device_id",
+          "after",
+          "through",
+          "limit",
+          "count",
+          "cursor",
+          "recorded_at"
+        ],
+        "title": "PageReceipt",
+        "type": "object"
+      },
       "PartyCreate": {
         "additionalProperties": false,
         "properties": {
@@ -11218,6 +11446,32 @@
           "expected_version"
         ],
         "title": "ProjectUpdate",
+        "type": "object"
+      },
+      "ReceivedPage": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/SavedNotice"
+            },
+            "maxItems": 200,
+            "title": "Changes",
+            "type": "array"
+          },
+          "next_cursor": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Next Cursor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changes",
+          "next_cursor"
+        ],
+        "title": "ReceivedPage",
         "type": "object"
       },
       "RecurringInstanceResponse": {
@@ -13750,6 +14004,131 @@
         "title": "RuleSelection",
         "type": "object"
       },
+      "SavedNotice": {
+        "additionalProperties": false,
+        "properties": {
+          "change_kind": {
+            "enum": [
+              "upsert",
+              "archive",
+              "restore",
+              "cancel"
+            ],
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "entity_id": {
+            "minLength": 1,
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "enum": [
+              "entities",
+              "ledgers",
+              "accounts",
+              "account_assets",
+              "categories",
+              "assets",
+              "financial_operations",
+              "stored_files",
+              "operation_file_links",
+              "ocr_jobs",
+              "ocr_drafts",
+              "ocr_confirmations",
+              "business_parties",
+              "business_documents",
+              "business_document_lines",
+              "ledger_periods",
+              "ledger_period_audits",
+              "ledger_period_receipts",
+              "business_projects",
+              "recurring_invoice_rules",
+              "recurring_invoice_instances",
+              "reminder_events",
+              "reminder_event_revisions",
+              "reminder_delivery_configs",
+              "reminder_delivery_revisions",
+              "business_confirmations",
+              "business_postings",
+              "business_payments",
+              "business_allocations",
+              "business_allocation_lines",
+              "business_allocation_returns",
+              "business_allocation_return_lines",
+              "business_refunds",
+              "business_refund_returns",
+              "business_credits",
+              "business_credit_lines",
+              "business_credit_revisions",
+              "business_credit_revision_members",
+              "business_refund_revisions",
+              "business_refund_revision_returns",
+              "business_return_revisions",
+              "business_return_revision_members",
+              "business_document_revisions",
+              "business_document_revision_lines",
+              "business_document_accruals",
+              "business_invoice_profiles",
+              "business_invoice_reservations",
+              "business_invoice_completions",
+              "interledger_settings",
+              "interledger_groups",
+              "manual_prices",
+              "reminder_email_deliveries",
+              "reminder_email_evidence"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "entity_version": {
+            "minimum": 1.0,
+            "title": "Entity Version",
+            "type": "integer"
+          },
+          "ledger_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Id"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "seq": {
+            "maxLength": 19,
+            "minLength": 1,
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "title": "Seq",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "owner_id",
+          "ledger_id",
+          "entity_type",
+          "entity_id",
+          "entity_version",
+          "change_kind",
+          "changed_at"
+        ],
+        "title": "SavedNotice",
+        "type": "object"
+      },
       "SessionResponse": {
         "properties": {
           "csrf_token": {
@@ -14640,7 +15019,7 @@
     },
     "/api/v1/changes": {
       "get": {
-        "description": "Read notifications after an exact cursor; an empty page retains that cursor.",
+        "description": "Read after a cursor, optionally up to an inclusive saved boundary.",
         "operationId": "changes_api_v1_changes_get",
         "parameters": [
           {
@@ -14667,6 +15046,25 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "through",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 19,
+                  "minLength": 1,
+                  "pattern": "^(0|[1-9][0-9]*)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Through"
+            }
           }
         ],
         "responses": {
@@ -14692,6 +15090,74 @@
           }
         },
         "summary": "Changes",
+        "tags": [
+          "change notifications"
+        ]
+      }
+    },
+    "/api/v1/changes/at/{seq}": {
+      "get": {
+        "description": "Read one exact committed notification as evidence for resuming a device cursor.",
+        "operationId": "at_api_v1_changes_at__seq__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maxLength": 19,
+              "minLength": 1,
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "title": "Seq",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "At",
+        "tags": [
+          "change notifications"
+        ]
+      }
+    },
+    "/api/v1/changes/start": {
+      "get": {
+        "description": "Capture the owner’s committed cursor before reading the first full snapshot.",
+        "operationId": "start_api_v1_changes_start_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeStart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Start",
         "tags": [
           "change notifications"
         ]
@@ -25291,6 +25757,351 @@
         "summary": "Read Mvp Report",
         "tags": [
           "reporting"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}": {
+      "put": {
+        "description": "Return the current state. Original registration does not undo retirement.",
+        "operationId": "register_api_v1_sync_devices__device_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DeviceRegistration"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/acknowledgements": {
+      "post": {
+        "description": "Compare the complete saved page. A replay returns its original receipt.",
+        "operationId": "acknowledge_api_v1_sync_devices__device_id__acknowledgements_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageAcknowledgementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge",
+        "tags": [
+          "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/acknowledgements/latest": {
+      "get": {
+        "description": "Return null for a known device without an acknowledgement.",
+        "operationId": "latest_api_v1_sync_devices__device_id__acknowledgements_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PageReceipt"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Api V1 Sync Devices  Device Id  Acknowledgements Latest Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Latest",
+        "tags": [
+          "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/checkpoint": {
+      "get": {
+        "operationId": "checkpoint_api_v1_sync_devices__device_id__checkpoint_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeStart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checkpoint",
+        "tags": [
+          "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/history": {
+      "get": {
+        "operationId": "history_api_v1_sync_devices__device_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "sync devices"
+        ]
+      }
+    },
+    "/api/v1/sync/devices/{device_id}/retirement": {
+      "put": {
+        "description": "Record one terminal retirement; an identical request returns the original facts.",
+        "operationId": "retire_api_v1_sync_devices__device_id__retirement_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire",
+        "tags": [
+          "sync devices"
         ]
       }
     }

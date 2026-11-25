@@ -116,9 +116,49 @@ export interface paths {
         };
         /**
          * Changes
-         * @description Read notifications after an exact cursor; an empty page retains that cursor.
+         * @description Read after a cursor, optionally up to an inclusive saved boundary.
          */
         get: operations["changes_api_v1_changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/changes/at/{seq}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * At
+         * @description Read one exact committed notification as evidence for resuming a device cursor.
+         */
+        get: operations["at_api_v1_changes_at__seq__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/changes/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start
+         * @description Capture the owner’s committed cursor before reading the first full snapshot.
+         */
+        get: operations["start_api_v1_changes_start_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2229,6 +2269,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register
+         * @description Return the current state. Original registration does not undo retirement.
+         */
+        put: operations["register_api_v1_sync_devices__device_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge
+         * @description Compare the complete saved page. A replay returns its original receipt.
+         */
+        post: operations["acknowledge_api_v1_sync_devices__device_id__acknowledgements_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/acknowledgements/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest
+         * @description Return null for a known device without an acknowledgement.
+         */
+        get: operations["latest_api_v1_sync_devices__device_id__acknowledgements_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/checkpoint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checkpoint */
+        get: operations["checkpoint_api_v1_sync_devices__device_id__checkpoint_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_v1_sync_devices__device_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/devices/{device_id}/retirement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Retire
+         * @description Record one terminal retirement; an identical request returns the original facts.
+         */
+        put: operations["retire_api_v1_sync_devices__device_id__retirement_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4035,6 +4189,12 @@ export interface components {
             /** Seq */
             seq: string;
         };
+        /** ChangeStart */
+        ChangeStart: {
+            /** Cursor */
+            cursor: string;
+            witness: components["schemas"]["ChangeRecord"] | null;
+        };
         /** ClockWitness */
         ClockWitness: {
             /**
@@ -4746,6 +4906,46 @@ export interface components {
             timezone: string;
             /** Version */
             version: number;
+        };
+        /** DeviceHistory */
+        DeviceHistory: {
+            /** Revisions */
+            revisions: components["schemas"]["DeviceRecord"][];
+        };
+        /** DeviceRecord */
+        DeviceRecord: {
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            start: components["schemas"]["ChangeStart"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "registered" | "retired";
+            /**
+             * Version
+             * @enum {integer}
+             */
+            version: 1 | 2;
+        };
+        /** DeviceRegistration */
+        DeviceRegistration: {
+            /** Cursor */
+            cursor: string;
+            witness: components["schemas"]["SavedNotice"] | null;
         };
         /** DocumentAccrualPosting */
         DocumentAccrualPosting: {
@@ -6706,6 +6906,45 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** PageAcknowledgementRequest */
+        PageAcknowledgementRequest: {
+            /** After */
+            after: string;
+            /** Limit */
+            limit: number;
+            prior: components["schemas"]["SavedNotice"] | null;
+            received: components["schemas"]["ReceivedPage"];
+            /** Through */
+            through: string;
+        };
+        /** PageReceipt */
+        PageReceipt: {
+            /** After */
+            after: string;
+            /** Count */
+            count: number;
+            /** Cursor */
+            cursor: string;
+            /**
+             * Device Id
+             * Format: uuid
+             */
+            device_id: string;
+            /** Limit */
+            limit: number;
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Through */
+            through: string;
+        };
         /** PartyCreate */
         PartyCreate: {
             /** Address */
@@ -7040,6 +7279,13 @@ export interface components {
             name?: string | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** ReceivedPage */
+        ReceivedPage: {
+            /** Changes */
+            changes: components["schemas"]["SavedNotice"][];
+            /** Next Cursor */
+            next_cursor: string;
         };
         /** RecurringInstanceResponse */
         RecurringInstanceResponse: {
@@ -8063,6 +8309,37 @@ export interface components {
             /** Rule Version */
             rule_version: string;
         };
+        /** SavedNotice */
+        SavedNotice: {
+            /**
+             * Change Kind
+             * @enum {string}
+             */
+            change_kind: "upsert" | "archive" | "restore" | "cancel";
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            /** Entity Id */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence";
+            /** Entity Version */
+            entity_version: number;
+            /** Ledger Id */
+            ledger_id: string | null;
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
+            /** Seq */
+            seq: string;
+        };
         /** SessionResponse */
         SessionResponse: {
             /** Csrf Token */
@@ -8544,6 +8821,7 @@ export interface operations {
             query?: {
                 after?: string;
                 limit?: number;
+                through?: string | null;
             };
             header?: never;
             path?: never;
@@ -8567,6 +8845,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    at_api_v1_changes_at__seq__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                seq: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_api_v1_changes_start_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeStart"];
                 };
             };
         };
@@ -13621,6 +13950,206 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_api_v1_sync_devices__device_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegistration"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_api_v1_sync_devices__device_id__acknowledgements_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageAcknowledgementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_api_v1_sync_devices__device_id__acknowledgements_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageReceipt"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    checkpoint_api_v1_sync_devices__device_id__checkpoint_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_v1_sync_devices__device_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceHistory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retire_api_v1_sync_devices__device_id__retirement_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRecord"];
                 };
             };
             /** @description Validation Error */

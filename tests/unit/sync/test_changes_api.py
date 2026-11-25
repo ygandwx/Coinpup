@@ -75,7 +75,9 @@ def test_changes_forward_cookie_owner_exact_cursor_and_bounded_limit(
     expected = after if after is not None else "0"
     assert response.status_code == 200
     assert response.json() == {"changes": [], "next_cursor": expected}
-    assert calls == [(OWNER, {"after": expected, "limit": limit if limit is not None else 100})]
+    assert calls == [
+        (OWNER, {"after": expected, "limit": limit if limit is not None else 100, "through": None})
+    ]
     assert response.headers["cache-control"] == "no-store"
 
 

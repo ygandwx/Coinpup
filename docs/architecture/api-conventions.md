@@ -129,6 +129,9 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 - 是否包含归档/停用项由接口参数控制，默认值以 OpenAPI 为准；财务列表默认保留全部状态，可显式筛选 active、cancelled 或 all。文件目录和流水证据列表分别分页，不能用一页目录判定关联原件不存在。来源：[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0013](decisions/0013-document-web-and-upload-recovery.md)。
 - 流水列表 `order` 默认 `created_at`，按创建时间、业务 ID 倒序；可选 `transaction_date` 按当前入账凭证的交易日、创建时间、业务 ID 倒序。`from_date` 和 `to_date` 使用严格 `YYYY-MM-DD`，按同一当前凭证的交易日作闭区间筛选；反向区间返回 422。已取消业务仍使用最后一张入账凭证的交易日。网页显式选择交易日排序，不改变 API 的默认响应。
 - 变更通知通过 `GET /api/v1/changes` 按所有者过滤，`after` 默认 `"0"`、`limit` 默认 100（1–200），返回 `changes` 和 `next_cursor`。`seq`/游标是精确十进制字符串；非空页只推进至最后交付的序号，空页保留原游标，序号允许回滚空洞。归档/停用、恢复及取消分别通知为 archive、restore、cancel，记录本身保留。来源：[ADR 0015](decisions/0015-ordered-change-log.md)。
+- 同步客户端用 `GET /api/v1/changes/start` 获取已提交的 `cursor` 和完整 `witness`，可用 `/changes/at/{seq}` 核对保存证据。首次全量读取可以用这组证据登记起点。`/changes` 的可选 `through` 固定本次包含的上限。
+- `PUT /api/v1/sync/devices/{device_id}` 使用会话登记设备。保存的起点不可变，默认用零起点和空证据。`/retirement` 保存退役，`/history` 读取原登记和退役证据。设备 UUID 只标识登记项。
+- 持久化完整页后 POST `/sync/devices/{device_id}/acknowledgements`（`/api/v1` 下），传入 `after`、`through`、`limit`、前置通知 `prior` 和原页 `received`。服务端核对实际顺序、归属及整页内容。通知证据的时间使用带时区的 RFC 3339 字符串，按 UTC 时点核对。空页保留当前进度，无需提交确认。成功页重放返回原回执。`/acknowledgements/latest` 读取最新页回执，`/checkpoint` 读取当前进度与通知证据，包括尚未确认首个非空页的登记起点。恢复后的证据差异返回 409，设备据此暂停并重新对账。[ADR0062](decisions/0062-device-sync-and-resumable-upload.md)
 - 首次同步先取得起始游标，再分页读取全量对象，最后从该游标读取后续通知；允许重复获取同一对象。资产使用完整文本 ID，account_assets 使用 `account_uuid:asset_id` 并要求重读父账户，不能因父版本相同而忽略关联变更。通知用于重读当前记录；设备、离线写入和冲突处理由后续完整同步协议定义。来源：[ADR 0015](decisions/0015-ordered-change-log.md)。
 
 ## 错误与客户端处理
