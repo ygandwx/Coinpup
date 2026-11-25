@@ -15,9 +15,10 @@ camera_pid=$!
 trap 'kill "$camera_pid" 2>/dev/null || true' EXIT
 (
   cd apps/mobile
-  flutter test integration_test/android_acceptance_test.dart -d "$ANDROID_SERIAL" --no-pub \
+  flutter test integration_test/android_acceptance_test.dart -d "$ANDROID_SERIAL" \
     --dart-define=COINPUP_TEST_URL=http://127.0.0.1:8000 \
     --dart-define="COINPUP_TEST_USERNAME=$E2E_USERNAME" \
     --dart-define="COINPUP_TEST_PASSWORD=$E2E_PASSWORD"
+  git diff --exit-code -- pubspec.lock
 )
 wait "$camera_pid"

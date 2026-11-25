@@ -64,7 +64,15 @@ jobs:
           flutter pub get --enforce-lockfile
           dart format --output=none --set-exit-if-changed integration_test
           flutter analyze --fatal-infos
-          flutter build apk --release --no-pub
+          # Flutter regenerates the release plugin registrant only with pub enabled.
+          flutter build apk --release
+          git diff --exit-code -- pubspec.lock
+          registrant=android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+          test -s "$registrant"
+          if grep -Fq 'dev.flutter.plugins.integration_test.' "$registrant"; then
+            echo 'The release registrant includes the device test plugin.' >&2
+            exit 1
+          fi
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk
           sha256sum build/app/outputs/flutter-apk/app-release.apk
       - name: Start and migrate the disposable API
