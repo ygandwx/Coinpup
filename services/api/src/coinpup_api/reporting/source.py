@@ -32,6 +32,7 @@ class OriginalFact:
     category_id: UUID | None
     role: str
     description: str
+    transaction_date: date | None = None
 
 
 def _range(statement, column, start, end):
@@ -83,6 +84,7 @@ def journal_facts(session, scope, view, start, end):
                 item.category_id,
                 item.role,
                 header.description,
+                header.transaction_date,
             )
         )
     return tuple(facts)
@@ -140,6 +142,7 @@ def balance_facts(session, scope, end):
             None,
             "account",
             account.name,
+            end,
         )
         for account, record, amount in session.execute(statement)
     )

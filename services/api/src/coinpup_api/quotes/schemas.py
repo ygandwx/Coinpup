@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import (
     AfterValidator,
+    AwareDatetime,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -88,3 +89,29 @@ class ManualPricePage(BaseModel):
     limit: int
     offset: int
     has_more: bool
+
+
+class AutomaticPriceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, frozen=True)
+
+    id: UUID
+    asset_id: QuoteAsset
+    display_asset_id: DisplayAsset
+    price_date: PriceDay
+    price: PriceText
+    source: Literal["Frankfurter / ECB", "Coinbase Exchange"]
+    observed_at: AwareDatetime | None
+    fetched_at: AwareDatetime
+
+
+class EffectivePriceResponse(BaseModel):
+    asset_id: QuoteAsset
+    state: Literal["identity", "manual", "automatic", "missing"]
+    manual_price: ManualPriceResponse | None = None
+    automatic_price: AutomaticPriceResponse | None = None
+
+
+class EffectivePricePage(BaseModel):
+    price_date: PriceDay
+    display_asset_id: DisplayAsset
+    items: tuple[EffectivePriceResponse, ...]

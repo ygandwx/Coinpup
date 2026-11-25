@@ -204,3 +204,9 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 - 推送使用原嵌套 JSON 和原账本幂等键。原推送在核对所有者及账本后原样返回，允许检查点推进后及设备退役后重放。修改同一意图的原请求返回 409。新推送必须匹配已确认检查点及完整通知证据。
 - 成功应用返回 `outcome=applied` 和原财务回执。发现真正的旧版本冲突时返回 `outcome=conflict`，保留原命令 JSON、依据版本和固定竞争版本。冲突作为独立的同步结果提交。客户端可按原意图核对结果。保留当前版本时提交 `expected_current_version`，记录用户看到的版本；应用离线意图时使用新的意图及账本幂等键，显式提交基于最新版本的原财务命令。
 - 同一数据库事务提交财务分录、账本回执和设备意图结果。取消为永久终态，尝试继续修订或重新使用同一流水 ID 会返回冲突。设备意图和用户决定随通用 bundle 保存，并独立于业务通知序列。见 [ADR 0062](decisions/0062-device-sync-and-resumable-upload.md)。
+
+## 自动报价和移动端缓存
+
+- `GET /quotes/effective` 接受 1–100 个不同的 `asset_ids`、一个 `display_asset_id` 和明确的 `price_date`。按请求资产顺序返回 `identity`、`manual`、`automatic` 或 `missing`。手动和自动证据分别返回价格字符串、来源及时间。只有精确时点的提供方填写 `observed_at`，`fetched_at` 保留首次获取时间。
+- 原币报表和原有指定日期保持可用。指定日期的手动价格优先，之后查同日自动报价。可用 `price_mode=historical` 取收支交易日或余额截至日，或用 `price_mode=latest` 取每个币对最近的缓存日。自动证据出现在明细的 `automatic_price`，手动证据继续出现在 `price`。当有多行采用不同日期时，汇总的 `price_date` 为空，明细保留各自日期。
+- 读取使用已保存的所有者快照。无报价或同一时点有不同自动报价时，返回缺价，原币照常可查。同日手动修正可为该币对提供明确的估值依据。见 [ADR 0055](decisions/0055-read-only-valuations.md)。

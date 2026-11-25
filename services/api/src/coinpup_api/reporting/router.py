@@ -8,21 +8,25 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
 from coinpup_api.ledger.service import LedgerError
+from coinpup_api.quotes.effective import EffectivePriceService
 from coinpup_api.quotes.schemas import (
     DisplayAsset,
+    EffectivePricePage,
     ManualPricePage,
     ManualPricePut,
     ManualPriceResponse,
     PriceDay,
+    QuoteAsset,
 )
 from coinpup_api.quotes.service import ManualPriceService
-from coinpup_api.reporting.schemas import ReportResponse, ReportView
+from coinpup_api.reporting.schemas import PriceMode, ReportResponse, ReportView
 from coinpup_api.reporting.service import MvpReportService
 
 
 def create_reporting_router(settings, engine):
     router = APIRouter(prefix="/api/v1", tags=["reporting"])
     prices, reports = ManualPriceService(engine), MvpReportService(engine)
+    effective = EffectivePriceService(engine)
     access = BrowserAccess(settings, engine)
     reader = Annotated[Identity, Depends(access.read)]
     writer = Annotated[Identity, Depends(access.write)]
@@ -58,7 +62,17 @@ def create_reporting_router(settings, engine):
     def put_manual_price(payload: ManualPricePut, identity: writer):
         return execute(prices.put, identity.id, payload)
 
-    @router.get("/reports/mvp", response_model=ReportResponse)
+    @router.get("/quotes/effective", response_model=EffectivePricePage)
+    def read_effective_prices(
+        identity: reader,
+        asset_ids: Annotated[list[QuoteAsset], Query(min_length=1, max_length=100)],
+        display_asset_id: DisplayAsset,
+        price_date: PriceDay,
+    ):
+        """List exact-day owner prices, with explicit identity and missing states."""
+        return execute(effective.page, identity.id, asset_ids, display_asset_id, price_date)
+
+    @router.get("/reports/mvp", response_model=ReportResponse, response_model_exclude_unset=True)
     def read_mvp_report(
         identity: reader,
         ledger_ids: Annotated[list[UUID], Query(min_length=1, max_length=100)],
@@ -67,6 +81,7 @@ def create_reporting_router(settings, engine):
         to_date: PriceDay | None = None,
         display_asset_id: DisplayAsset | None = None,
         price_date: PriceDay | None = None,
+        price_mode: PriceMode | None = None,
         limit: page_size = 100,
         offset: page_offset = 0,
     ):
@@ -79,6 +94,7 @@ def create_reporting_router(settings, engine):
             to_date=to_date,
             display_asset_id=display_asset_id,
             price_date=price_date,
+            price_mode=price_mode,
             limit=limit,
             offset=offset,
         )

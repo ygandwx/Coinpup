@@ -32,6 +32,7 @@ def test_return_header_matches_frozen_ddl_and_fits_existing_change_log_type():
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     }
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         current["_SCHEMA_SQL"].split()

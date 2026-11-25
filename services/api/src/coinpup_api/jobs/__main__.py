@@ -3,7 +3,7 @@
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,6 +12,7 @@ from coinpup_api.business.recurring_job import run_recurring
 from coinpup_api.config import Settings
 from coinpup_api.database import Database
 from coinpup_api.ledger.service import LedgerError
+from coinpup_api.quotes.market import MarketQuoteService
 from coinpup_api.reminders.mail_job import capture_connection, run_reminder_email
 
 
@@ -41,10 +42,27 @@ def main(argv=None):
     email.add_argument("--owner", type=UUID, required=True)
     email.add_argument("--ledger", type=UUID, required=True)
     email.add_argument("--page-size", type=limit, default=50)
+    market = commands.add_parser(
+        "market-quotes", help="Refresh one configured owner and direct public market pair"
+    )
+    market.add_argument("--owner", type=UUID, required=True)
+    market.add_argument("--asset", required=True)
+    market.add_argument("--display", choices=("USD", "GBP", "EUR", "HKD", "CNY"), required=True)
+    market.add_argument("--price-date", type=date.fromisoformat)
     args = parser.parse_args(argv)
     database = None
     try:
         settings = Settings()
+        if args.job == "market-quotes":
+            if not settings.market_quotes_enabled:
+                print("Public quote refresh is disabled.", file=sys.stderr)
+                return 1
+            database = Database(settings)
+            observation = MarketQuoteService(database.engine).refresh(
+                args.owner, args.asset, args.display, price_date=args.price_date
+            )
+            print(json.dumps({"observation_id": str(observation) if observation else None}))
+            return 0
         if args.job == "reminder-email":
             if not settings.reminder_mail_capture_enabled or settings.environment == "production":
                 print("Local reminder email capture is disabled.", file=sys.stderr)
@@ -67,7 +85,11 @@ def main(argv=None):
     except KeyboardInterrupt:
         return 130
     except (SQLAlchemyError, LedgerError, OSError, ValueError):
-        label = "Reminder email job" if args.job == "reminder-email" else "Recurring job"
+        label = {
+            "market-quotes": "Public quote job",
+            "reminder-email": "Reminder email job",
+            "recurring-invoices": "Recurring job",
+        }[args.job]
         print(f"{label} unavailable; check configuration and database access.", file=sys.stderr)
         return 1
     finally:

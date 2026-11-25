@@ -1,19 +1,16 @@
 """Owned original series and direct exact-day display valuation in one snapshot."""
 
 from collections import defaultdict
-from datetime import UTC, datetime, time
 
 from coinpup_api.ledger import MoneyError, get_asset
 from coinpup_api.ledger.service import LedgerError, LedgerService, _page
-from coinpup_api.quotes.models import ManualPriceRecord
-from coinpup_api.quotes.schemas import ManualPriceResponse
-from coinpup_api.quotes.service import manual_prices_for_day
-from coinpup_api.quotes.valuation import DirectQuote
+from coinpup_api.quotes.effective import price_choices, valuation_quote
+from coinpup_api.quotes.schemas import AutomaticPriceResponse, ManualPriceResponse
 from coinpup_api.reporting.asset_totals import OriginalSubtotal
 from coinpup_api.reporting.schemas import ReportOriginal, ReportResponse, ReportRow, ReportValuation
 from coinpup_api.reporting.scope import report_scope, require_owned_ledgers
 from coinpup_api.reporting.source import balance_facts, journal_facts, linked_repayments
-from coinpup_api.reporting.statement import ManualPrice, build_statement
+from coinpup_api.reporting.statement import build_statement
 
 
 def _side_totals(statement, facts, view):
@@ -46,31 +43,32 @@ def _side_totals(statement, facts, view):
     )
 
 
-def _prices(session, owner, facts, price_date, display):
+def _prices(session, owner, facts, price_date, display, price_mode):
     if display is None:
-        return (), {}
+        return None, {}
     catalog = {fact.row.original.asset.asset_id: fact.row.original.asset for fact in facts.values()}
-    day = datetime.combine(price_date, time.min, UTC)
-    prices, evidence = [], {}
-    for record in session.scalars(
-        manual_prices_for_day(owner, price_date, display.asset_id).where(
-            ManualPriceRecord.asset_id.in_(catalog)
-        )
-    ):
-        asset = catalog[record.asset_id]
-        prices.append(
-            ManualPrice(
-                price_date,
-                DirectQuote(asset, display, record.price, record.source, day, record.updated_at),
-            )
-        )
-        evidence[record.asset_id] = ManualPriceResponse.model_validate(record)
-    return tuple(prices), evidence
+    days = (
+        {price_date}
+        if price_date is not None
+        else {fact.transaction_date for fact in facts.values()}
+    )
+    choices = price_choices(
+        session, owner, catalog, display.asset_id, dates=None if price_mode == "latest" else days
+    )
+    prices, evidence = {}, {}
+    for ref, fact in facts.items():
+        asset = ref.asset.asset_id
+        key = asset if price_mode == "latest" else (asset, price_date or fact.transaction_date)
+        price = choices.get(key)
+        if price is not None:
+            evidence[ref] = price
+            prices[ref] = valuation_quote(ref.asset, display, price)
+    return prices, evidence
 
 
 def _row(detail, fact, memberships, display, evidence):
     original = detail.source.original
-    price = evidence[original.asset.asset_id] if detail.price is not None else None
+    price = evidence[fact.row.reference] if detail.price is not None else None
     if detail.excluded_repayment_group is not None:
         state = "excluded"
     elif display is None:
@@ -92,7 +90,8 @@ def _row(detail, fact, memberships, display, evidence):
         repayment_group_id=memberships.get(detail.source.reference),
         excluded_repayment_group=detail.excluded_repayment_group,
         valuation_state=state,
-        price=price,
+        price=price if isinstance(price, ManualPriceResponse) else None,
+        **({"automatic_price": price} if isinstance(price, AutomaticPriceResponse) else {}),
     )
 
 
@@ -107,6 +106,7 @@ class MvpReportService(LedgerService):
         to_date=None,
         display_asset_id=None,
         price_date=None,
+        price_mode=None,
         limit=100,
         offset=0,
     ):
@@ -118,9 +118,13 @@ class MvpReportService(LedgerService):
             raise LedgerError(
                 "invalid_report_period", 422, "Choose an ordered range for this view."
             )
-        if (display_asset_id is None) != (price_date is None):
+        if (
+            (display_asset_id is None) != (price_date is None and price_mode is None)
+            or (price_date is not None and price_mode is not None)
+            or (price_mode == "historical" and view == "balances" and to_date is None)
+        ):
             raise LedgerError(
-                "invalid_report_valuation", 422, "Choose both a display currency and a price date."
+                "invalid_report_valuation", 422, "Choose a display currency and one price basis."
             )
         display = get_asset(display_asset_id) if display_asset_id else None
         with self._transaction(owner, read_only=True) as session:
@@ -137,13 +141,12 @@ class MvpReportService(LedgerService):
                     if view == "cash"
                     else ((), {})
                 )
-                prices, evidence = _prices(session, owner, facts, price_date, display)
+                prices, evidence = _prices(session, owner, facts, price_date, display, price_mode)
                 statement = build_statement(
                     scope,
                     (fact.row for fact in history),
-                    valuation_day=price_date,
                     display=display,
-                    manual_prices=prices,
+                    selected_prices=prices,
                     cash_repayments=links,
                 )
             except (MoneyError, ValueError):

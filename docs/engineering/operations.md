@@ -221,6 +221,20 @@ python -m coinpup_api.jobs reminder-email --owner "$owner_id" --ledger "$ledger_
 升级切换和恢复演练期间暂停提醒任务。恢复目标保持默认关闭。先核对恢复点后的 SMTP 接受记录，再决定恢复目标上的后续任务。邮件结果未知时保留原投递证据，待核实后标记收到或停止通知。生产 SMTP 配置需要单独授权。[ADR0038](../architecture/decisions/0038-reminder-delivery.md)
 
 
+## 公共报价更新
+
+读取报表和移动端缓存使用数据库中的已保存报价。外部更新默认关闭。为已获许可的服务器出站流量启用单次任务时，显式设置 `COINPUP_MARKET_QUOTES_ENABLED=true`，并传入所有者与一个直接币对。只向提供方发送公开的币对和参考日期。错误只输出通用原因，已有缓存继续可以读取。
+
+```sh
+docker compose exec -e COINPUP_MARKET_QUOTES_ENABLED=true api \
+  python -m coinpup_api.jobs market-quotes \
+  --owner '<所有者 UUID>' --asset EUR --display USD
+```
+
+法币使用 Frankfurter 中固定到 ECB 的参考数据，支持可用的直接历史报价日。要查询某日，可加 `--price-date YYYY-MM-DD`。只有参考日时，具体市场时点为空，读取仍显示获取时间。BTC 或 ETH 对 USD、EUR、GBP 使用 Coinbase Exchange 当前成交报价。可定期保存所需币对以积累历史缓存。未知币对或日期使用缺价状态，也可由用户同日手动补录。来源与覆盖说明见 [Frankfurter 提供方文档](https://frankfurter.dev/providers/ecb/) 和 [Coinbase Exchange 成交报价文档](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-ticker)。
+
+现有任务调度器可定期执行同一命令。重复获取相同观察会复用其 ID 和首次获取时间。测试使用离线的虚构回复，开启任何涉及收费、账号凭据或新增网络权限的服务前按照项目授权流程处理。
+
 ## 备份范围
 
 余额与交易日/归属日的查询索引通过显式 Alembic 迁移建立，模型定义见 [账务模型](../../services/api/src/coinpup_api/ledger/models.py)。普通建索引在迁移事务中执行，安排维护窗口；降级只删除本次新增索引，不改财务行或回执。测试中的 `enable_seqscan=off` 仅验证索引适用性，不是部署设置，也不代表实际性能提升。

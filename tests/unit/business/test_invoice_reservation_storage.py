@@ -26,6 +26,7 @@ def test_frozen_reservation_schema_matches_model_and_current_notification_types(
         "manual_prices",
         "reminder_email_deliveries",
         "reminder_email_evidence",
+        "quote_observations",
     )
     assert InvoiceReservation.__table__.c.logo_file_id.references(StoredFile.__table__.c.id)
     statement = CreateTable(InvoiceReservation.__table__).compile(dialect=dialect())
