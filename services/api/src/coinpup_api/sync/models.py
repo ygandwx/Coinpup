@@ -54,7 +54,8 @@ class ChangeLog(Base):
             "'business_return_revision_members', 'business_document_revisions', "
             "'business_document_revision_lines', 'business_document_accruals', "
             "'business_invoice_profiles', 'business_invoice_reservations', "
-            "'business_invoice_completions', 'interledger_settings', 'interledger_groups')",
+            "'business_invoice_completions', 'interledger_settings', 'interledger_groups', "
+            "'manual_prices')",
             name="ck_change_log_entity_type",
         ),
         CheckConstraint(

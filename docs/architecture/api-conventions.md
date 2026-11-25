@@ -179,3 +179,10 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 `GET /api/v1/ledgers/{ledger_id}/business-projects/{project_id}/activity` 要求登录，必填 `start`、`end`（含首尾的 YYYY-MM-DD）；归档项目可读。按资产身份排序、分页（limit 1–200，默认50；offset 0–100000）。income/cost/net 为期间归属额，closing_receivable/closing_payable 为截至结束日的单据控制余额。金额均按原资产精度返回带符号的字符串；不做跨币种净额。范围逆序或总额超出契约返回422。见[ADR0052](decisions/0052-project-activity.md)。
 
 项目活动另含 attributed_received/attributed_paid：报告期间原付款日、截至结束日明确归属于项目的未退回应用本金，以付款资产列示；不包含未分摊的预付款或未指定项目的费用。见[ADR0053](decisions/0053-attributed-project-payments.md)。
+
+## 手动价格与汇总
+
+- `GET /quotes/manual` 按明确的 `price_date`、展示币及可选资产筛选。每位所有者的资产、展示币、日期组合唯一。价格是正的十进制字符串，最多 20 位整数和 18 位小数。来源为 1–128 个可打印字符，首尾无空白。
+- `PUT /quotes/manual` 用 `expected_version: 0` 新建，编辑提交当前版本。相同内容的当前或上一版本请求返回已保存内容，旧版本更改返回 409。价格和来源的每次变更都保留不可变审计，通过相同价格 ID 与版本追溯。本条接口沿用会话、Origin、CSRF 与私有响应边界。
+- `GET /reports/mvp` 需要显式选择 1–100 个不同的自有账本。余额按交易日截止，现金按交易日，经营按会计确认日。合计覆盖选择范围内全部明细，分页只影响明细。现金保留单边偿还，双方选中时以已验证的偿还关联排除两边，同时保留原始外部付款。经营只统计收入和费用分录。
+- 同时提供 `display_asset_id` 与 `price_date` 使用指定日的直接手动价格。按原币保留明细与合计，每条估值行带上所用价格。缺价时展示币总计为空并列出缺价资产。汇总与估值均为只读。

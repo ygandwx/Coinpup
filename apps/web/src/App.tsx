@@ -18,6 +18,7 @@ import { PendingBusinessCreditController } from "./pending-business-credit";
 import { PendingInvoiceController } from "./pending-invoice";
 import { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { PendingInterledger } from "./pending-interledger";
+import { PendingPrice } from "./pending-price";
 import { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { PendingReminderController } from "./pending-reminder";
 import { OcrCopyController } from "./ocr-copy";
@@ -342,6 +343,7 @@ export function App() {
     const [invoices] = useState(() => new PendingInvoiceController());
     const [invoiceProfiles] = useState(() => new PendingInvoiceProfiles());
     const [interledger] = useState(() => new PendingInterledger());
+    const [prices] = useState(() => new PendingPrice());
     const [reminders] = useState(() => new PendingReminderController());
     const [locale, setLocale] = useState<Locale>(readLocale);
     const [auth, setAuth] = useState<AuthState>({ status: "checking" });
@@ -381,6 +383,7 @@ export function App() {
                     invoices.setOwner(String(session.user.id));
                     invoiceProfiles.setOwner(String(session.user.id));
                     interledger.setOwner(String(session.user.id));
+                    prices.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
             })
@@ -403,6 +406,7 @@ export function App() {
                     invoices.setOwner(null);
                     invoiceProfiles.setOwner(null);
                     interledger.setOwner(null);
+                    prices.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
                     setAuth({
@@ -429,6 +433,7 @@ export function App() {
         invoices,
         invoiceProfiles,
         interledger,
+        prices,
     ]);
 
     useEffect(() => {
@@ -461,6 +466,7 @@ export function App() {
             invoices.setOwner(null, true);
             invoiceProfiles.setOwner(null, true);
             interledger.setOwner(null, true);
+            prices.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
             if (problem instanceof ApiError && problem.kind === "unauthorized") {
@@ -480,6 +486,7 @@ export function App() {
                 invoices.setOwner(null, true);
                 invoiceProfiles.setOwner(null, true);
                 interledger.setOwner(null, true);
+                prices.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
         } finally {
@@ -535,6 +542,7 @@ export function App() {
                     invoices={invoices}
                     invoiceProfiles={invoiceProfiles}
                     interledger={interledger}
+                    prices={prices}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);
@@ -552,6 +560,7 @@ export function App() {
                         invoices.setOwner(null);
                         invoiceProfiles.setOwner(null);
                         interledger.setOwner(null);
+                        prices.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
                 />
@@ -609,6 +618,7 @@ export function App() {
                                         invoices.setOwner(String(session.user.id));
                                         invoiceProfiles.setOwner(String(session.user.id));
                                         interledger.setOwner(String(session.user.id));
+                                        prices.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });
                                     }}

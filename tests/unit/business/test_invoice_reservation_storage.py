@@ -23,6 +23,7 @@ def test_frozen_reservation_schema_matches_model_and_current_notification_types(
         "business_invoice_completions",
         "interledger_settings",
         "interledger_groups",
+        "manual_prices",
     )
     assert InvoiceReservation.__table__.c.logo_file_id.references(StoredFile.__table__.c.id)
     statement = CreateTable(InvoiceReservation.__table__).compile(dialect=dialect())

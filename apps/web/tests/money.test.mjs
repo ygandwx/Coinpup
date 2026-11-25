@@ -4,6 +4,7 @@ import {
     AmountError,
     amountFromMinorUnits,
     formatAmount,
+    formatReportAmount,
     parseAmount,
     sumAmounts,
 } from "../src/money.ts";
@@ -20,6 +21,14 @@ test("display preserves fractional padding and uses the locale decimal separator
     assert.equal(formatAmount("0.89999000", "en"), "0.89999000");
     assert.equal(formatAmount("1234.000001", "de-DE"), "1.234,000001");
     assert.equal(formatAmount("0.000000000000000001", "zh"), "0.000000000000000001");
+});
+
+test("report money formats sums beyond the single posting bound exactly", () => {
+    const total = "1000000000000000002165.00";
+    assert.equal(formatReportAmount(total, "en"), "1,000,000,000,000,000,002,165.00");
+    assert.equal(formatReportAmount("-" + total, "de-DE"), "-1.000.000.000.000.000.002.165,00");
+    assert.throws(() => formatAmount(total, "en"), { code: "amount_range" });
+    assert.throws(() => formatReportAmount("1e29", "en"), { code: "amount_format" });
 });
 
 test("preview addition never rounds, including a final net total at the storage bound", () => {

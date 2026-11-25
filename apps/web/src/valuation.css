@@ -1,0 +1,53 @@
+.valuation-panel {
+    overflow-wrap: anywhere;
+}
+.valuation-panel form {
+    margin-block: 16px;
+}
+.valuation-panel .valuation-ledgers,
+.valuation-panel .valuation-items {
+    display: grid;
+    gap: 10px 18px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    list-style: none;
+    margin-block: 15px;
+    padding: 0;
+}
+.valuation-panel .valuation-ledgers label {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+.valuation-panel .valuation-items li {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+}
+.valuation-panel .valuation-items p {
+    margin-block: 6px;
+}
+.valuation-panel .valuation-details {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    padding: 0;
+}
+.valuation-panel .valuation-details li {
+    border-top: 1px solid var(--line);
+    padding-block: 9px;
+}
+.valuation-panel .valuation-details summary {
+    cursor: pointer;
+}
+.valuation-panel .valuation-details dl {
+    margin: 10px 0 0;
+}
+.valuation-panel .valuation-details dd {
+    margin: 0 0 8px;
+}
+.valuation-panel .valuation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}

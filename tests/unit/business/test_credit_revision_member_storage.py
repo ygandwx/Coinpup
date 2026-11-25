@@ -34,8 +34,9 @@ def test_member_ddl_catalog_and_operation_history_keys():
         "business_invoice_completions",
         "interledger_settings",
         "interledger_groups",
+        "manual_prices",
     }
-    assert len(get_args(EntityType)) == 50
+    assert len(get_args(EntityType)) == 51
     table = BusinessCreditRevisionMember.__table__
     assert " ".join(str(CreateTable(table).compile(dialect=dialect())).split()) in " ".join(
         migration["_SCHEMA_SQL"].split()

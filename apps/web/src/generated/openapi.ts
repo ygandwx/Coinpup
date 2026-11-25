@@ -2142,6 +2142,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quotes/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Manual Prices */
+        get: operations["list_manual_prices_api_v1_quotes_manual_get"];
+        /** Put Manual Price */
+        put: operations["put_manual_price_api_v1_quotes_manual_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/mvp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Mvp Report */
+        get: operations["read_mvp_report_api_v1_reports_mvp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3935,7 +3970,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -6322,6 +6357,69 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** ManualPricePage */
+        ManualPricePage: {
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["ManualPriceResponse"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** ManualPricePut */
+        ManualPricePut: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Display Asset Id
+             * @enum {string}
+             */
+            display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+            /** Expected Version */
+            expected_version: number;
+            /** Price */
+            price: string;
+            /**
+             * Price Date
+             * Format: date
+             */
+            price_date: string;
+            /** Source */
+            source: string;
+        };
+        /** ManualPriceResponse */
+        ManualPriceResponse: {
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Display Asset Id
+             * @enum {string}
+             */
+            display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Price */
+            price: string;
+            /**
+             * Price Date
+             * Format: date
+             */
+            price_date: string;
+            /** Source */
+            source: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
         /** OpeningCreate */
         OpeningCreate: {
             /**
@@ -7505,6 +7603,92 @@ export interface components {
             action: "complete" | "reopen" | "archive" | "restore";
             /** Expected Version */
             expected_version: number;
+        };
+        /** ReportOriginal */
+        ReportOriginal: {
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Inflow */
+            inflow: string | null;
+            /** Outflow */
+            outflow: string | null;
+        };
+        /** ReportResponse */
+        ReportResponse: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Originals */
+            originals: components["schemas"]["ReportOriginal"][];
+            /** Rows */
+            rows: components["schemas"]["ReportRow"][];
+            /** Total Rows */
+            total_rows: number;
+            valuation: components["schemas"]["ReportValuation"] | null;
+            /**
+             * View
+             * @enum {string}
+             */
+            view: "balances" | "cash" | "operating";
+        };
+        /** ReportRow */
+        ReportRow: {
+            /** Account Id */
+            account_id: string | null;
+            /** Amount */
+            amount: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Category Id */
+            category_id: string | null;
+            /** Date */
+            date: string | null;
+            /** Description */
+            description: string;
+            /** Excluded Repayment Group */
+            excluded_repayment_group: string | null;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /** Operation Id */
+            operation_id: string | null;
+            price: components["schemas"]["ManualPriceResponse"] | null;
+            /** Repayment Group Id */
+            repayment_group_id: string | null;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * Valuation State
+             * @enum {string}
+             */
+            valuation_state: "not_requested" | "identity" | "quoted" | "missing" | "excluded";
+        };
+        /** ReportValuation */
+        ReportValuation: {
+            /** Amount */
+            amount: string | null;
+            /**
+             * Display Asset Id
+             * @enum {string}
+             */
+            display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+            /** Missing Asset Ids */
+            missing_asset_ids: string[];
+            /** Missing Rows */
+            missing_rows: number;
+            /**
+             * Price Date
+             * Format: date
+             */
+            price_date: string;
         };
         /** ReturnGroupFact */
         ReturnGroupFact: {
@@ -12973,6 +13157,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadCompletion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_manual_prices_api_v1_quotes_manual_get: {
+        parameters: {
+            query: {
+                price_date: string;
+                display_asset_id: "USD" | "GBP" | "EUR" | "HKD" | "CNY";
+                limit?: number;
+                offset?: number;
+                asset_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManualPricePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_manual_price_api_v1_quotes_manual_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualPricePut"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManualPriceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_mvp_report_api_v1_reports_mvp_get: {
+        parameters: {
+            query: {
+                ledger_ids: string[];
+                view: "balances" | "cash" | "operating";
+                from_date?: string | null;
+                to_date?: string | null;
+                display_asset_id?: ("USD" | "GBP" | "EUR" | "HKD" | "CNY") | null;
+                price_date?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponse"];
                 };
             };
             /** @description Validation Error */
