@@ -1,6 +1,8 @@
 # Coinpup
 
-个人与多家公司共用的自托管记账系统，采用独立账本、多币种和私有票据。网页联网使用，Android / iOS 通过共用 API 扩展。实际能力与限制见[当前状态](docs/engineering/status.md)。
+个人与多家公司共用的自托管记账系统，采用独立账本、多币种和私有票据。网页联网使用，并有 Android / iOS 客户端工程。
+
+**从这里开始：** [中文使用手册与完整功能介绍](docs/product/user-guide.md) · [本地快速开始](#快速开始) · [部署、备份和恢复](docs/engineering/operations.md) · [当前状态](docs/engineering/status.md)
 
 ## 快速开始
 
@@ -72,6 +74,8 @@ python -m piptools compile pyproject.toml --extra dev --output-file requirements
 
 | 内容 | 入口 |
 | --- | --- |
+| 中文使用手册、功能地图和移动端试用 | [user-guide.md](docs/product/user-guide.md) |
+| 移动端构建、离线与同步 | [移动端 README](apps/mobile/README.md) |
 | 开发规则与接续 | [AGENTS.md](AGENTS.md) |
 | 最新授权、进度、限制和下一步 | [status.md](docs/engineering/status.md) |
 | 任务依赖与验收条件 | [roadmap.md](docs/engineering/roadmap.md) |
