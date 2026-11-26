@@ -21,7 +21,8 @@
 - `POST /api/v1/auth/login`：验证凭据并建立新会话。
 - `GET /api/v1/auth/session`：获取当前管理员和 CSRF token，无会话返回 401。
 - `POST /api/v1/auth/logout`：校验 CSRF 后撤销当前会话并清除 Cookie。
-- 初始化、密码重置通过 `python -m coinpup_api.admin` 命令完成。
+- `POST /api/v1/auth/change-password`：验证有效会话、Origin、CSRF、当前密码和两次确认的新密码；复用失败限制。事务内更新密码并撤销全部旧会话，再给当前浏览器签发新 Cookie 与 CSRF token。其他浏览器与设备需重新登录。
+- 初始化、忘记密码时的重置通过 `python -m coinpup_api.admin` 命令完成。
 
 开发时 Vite 转发 `/api`；容器直接由 FastAPI 提供构建后的网页，两种方式都保持浏览器同源请求。生产 HTTPS 终止与域名配置属于实际部署验收；开发 Compose 只绑定本机，不能作为已完成生产部署的证据。
 

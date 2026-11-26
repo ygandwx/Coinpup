@@ -1288,3 +1288,24 @@
 .project-report .confirmation-facts dd {
     font-variant-numeric: tabular-nums;
 }
+
+.password-fields {
+    border: 0;
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    max-width: 26rem;
+    min-inline-size: 0;
+    padding: 0;
+}
+
+.password-fields label {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.password-fields input {
+    min-width: 0;
+    width: 100%;
+}

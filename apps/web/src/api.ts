@@ -2,6 +2,7 @@ import type { components } from "./generated/openapi";
 
 export type Session = components["schemas"]["SessionResponse"];
 export type LoginRequest = components["schemas"]["LoginRequest"];
+export type PasswordChangeRequest = components["schemas"]["PasswordChangeRequest"];
 
 export type ApiErrorKind = "unauthorized" | "forbidden" | "rate-limited" | "network" | "server";
 export type FieldError = { path: (string | number)[]; message: string; type: string };
@@ -219,6 +220,13 @@ export async function signIn(username: string, password: string): Promise<Sessio
             body: JSON.stringify({ username, password } satisfies LoginRequest),
         }),
     );
+}
+
+export async function changePassword(
+    csrfToken: string,
+    body: PasswordChangeRequest,
+): Promise<Session> {
+    return parseSession(await writeJson<unknown>("/api/v1/auth/change-password", csrfToken, body));
 }
 
 export async function signOut(csrfToken: string): Promise<void> {
