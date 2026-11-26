@@ -551,6 +551,15 @@ export function App() {
                     invoiceProfiles={invoiceProfiles}
                     interledger={interledger}
                     prices={prices}
+                    onSessionChanged={(previous, session) => {
+                        setAuth((current) =>
+                            current.status === "authenticated" &&
+                            current.session.csrf_token === previous.csrf_token &&
+                            current.session.user.id === session.user.id
+                                ? { status: "authenticated", session }
+                                : current,
+                        );
+                    }}
                     onUnauthorized={() => {
                         commands.setOwner(null);
                         uploads.setOwner(null);

@@ -11293,6 +11293,41 @@
         "title": "PartyUpdate",
         "type": "object"
       },
+      "PasswordChangeRequest": {
+        "properties": {
+          "confirm_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Confirm Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "current_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "new_password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password",
+          "confirm_password"
+        ],
+        "title": "PasswordChangeRequest",
+        "type": "object"
+      },
       "PaymentEvidenceTarget": {
         "additionalProperties": false,
         "properties": {
@@ -16042,6 +16077,47 @@
         "summary": "Update Asset",
         "tags": [
           "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "authentication"
         ]
       }
     },

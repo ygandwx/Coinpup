@@ -107,3 +107,86 @@ test("a failed initial connection can be retried without faking authentication",
     await page.getByRole("button", { name: "Try again", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
 });
+
+test("Settings rotates the current session and revokes the second browser", async ({
+    page,
+    browser,
+    baseURL,
+}, testInfo) => {
+    test.skip(
+        !process.env.CI && process.env.COINPUP_E2E_PASSWORD_CHANGE !== "1",
+        "Password rotation requires an isolated disposable account",
+    );
+    test.skip(testInfo.config.workers !== 1, "Password rotation requires one worker");
+    const replacement = "fictional-changed-e2e-password-458";
+    const another = await browser.newContext({ baseURL });
+    try {
+        const first = await another.request.post("/api/v1/auth/login", {
+            headers: { Origin: new URL(baseURL!).origin },
+            data: { username, password },
+        });
+        expect(first.status()).toBe(200);
+        await page.goto("/login");
+        await page.getByLabel("Username", { exact: true }).fill(username);
+        await page.getByLabel("Password", { exact: true }).fill(password);
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        await expect(page.getByTestId("current-username")).toHaveText(username);
+        await page.getByRole("button", { name: "Settings", exact: true }).click();
+        const oldSession = await (await page.request.get("/api/v1/auth/session")).json();
+        const changeForm = page.getByRole("form", { name: "Change password" });
+        await expect(changeForm).toBeVisible();
+        for (const width of [375, 320]) {
+            await page.setViewportSize({ width, height: 800 });
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth),
+            ).toBeLessThanOrEqual(width);
+        }
+        await changeForm.getByLabel("Current password", { exact: true }).fill(password);
+        await changeForm.getByLabel("New password", { exact: true }).fill(replacement);
+        await changeForm.getByLabel("Confirm new password", { exact: true }).fill(replacement);
+        await changeForm.getByRole("button", { name: "Save new password" }).click();
+        await expect(changeForm.getByRole("status")).toContainText("Password changed");
+        const newSession = await (await page.request.get("/api/v1/auth/session")).json();
+        expect(newSession.csrf_token).not.toBe(oldSession.csrf_token);
+        expect((await another.request.get("/api/v1/auth/session")).status()).toBe(401);
+        await page.reload();
+        await expect(page.getByTestId("current-username")).toHaveText(username);
+        expect((await (await page.request.get("/api/v1/auth/session")).json()).csrf_token).toBe(
+            newSession.csrf_token,
+        );
+        await page.getByRole("button", { name: "Settings", exact: true }).click();
+        await page.getByRole("button", { name: "中文", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "修改密码", exact: true })).toBeVisible();
+        await page.getByRole("button", { name: "退出登录", exact: true }).click();
+        await expect(page).toHaveURL(/\/login$/);
+    } finally {
+        try {
+            const origin = new URL(baseURL!).origin;
+            await another.clearCookies();
+            const original = await another.request.post("/api/v1/auth/login", {
+                headers: { Origin: origin },
+                data: { username, password },
+            });
+            if (original.status() === 401) {
+                const current = await another.request.post("/api/v1/auth/login", {
+                    headers: { Origin: origin },
+                    data: { username, password: replacement },
+                });
+                expect(current.status()).toBe(200);
+                const restored = await another.request.post("/api/v1/auth/change-password", {
+                    headers: { Origin: origin, "X-CSRF-Token": (await current.json()).csrf_token },
+                    data: {
+                        current_password: replacement,
+                        new_password: password,
+                        confirm_password: password,
+                    },
+                });
+                expect(restored.status()).toBe(200);
+            } else {
+                expect(original.status()).toBe(200);
+            }
+        } finally {
+            await another.close();
+        }
+    }
+});

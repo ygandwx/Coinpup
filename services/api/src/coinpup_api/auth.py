@@ -3,7 +3,7 @@
 import logging
 import math
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -18,6 +18,7 @@ from coinpup_api.security import (
     DUMMY_PASSWORD_HASH,
     PASSWORD_HASHER,
     csrf_token_for,
+    hash_password,
     new_session_token,
     token_digest,
     valid_csrf_token,
@@ -44,6 +45,12 @@ class Identity:
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
     password: SecretStr = Field(min_length=1, max_length=128)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: SecretStr = Field(min_length=1, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)
+    confirm_password: SecretStr = Field(min_length=12, max_length=128)
 
 
 class UserResponse(BaseModel):
@@ -73,24 +80,40 @@ class AuthService:
             raise AuthError("authentication_unavailable", 503)
         return self.engine
 
+    def check_throttle(self, guard: LoginGuard, now: datetime) -> None:
+        if guard.locked_until is not None and guard.locked_until > now:
+            wait = math.ceil((guard.locked_until - now).total_seconds())
+            raise AuthError("login_rate_limited", 429, wait)
+        if (
+            guard.window_started_at is None
+            or now - guard.window_started_at
+            >= timedelta(seconds=self.settings.login_window_seconds)
+            or guard.locked_until is not None
+        ):
+            guard.failure_count = 0
+            guard.window_started_at = now
+            guard.locked_until = None
+
+    @staticmethod
+    def clear_throttle(guard: LoginGuard) -> None:
+        guard.failure_count = 0
+        guard.window_started_at = None
+        guard.locked_until = None
+
+    def record_failure(self, guard: LoginGuard, now: datetime, code: str, status: int) -> AuthError:
+        guard.failure_count += 1
+        if guard.failure_count >= self.settings.login_max_failures:
+            guard.locked_until = now + timedelta(seconds=self.settings.login_lock_seconds)
+            return AuthError("login_rate_limited", 429, self.settings.login_lock_seconds)
+        return AuthError(code, status)
+
     def login(self, username: str, password: str, previous_token: str | None = None):
         failure = None
         result = None
         with Session(self.require_engine()) as session, session.begin():
             guard = lock_login_guard(session)
             now = session.scalar(select(func.clock_timestamp()))
-            if guard.locked_until is not None and guard.locked_until > now:
-                wait = math.ceil((guard.locked_until - now).total_seconds())
-                raise AuthError("login_rate_limited", 429, wait)
-            if (
-                guard.window_started_at is None
-                or now - guard.window_started_at
-                >= timedelta(seconds=self.settings.login_window_seconds)
-                or guard.locked_until is not None
-            ):
-                guard.failure_count = 0
-                guard.window_started_at = now
-                guard.locked_until = None
+            self.check_throttle(guard, now)
             administrator = session.scalar(select(Administrator).with_for_update())
             encoded = administrator.password_hash if administrator else DUMMY_PASSWORD_HASH
             password_ok = verify_password(encoded, password)
@@ -98,16 +121,9 @@ class AuthService:
                 administrator is not None and administrator.username == username.strip().lower()
             )
             if not password_ok or not username_ok:
-                guard.failure_count += 1
-                if guard.failure_count >= self.settings.login_max_failures:
-                    guard.locked_until = now + timedelta(seconds=self.settings.login_lock_seconds)
-                    failure = AuthError("login_rate_limited", 429, self.settings.login_lock_seconds)
-                else:
-                    failure = AuthError("invalid_credentials", 401)
+                failure = self.record_failure(guard, now, "invalid_credentials", 401)
             else:
-                guard.failure_count = 0
-                guard.window_started_at = None
-                guard.locked_until = None
+                self.clear_throttle(guard)
                 if PASSWORD_HASHER.check_needs_rehash(encoded):
                     administrator.password_hash = PASSWORD_HASHER.hash(password)
                     administrator.updated_at = now
@@ -131,6 +147,64 @@ class AuthService:
         if failure:
             raise failure
         return result
+
+    def change_password(
+        self, token: str, current: str, new: str, confirm: str
+    ) -> tuple[Identity, str]:
+        failure: AuthError
+        with Session(self.require_engine()) as session, session.begin():
+            # Same lock order as login and CLI reset; revalidate the session inside
+            # the transaction so a concurrent revocation cannot authorize a change.
+            guard = lock_login_guard(session)
+            administrator = session.scalar(select(Administrator).with_for_update())
+            now = session.scalar(select(func.clock_timestamp()))
+            active = session.scalar(
+                select(AuthSession)
+                .where(
+                    AuthSession.token_hash == token_digest(token),
+                    AuthSession.revoked_at.is_(None),
+                    AuthSession.expires_at > now,
+                )
+                .with_for_update()
+            )
+            if (
+                administrator is None
+                or active is None
+                or active.administrator_id != administrator.id
+            ):
+                raise AuthError("authentication_required", 401)
+            if new != confirm:
+                raise AuthError("password_confirmation_mismatch", 400)
+            self.check_throttle(guard, now)
+            if not verify_password(administrator.password_hash, current):
+                failure = self.record_failure(guard, now, "incorrect_current_password", 400)
+            elif new == current:
+                self.clear_throttle(guard)
+                failure = AuthError("new_password_must_differ", 400)
+            else:
+                administrator.password_hash = hash_password(new)
+                administrator.updated_at = now
+                self.clear_throttle(guard)
+                session.execute(
+                    update(AuthSession)
+                    .where(
+                        AuthSession.administrator_id == administrator.id,
+                        AuthSession.revoked_at.is_(None),
+                    )
+                    .values(revoked_at=now)
+                )
+                replacement = new_session_token()
+                session.add(
+                    AuthSession(
+                        token_hash=token_digest(replacement),
+                        administrator_id=administrator.id,
+                        created_at=now,
+                        expires_at=now + timedelta(seconds=self.settings.session_ttl_seconds),
+                    )
+                )
+                return Identity(administrator.id, administrator.username), replacement
+        # Failed guesses count even though the response is an error.
+        raise failure
 
     def get_session(self, token: str | None) -> Identity:
         if not token or len(token) > 128:
@@ -197,6 +271,18 @@ def create_auth_router(settings: Settings, engine: Engine | None) -> APIRouter:
             csrf_token=csrf_token_for(token),
         )
 
+    def set_session_cookie(response: Response, token: str) -> None:
+        response.set_cookie(
+            name,
+            token,
+            max_age=settings.session_ttl_seconds,
+            httponly=True,
+            secure=secure,
+            samesite="strict",
+            path="/",
+        )
+        response.headers["Cache-Control"] = "no-store"
+
     @router.post("/login", response_model=SessionResponse)
     def login(body: LoginRequest, request: Request, response: Response) -> SessionResponse:
         check_origin(request, settings)
@@ -216,17 +302,33 @@ def create_auth_router(settings: Settings, engine: Engine | None) -> APIRouter:
         identity, token = execute(
             service.login, body.username, body.password.get_secret_value(), previous
         )
-        response.set_cookie(
-            name,
-            token,
-            max_age=settings.session_ttl_seconds,
-            httponly=True,
-            secure=secure,
-            samesite="strict",
-            path="/",
-        )
-        response.headers["Cache-Control"] = "no-store"
+        set_session_cookie(response, token)
         return payload(identity, token)
+
+    @router.post("/change-password", response_model=SessionResponse)
+    def change_password(
+        body: PasswordChangeRequest, request: Request, response: Response
+    ) -> SessionResponse:
+        check_origin(request, settings)
+        token = request.cookies.get(name)
+        if not token or len(token) > 128:
+            raise translate_error(AuthError("authentication_required", 401))
+        if not valid_csrf_token(token, request.headers.get("x-csrf-token")):
+            raise HTTPException(403, "csrf_failed", headers={"Cache-Control": "no-store"})
+        try:
+            identity, replacement = execute(
+                service.change_password,
+                token,
+                body.current_password.get_secret_value(),
+                body.new_password.get_secret_value(),
+                body.confirm_password.get_secret_value(),
+            )
+        except HTTPException as exc:
+            if exc.status_code != 400:
+                raise
+            raise HTTPException(400, {"code": exc.detail}, headers=exc.headers) from None
+        set_session_cookie(response, replacement)
+        return payload(identity, replacement)
 
     @router.get("/session", response_model=SessionResponse)
     def current_session(request: Request, response: Response) -> SessionResponse:

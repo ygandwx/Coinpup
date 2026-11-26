@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { ApiError, checkHealth } from "./api";
 import type { Session } from "./api";
+import { PasswordSettings } from "./PasswordSettings";
 import type { Locale } from "./i18n";
 import { EntityForm } from "./EntityForm";
 import { AccountForm } from "./AccountForm";
@@ -358,6 +359,7 @@ export function BusinessWorkspace({
     interledger,
     prices,
     onUnauthorized,
+    onSessionChanged,
 }: {
     session: Session;
     locale: Locale;
@@ -380,6 +382,7 @@ export function BusinessWorkspace({
     interledger: PendingInterledger;
     prices: PendingPrice;
     onUnauthorized: () => void;
+    onSessionChanged: (previous: Session, replacement: Session) => void;
 }) {
     const t = (zh: string, en: string) => text(locale, zh, en);
     const pending = useSyncExternalStore(commands.subscribe, commands.getSnapshot);
@@ -1162,7 +1165,15 @@ export function BusinessWorkspace({
                             )}
                     </section>
                 ) : view === "settings" ? (
-                    <SettingsPanel locale={locale} />
+                    <>
+                        <PasswordSettings
+                            locale={locale}
+                            session={session}
+                            onUnauthorized={onUnauthorized}
+                            onSessionChanged={onSessionChanged}
+                        />
+                        <SettingsPanel locale={locale} />
+                    </>
                 ) : view === "assets" ? (
                     <AssetsPanel
                         session={session}
