@@ -1,3 +1,5 @@
+import { Dashboard } from "./Dashboard";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 import { InvoiceProfilePanel } from "./InvoiceProfilePanel";
 import type { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { InvoiceIssuePanel } from "./InvoiceIssuePanel";
@@ -17,7 +19,7 @@ import { AccountBalanceChart, AccountCard } from "./AccountCard";
 import { AccountIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
 import { accountInstitution } from "./institutions";
-import { formatAmount } from "./money";
+import { formatAssetAmount } from "./money";
 import { prepareAccountBalances } from "./account-charts";
 import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
@@ -941,6 +943,14 @@ export function BusinessWorkspace({
         if (pageEditorKey) document.getElementById("business-title")?.focus();
     }, [pageEditorKey]);
 
+    function navigate(item: View) {
+        setView(item);
+        setDraftTarget(null);
+        setFileOperation(null);
+        setActionError(null);
+        setNotice(false);
+    }
+
     return (
         <div className="business-layout">
             <aside className="business-sidebar" aria-label={t("管理空间", "Workspace")}>
@@ -992,13 +1002,7 @@ export function BusinessWorkspace({
                     labels={labels}
                     view={view}
                     disabled={busy || !!editor || navigationLocked}
-                    onSelect={(item) => {
-                        setView(item);
-                        setDraftTarget(null);
-                        setFileOperation(null);
-                        setActionError(null);
-                        setNotice(false);
-                    }}
+                    onSelect={navigate}
                 />
             </aside>
             <main id="main" className="business-main">
@@ -1185,8 +1189,8 @@ export function BusinessWorkspace({
                         onUnauthorized={onUnauthorized}
                     />
                 ) : loading && !entities.length ? (
-                    <div className="business-panel" role="status">
-                        {t("正在读取账本…", "Loading ledgers…")}
+                    <div className="business-panel">
+                        <LoadingSkeleton label={t("正在读取账本…", "Loading ledgers…")} />
                     </div>
                 ) : !entity ? (
                     <section className="empty-state business-panel">
@@ -1501,26 +1505,14 @@ export function BusinessWorkspace({
                         )}
                         {view === "overview" && (
                             <>
-                                <div className="overview-cards">
-                                    <article className="summary-card">
-                                        <p>{t("账户", "Accounts")}</p>
-                                        <strong>
-                                            {current?.accounts.filter((item) => !item.archived)
-                                                .length ?? "—"}
-                                        </strong>
-                                    </article>
-                                    <article className="summary-card">
-                                        <p>{t("独立分类", "Independent categories")}</p>
-                                        <strong>
-                                            {current?.categories.filter((item) => !item.archived)
-                                                .length ?? "—"}
-                                        </strong>
-                                    </article>
-                                    <article className="summary-card">
-                                        <p>{t("基础币种", "Base currency")}</p>
-                                        <strong>{entity.ledger.base_asset_id}</strong>
-                                    </article>
-                                </div>
+                                <Dashboard
+                                    entity={entity}
+                                    locale={locale}
+                                    refresh={refresh}
+                                    disableNavigation={busy || navigationLocked}
+                                    onNavigate={navigate}
+                                    onUnauthorized={onUnauthorized}
+                                />
                                 <section className="business-panel">
                                     <div className="section-heading">
                                         <h2>{t("账户余额", "Account balances")}</h2>
@@ -1596,12 +1588,16 @@ export function BusinessWorkspace({
                                                                     />
                                                                 </div>
                                                                 <strong
-                                                                    className="money-quantity"
+                                                                    className="money-quantity ui-amount"
+                                                                    data-negative={balance.amount.startsWith(
+                                                                        "-",
+                                                                    )}
                                                                     tabIndex={0}
                                                                     aria-label={`${balance.asset_id} ${balance.amount}`}
                                                                 >
-                                                                    {formatAmount(
+                                                                    {formatAssetAmount(
                                                                         balance.amount,
+                                                                        balance.asset_id,
                                                                         locale,
                                                                     )}
                                                                 </strong>

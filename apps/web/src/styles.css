@@ -1,5 +1,6 @@
 :root {
-    font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family:
+        Inter, "Noto Sans SC Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     color: var(--ink);
     background: var(--canvas);
     color-scheme: light;

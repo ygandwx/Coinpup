@@ -76,3 +76,18 @@ function formatParts({ negative, integer, fraction }: ReturnType<typeof parts>, 
             .find((part) => part.type === "decimal")?.value ?? ".";
     return `${negative ? "-" : ""}${grouped}${fraction ? decimal + fraction : ""}`;
 }
+
+/** Format a display-only amount, retaining its sign and all fractional digits. */
+export function formatAssetAmount(amount: string, assetId: string, locale = "en"): string {
+    const quantity = formatReportAmount(amount, locale);
+    if (!/^[A-Z]{3}$/.test(assetId) || assetId === "BTC" || assetId === "ETH" || assetId === "XMR")
+        return quantity;
+    const currency = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : locale, {
+        style: "currency",
+        currency: assetId,
+    })
+        .formatToParts(0n)
+        .find((part) => part.type === "currency")?.value;
+    if (!currency || currency === assetId) return quantity;
+    return quantity.startsWith("-") ? `-${currency}${quantity.slice(1)}` : currency + quantity;
+}

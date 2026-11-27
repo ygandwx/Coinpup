@@ -383,7 +383,7 @@ test("exchange actual quantities and fees in a third asset remain separate and a
     await expect(page.getByTestId(`operation-${receipt.id}`)).toContainText("90.00");
     await page.getByTestId(`operation-${receipt.id}`).locator("summary").click();
     await expect(
-        page.getByTestId(`operation-${receipt.id}`).getByText("0.25", { exact: true }),
+        page.getByTestId(`operation-${receipt.id}`).getByText("£0.25", { exact: true }),
     ).toBeVisible();
     await expectNoOverflow(page);
     await page.screenshot({

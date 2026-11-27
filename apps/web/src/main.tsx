@@ -1,3 +1,4 @@
+import "@fontsource-variable/noto-sans-sc";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./styles.css";

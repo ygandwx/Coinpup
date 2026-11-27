@@ -7,6 +7,7 @@ export const smokeSpecs = [
     "auth.spec.ts",
     "structure.spec.ts",
     "asset-presets.spec.ts",
+    "dashboard.spec.ts",
     "posting.spec.ts",
     "revision.spec.ts",
     "files.spec.ts",

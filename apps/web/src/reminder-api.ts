@@ -57,3 +57,27 @@ export const saveReminder = (
         action === "save" || action === "manual" ? "PATCH" : "POST",
     );
 };
+
+export async function listUpcomingReminders(
+    ledger: string,
+    today: string,
+    signal: AbortSignal,
+): Promise<Reminder[]> {
+    const upcoming: Reminder[] = [];
+    const limit = 100;
+    for (let offset = 0; offset <= 100000; offset += limit) {
+        const page = await readJson<Reminder[]>(
+            `${base(ledger)}?limit=${limit}&offset=${offset}&include_archived=false&include_completed=false`,
+            signal,
+        );
+        upcoming.push(
+            ...page.filter((item) => item.effective_date && item.effective_date >= today),
+        );
+        if (page.length < limit) {
+            return upcoming
+                .sort((a, b) => a.effective_date!.localeCompare(b.effective_date!))
+                .slice(0, 5);
+        }
+    }
+    throw new Error("Reminder page limit exceeded");
+}

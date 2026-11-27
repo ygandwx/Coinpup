@@ -47,7 +47,7 @@ test("fictional confirmation from the second draft page returns to the first sea
     ).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Control balances", exact: true }).click();
-    await expect(page.getByTestId("control-amount")).toHaveText("110.00 USD");
+    await expect(page.getByTestId("control-amount")).toHaveText("$110.00 USD");
     expect(await api(page, "GET", `${data.ledger}/balances`)).toEqual([]);
 });
 

@@ -1,6 +1,7 @@
 import { AccountIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
 import { accountInstitution } from "./institutions";
+import { DisplayAmount } from "./DisplayAmount";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
@@ -122,14 +123,26 @@ function OperationCard({
                                 {t("转出", "From")} · {account(posting.source_account_id)} ·{" "}
                                 {asset(posting.source_asset_id)}
                             </dt>
-                            <dd tabIndex={0}>{posting.source_amount}</dd>
+                            <dd tabIndex={0}>
+                                <DisplayAmount
+                                    amount={posting.source_amount}
+                                    assetId={posting.source_asset_id}
+                                    locale={locale}
+                                />
+                            </dd>
                         </div>
                         <div>
                             <dt>
                                 {t("转入", "To")} · {account(posting.destination_account_id)} ·{" "}
                                 {asset(posting.destination_asset_id)}
                             </dt>
-                            <dd tabIndex={0}>{posting.destination_amount}</dd>
+                            <dd tabIndex={0}>
+                                <DisplayAmount
+                                    amount={posting.destination_amount}
+                                    assetId={posting.destination_asset_id}
+                                    locale={locale}
+                                />
+                            </dd>
                         </div>
                     </>
                 ) : posting.kind === "transfer" ? (
@@ -138,14 +151,27 @@ function OperationCard({
                             {account(posting.source_account_id)} →{" "}
                             {account(posting.destination_account_id)} · {asset(posting.asset_id)}
                         </dt>
-                        <dd tabIndex={0}>{posting.amount}</dd>
+                        <dd tabIndex={0}>
+                            <DisplayAmount
+                                amount={posting.amount}
+                                assetId={posting.asset_id}
+                                locale={locale}
+                            />
+                        </dd>
                     </div>
                 ) : (
                     <div>
                         <dt>
                             {account(posting.account_id)} · {asset(posting.asset_id)}
                         </dt>
-                        <dd tabIndex={0}>{posting.amount}</dd>
+                        <dd tabIndex={0}>
+                            <DisplayAmount
+                                amount={posting.amount}
+                                assetId={posting.asset_id}
+                                locale={locale}
+                                expense={posting.kind === "expense"}
+                            />
+                        </dd>
                     </div>
                 )}
             </dl>
@@ -155,7 +181,12 @@ function OperationCard({
                         <li key={split.category_id}>
                             <span>{category(split.category_id)}</span>
                             <span className="money-quantity" tabIndex={0}>
-                                {split.amount}
+                                <DisplayAmount
+                                    amount={split.amount}
+                                    assetId={posting.asset_id}
+                                    locale={locale}
+                                    expense={posting.kind === "expense"}
+                                />
                             </span>
                         </li>
                     ))}
@@ -174,7 +205,12 @@ function OperationCard({
                                     {asset(fee.asset_id)}
                                 </span>
                                 <span className="money-quantity" tabIndex={0}>
-                                    {fee.amount}
+                                    <DisplayAmount
+                                        amount={fee.amount}
+                                        assetId={fee.asset_id}
+                                        locale={locale}
+                                        expense
+                                    />
                                 </span>
                             </li>
                         ))}

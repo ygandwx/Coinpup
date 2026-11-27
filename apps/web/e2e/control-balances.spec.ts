@@ -35,7 +35,7 @@ test("fictional controls remain separate by direction and document in both langu
     const cards = page.getByTestId("control-balance");
     await expect(cards).toHaveCount(2);
     expect(await cards.getByTestId("control-amount").allTextContents()).toEqual(
-        expect.arrayContaining(["100.00 USD", "40.00 USD"]),
+        expect.arrayContaining(["$100.00 USD", "$40.00 USD"]),
     );
     for (const width of [1440, 375, 320]) {
         await page.setViewportSize({ width, height: 1000 });

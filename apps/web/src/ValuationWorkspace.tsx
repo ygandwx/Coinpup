@@ -7,7 +7,7 @@ import { businessError } from "./business-errors";
 import { validDraftDate } from "./draft-fields";
 import type { Locale } from "./i18n";
 import type { Asset, Entity } from "./ledger-api";
-import { AmountError, formatReportAmount } from "./money";
+import { AmountError, formatAssetAmount } from "./money";
 import type { PendingPrice } from "./pending-price";
 import { readManualPrices, readMvpReport } from "./valuation-api";
 import type { ManualPrice, ManualPriceInput, MvpReport, ReportQuery } from "./valuation-api";
@@ -174,7 +174,7 @@ function ReportPanel({
     const balances = view === "balances";
     const historicalBalance = balances && Boolean(display) && priceBasis === "historical";
     const displayAmount = (amount: string, id: string) =>
-        `${formatReportAmount(amount, locale)} ${assetName(id)}`;
+        `${formatAssetAmount(amount, id, locale)} ${assetName(id)}`;
     const reportName = t("原币汇总与估值", "Original-currency totals and valuation");
 
     function submit(event: FormEvent<HTMLFormElement>) {
