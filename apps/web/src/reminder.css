@@ -18,17 +18,17 @@
     min-width: 0;
 }
 .reminder-panel dd {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     white-space: pre-wrap;
 }
 .reminder-dates {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-    gap: 12px;
+    gap: var(--space-3);
 }
 .reminder-list-item {
     padding: 18px 0;
-    border-bottom: 1px solid #dce2d3;
+    border-bottom: 1px solid var(--line);
 }
 .reminder-notes {
     white-space: pre-wrap;

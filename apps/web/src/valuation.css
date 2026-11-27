@@ -2,7 +2,7 @@
     overflow-wrap: anywhere;
 }
 .valuation-panel form {
-    margin-block: 16px;
+    margin-block: var(--space-4);
 }
 .valuation-panel .valuation-ledgers,
 .valuation-panel .valuation-items {
@@ -15,13 +15,13 @@
 }
 .valuation-panel .valuation-ledgers label {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: baseline;
 }
 .valuation-panel .valuation-items li {
     border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
 }
 .valuation-panel .valuation-items p {
     margin-block: 6px;
@@ -43,11 +43,11 @@
     margin: 10px 0 0;
 }
 .valuation-panel .valuation-details dd {
-    margin: 0 0 8px;
+    margin: 0 0 var(--space-2);
 }
 .valuation-panel .valuation-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
 }

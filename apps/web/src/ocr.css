@@ -40,7 +40,7 @@
     min-width: 0;
 }
 .ocr-list button[aria-pressed="true"] {
-    outline: 2px solid #257365;
+    outline: 2px solid var(--focus);
 }
 .ocr-columns {
     display: grid;
@@ -60,18 +60,18 @@
 .ocr-preview canvas {
     max-width: 100%;
     height: auto;
-    border: 1px solid #d9dfdb;
+    border: 1px solid var(--line);
 }
 .ocr-raw {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     max-height: 22rem;
     overflow: auto;
-    background: #f4f6f5;
+    background: var(--surface-alt);
     padding: 1rem;
 }
 .ocr-field {
-    border-top: 1px solid #d9dfdb;
+    border-top: 1px solid var(--line);
     padding: 0.9rem 0;
     overflow-wrap: anywhere;
 }

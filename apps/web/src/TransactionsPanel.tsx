@@ -1,3 +1,6 @@
+import { AccountIcon } from "./AccountIcon";
+import { AssetIcon } from "./AssetIcon";
+import { accountInstitution } from "./institutions";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
@@ -33,6 +36,7 @@ export function operationName(kind: FinancialResponse["kind"], locale: Locale): 
 function OperationCard({
     operation,
     accounts,
+    assets,
     categories,
     locale,
     disabled,
@@ -44,6 +48,7 @@ function OperationCard({
 }: {
     operation: OperationState;
     accounts: Account[];
+    assets: Asset[];
     categories: Category[];
     locale: Locale;
     disabled: boolean;
@@ -55,7 +60,32 @@ function OperationCard({
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const posting = operation.latest_posting;
-    const account = (id: string) => accounts.find((item) => item.id === id)?.name ?? id;
+    function account(id: string) {
+        const item = accounts.find((value) => value.id === id);
+        return item ? (
+            <span className="icon-label">
+                <AccountIcon
+                    kind={item.kind}
+                    institution={accountInstitution(item.details)?.id}
+                    compact
+                />
+                {item.name}
+            </span>
+        ) : (
+            id
+        );
+    }
+    function asset(id: string) {
+        const item = assets.find((value) => value.asset_id === id);
+        return item ? (
+            <span className="icon-label">
+                <AssetIcon asset={item} compact />
+                {id}
+            </span>
+        ) : (
+            id
+        );
+    }
     const category = (id: string) => {
         const item = categories.find((value) => value.id === id);
         return item ? (locale === "en" ? item.name_en || item.name : item.name) : id;
@@ -90,14 +120,14 @@ function OperationCard({
                         <div>
                             <dt>
                                 {t("转出", "From")} · {account(posting.source_account_id)} ·{" "}
-                                {posting.source_asset_id}
+                                {asset(posting.source_asset_id)}
                             </dt>
                             <dd tabIndex={0}>{posting.source_amount}</dd>
                         </div>
                         <div>
                             <dt>
                                 {t("转入", "To")} · {account(posting.destination_account_id)} ·{" "}
-                                {posting.destination_asset_id}
+                                {asset(posting.destination_asset_id)}
                             </dt>
                             <dd tabIndex={0}>{posting.destination_amount}</dd>
                         </div>
@@ -106,14 +136,14 @@ function OperationCard({
                     <div>
                         <dt>
                             {account(posting.source_account_id)} →{" "}
-                            {account(posting.destination_account_id)} · {posting.asset_id}
+                            {account(posting.destination_account_id)} · {asset(posting.asset_id)}
                         </dt>
                         <dd tabIndex={0}>{posting.amount}</dd>
                     </div>
                 ) : (
                     <div>
                         <dt>
-                            {account(posting.account_id)} · {posting.asset_id}
+                            {account(posting.account_id)} · {asset(posting.asset_id)}
                         </dt>
                         <dd tabIndex={0}>{posting.amount}</dd>
                     </div>
@@ -141,7 +171,7 @@ function OperationCard({
                             <li key={index}>
                                 <span>
                                     {account(fee.account_id)} · {category(fee.category_id)} ·{" "}
-                                    {fee.asset_id}
+                                    {asset(fee.asset_id)}
                                 </span>
                                 <span className="money-quantity" tabIndex={0}>
                                     {fee.amount}
@@ -597,6 +627,7 @@ export function TransactionsPanel({
                                         key={operation.id}
                                         operation={operation}
                                         accounts={accounts}
+                                        assets={assets}
                                         categories={categories}
                                         locale={locale}
                                         disabled={locked || dataLoading}

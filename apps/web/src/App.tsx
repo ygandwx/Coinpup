@@ -1,5 +1,6 @@
 import { Icon } from "./Icon";
-import { useEffect, useState } from "react";
+import { BrandMark } from "./BrandMark";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, getSession, signIn, signOut } from "./api";
 import type { ApiErrorKind, Session } from "./api";
@@ -28,7 +29,7 @@ import { OcrCopyController } from "./ocr-copy";
 function Brand({ linked = true }: { linked?: boolean }) {
     const content = (
         <>
-            <img src="/coinpup.svg" alt="" width="42" height="42" />
+            <BrandMark />
             <span>
                 Coinpup<span className="brand-dot">.</span>
             </span>
@@ -75,11 +76,60 @@ function LanguageSwitch({
     );
 }
 
+const THEME_KEY = "coinpup.theme";
+type Theme = "system" | "light" | "dark";
+
+function readTheme(): Theme {
+    try {
+        const theme = localStorage.getItem(THEME_KEY);
+        return theme === "light" || theme === "dark" ? theme : "system";
+    } catch {
+        return "system";
+    }
+}
+
+function ThemePicker({ locale }: { locale: Locale }) {
+    const [theme, setTheme] = useState(readTheme);
+    const labels =
+        locale === "zh"
+            ? { appearance: "外观", system: "跟随系统", light: "浅色", dark: "深色" }
+            : { appearance: "Appearance", system: "System", light: "Light", dark: "Dark" };
+
+    useLayoutEffect(() => {
+        if (theme === "system") delete document.documentElement.dataset.theme;
+        else document.documentElement.dataset.theme = theme;
+        try {
+            localStorage.setItem(THEME_KEY, theme);
+        } catch {
+            /* The current theme still applies if storage is unavailable. */
+        }
+    }, [theme]);
+
+    return (
+        <div className="theme-picker">
+            <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "monitor"} />
+            <select
+                aria-label={labels.appearance}
+                value={theme}
+                onChange={({ target }) => {
+                    const value = target.value;
+                    if (value === "light" || value === "dark" || value === "system")
+                        setTheme(value);
+                }}
+            >
+                <option value="system">{labels.system}</option>
+                <option value="light">{labels.light}</option>
+                <option value="dark">{labels.dark}</option>
+            </select>
+        </div>
+    );
+}
+
 function Illustration() {
     return (
         <svg className="hero-illustration" viewBox="0 0 510 240" fill="none" aria-hidden="true">
-            <circle cx="261" cy="132" r="97" fill="#e5e9d8" />
-            <circle cx="261" cy="132" r="121" stroke="#dfe3d4" strokeDasharray="3 9" />
+            <circle cx="261" cy="132" r="97" fill="var(--tint)" />
+            <circle cx="261" cy="132" r="121" stroke="var(--line)" strokeDasharray="3 9" />
             <g transform="rotate(-10 185 122)">
                 <rect
                     x="102"
@@ -87,19 +137,19 @@ function Illustration() {
                     width="180"
                     height="132"
                     rx="19"
-                    fill="#d1dfb6"
-                    stroke="#bccda0"
+                    fill="var(--success-bg)"
+                    stroke="var(--line-strong)"
                 />
-                <rect x="119" y="70" width="33" height="33" rx="10" fill="#f2f5e9" />
+                <rect x="119" y="70" width="33" height="33" rx="10" fill="var(--surface-alt)" />
                 <path
                     d="M128 87h15m-11-5-4 5 4 5m7-10 4 5-4 5"
-                    stroke="#66815a"
+                    stroke="var(--success)"
                     strokeWidth="2"
                     strokeLinecap="round"
                 />
                 <path
                     d="M121 127h80M121 141h120M121 155h49"
-                    stroke="#afc296"
+                    stroke="var(--line-strong)"
                     strokeWidth="6"
                     strokeLinecap="round"
                 />
@@ -111,38 +161,38 @@ function Illustration() {
                     width="185"
                     height="131"
                     rx="19"
-                    fill="#fffefa"
-                    stroke="#e0e2d7"
+                    fill="var(--surface)"
+                    stroke="var(--line)"
                 />
-                <rect x="240" y="103" width="33" height="33" rx="10" fill="#f0f2e9" />
+                <rect x="240" y="103" width="33" height="33" rx="10" fill="var(--surface-alt)" />
                 <path
                     d="M249 114h15v13h-15zM254 110h6v4"
-                    stroke="#718168"
+                    stroke="var(--muted)"
                     strokeWidth="1.8"
                     strokeLinejoin="round"
                 />
                 <path
                     d="M241 158h76M241 173h115M241 188h46"
-                    stroke="#e4e8dc"
+                    stroke="var(--line)"
                     strokeWidth="6"
                     strokeLinecap="round"
                 />
             </g>
-            <circle cx="373" cy="56" r="25" fill="#284c3d" />
+            <circle cx="373" cy="56" r="25" fill="var(--action)" />
             <path
                 d="m362 56 7 7 14-15"
-                stroke="#e7f3c6"
+                stroke="var(--on-action)"
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />
             <path
                 d="M83 107h12m-6-6v12M422 165h12m-6-6v12"
-                stroke="#829774"
+                stroke="var(--muted)"
                 strokeWidth="2"
                 strokeLinecap="round"
             />
-            <circle cx="128" cy="207" r="4" fill="#c9a979" />
+            <circle cx="128" cy="207" r="4" fill="var(--warning)" />
         </svg>
     );
 }
@@ -447,6 +497,7 @@ export function App() {
                 <Brand linked={auth.status !== "authenticated"} />
                 <div className="topbar-actions">
                     <LanguageSwitch locale={locale} onChange={setLocale} t={t} />
+                    <ThemePicker locale={locale} />
                     {auth.status === "authenticated" && (
                         <button
                             className="logout-button"

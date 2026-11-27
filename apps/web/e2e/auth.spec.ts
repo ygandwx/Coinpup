@@ -34,6 +34,35 @@ test("an anonymous session reaches login once, and language persists", async ({ 
     ).toBe(true);
 });
 
+test("appearance follows the system and saves an explicit override", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    const appearance = page.getByLabel("Appearance", { exact: true });
+    const html = page.locator("html");
+    await expect(appearance).toHaveValue("system");
+    await expect(html).toHaveCSS("color-scheme", "dark");
+
+    await appearance.selectOption("light");
+    await expect(html).toHaveCSS("color-scheme", "light");
+    await page.reload();
+    await expect(appearance).toHaveValue("light");
+    await expect(html).toHaveCSS("color-scheme", "light");
+
+    await page.getByRole("button", { name: "中文", exact: true }).click();
+    const localizedAppearance = page.getByLabel("外观", { exact: true });
+    await page.emulateMedia({ colorScheme: "light" });
+    await localizedAppearance.selectOption("dark");
+    await expect(html).toHaveCSS("color-scheme", "dark");
+    await localizedAppearance.selectOption("system");
+    await expect(html).toHaveCSS("color-scheme", "light");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(html).toHaveCSS("color-scheme", "dark");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        page.viewportSize()!.width,
+    );
+});
+
 test("an incorrect password is rejected by the real API", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Username", { exact: true }).fill(username);

@@ -337,8 +337,9 @@ test("account charts follow the saved type and ledger in both languages and narr
     const company = await api<Entity>(page, "POST", "/api/v1/entities", {
         name: fictionalName("Trial design company"),
         kind: "company",
-        country_code: "HK",
-        company_type: "private_limited",
+        country_code: "US",
+        region_code: "NM",
+        company_type: "llc",
         template_key: "business_default",
         locale: "en",
         base_asset_id: "USD",
@@ -396,9 +397,14 @@ test("account charts follow the saved type and ledger in both languages and narr
         records.push({ fixture, account });
     }
     await page.goto(`/?entity=${company.id}&view=accounts`);
-    await expect(
-        page.locator('.ledger-picker .entity-mark[data-kind="company"] svg'),
-    ).toBeVisible();
+    const companyMark = page.locator('.ledger-picker .entity-mark[data-kind="company"]');
+    await expect(companyMark).toHaveAttribute("aria-hidden", "true");
+    const flag = companyMark.locator("img");
+    await expect(flag).toHaveAttribute("src", "/assets/icons/flags/us.svg");
+    await expect
+        .poll(() => flag.evaluate((img: HTMLImageElement) => img.naturalWidth))
+        .toBeGreaterThan(0);
+    await expect(companyMark).toHaveText("NM");
     for (const { fixture, account } of records) {
         const card = page.getByTestId(`account-${account.id}`);
         await expect(card.locator(`[data-account-kind="${fixture.kind}"]`)).toBeVisible();
@@ -467,10 +473,14 @@ test("account charts follow the saved type and ledger in both languages and narr
             "aria-expanded",
             "true",
         );
+        const daybook = navigation.getByRole("button", { name: "Daybook", exact: true });
         await page.keyboard.press("Tab");
-        await expect(
-            navigation.getByRole("button", { name: "Overview", exact: true }),
-        ).toBeFocused();
+        await expect(daybook).toBeFocused();
+        await page.keyboard.press("Space");
+        await expect(daybook).toHaveAttribute("aria-expanded", "false");
+        await expect(navigation.getByRole("button", { name: "Overview", exact: true })).toHaveCount(
+            0,
+        );
         await navigation.getByRole("button", { name: "Ledger details", exact: true }).click();
         await expect(navigation.getByRole("button", { name: "Show all sections" })).toHaveAttribute(
             "aria-expanded",
@@ -479,10 +489,25 @@ test("account charts follow the saved type and ledger in both languages and narr
         await expect(page.getByRole("heading", { name: other.name, exact: true })).toBeVisible();
         await expectNoOverflow(page);
     } else {
+        const daybook = navigation.getByRole("button", { name: "Daybook", exact: true });
+        await daybook.click();
+        await expect(daybook).toHaveAttribute("aria-expanded", "false");
+        await expect(navigation.getByRole("button", { name: "Overview", exact: true })).toHaveCount(
+            0,
+        );
         const details = navigation.getByRole("button", { name: "Ledger details", exact: true });
         await details.scrollIntoViewIfNeeded();
         await expect(details).toBeInViewport();
         await details.click();
         await expect(page.getByRole("heading", { name: other.name, exact: true })).toBeVisible();
     }
+    await page.reload();
+    await expect(page.getByTestId("current-username")).toBeAttached();
+    if (testInfo.project.name.startsWith("mobile")) {
+        await navigation.getByRole("button", { name: "Show all sections" }).click();
+    }
+    const persistedDaybook = navigation.getByRole("button", { name: "Daybook", exact: true });
+    await expect(persistedDaybook).toHaveAttribute("aria-expanded", "false");
+    await persistedDaybook.click();
+    await expect(navigation.getByRole("button", { name: "Overview", exact: true })).toBeVisible();
 });

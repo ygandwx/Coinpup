@@ -1,3 +1,4 @@
+import { AssetIcon } from "./AssetIcon";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
@@ -209,7 +210,10 @@ export function AssetsPanel({
                                 key={asset.asset_id}
                             >
                                 <div className="record-heading">
-                                    <h3>{asset.code}</h3>
+                                    <h3 className="icon-label">
+                                        <AssetIcon asset={asset} />
+                                        {asset.code}
+                                    </h3>
                                     <span className="record-badge">
                                         {asset.enabled
                                             ? t("已启用", "Enabled")

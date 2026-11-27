@@ -5,6 +5,7 @@ import type { Locale } from "./i18n";
 
 const groups = [
     {
+        id: "daybook",
         zh: "日常记账",
         en: "Daybook",
         items: [
@@ -16,6 +17,7 @@ const groups = [
         ],
     },
     {
+        id: "business",
         zh: "经营业务",
         en: "Business",
         items: [
@@ -30,6 +32,7 @@ const groups = [
         ],
     },
     {
+        id: "reporting",
         zh: "报表与计划",
         en: "Reporting & planning",
         items: [
@@ -40,6 +43,7 @@ const groups = [
         ],
     },
     {
+        id: "administration",
         zh: "账本管理",
         en: "Administration",
         items: [
@@ -50,10 +54,23 @@ const groups = [
         ],
     },
 ] as const satisfies readonly {
+    id: string;
     zh: string;
     en: string;
     items: readonly (readonly [string, IconName])[];
 }[];
+
+const NAV_KEY = "coinpup.nav-collapsed";
+type GroupId = (typeof groups)[number]["id"];
+
+function readCollapsedGroups(): GroupId[] {
+    try {
+        const stored = (localStorage.getItem(NAV_KEY) ?? "").split(",");
+        return groups.filter(({ id }) => stored.includes(id)).map(({ id }) => id);
+    } catch {
+        return [];
+    }
+}
 
 export type WorkspaceView = (typeof groups)[number]["items"][number][0];
 
@@ -75,6 +92,14 @@ export function WorkspaceNavigation({
     onSelect: (view: WorkspaceView) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const [collapsed, setCollapsed] = useState(readCollapsedGroups);
+    useEffect(() => {
+        try {
+            localStorage.setItem(NAV_KEY, collapsed.join(","));
+        } catch {
+            /* The navigation still works if storage is unavailable. */
+        }
+    }, [collapsed]);
     const list = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -119,38 +144,60 @@ export function WorkspaceNavigation({
                 <Icon name={expanded ? "chevronUp" : "menu"} />
             </button>
             <div className="nav-groups" ref={list} id="workspace-views">
-                {groups.map((group) => (
-                    <div
-                        className="nav-group"
-                        key={group.en}
-                        role="group"
-                        aria-label={group[locale]}
-                    >
-                        <span className="nav-group-name" aria-hidden="true">
-                            {group[locale]}
-                        </span>
-                        {group.items.map(([item, icon]) => (
+                {groups.map(({ id, items, ...group }) => {
+                    const isCollapsed = collapsed.includes(id);
+                    const active = items.some(([item]) => item === view);
+                    const pagesId = `workspace-views-${id}`;
+                    return (
+                        <div className="nav-group" key={id} role="group" aria-label={group[locale]}>
                             <button
-                                key={item}
+                                className="nav-group-toggle"
                                 type="button"
-                                disabled={disabled}
-                                aria-current={view === item ? "page" : undefined}
-                                onClick={() => {
-                                    onSelect(item);
-                                    setExpanded(false);
-                                    if (expanded) {
-                                        requestAnimationFrame(() =>
-                                            document.getElementById("business-title")?.focus(),
-                                        );
-                                    }
-                                }}
+                                aria-expanded={!isCollapsed}
+                                aria-controls={pagesId}
+                                data-current={active && isCollapsed ? "true" : undefined}
+                                onClick={() =>
+                                    setCollapsed((current) =>
+                                        current.includes(id)
+                                            ? current.filter((value) => value !== id)
+                                            : [...current, id],
+                                    )
+                                }
                             >
-                                <Icon name={icon} />
-                                {labels[item]}
+                                {group[locale]}
+                                <Icon name="chevronUp" />
                             </button>
-                        ))}
-                    </div>
-                ))}
+                            <div
+                                className="nav-group-pages"
+                                id={pagesId}
+                                data-collapsed={isCollapsed}
+                            >
+                                {items.map(([item, icon]) => (
+                                    <button
+                                        key={item}
+                                        type="button"
+                                        disabled={disabled}
+                                        aria-current={view === item ? "page" : undefined}
+                                        onClick={() => {
+                                            onSelect(item);
+                                            setExpanded(false);
+                                            if (expanded) {
+                                                requestAnimationFrame(() =>
+                                                    document
+                                                        .getElementById("business-title")
+                                                        ?.focus(),
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        <Icon name={icon} />
+                                        {labels[item]}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </nav>
     );
