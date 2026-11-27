@@ -1,3 +1,4 @@
+import { DisplayAmount } from "./DisplayAmount";
 import type { CSSProperties } from "react";
 import type { Locale } from "./i18n";
 import type { Account, Asset } from "./ledger-api";
@@ -5,7 +6,6 @@ import { AccountIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
 import { accountInstitution } from "./institutions";
 import type { AccountChart, VisualBalance } from "./account-charts";
-import { formatAmount } from "./money";
 import "./account-card.css";
 
 const identities = new Map([
@@ -130,7 +130,11 @@ export function AccountCard({
                                         tabIndex={0}
                                         aria-label={`${balance.asset_id} ${balance.amount}`}
                                     >
-                                        {formatAmount(balance.amount, locale)}
+                                        <DisplayAmount
+                                            amount={balance.amount}
+                                            assetId={balance.asset_id}
+                                            locale={locale}
+                                        />
                                     </span>
                                     <AccountBalanceChart chart={chart} locale={locale} />
                                 </dd>

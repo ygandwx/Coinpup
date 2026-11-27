@@ -451,8 +451,11 @@ test("account charts follow the saved type and ledger in both languages and narr
     }
     await page.getByRole("button", { name: "English", exact: true }).click();
     await page.getByRole("button", { name: "Overview", exact: true }).click();
+    const accountBalances = page.locator(".business-panel").filter({
+        has: page.getByRole("heading", { name: "Account balances", exact: true }),
+    });
     await expect(
-        page.getByLabel("ETH 123456789.123456789000000001", { exact: true }),
+        accountBalances.getByLabel("ETH 123456789.123456789000000001", { exact: true }),
     ).toContainText("123,456,789.123456789000000001");
     await expect(page.getByRole("img", { name: /USD.*card debt.*100%/i })).toBeVisible();
     await expectNoOverflow(page);
@@ -463,11 +466,11 @@ test("account charts follow the saved type and ledger in both languages and narr
     await expect(
         page.getByText("No balances match this selection.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByLabel("ETH 123456789.123456789000000001", { exact: true })).toHaveCount(
-        0,
-    );
+    await expect(
+        accountBalances.getByLabel("ETH 123456789.123456789000000001", { exact: true }),
+    ).toHaveCount(0);
     await page.getByLabel("Show archived", { exact: true }).check();
-    await expect(page.getByLabel("USD 45.67", { exact: true })).toBeVisible();
+    await expect(accountBalances.getByLabel("USD 45.67", { exact: true })).toBeVisible();
     const navigation = page.getByRole("navigation", { name: "Workspace navigation" });
     if (testInfo.project.name.startsWith("mobile")) {
         const toggle = navigation.getByRole("button", { name: "Show all sections" });

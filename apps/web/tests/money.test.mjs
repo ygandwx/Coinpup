@@ -4,6 +4,7 @@ import {
     AmountError,
     amountFromMinorUnits,
     formatAmount,
+    formatAssetAmount,
     formatReportAmount,
     parseAmount,
     sumAmounts,
@@ -63,4 +64,14 @@ test("strict wire format rejects lossy or ambiguous inputs before arithmetic", (
     assert.throws(() => parseAmount("100000000000000000000", 0), { code: "amount_range" });
     assert.throws(() => sumAmounts(["99999999999999999999", "1"], 0), { code: "amount_range" });
     assert.throws(() => parseAmount("1", 19), { code: "asset_scale" });
+});
+
+test("currency symbol formatting keeps exact decimal digits, signs and asset identity", () => {
+    assert.equal(formatAssetAmount("-1000.100", "USD"), "-$1,000.100");
+    assert.equal(
+        formatAssetAmount("99999999999999999999.000000000000000001", "USD"),
+        "$99,999,999,999,999,999,999.000000000000000001",
+    );
+    assert.equal(formatAssetAmount("1000.000001", "token:tron:USDT"), "1,000.000001");
+    assert.equal(formatAssetAmount("1000.00000001", "BTC", "zh"), "1,000.00000001");
 });

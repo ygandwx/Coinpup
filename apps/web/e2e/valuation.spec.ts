@@ -169,16 +169,16 @@ test("consolidates selected ledgers, prices exact dates and shows the original a
     await field("From date").fill("2026-04-01");
     await field("Through date").fill("2026-04-30");
     await button("Run report").click();
-    await expect(original("USD")).toContainText("-100.00 USD");
-    await expect(original("USD")).toContainText("Inflow 0.00 USD");
+    await expect(original("USD")).toContainText("-$100.00 USD");
+    await expect(original("USD")).toContainText("Inflow $0.00 USD");
     await expect(summary.filter({ hasText: "Internal repayment excluded" })).toHaveCount(2);
     const excluded = summary.filter({ hasText: "Internal repayment excluded" }).first();
     await excluded.click();
     await expect(excluded.locator("..")).toContainText(repayment.id);
     await field(beneficiary.entity.name!).uncheck();
     await button("Run report").click();
-    await expect(original("USD")).toContainText("-60.00 USD");
-    await expect(original("USD")).toContainText("Inflow 40.00 USD");
+    await expect(original("USD")).toContainText("-$60.00 USD");
+    await expect(original("USD")).toContainText("Inflow $40.00 USD");
     await expect(summary.filter({ hasText: "Internal repayment excluded" })).toHaveCount(0);
     await expect(summary.filter({ hasText: "Internal repayment" })).toHaveCount(1);
 
@@ -187,7 +187,7 @@ test("consolidates selected ledgers, prices exact dates and shows the original a
     await field("From date").fill("2026-04-01");
     await field("Through date").fill("2026-04-30");
     await button("Run report").click();
-    await expect(original("USD")).toContainText("Expenses 100.00 USD");
+    await expect(original("USD")).toContainText("Expenses $100.00 USD");
     await expect(summary).toHaveCount(1);
     await expect(summary).toContainText(beneficiary.entity.name!);
 });

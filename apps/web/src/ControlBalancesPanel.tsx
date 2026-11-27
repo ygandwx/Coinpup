@@ -1,10 +1,11 @@
+import { DisplayAmount } from "./DisplayAmount";
 import { useEffect, useState } from "react";
 import { ApiError } from "./api";
 import { businessError } from "./business-errors";
 import type { Locale } from "./i18n";
 import { listControlBalances } from "./ledger-api";
 import type { Asset, ControlBalance } from "./ledger-api";
-import { amountFromMinorUnits, formatAmount, parseAmount } from "./money";
+import { amountFromMinorUnits, parseAmount } from "./money";
 
 const LABELS: Record<ControlBalance["system_key"], [string, string]> = {
     "receivable.customer": ["客户应收", "Customer receivables"],
@@ -113,7 +114,13 @@ export function ControlBalancesPanel({
                         >
                             <h3>{t(...LABELS[row.system_key])}</h3>
                             <strong className="money-quantity" data-testid="control-amount">
-                                {formatAmount(directionAmount, locale)} {row.asset_id}
+                                <DisplayAmount
+                                    amount={directionAmount}
+                                    assetId={row.asset_id}
+                                    locale={locale}
+                                    expense={PAYABLE.has(row.system_key)}
+                                />{" "}
+                                {row.asset_id}
                             </strong>
                             <p className="help-text">
                                 {t("原始分录余额", "Original signed balance")}: {row.amount}{" "}
