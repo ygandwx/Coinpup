@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { AccountPicker } from "./AccountPicker";
+import { useId, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
@@ -83,6 +84,34 @@ function Choice({
     );
 }
 
+function AccountChoice({
+    name,
+    label,
+    choices,
+    placeholder,
+    locale,
+}: {
+    name: string;
+    label: string;
+    choices: readonly Account[];
+    placeholder: string;
+    locale: Locale;
+}) {
+    const id = useId();
+    return (
+        <div className="field">
+            <label htmlFor={id}>{label}</label>
+            <AccountPicker
+                id={id}
+                name={name}
+                locale={locale}
+                placeholder={placeholder}
+                accounts={choices}
+            />
+        </div>
+    );
+}
+
 async function all<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
     const items: T[] = [];
     for (let offset = 0; offset <= 100000; offset += 100) {
@@ -95,6 +124,7 @@ async function all<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
 
 function EntryForm({
     t,
+    locale,
     active,
     assets,
     advance,
@@ -105,6 +135,7 @@ function EntryForm({
     onResult,
 }: {
     t: Translate;
+    locale: Locale;
     active: Entity[];
     assets: Asset[];
     advance: InterledgerAdvance | null;
@@ -261,14 +292,16 @@ function EntryForm({
                     </>
                 )}
                 {advance && (
-                    <Choice
+                    <AccountChoice
+                        locale={locale}
                         name="payment_account"
                         label={t("受益方付款账户", "Beneficiary payment account")}
                         choices={accounts(selected?.beneficiaryAccounts)}
                         placeholder={placeholder}
                     />
                 )}
-                <Choice
+                <AccountChoice
+                    locale={locale}
                     key={`${key}:${assetId}:account`}
                     name="payer_account"
                     label={
@@ -500,6 +533,7 @@ export function InterledgerPanel({
             {current?.settings.enabled &&
                 (form === "advance" || (form === "repayment" && selected)) && (
                     <EntryForm
+                        locale={locale}
                         key={form === "advance" ? form : selected?.id}
                         t={t}
                         active={active}

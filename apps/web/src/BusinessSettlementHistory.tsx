@@ -1,3 +1,4 @@
+import { AccountName } from "./AccountIcon";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Locale } from "./i18n";
@@ -131,7 +132,10 @@ export function BusinessSettlementHistory({
         setPartyName(null);
         setError(null);
     }
-    const account = (id: string) => accounts.find((row) => row.id === id)?.name ?? id;
+    const account = (id: string) => {
+        const item = accounts.find((row) => row.id === id);
+        return item ? <AccountName account={item} /> : id;
+    };
     return (
         <section
             className="business-panel business-settlement-panel"

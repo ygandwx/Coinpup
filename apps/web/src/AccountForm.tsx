@@ -10,7 +10,7 @@ import type {
 } from "./ledger-api";
 import { AccountIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
-import { getInstitution, INSTITUTIONS } from "./institutions";
+import { accountInstitution, BANK_INSTITUTIONS, getInstitution } from "./institutions";
 import {
     ACCOUNT_DETAILS,
     ACCOUNT_DETAIL_KEYS,
@@ -181,6 +181,10 @@ export function AccountForm({
     >(null);
     const values = new Map(rows.filter((row) => !row.custom).map(({ key, value }) => [key, value]));
     const institution = getInstitution(values.get("institution"));
+    const suggestedInstitution =
+        account && kind === account.kind && !values.get("institution")
+            ? accountInstitution(account.details, account.name, account.kind)
+            : undefined;
     const bankRegion = institution?.region ?? values.get("bank_region") ?? defaultBankRegion ?? "";
     const fields = accountFields(kind, bankRegion);
     const hidden = rows.filter(
@@ -188,11 +192,11 @@ export function AccountForm({
     );
     const custom = rows.filter((row) => row.custom);
     const query = bankSearch.trim().toLowerCase();
-    const banks = INSTITUTIONS.filter(
+    const banks = BANK_INSTITUTIONS.filter(
         (bank) =>
             bank.id === institution?.id ||
-            [bank.name.zh, bank.name.en, bank.shortName, bank.swiftPrefix].some((value) =>
-                value.toLowerCase().includes(query),
+            [bank.name.zh, bank.name.en, bank.shortName, bank.swiftPrefix, ...bank.aliases].some(
+                (value) => value.toLowerCase().includes(query),
             ),
     );
     const availableAssets = assets.filter(
@@ -220,15 +224,11 @@ export function AccountForm({
         setRows((prior) => {
             const next = replaceDetail(prior, "institution", id);
             if (!bank) return next;
-            return replaceDetail(
-                replaceDetail(
-                    replaceDetail(next, "bank_name", bank.name[locale]),
-                    "swift_bic",
-                    bank.swiftPrefix,
-                ),
-                "bank_region",
-                bank.region,
-            );
+            const named = replaceDetail(next, "bank_name", bank.name[locale]);
+            const identified = bank.swiftPrefix
+                ? replaceDetail(named, "swift_bic", bank.swiftPrefix)
+                : named;
+            return replaceDetail(identified, "bank_region", bank.region);
         });
         setBankSearch("");
         setLocalError(null);
@@ -410,20 +410,31 @@ export function AccountForm({
                         <label htmlFor={`${prefix}-${key}`}>
                             {ACCOUNT_DETAILS[key].label[locale]}
                         </label>
-                        <select
-                            id={`${prefix}-${key}`}
-                            value={value}
-                            disabled={busy}
-                            onChange={(event) => selectBank(event.target.value)}
-                        >
-                            <option value="">{t.otherBank}</option>
-                            {value && !institution && <option value={value}>{value}</option>}
-                            {banks.map((bank) => (
-                                <option key={bank.id} value={bank.id}>
-                                    {bank.name[locale]}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="account-picker-select">
+                            <span className="account-picker-selected" aria-hidden="true">
+                                <AccountIcon kind="bank" institution={institution?.id} compact />
+                            </span>
+                            <select
+                                id={`${prefix}-${key}`}
+                                value={value}
+                                disabled={busy}
+                                onChange={(event) => selectBank(event.target.value)}
+                            >
+                                <option value="">{t.otherBank}</option>
+                                {value && !institution && <option value={value}>{value}</option>}
+                                {banks.map((bank) => (
+                                    <option
+                                        key={bank.id}
+                                        value={bank.id}
+                                        label={bank.name[locale]}
+                                        aria-label={bank.name[locale]}
+                                    >
+                                        <AccountIcon kind="bank" institution={bank.id} compact />
+                                        <span>{bank.name[locale]}</span>
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
             );
@@ -552,6 +563,23 @@ export function AccountForm({
                 </fieldset>
                 <fieldset className="form-section" disabled={busy}>
                     <legend>{t.details}</legend>
+                    {suggestedInstitution && (
+                        <div className="institution-suggestion">
+                            <p className="help-text">
+                                {locale === "zh" ? "关联到" : "Link to"} ·{" "}
+                                {suggestedInstitution.name[locale]}
+                            </p>
+                            <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => {
+                                    setField("institution", suggestedInstitution.id);
+                                }}
+                            >
+                                {locale === "zh" ? "确认关联" : "Confirm association"}
+                            </button>
+                        </div>
+                    )}
                     <div className="form-grid">{fields.map(renderField)}</div>
                 </fieldset>
                 <details className="account-extra-details">

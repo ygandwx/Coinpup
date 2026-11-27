@@ -1,3 +1,4 @@
+import { AccountName } from "./AccountIcon";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { businessError } from "./business-errors";
@@ -29,6 +30,10 @@ function JournalDetails({
         equity: t("期初对应项", "Opening counterpart"),
         exchange: t("换汇对应项", "Exchange counterpart"),
     };
+    function accountLabel(id: string) {
+        const account = accounts.find((item) => item.id === id);
+        return account ? <AccountName account={account} /> : id;
+    }
     return (
         <section className={`journal-detail ${journal.kind}`}>
             <h4>
@@ -47,8 +52,7 @@ function JournalDetails({
                         <div>
                             <strong>
                                 {line.account_id
-                                    ? (accounts.find((item) => item.id === line.account_id)?.name ??
-                                      line.account_id)
+                                    ? accountLabel(line.account_id)
                                     : line.category_id
                                       ? categoryName(line.category_id)
                                       : (roles[line.role] ?? line.role)}

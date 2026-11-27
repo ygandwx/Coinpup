@@ -10,4 +10,4 @@
 
 Simple Icons 16.38.1 的发布元数据未给这五枚图标单列许可。图标用于识别对应平台。品牌指南见 [微信](https://wechat.design/brand/main-brand)、[支付宝](https://global.alipay.com/docs/ac/website_hk/design)、[PayPal](https://newsroom.paypal-corp.com/media-resources)、[Wise](https://wise.design/foundations/logo) 与 [Stripe](https://stripe.com/newsroom/information)。
 
-部署产物的旗帜目录也附有 MIT 版权与许可文本。银行图标使用应用绘制的色块与简称。国旗、币种符号及网络角标由应用组合。
+部署产物的旗帜目录也附有 MIT 版权与许可文本。机构标志的来源和用途见[机构标志来源](brand-logos.md)。国旗、币种符号及网络角标由应用组合。

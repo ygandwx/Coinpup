@@ -132,3 +132,18 @@
 .account-mark.compact .institution-mark-text {
     font-size: 0.57rem;
 }
+
+.account-mark:has(.institution-logo) {
+    background: #f8f8f5;
+    border: 1px solid var(--line);
+}
+.account-mark > .institution-logo {
+    display: block;
+    width: 88%;
+    height: 88%;
+    object-fit: contain;
+}
+.icon-label > span:last-child:not(.icon-badge) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}

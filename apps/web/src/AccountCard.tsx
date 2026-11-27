@@ -94,7 +94,8 @@ export function AccountCard({
 }: Props) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [zh, en] = identities.get(account.kind) ?? [account.kind, account.kind];
-    const institution = account.kind === "bank" ? accountInstitution(account.details) : undefined;
+    const accountType = t(zh, en);
+    const institution = accountInstitution(account.details, account.name, account.kind);
     return (
         <article
             className="funding-card"
@@ -105,7 +106,10 @@ export function AccountCard({
                 <AccountIcon kind={account.kind} institution={institution?.id} />
                 <div>
                     <h3>{account.name}</h3>
-                    <span>{institution?.name[locale] ?? t(zh, en)}</span>
+                    <span>{accountType}</span>
+                    {institution && institution.name[locale] !== accountType && (
+                        <span> · {institution.name[locale]}</span>
+                    )}
                 </div>
                 {account.archived && (
                     <small className="record-badge">{t("已归档", "Archived")}</small>

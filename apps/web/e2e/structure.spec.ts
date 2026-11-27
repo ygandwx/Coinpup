@@ -544,7 +544,7 @@ test("account drawer applies regional fields, protects card data, and preserves 
     await expect(editor.getByLabel("SWIFT / BIC")).toHaveValue("CHASUS33");
     await expect(editor.getByLabel("Bank name")).toHaveValue("Chase");
     await editor.getByLabel("Routing number").fill("000000001");
-    await expect(editor.getByLabel("IBAN")).toHaveCount(0);
+    await expect(editor.getByLabel("IBAN", { exact: true })).toHaveCount(0);
     await editor.getByLabel("USD", { exact: true }).check();
     const originalWidth = page.viewportSize()!.width;
     if (originalWidth <= 375) {
@@ -614,4 +614,67 @@ test("account drawer applies regional fields, protects card data, and preserves 
     await expect(editor.getByRole("alert")).toContainText("selected network");
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(card.getByText("Credit card", { exact: true })).toBeVisible();
+});
+
+test("a legacy Agricultural Bank account uses the official mark and links only when saved", async ({
+    page,
+    baseURL,
+}) => {
+    await login(page);
+    const entity = await personal(page, fictionalName("brand association"));
+    const path = `/api/v1/ledgers/${entity.ledger.id}/accounts`;
+    const original = await api<Account & { details: Record<string, string> }>(page, "POST", path, {
+        name: "农业银行",
+        kind: "bank",
+        asset_ids: ["USD"],
+    });
+    await api(page, "POST", path, {
+        name: fictionalName("other cash"),
+        kind: "cash",
+        asset_ids: ["USD"],
+    });
+    expect(original.details.institution).toBeUndefined();
+    await openLedger(page, entity, "Accounts");
+    const card = page.getByTestId(`account-${original.id}`);
+    const mark = card.locator(".institution-logo");
+    await expect(mark).toBeVisible();
+    await expect
+        .poll(() => mark.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+    const logo = await mark.evaluate((img) => (img as HTMLImageElement).src);
+    expect(new URL(logo).origin).toBe(new URL(baseURL!).origin);
+
+    await card.getByRole("button", { name: "Edit", exact: true }).click();
+    const drawer = page.getByRole("dialog", { name: "Edit account", exact: true });
+    await expect(drawer.getByText(/Link to.*Agricultural Bank/)).toBeVisible();
+    await drawer.getByRole("button", { name: "Confirm association" }).click();
+    const beforeSave = await api<(Account & { details: Record<string, string> })[]>(
+        page,
+        "GET",
+        path,
+    );
+    expect(beforeSave.find(({ id }) => id === original.id)?.details.institution).toBeUndefined();
+    const saved = await save<Account & { details: Record<string, string> }>(
+        page,
+        `${path}/${original.id}`,
+        "PATCH",
+    );
+    expect(saved.details.institution).toBe("abc-cn");
+    expect(saved.version).toBe(original.version + 1);
+    await expect(card.locator(".institution-logo")).toBeVisible();
+
+    await page.getByRole("button", { name: "Transactions", exact: true }).click();
+    await page.getByRole("button", { name: "New entry", exact: true }).click();
+    const account = page.getByLabel("Account", { exact: true });
+    await account.selectOption(original.id);
+    const picker = page.locator(".account-picker").filter({ has: account });
+    await expect(picker.locator(".account-picker-selected .institution-logo")).toBeVisible();
+    await expect(picker.locator(".account-picker-selected .institution-logo")).toHaveJSProperty(
+        "src",
+        logo,
+    );
+    await picker.locator("summary").click();
+    await picker.getByRole("searchbox").fill("Agricultural Bank");
+    await expect(picker.getByRole("option", { name: "农业银行", exact: true })).toHaveCount(1);
+    await expectNoOverflow(page);
 });

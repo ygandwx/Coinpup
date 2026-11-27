@@ -1,3 +1,4 @@
+import { AccountIcon } from "./AccountIcon";
 import { BusinessReturnRevisionResult } from "./BusinessReturnRevisionResult";
 import type { BusinessSettlementSnapshot } from "./pending-business-settlement";
 import type { BusinessAllocationCreate, BusinessPaymentCreate } from "./business-settlement-api";
@@ -9,13 +10,27 @@ import { BusinessRefundRevisionResult } from "./BusinessRefundRevisionResult";
 import { BusinessRefundResult } from "./BusinessRefundResult";
 import { BusinessAllocationReturnResult } from "./BusinessAllocationReturnResult";
 
+type AccountLogo = { kind: string; institution?: string };
+
 export type SettlementReviewData = {
     payment: AllocationPayment;
     partyName: string;
     accountName: string;
-    feeLabels: { accountName: string; categoryName: string }[];
+    logo?: AccountLogo;
+    feeLabels: { accountName: string; categoryName: string; logo?: AccountLogo }[];
     sources: readonly AllocationSource[];
 };
+function accountLabel(name: string, logo?: AccountLogo) {
+    return logo ? (
+        <span className="icon-label">
+            <AccountIcon {...logo} compact />
+            <span>{name}</span>
+        </span>
+    ) : (
+        name
+    );
+}
+
 export function BusinessSettlementResult({
     pending,
     locale,
@@ -92,7 +107,7 @@ export function BusinessSettlementResult({
                         <dt>{t("交易日", "Transaction date")}</dt>
                         <dd>{payment.transaction_date}</dd>
                         <dt>{t("资金账户", "Money account")}</dt>
-                        <dd>{review.accountName}</dd>
+                        <dd>{accountLabel(review.accountName, review.logo)}</dd>
                         <dt>{t("本金", "Principal")}</dt>
                         <dd>{amount(payment.amount, payment.asset_id)}</dd>
                         <dt>{t("说明", "Description")}</dt>
@@ -121,8 +136,11 @@ export function BusinessSettlementResult({
                             </strong>
                             <span>{amount(fee.amount, fee.asset_id)}</span>
                             <span>
-                                {review.feeLabels[index]?.accountName ?? fee.account_id} ·{" "}
-                                {review.feeLabels[index]?.categoryName ?? fee.category_id}
+                                {accountLabel(
+                                    review.feeLabels[index]?.accountName ?? fee.account_id,
+                                    review.feeLabels[index]?.logo,
+                                )}{" "}
+                                · {review.feeLabels[index]?.categoryName ?? fee.category_id}
                             </span>
                         </li>
                     ))}

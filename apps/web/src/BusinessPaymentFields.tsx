@@ -1,3 +1,4 @@
+import { AccountPicker } from "./AccountPicker";
 import { useId } from "react";
 import type { BusinessPaymentCreate } from "./business-settlement-api";
 import type { PaymentReferences } from "./settlement-fields";
@@ -37,24 +38,15 @@ export function PaymentMoneyFields({
                 <label htmlFor={`${prefix}-account`}>
                     {fee ? t("手续费账户", "Fee account") : t("资金账户", "Money account")}
                 </label>
-                <select
+                <AccountPicker
                     id={`${prefix}-account`}
-                    required
+                    accounts={accounts}
+                    locale={locale}
+                    placeholder={t("请选择", "Choose")}
                     value={value.account_id}
-                    onChange={(event) => onChange({ ...value, account_id: event.target.value })}
-                >
-                    <option value="">{t("请选择", "Choose")}</option>
-                    {value.account_id && !accounts.some((row) => row.id === value.account_id) && (
-                        <option value={value.account_id} disabled>
-                            {t("当前账户不可用", "Current account unavailable")}
-                        </option>
-                    )}
-                    {accounts.map((row) => (
-                        <option key={row.id} value={row.id}>
-                            {row.name}
-                        </option>
-                    ))}
-                </select>
+                    retainedLabel={t("当前账户不可用", "Current account unavailable")}
+                    onChange={(account_id) => onChange({ ...value, account_id })}
+                />
             </div>
             <div className="field">
                 <label htmlFor={`${prefix}-asset`}>

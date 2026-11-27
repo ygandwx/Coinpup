@@ -1559,6 +1559,8 @@ export function BusinessWorkspace({
                                                                         institution={
                                                                             accountInstitution(
                                                                                 account.details,
+                                                                                account.name,
+                                                                                account.kind,
                                                                             )?.id
                                                                         }
                                                                         compact
