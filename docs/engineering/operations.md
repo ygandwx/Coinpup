@@ -260,6 +260,10 @@ docker compose exec -e COINPUP_MARKET_QUOTES_ENABLED=true api \
 
 信用卡和借记卡的完整卡号保存在 PostgreSQL 中，数据库备份与 bundle 都包含这些私密资料。限制数据库文件、备份、恢复目标和副本的读取权限，使用私有存储与加密传输。公开或分享账本资料时使用掩码。数据库和反向代理日志保持隐藏绑定参数和请求正文。网页通过会话鉴权和 CSRF 校验请求临时显示卡号，移动端同步仅使用末四位及有效期。已有卡号或借记卡记录的版本回滚使用独立空目标恢复。
 
+## 加密账户资料与回滚
+
+账户平台的 UID、邮箱、备注和逐币资料随 `accounts`、`account_assets` 进入私有数据库备份和 bundle。恢复时核对平台、网络、地址和币种对应关系。保存过这些资料的数据库即使已清空字段也会拒绝降级。将升级前的 bundle 恢复到独立空目标后启动旧版本来回滚。
+
 ## 包含票据与证件的 bundle
 
 `backup_bundle.py` 和 `restore_bundle.py` 使用以下已有 POSIX、凭据、隔离空数据库要求。文件根必须是部署设置的 `COINPUP_FILES_DIRECTORY`；Compose 默认为 `/app/data/files`，存于 `files_data` 命名卷。该目录不得对外静态托管。原件只做格式签名检查，尚未代表 OCR 成功。

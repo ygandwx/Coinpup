@@ -70,11 +70,18 @@ class Command(BaseModel):
     def bounded_details(cls, value):
         return validate_details(value) if value is not None else value
 
-    @field_validator("asset_ids", check_fields=False)
+    @field_validator("asset_ids", "crypto_preset_asset_ids", check_fields=False)
     @classmethod
     def distinct_assets(cls, value):
         if value is not None and len(value) != len(set(value)):
             raise ValueError("Account assets must be unique")
+        return value
+
+    @field_validator("crypto_assets", check_fields=False)
+    @classmethod
+    def distinct_crypto_assets(cls, value):
+        if len({item.asset_id for item in value}) != len(value):
+            raise ValueError("An asset may only have one profile change per request")
         return value
 
     @field_validator("registration_date", mode="before", check_fields=False)
@@ -174,6 +181,75 @@ class EntityUpdate(UpdateCommand):
     archived: StrictBool | None = None
 
 
+class CryptoPlatformProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    institution_id: Annotated[StrictStr, Field(pattern=r"^[a-z0-9-]{2,40}$")] | None = None
+    custom_name: Annotated[StrictStr, Field(min_length=1, max_length=80)] | None = None
+    uid: Annotated[StrictStr, Field(min_length=1, max_length=160)] | None = None
+    email: Annotated[StrictStr, Field(min_length=3, max_length=254)] | None = None
+    note: Annotated[StrictStr, Field(min_length=1, max_length=1000)] | None = None
+
+    @field_validator("custom_name", "uid", "email")
+    @classmethod
+    def clean_platform_text(cls, value):
+        if value is None:
+            return value
+        value = value.strip()
+        if not value or not value.isprintable():
+            raise ValueError("Use printable profile text")
+        return value
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, value):
+        if value is not None and (
+            not value.strip()
+            or any(not char.isprintable() and char not in "\n\r\t" for char in value)
+        ):
+            raise ValueError("Use printable notes")
+        return value
+
+    @model_validator(mode="after")
+    def single_platform(self):
+        if (self.institution_id is None) == (self.custom_name is None):
+            raise ValueError("Select one catalog institution or enter a custom platform name")
+        if self.email is not None and not re.fullmatch(
+            r"[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+", self.email
+        ):
+            raise ValueError("Use a valid email address")
+        return self
+
+
+class CryptoAssetDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    network: Annotated[StrictStr, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")] | None = None
+    address: Annotated[StrictStr, Field(min_length=1, max_length=128)] | None = None
+    memo: Annotated[StrictStr, Field(min_length=1, max_length=256)] | None = None
+    label: Annotated[StrictStr, Field(min_length=1, max_length=160)] | None = None
+
+    @field_validator("memo", "label")
+    @classmethod
+    def printable_details(cls, value):
+        if value is not None and (not value.strip() or not value.isprintable()):
+            raise ValueError("Use printable asset details")
+        return value
+
+
+class CryptoAssetChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_id: AssetId
+    details: CryptoAssetDetails | None
+
+
+class CryptoAssetProfile(BaseModel):
+    asset_id: AssetId
+    enabled: bool
+    details: CryptoAssetDetails
+
+
 class AccountCreate(Command):
     card_number: CardNumber | None = None
     id: UUID | None = None
@@ -182,6 +258,9 @@ class AccountCreate(Command):
     custody_mode: CustodyMode | None = None
     details: dict[StrictStr, StrictStr] = Field(default_factory=dict)
     asset_ids: Annotated[list[AssetId], Field(min_length=1, max_length=100)]
+    crypto_platform: CryptoPlatformProfile | None = None
+    crypto_assets: list[CryptoAssetChange] = Field(default_factory=list, max_length=100)
+    crypto_preset_asset_ids: list[AssetId] = Field(default_factory=list, max_length=100)
 
 
 class AccountUpdate(UpdateCommand):
@@ -192,6 +271,9 @@ class AccountUpdate(UpdateCommand):
     details: dict[StrictStr, StrictStr] | None = None
     asset_ids: Annotated[list[AssetId], Field(min_length=1, max_length=100)] | None = None
     archived: StrictBool | None = None
+    crypto_platform: CryptoPlatformProfile | None = None
+    crypto_assets: list[CryptoAssetChange] = Field(default_factory=list, max_length=100)
+    crypto_preset_asset_ids: list[AssetId] = Field(default_factory=list, max_length=100)
 
 
 class CategoryCreate(Command):
@@ -275,6 +357,8 @@ class AccountResponse(RecordResponse):
     archived: bool
     asset_ids: list[str]
     has_card_number: bool = False
+    crypto_platform: CryptoPlatformProfile | None = None
+    crypto_assets: list[CryptoAssetProfile] = Field(default_factory=list)
 
 
 class CardNumberResponse(BaseModel):

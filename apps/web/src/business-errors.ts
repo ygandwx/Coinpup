@@ -15,6 +15,21 @@ export function businessError(error: unknown, locale: Locale): string {
             "这条记录已被修改。你的输入已保留；选择“重新载入”会替换当前输入。",
             "This record changed elsewhere. Your input is preserved; Reload replaces it with the latest record.",
         );
+    if (error.code === "invalid_crypto_platform")
+        return t(
+            "请检查平台名称、托管方式和平台资料。",
+            "Check the platform name, custody mode, and platform details.",
+        );
+    if (error.code === "duplicate_crypto_platform")
+        return t(
+            "此账本已有关联该平台的账户。请检查现有和已归档账户。",
+            "This ledger already has an account for this platform. Check current and archived accounts.",
+        );
+    if (error.code === "invalid_crypto_asset_details")
+        return t(
+            "请检查币种资料。充值地址和 Memo／Tag 须与所选网络相符。",
+            "Check the coin details. The deposit address and memo or tag must match the selected network.",
+        );
     if (error.code === "invalid_card_details")
         return t(
             "请检查卡号、有效期和其他卡片资料。请勿填写安全码或 PIN。",

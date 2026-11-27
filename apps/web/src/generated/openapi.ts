@@ -2678,6 +2678,11 @@ export interface components {
             asset_ids: string[];
             /** Card Number */
             card_number?: string | null;
+            /** Crypto Assets */
+            crypto_assets?: components["schemas"]["CryptoAssetChange"][];
+            crypto_platform?: components["schemas"]["CryptoPlatformProfile"] | null;
+            /** Crypto Preset Asset Ids */
+            crypto_preset_asset_ids?: string[];
             /** Custody Mode */
             custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
@@ -2705,6 +2710,9 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Crypto Assets */
+            crypto_assets?: components["schemas"]["CryptoAssetProfile"][];
+            crypto_platform?: components["schemas"]["CryptoPlatformProfile"] | null;
             /** Custody Mode */
             custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
@@ -2746,6 +2754,11 @@ export interface components {
             asset_ids?: string[] | null;
             /** Card Number */
             card_number?: string | null;
+            /** Crypto Assets */
+            crypto_assets?: components["schemas"]["CryptoAssetChange"][];
+            crypto_platform?: components["schemas"]["CryptoPlatformProfile"] | null;
+            /** Crypto Preset Asset Ids */
+            crypto_preset_asset_ids?: string[];
             /** Custody Mode */
             custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
@@ -5238,6 +5251,44 @@ export interface components {
             party_id: string;
             /** Reason */
             reason: string;
+        };
+        /** CryptoAssetChange */
+        CryptoAssetChange: {
+            /** Asset Id */
+            asset_id: string;
+            details: components["schemas"]["CryptoAssetDetails"] | null;
+        };
+        /** CryptoAssetDetails */
+        CryptoAssetDetails: {
+            /** Address */
+            address?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Memo */
+            memo?: string | null;
+            /** Network */
+            network?: string | null;
+        };
+        /** CryptoAssetProfile */
+        CryptoAssetProfile: {
+            /** Asset Id */
+            asset_id: string;
+            details: components["schemas"]["CryptoAssetDetails"];
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** CryptoPlatformProfile */
+        CryptoPlatformProfile: {
+            /** Custom Name */
+            custom_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Institution Id */
+            institution_id?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Uid */
+            uid?: string | null;
         };
         /** DeliveryConfigView */
         DeliveryConfigView: {

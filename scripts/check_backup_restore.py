@@ -921,6 +921,7 @@ def create_platform_fixture(engine, owner_id, structure):
     destination = structure["company"].ledger.id
     directory = LedgerService(engine)
     custody = directory.create_asset(owner_id, AssetCreate(code="BTC", kind="custodial", scale=8))
+    address = "bc1q" + "q" * 38
     wallet = directory.create_account(
         owner_id,
         source,
@@ -929,6 +930,13 @@ def create_platform_fixture(engine, owner_id, structure):
             kind="crypto",
             custody_mode="onchain",
             asset_ids=["BTC"],
+            crypto_platform={"institution_id": "ledger", "uid": "fictional-wallet"},
+            crypto_assets=[
+                {
+                    "asset_id": "BTC",
+                    "details": {"network": "bitcoin", "address": address, "label": "Restore test"},
+                }
+            ],
         ),
     )
     platform = directory.create_account(
@@ -939,8 +947,25 @@ def create_platform_fixture(engine, owner_id, structure):
             kind="crypto",
             custody_mode="custodial",
             asset_ids=[custody.asset_id],
+            crypto_platform={
+                "institution_id": "binance",
+                "email": "fictional-restore@example.invalid",
+            },
+            crypto_assets=[
+                {
+                    "asset_id": custody.asset_id,
+                    "details": {"network": "bitcoin", "memo": "fictional-memo"},
+                }
+            ],
         ),
     )
+    if (
+        wallet.crypto_platform.institution_id != "ledger"
+        or wallet.crypto_assets[0].details.address != address
+        or platform.crypto_platform.email != "fictional-restore@example.invalid"
+        or platform.crypto_assets[0].details.memo != "fictional-memo"
+    ):
+        raise ArchiveError("CI crypto account fixture did not preserve typed per-asset details.")
     PostingService(engine).post_opening(
         owner_id,
         source,
@@ -1229,6 +1254,7 @@ def check_backup_restore():
         print("Bank/cash transfer and card repayment preserve balances without duplicate expense.")
         print("FX and BTC principal/fees remain exact; fee-component journals remain sealed.")
         print("Platform transfers retain bilateral detail and both original command receipts.")
+        print("Platform profiles and per-asset address details survive restoration unchanged.")
         print(
             "Corrections/cancellations preserve exact reversals, version history and old receipts."
         )

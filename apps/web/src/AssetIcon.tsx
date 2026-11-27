@@ -46,6 +46,7 @@ const crypto = new Set([
 ]);
 const textCoins = new Set(["FDUSD", "POL", "TON"]);
 const networkIcons = new Map([
+    ["bitcoin", "btc"],
     ["ethereum", "eth"],
     ["erc20", "eth"],
     ["tron", "trx"],
@@ -65,13 +66,16 @@ const networkLabels = new Map([
 export function AssetIcon({
     asset,
     compact = false,
+    networkBadge,
 }: {
     asset: Pick<Asset, "code" | "kind" | "network" | "verified">;
     compact?: boolean;
+    networkBadge?: string | null;
 }) {
     const { code, kind, network, verified } = asset;
+    const badge = networkBadge ?? (kind === "token" ? network : null);
     const currency = kind === "fiat" ? fiat.get(code) : undefined;
-    const chain = network ? networkIcons.get(network) : undefined;
+    const chain = badge ? networkIcons.get(badge) : undefined;
     const brandedCoin = kind === "native" || kind === "custodial" || (kind === "token" && verified);
 
     return (
@@ -104,12 +108,12 @@ export function AssetIcon({
                             alt=""
                         />
                     )}
-                    {kind === "token" && network && (
-                        <span className="icon-corner" data-network={network}>
+                    {badge && (
+                        <span className="icon-corner" data-network={badge}>
                             {chain ? (
                                 <img src={`/assets/icons/crypto/${chain}.svg`} alt="" />
                             ) : (
-                                (networkLabels.get(network) ?? network.slice(0, 3).toUpperCase())
+                                (networkLabels.get(badge) ?? badge.slice(0, 3).toUpperCase())
                             )}
                         </span>
                     )}

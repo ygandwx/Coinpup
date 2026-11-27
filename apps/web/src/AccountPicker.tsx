@@ -1,9 +1,13 @@
 import { useId, useRef, useState } from "react";
 
-import { AccountIcon, AccountIdentityIcon, AccountName } from "./AccountIcon";
+import {
+    AccountIcon,
+    AccountIdentityIcon,
+    AccountName,
+    institutionForAccount,
+} from "./AccountIcon";
 import type { AccountIdentity } from "./AccountIcon";
 import { maskCardNumber } from "./account-details";
-import { accountInstitution } from "./institutions";
 import type { Locale } from "./i18n";
 import "./account-picker.css";
 
@@ -45,9 +49,10 @@ export function AccountPicker({
     const word = disabled ? "" : query.trim().normalize("NFKC").toLowerCase();
     const displayed = accounts.filter((account) => {
         if (!word || account.id === selected) return true;
-        const institution = accountInstitution(account.details, account.name, account.kind);
+        const institution = institutionForAccount(account);
         return [
             account.name,
+            account.kind === "crypto" ? account.crypto_platform?.custom_name : null,
             institution?.name.zh,
             institution?.name.en,
             institution?.shortName,

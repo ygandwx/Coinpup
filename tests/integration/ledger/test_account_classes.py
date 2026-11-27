@@ -196,23 +196,25 @@ def test_money_history_survives_class_round_trip_and_original_replay(ledger_setu
     command = opening(s)
     receipt = s["posting"].post_opening(s["owner"], s["ledger"], command, "fictional-old-money")
     before = snapshot(s)
-    card_constraint_sql = """
-        SELECT pg_get_constraintdef(oid)
+    account_checks_sql = """
+        SELECT conname, pg_get_constraintdef(oid)
         FROM pg_constraint
         WHERE conrelid = 'public.accounts'::regclass
-          AND conname = 'ck_accounts_card_number'
+          AND conname IN ('ck_accounts_card_number', 'ck_accounts_crypto_platform')
     """
     with s["engine"].begin() as connection:
-        card_constraint = connection.exec_driver_sql(card_constraint_sql).scalar_one()
+        account_checks = dict(connection.exec_driver_sql(account_checks_sql).all())
+        assert account_checks.keys() == {"ck_accounts_card_number", "ck_accounts_crypto_platform"}
         with Operations.context(MigrationContext.configure(connection)):
             migration()["downgrade"]()
             migration()["upgrade"]()
-        # Dropping account_class implicitly removes the newer dependent card CHECK.
+        # Dropping account_class implicitly removes newer dependent account checks.
         # The frozen 0015 upgrade restores only the constraints that existed then.
-        connection.exec_driver_sql(
-            "ALTER TABLE public.accounts ADD CONSTRAINT ck_accounts_card_number " + card_constraint
-        )
-        assert connection.exec_driver_sql(card_constraint_sql).scalar_one() == card_constraint
+        for name, definition in account_checks.items():
+            connection.exec_driver_sql(
+                f"ALTER TABLE public.accounts ADD CONSTRAINT {name} {definition}"
+            )
+        assert dict(connection.exec_driver_sql(account_checks_sql).all()) == account_checks
         assert (
             connection.scalar(select(Account.account_class).where(Account.id == s["account"].id))
             == "money"

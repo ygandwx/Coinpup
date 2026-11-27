@@ -30,6 +30,7 @@
 - 归档保留记录、原币数量和历史引用；主体归档后允许读取，暂停新的账本写入。已经成功的财务命令和已完成上传可以重放，不能因后续归档或停用丢失回执。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0012](decisions/0012-private-files-and-consistent-bundles.md)。
 - 主体/账本、账户和分类创建支持稳定客户端 UUID，重复 ID 是冲突，不覆盖已有数据，也不等同财务命令重放；未知创建结果先读取核对。分类模板复制为各主体独立分类，界面语言不自动翻译已保存名称，公司资料与账户资料按各自归属保存。来源：[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0009](decisions/0009-business-web-workspace.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
 - 往来单位与项目创建必须提供稳定客户端UUID；重复ID返回409 `duplicate_record`，未知创建结果读取同账本同ID核对，不覆盖已有资料，也不产生财务回执。更新保留原`expected_version`，旧匿名往来须同时补全名称与角色；资料变更不改历史分录。同名项目不自动合并。来源：[ADR 0024](decisions/0024-business-master-data.md)。
+- 加密账户沿用普通创建与版本更新。每个账本的同一机构或规范化自定义平台名只可关联一个加密账户，含已归档账户。`crypto_platform` 保存平台标识、UID、邮箱和备注，省略该字段保留原值，`null` 显式清除。`crypto_assets` 按完整资产 ID 更新指定资料，`details: null` 只清除该币种的资料。取消资产关联保留资料，重新关联后可继续使用。`crypto_preset_asset_ids` 只允许在同一事务登记明确选中的目录预设，停用资产不能用此方法启用。
 - 更正保持业务 ID 和种类，完整冲销旧本金与全部费用再写入替代分录；取消只冲销，终止后不能重新激活。命令需要当前版本、非空原因和完整替代内容，替代内容不带业务 ID；期初账户/资产固定。来源：[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0011](decisions/0011-financial-revision-web.md)。
 - 原始分录、封存行和回执不可修改或删除；更正/取消保持连续版本链。旧账户、分类或资产失效后仍可精确冲销，替代内容的新引用须有效；历史按版本保留原因、执行人及精确有符号分录。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)。
 
