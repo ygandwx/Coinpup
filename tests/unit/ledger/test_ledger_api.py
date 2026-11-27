@@ -27,6 +27,7 @@ WRITES = [
         {"name": "Fixture", "kind": "wise", "asset_ids": ["USD", "EUR"]},
     ),
     ("PATCH", LEDGER + f"/accounts/{RECORD}", {"expected_version": 1, "archived": True}),
+    ("POST", LEDGER + f"/accounts/{RECORD}/card-number", {}),
     ("POST", LEDGER + "/categories", {"name": "Fixture", "kind": "expense"}),
     ("PATCH", LEDGER + f"/categories/{RECORD}", {"expected_version": 1, "name": "Renamed"}),
 ]
@@ -176,6 +177,7 @@ def test_all_registered_unsafe_structure_routes_are_covered(client):
         ("PATCH", "/api/v1/entities/{entity_id}"),
         ("POST", "/api/v1/ledgers/{ledger_id}/accounts"),
         ("PATCH", "/api/v1/ledgers/{ledger_id}/accounts/{account_id}"),
+        ("POST", "/api/v1/ledgers/{ledger_id}/accounts/{account_id}/card-number"),
         ("POST", "/api/v1/ledgers/{ledger_id}/categories"),
         ("PATCH", "/api/v1/ledgers/{ledger_id}/categories/{category_id}"),
     }

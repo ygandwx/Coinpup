@@ -15,10 +15,11 @@ import { EntityMark } from "./EntityMark";
 import { EntityForm } from "./EntityForm";
 import { AccountDrawer } from "./AccountDrawer";
 import { AccountForm } from "./AccountForm";
+import { CardDetailsDrawer } from "./CardDetailsDrawer";
 import { AccountBalanceChart, AccountCard } from "./AccountCard";
-import { AccountIcon } from "./AccountIcon";
+import { AccountIdentityIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
-import { accountInstitution } from "./institutions";
+import { maskCardNumber } from "./account-details";
 import { formatAssetAmount } from "./money";
 import { prepareAccountBalances } from "./account-charts";
 import { businessError } from "./business-errors";
@@ -67,6 +68,7 @@ import {
     listBalances,
     listCategories,
     listEntities,
+    revealCardNumber,
     updateAccount,
     updateCategory,
     updateEntity,
@@ -480,6 +482,7 @@ export function BusinessWorkspace({
     const [loadError, setLoadError] = useState<unknown>(null);
     const [actionError, setActionError] = useState<unknown>(null);
     const [editor, setEditor] = useState<Editor | null>(null);
+    const [cardDetails, setCardDetails] = useState<Account | null>(null);
     const [busy, setBusy] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [refresh, setRefresh] = useState(0);
@@ -774,14 +777,26 @@ export function BusinessWorkspace({
         setSavedAccount(null);
         setEditor(next);
     }
-    function closeEditor() {
+    function restoreEditorFocus() {
         const trigger = editorTrigger.current;
-        setEditor(null);
-        setActionError(null);
         requestAnimationFrame(() => {
             if (trigger?.isConnected) trigger.focus();
             else document.getElementById("business-title")?.focus();
         });
+    }
+    function closeEditor() {
+        setEditor(null);
+        setActionError(null);
+        restoreEditorFocus();
+    }
+    function viewCardDetails(account: Account) {
+        editorTrigger.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setCardDetails(account);
+    }
+    function closeCardDetails() {
+        setCardDetails(null);
+        restoreEditorFocus();
     }
     function reload() {
         setLoadError(null);
@@ -1079,6 +1094,26 @@ export function BusinessWorkspace({
                             ? t("账户已保存。", "Account saved.")
                             : t("已保存。", "Saved.")}
                     </p>
+                )}
+                {cardDetails && ledgerId === cardDetails.ledger_id && (
+                    <CardDetailsDrawer
+                        key={cardDetails.id}
+                        account={cardDetails}
+                        locale={locale}
+                        languageControl={accountEditorLanguageControl}
+                        onClose={closeCardDetails}
+                        onReveal={async (signal) =>
+                            (
+                                await revealCardNumber(
+                                    session.csrf_token,
+                                    ledgerId,
+                                    cardDetails.id,
+                                    signal,
+                                )
+                            ).card_number
+                        }
+                        onUnauthorized={onUnauthorized}
+                    />
                 )}
                 {editor?.kind === "account" && (
                     <AccountDrawer
@@ -1548,25 +1583,27 @@ export function BusinessWorkspace({
                                                         const asset = assetsById.get(
                                                             balance.asset_id,
                                                         );
+                                                        const suffix = maskCardNumber(account);
                                                         return (
                                                             <div
                                                                 className="balance-row overview-balance"
                                                                 key={`${account.id}:${balance.asset_id}`}
                                                             >
                                                                 <span className="overview-balance-name">
-                                                                    <AccountIcon
-                                                                        kind={account.kind}
-                                                                        institution={
-                                                                            accountInstitution(
-                                                                                account.details,
-                                                                                account.name,
-                                                                                account.kind,
-                                                                            )?.id
-                                                                        }
+                                                                    <AccountIdentityIcon
+                                                                        account={account}
                                                                         compact
                                                                     />
                                                                     <span>
-                                                                        {account.name}
+                                                                        <span>
+                                                                            {account.name}
+                                                                            {suffix && (
+                                                                                <small>
+                                                                                    {" "}
+                                                                                    · {suffix}
+                                                                                </small>
+                                                                            )}
+                                                                        </span>
                                                                         <small className="icon-label">
                                                                             {asset && (
                                                                                 <AssetIcon
@@ -1649,6 +1686,7 @@ export function BusinessWorkspace({
                                             onEdit={() =>
                                                 openEditor({ kind: "account", value: account })
                                             }
+                                            onDetails={() => viewCardDetails(account)}
                                             onArchive={() => void archive("account", account)}
                                         />
                                     ))}

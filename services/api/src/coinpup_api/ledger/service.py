@@ -1,6 +1,5 @@
 """Transactional, owner-scoped structure management; no balances or postings yet."""
 
-import re
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -10,6 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from coinpup_api.ledger.assets import AssetDefinition
+from coinpup_api.ledger.card_details import (
+    CARD_KINDS,
+    public_account_details,
+    valid_account_details,
+    valid_card_number,
+)
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import Account, AccountAsset, AssetRecord, Category, Entity, Ledger
 from coinpup_api.ledger.schemas import (
@@ -19,6 +24,7 @@ from coinpup_api.ledger.schemas import (
     AssetCreate,
     AssetResponse,
     AssetUpdate,
+    CardNumberResponse,
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
@@ -65,69 +71,26 @@ def _page(limit, offset):
         raise LedgerError("invalid_pagination", 422, "Pagination is outside the allowed bounds.")
 
 
-def _passes_luhn(digits: str) -> bool:
-    total = 0
-    for position, character in enumerate(reversed(digits)):
-        value = int(character)
-        if position % 2:
-            value *= 2
-            if value > 9:
-                value -= 9
-        total += value
-    return total % 10 == 0
+def _invalid_card_details():
+    return LedgerError(
+        "invalid_card_details",
+        422,
+        "Use the designated card fields and omit card security codes or PINs.",
+    )
 
 
 def _validate_card_details(kind: str, details: dict[str, str], previous: dict[str, str]):
-    forbidden = {
-        "cardnumber",
-        "creditcardnumber",
-        "cardno",
-        "cardpan",
-        "pan",
-        "primaryaccountnumber",
-        "accountnumber",
-        "卡号",
-        "信用卡号",
-        "银行卡号",
-    }
-    non_pan_fields = {
-        "institution",
-        "bankregion",
-        "bankname",
-        "accountholder",
-        "branchname",
-        "swiftbic",
-        "cnapscode",
-        "routingnumber",
-        "iban",
-        "hkbankcode",
-        "realname",
-        "email",
-        "paymentaccountid",
-        "issuername",
-        "statementday",
-        "paymentdueday",
-        "walletnetwork",
-        "walletaddress",
-        "walletlabel",
-        "walletstorage",
-        "cashlocation",
-    }
-    for key, value in details.items():
-        if not value or previous.get(key) == value:
-            continue
-        normalized = re.sub(r"[\s_-]+", "", key.lower())
-        invalid_suffix = normalized == "cardlastfour" and not re.fullmatch(r"[0-9]{4}", value)
-        digits = re.sub(r"[ -]+", "", value)
-        full_number = kind == "credit_card" and (
-            bool(re.fullmatch(r"[0-9]{12,19}", digits))
-            and (
-                normalized in forbidden
-                or (normalized not in non_pan_fields and _passes_luhn(digits))
-            )
-        )
-        if invalid_suffix or full_number:
-            raise LedgerError("invalid_card_details", 422, "Enter only the last four card digits.")
+    if not valid_account_details(kind, details, previous):
+        raise _invalid_card_details()
+
+
+def _card_number(kind: str, secret):
+    if secret is None:
+        return None
+    number = secret.get_secret_value()
+    if kind not in CARD_KINDS or not valid_card_number(number):
+        raise _invalid_card_details()
+    return number
 
 
 class LedgerService:
@@ -206,16 +169,30 @@ class LedgerService:
         return EntityResponse(**data, ledger=LedgerResponse.model_validate(ledger))
 
     @staticmethod
-    def _account_response(session, account):
+    def _account_response(session, account, card_summary_only=False):
         data = {
-            key: getattr(account, key) for key in AccountResponse.model_fields if key != "asset_ids"
+            key: getattr(account, key)
+            for key in AccountResponse.model_fields
+            if key not in {"asset_ids", "details", "has_card_number"}
         }
+        details = public_account_details(account.kind, account.details)
+        if card_summary_only:
+            details = {
+                key: details[key]
+                for key in ("card_last_four", "expiry")
+                if key in details and account.kind in CARD_KINDS
+            }
+        has_card_number = (
+            not card_summary_only and account.kind in CARD_KINDS and account.has_card_number
+        )
         asset_ids = session.scalars(
             select(AccountAsset.asset_id)
             .where(AccountAsset.account_id == account.id, AccountAsset.enabled.is_(True))
             .order_by(AccountAsset.asset_id)
         ).all()
-        return AccountResponse(**data, asset_ids=asset_ids)
+        return AccountResponse(
+            **data, details=details, asset_ids=asset_ids, has_card_number=has_card_number
+        )
 
     def list_assets(self, owner_id, include_disabled=True, limit=100, offset=0):
         _page(limit, offset)
@@ -366,7 +343,16 @@ class LedgerService:
             session.refresh(entity)
             return self._entity_response(entity, ledger)
 
-    def list_accounts(self, owner_id, ledger_id, include_archived=False, limit=100, offset=0):
+    def list_accounts(
+        self,
+        owner_id,
+        ledger_id,
+        include_archived=False,
+        limit=100,
+        offset=0,
+        *,
+        card_summary_only=False,
+    ):
         _page(limit, offset)
         with self._transaction(owner_id) as session:
             self._ledger(session, owner_id, ledger_id)
@@ -376,7 +362,7 @@ class LedgerService:
             if not include_archived:
                 statement = statement.where(Account.archived.is_(False))
             return [
-                self._account_response(session, item)
+                self._account_response(session, item, card_summary_only)
                 for item in session.scalars(
                     statement.order_by(Account.id).limit(limit).offset(offset)
                 )
@@ -403,11 +389,18 @@ class LedgerService:
     def create_account(self, owner_id, ledger_id, payload: AccountCreate) -> AccountResponse:
         with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
-            _validate_card_details(payload.kind, payload.details, {})
+            details = dict(payload.details)
+            _validate_card_details(payload.kind, details, {})
+            number = _card_number(payload.kind, payload.card_number)
+            if number is not None:
+                details["card_last_four"] = number[-4:]
             account = Account(
                 id=payload.id or uuid4(),
                 ledger_id=ledger_id,
-                **payload.model_dump(exclude={"id", "asset_ids"}),
+                name=payload.name,
+                kind=payload.kind,
+                details=details,
+                card_number=number,
             )
             session.add(account)
             session.flush()
@@ -428,11 +421,25 @@ class LedgerService:
             if account is None:
                 raise _not_found()
             _version(account, payload.expected_version)
-            changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+            changes = payload.model_dump(
+                exclude_unset=True, exclude={"expected_version", "card_number"}
+            )
+            details = dict(changes.get("details", account.details))
+            kind = changes.get("kind", account.kind)
             if "details" in changes:
-                _validate_card_details(
-                    changes.get("kind", account.kind), changes["details"], account.details
-                )
+                _validate_card_details(kind, details, account.details)
+            if "card_number" in payload.model_fields_set:
+                number = _card_number(kind, payload.card_number)
+                account.card_number = number
+                if number is not None:
+                    details["card_last_four"] = number[-4:]
+                else:
+                    details.pop("card_last_four", None)
+                changes["details"] = details
+            elif "details" in changes and account.has_card_number:
+                # Replacing general details cannot alter a saved card number's suffix.
+                details["card_last_four"] = account.details["card_last_four"]
+                changes["details"] = details
             asset_ids = changes.pop("asset_ids", None)
             for key, value in changes.items():
                 setattr(account, key, value)
@@ -442,6 +449,21 @@ class LedgerService:
             session.flush()
             session.refresh(account)
             return self._account_response(session, account)
+
+    def read_card_number(self, owner_id, ledger_id, account_id) -> CardNumberResponse:
+        with self._transaction(owner_id, read_only=True) as session:
+            self._ledger(session, owner_id, ledger_id)
+            row = session.execute(
+                select(Account.card_number).where(
+                    Account.id == account_id,
+                    Account.ledger_id == ledger_id,
+                    Account.account_class == "money",
+                    Account.kind.in_(CARD_KINDS),
+                )
+            ).one_or_none()
+            if row is None:
+                raise _not_found()
+            return CardNumberResponse(card_number=row.card_number)
 
     def list_categories(self, owner_id, ledger_id, include_archived=False, limit=100, offset=0):
         _page(limit, offset)

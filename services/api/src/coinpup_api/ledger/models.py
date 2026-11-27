@@ -23,7 +23,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, column_property, mapped_column
 
 from coinpup_api.business import allocation_return_models as allocation_return_models  # noqa: F401
 from coinpup_api.business import (
@@ -180,13 +180,18 @@ class Account(Versioned, Base):
             name="ck_accounts_class_identity",
         ),
         CheckConstraint(
-            "kind IN ('bank', 'cash', 'wechat', 'alipay', 'credit_card', "
+            "kind IN ('bank', 'cash', 'wechat', 'alipay', 'credit_card', 'debit_card', "
             "'paypal', 'wise', 'stripe', 'crypto')",
             name="ck_accounts_kind",
         ),
         CheckConstraint("btrim(name) <> ''", name="ck_accounts_name"),
         CheckConstraint("version > 0", name="ck_accounts_version"),
         CheckConstraint("jsonb_typeof(details) = 'object'", name="ck_accounts_details"),
+        CheckConstraint(
+            "card_number IS NULL OR (account_class = 'money' AND card_number ~ '^[0-9]{12,19}$' "
+            "AND details ->> 'card_last_four' IS NOT DISTINCT FROM right(card_number, 4))",
+            name="ck_accounts_card_number",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -208,6 +213,14 @@ class Account(Versioned, Base):
     archived: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
+
+    card_number: Mapped[str | None] = mapped_column(
+        String(19), nullable=True, deferred=True, deferred_raiseload=True
+    )
+    card_schema_used: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    has_card_number: Mapped[bool] = column_property(card_number.is_not(None))
 
 
 class AccountAsset(Base):

@@ -16,7 +16,10 @@ export function businessError(error: unknown, locale: Locale): string {
             "This record changed elsewhere. Your input is preserved; Reload replaces it with the latest record.",
         );
     if (error.code === "invalid_card_details")
-        return t("信用卡只能保存卡号后四位。", "Store only the last four card digits.");
+        return t(
+            "请检查卡号、有效期和其他卡片资料。请勿填写安全码或 PIN。",
+            "Check the card number, expiration date and card details. Leave security codes and PINs out.",
+        );
     if (error.code === "period_closed")
         return t(
             "交易日或归属日位于已结账期间。请先在“结账与重开”中填写理由重开。",

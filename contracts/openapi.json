@@ -15,6 +15,21 @@
             "title": "Asset Ids",
             "type": "array"
           },
+          "card_number": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 19,
+                "minLength": 12,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Number"
+          },
           "details": {
             "additionalProperties": {
               "type": "string"
@@ -41,6 +56,7 @@
               "wechat",
               "alipay",
               "credit_card",
+              "debit_card",
               "paypal",
               "wise",
               "stripe",
@@ -88,6 +104,11 @@
             },
             "title": "Details",
             "type": "object"
+          },
+          "has_card_number": {
+            "default": false,
+            "title": "Has Card Number",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -164,6 +185,21 @@
             ],
             "title": "Asset Ids"
           },
+          "card_number": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 19,
+                "minLength": 12,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Number"
+          },
           "details": {
             "anyOf": [
               {
@@ -192,6 +228,7 @@
                   "wechat",
                   "alipay",
                   "credit_card",
+                  "debit_card",
                   "paypal",
                   "wise",
                   "stripe",
@@ -3645,6 +3682,26 @@
           "recorded_at"
         ],
         "title": "CancellationInfo",
+        "type": "object"
+      },
+      "CardNumberResponse": {
+        "properties": {
+          "card_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Number"
+          }
+        },
+        "required": [
+          "card_number"
+        ],
+        "title": "CardNumberResponse",
         "type": "object"
       },
       "CategoryCreate": {
@@ -17082,6 +17139,16 @@
           },
           {
             "in": "query",
+            "name": "card_summary_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Card Summary Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -17278,6 +17345,75 @@
           }
         },
         "summary": "Update Account",
+        "tags": [
+          "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/accounts/{account_id}/card-number": {
+      "post": {
+        "operationId": "read_card_number_api_v1_ledgers__ledger_id__accounts__account_id__card_number_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardNumberResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Card Number",
         "tags": [
           "ledger structure"
         ]

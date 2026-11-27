@@ -14,6 +14,8 @@ from backup_database import backup_database
 from psycopg import sql
 from restore_database import restore_database
 
+_FICTIONAL_CARD_NUMBER = "4111111111111111"  # Payment sandbox value.
+
 
 def snapshot(target):
     """Compare every application table without decoding precise JSON numbers as floats."""
@@ -178,7 +180,13 @@ def create_structure_fixture(engine, owner_id):
     card_account = service.create_account(
         owner_id,
         company.ledger.id,
-        AccountCreate(name="Fictional company credit card", kind="credit_card", asset_ids=["USD"]),
+        AccountCreate(
+            name="Fictional company credit card",
+            kind="credit_card",
+            asset_ids=["USD"],
+            card_number=_FICTIONAL_CARD_NUMBER,
+            details={"expiry": "12/39"},
+        ),
     )
     old_account = service.create_account(
         owner_id,
@@ -208,6 +216,12 @@ def create_structure_fixture(engine, owner_id):
         company.ledger.id,
         CategoryCreate(name="Fictional child expense", kind="expense", parent_id=parent.id),
     )
+    if (
+        card_account.details != {"card_last_four": "1111", "expiry": "12/39"}
+        or not card_account.has_card_number
+        or _FICTIONAL_CARD_NUMBER in card_account.model_dump_json()
+    ):
+        raise ArchiveError("CI card fixture did not yield a masked account response.")
     if (
         archived.version != old_account.version + 1
         or not archived.archived
@@ -1025,9 +1039,17 @@ def check_backup_restore():
                 raise ArchiveError("Second restore should have refused the nonempty target.")
         if before != snapshot(source) or before != snapshot(target):
             raise ArchiveError("Source/restore application rows or migration revision differ.")
+        from coinpup_api.ledger.service import LedgerService
+
+        card_account = structure["card_account"]
         for engine in (source_engine, target_engine):
             if AuthService(settings, engine).get_session(token).id != administrator_id:
                 raise ArchiveError("Restored or original session is not usable.")
+            stored_card = LedgerService(engine).read_card_number(
+                administrator_id, card_account.ledger_id, card_account.id
+            )
+            if stored_card.card_number != _FICTIONAL_CARD_NUMBER:
+                raise ArchiveError("The private card fixture did not survive database restoration.")
             if structure_state(engine, administrator_id) != expected_structure:
                 raise ArchiveError(
                     "Restored or original business structure differs from its fixture."
