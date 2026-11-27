@@ -14,7 +14,7 @@ from coinpup_api.ledger.schemas import (
     EntityProfile,
     EntityUpdate,
 )
-from coinpup_api.ledger.service import LedgerError, LedgerService
+from coinpup_api.ledger.service import LedgerError, LedgerService, _validate_card_details
 from coinpup_api.ledger.templates import TEMPLATES, get_templates
 from pydantic import ValidationError
 
@@ -187,3 +187,30 @@ def test_service_pagination_bounds_before_database(limit, offset):
 def test_asset_scale_does_not_coerce_lossy_or_ambiguous_types(scale):
     with pytest.raises(ValidationError):
         AssetCreate(code="USDC", kind="token", network="test", token_reference="Fake", scale=scale)
+
+
+@pytest.mark.parametrize(
+    "key, value",
+    [
+        ("card_last_four", "1234123412341234"),
+        ("card_last_four", "１２３４"),
+        ("card number", "1234 1234 1234 1234"),
+        ("卡号", "1234-1234-1234-1234"),
+        ("account_number", "1234123412341234"),
+        ("custom_identifier", "4111 1111 1111 1111"),
+    ],
+)
+def test_credit_card_write_rejects_new_full_numbers_without_echoing_them(key, value):
+    with pytest.raises(LedgerError) as error:
+        _validate_card_details("credit_card", {key: value}, {})
+    assert (error.value.status, error.value.code) == (422, "invalid_card_details")
+    assert value not in str(error.value)
+
+
+def test_account_detail_updates_preserve_existing_information():
+    original = {"account_number": "1234123412341234", "card_last_four": "legacy"}
+    _validate_card_details("credit_card", {**original, "issuer_name": "Test Bank"}, original)
+    _validate_card_details("credit_card", {**original, "card_last_four": "0001"}, original)
+    _validate_card_details("bank", {"account_number": "1234123412341234"}, {})
+    _validate_card_details("credit_card", {"custom_identifier": "4111 1111 1111 1112"}, {})
+    _validate_card_details("credit_card", {"payment_account_id": "4111 1111 1111 1111"}, {})

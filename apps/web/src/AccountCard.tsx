@@ -77,16 +77,30 @@ type Props = {
     rows: VisualBalance[];
     locale: Locale;
     disabled: boolean;
+    recentlySaved?: boolean;
     onEdit: () => void;
     onArchive: () => void;
 };
 
-export function AccountCard({ account, assets, rows, locale, disabled, onEdit, onArchive }: Props) {
+export function AccountCard({
+    account,
+    assets,
+    rows,
+    locale,
+    disabled,
+    recentlySaved,
+    onEdit,
+    onArchive,
+}: Props) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [zh, en] = identities.get(account.kind) ?? [account.kind, account.kind];
     const institution = account.kind === "bank" ? accountInstitution(account.details) : undefined;
     return (
-        <article className="funding-card" data-testid={`account-${account.id}`}>
+        <article
+            className="funding-card"
+            data-testid={`account-${account.id}`}
+            data-recently-saved={recentlySaved || undefined}
+        >
             <header className="funding-card-heading">
                 <AccountIcon kind={account.kind} institution={institution?.id} />
                 <div>

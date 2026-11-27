@@ -1,5 +1,6 @@
 """Transactional, owner-scoped structure management; no balances or postings yet."""
 
+import re
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -62,6 +63,71 @@ def _page(limit, offset):
         or not 0 <= offset <= 100000
     ):
         raise LedgerError("invalid_pagination", 422, "Pagination is outside the allowed bounds.")
+
+
+def _passes_luhn(digits: str) -> bool:
+    total = 0
+    for position, character in enumerate(reversed(digits)):
+        value = int(character)
+        if position % 2:
+            value *= 2
+            if value > 9:
+                value -= 9
+        total += value
+    return total % 10 == 0
+
+
+def _validate_card_details(kind: str, details: dict[str, str], previous: dict[str, str]):
+    forbidden = {
+        "cardnumber",
+        "creditcardnumber",
+        "cardno",
+        "cardpan",
+        "pan",
+        "primaryaccountnumber",
+        "accountnumber",
+        "卡号",
+        "信用卡号",
+        "银行卡号",
+    }
+    non_pan_fields = {
+        "institution",
+        "bankregion",
+        "bankname",
+        "accountholder",
+        "branchname",
+        "swiftbic",
+        "cnapscode",
+        "routingnumber",
+        "iban",
+        "hkbankcode",
+        "realname",
+        "email",
+        "paymentaccountid",
+        "issuername",
+        "statementday",
+        "paymentdueday",
+        "walletnetwork",
+        "walletaddress",
+        "walletlabel",
+        "walletstorage",
+        "cashlocation",
+    }
+    for key, value in details.items():
+        if not value or previous.get(key) == value:
+            continue
+        normalized = re.sub(r"[\s_-]+", "", key.lower())
+        invalid_suffix = normalized == "cardlastfour" and not re.fullmatch(r"[0-9]{4}", value)
+        digits = re.sub(r"[ -]+", "", value)
+        full_number = kind == "credit_card" and (
+            bool(re.fullmatch(r"[0-9]{12,19}", digits))
+            and (
+                normalized in forbidden
+                or (normalized not in non_pan_fields and _passes_luhn(digits))
+            )
+        )
+        if invalid_suffix or full_number:
+            raise LedgerError("invalid_card_details", 422, "Enter only the last four card digits.")
 
 
 class LedgerService:
@@ -337,6 +403,7 @@ class LedgerService:
     def create_account(self, owner_id, ledger_id, payload: AccountCreate) -> AccountResponse:
         with self._transaction(owner_id, write=True) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
+            _validate_card_details(payload.kind, payload.details, {})
             account = Account(
                 id=payload.id or uuid4(),
                 ledger_id=ledger_id,
@@ -362,6 +429,10 @@ class LedgerService:
                 raise _not_found()
             _version(account, payload.expected_version)
             changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+            if "details" in changes:
+                _validate_card_details(
+                    changes.get("kind", account.kind), changes["details"], account.details
+                )
             asset_ids = changes.pop("asset_ids", None)
             for key, value in changes.items():
                 setattr(account, key, value)
