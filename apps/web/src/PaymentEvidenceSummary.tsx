@@ -1,3 +1,4 @@
+import { AccountName } from "./AccountIcon";
 import type { PaymentEvidenceTarget } from "./business-settlement-api";
 import type { Account } from "./ledger-api";
 import type { Locale } from "./i18n";
@@ -11,7 +12,7 @@ export function PaymentEvidenceSummary({
     locale: Locale;
 }) {
     const payment = target.payment;
-    const accountName = accounts.find((row) => row.id === payment.account_id)?.name;
+    const account = accounts.find((row) => row.id === payment.account_id);
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     return (
         <>
@@ -27,7 +28,11 @@ export function PaymentEvidenceSummary({
                 </dd>
                 <dt>{t("资金账户", "Money account")}</dt>
                 <dd>
-                    {accountName ? `${accountName} · ` : ""}
+                    {account && (
+                        <>
+                            <AccountName account={account} /> ·{" "}
+                        </>
+                    )}
                     {payment.account_id}
                 </dd>
                 <dt>{t("往来单位 ID", "Party ID")}</dt>

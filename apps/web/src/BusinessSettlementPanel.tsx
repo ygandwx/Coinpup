@@ -22,6 +22,7 @@ import { businessError } from "./business-errors";
 import { BusinessPaymentFields } from "./BusinessPaymentFields";
 import { BusinessSettlementHistory } from "./BusinessSettlementHistory";
 import { BusinessSettlementResult } from "./BusinessSettlementResult";
+import { accountInstitution } from "./institutions";
 import type { SettlementReviewData } from "./BusinessSettlementResult";
 import { BusinessAllocationReturnForm } from "./BusinessAllocationReturnForm";
 import type { ReturnEditor } from "./BusinessAllocationReturnForm";
@@ -318,6 +319,19 @@ export function BusinessSettlementPanel({
         }
         setInvalid(false);
         setError(null);
+        const accountLabel = (id: string) => {
+            const found = accounts.find((row) => row.id === id);
+            return {
+                accountName: found?.name ?? id,
+                logo: found
+                    ? {
+                          kind: found.kind,
+                          institution: accountInstitution(found.details, found.name, found.kind)
+                              ?.id,
+                      }
+                    : undefined,
+            };
+        };
         const review: SettlementReviewData = {
             payment: {
                 ledger_id: ledgerId,
@@ -329,11 +343,9 @@ export function BusinessSettlementPanel({
             },
             partyName:
                 refs.parties.find((row) => row.id === fields.party_id)?.name ?? fields.party_id,
-            accountName:
-                accounts.find((row) => row.id === fields.account_id)?.name ?? fields.account_id,
+            ...accountLabel(fields.account_id),
             feeLabels: (fields.fees ?? []).map((fee) => ({
-                accountName:
-                    accounts.find((row) => row.id === fee.account_id)?.name ?? fee.account_id,
+                ...accountLabel(fee.account_id),
                 categoryName:
                     categories.find((row) => row.id === fee.category_id)?.name ?? fee.category_id,
             })),

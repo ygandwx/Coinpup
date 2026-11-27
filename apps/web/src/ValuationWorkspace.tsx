@@ -1,12 +1,22 @@
+import { AccountName } from "./AccountIcon";
 import { EntityMark } from "./EntityMark";
-import { cloneElement, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import {
+    cloneElement,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from "react";
 import type { FormEvent, ReactElement } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { businessError } from "./business-errors";
 import { validDraftDate } from "./draft-fields";
 import type { Locale } from "./i18n";
-import type { Asset, Entity } from "./ledger-api";
+import { listAccounts } from "./ledger-api";
+import type { Account, Asset, Entity } from "./ledger-api";
 import { AmountError, formatAssetAmount } from "./money";
 import type { PendingPrice } from "./pending-price";
 import { readManualPrices, readMvpReport } from "./valuation-api";
@@ -146,6 +156,30 @@ function AutomaticPriceEvidence({
     );
 }
 
+async function readReportAccounts(
+    wanted: ReadonlyMap<string, ReadonlySet<string>>,
+    signal: AbortSignal,
+): Promise<Map<string, Account>> {
+    const matches = new Map<string, Account>();
+    await Promise.all(
+        [...wanted].map(async ([ledger, ids]) => {
+            const missing = new Set(ids);
+            for (let offset = 0; offset <= 100000 && missing.size; offset += 100) {
+                const batch = await listAccounts(
+                    ledger,
+                    { limit: 100, offset, include_archived: true },
+                    signal,
+                );
+                for (const account of batch) {
+                    if (missing.delete(account.id)) matches.set(ledger + ":" + account.id, account);
+                }
+                if (batch.length < 100) break;
+            }
+        }),
+    );
+    return matches;
+}
+
 function ReportPanel({
     entities,
     initialLedger,
@@ -170,6 +204,18 @@ function ReportPanel({
             : null;
     const result = useRead(readMvpReport, query, onUnauthorized, currentQuote);
     const page = result && "page" in result ? result.page : null;
+    const wanted = useMemo(() => {
+        if (!page) return null;
+        const accounts = new Map<string, Set<string>>();
+        for (const { ledger_id, account_id } of page.rows) {
+            if (!account_id) continue;
+            const ids = accounts.get(ledger_id) ?? new Set<string>();
+            ids.add(account_id);
+            accounts.set(ledger_id, ids);
+        }
+        return accounts;
+    }, [page]);
+    const reportAccounts = useRead(readReportAccounts, wanted, onUnauthorized);
     const names = new Map(entities.map(({ ledger, name }) => [ledger.id, name]));
     const balances = view === "balances";
     const historicalBalance = balances && Boolean(display) && priceBasis === "historical";
@@ -414,6 +460,22 @@ function ReportPanel({
                                             <>
                                                 <dt>{t("账户", "Account")}</dt>
                                                 <dd>
+                                                    {(() => {
+                                                        const account =
+                                                            reportAccounts &&
+                                                            "page" in reportAccounts
+                                                                ? reportAccounts.page.get(
+                                                                      row.ledger_id +
+                                                                          ":" +
+                                                                          row.account_id,
+                                                                  )
+                                                                : undefined;
+                                                        return (
+                                                            account && (
+                                                                <AccountName account={account} />
+                                                            )
+                                                        );
+                                                    })()}
                                                     <code>{row.account_id}</code>
                                                 </dd>
                                             </>

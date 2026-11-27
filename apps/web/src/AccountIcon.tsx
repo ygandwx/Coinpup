@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { BrandMark, isPaymentPlatform } from "./BrandMark";
-import { getInstitution } from "./institutions";
+import { accountInstitution, getInstitution } from "./institutions";
+import { institutionLogoUrl } from "./institution-brand-logos";
+import type { Account } from "./ledger-api";
 import "./icon-badges.css";
 
 const paths = new Map([
@@ -23,7 +25,8 @@ export function AccountIcon({
     institution?: string | null;
     compact?: boolean;
 }) {
-    const bank = kind === "bank" ? getInstitution(institution) : undefined;
+    const bank = getInstitution(institution);
+    const logo = bank?.logo && institutionLogoUrl(bank.logo);
     return (
         <span
             className={`account-mark icon-badge${compact ? " compact" : ""}`}
@@ -33,7 +36,11 @@ export function AccountIcon({
             style={bank ? ({ "--institution-color": bank.color } as CSSProperties) : undefined}
         >
             {bank ? (
-                <span className="institution-mark-text">{bank.shortName}</span>
+                logo ? (
+                    <img className="institution-logo" src={logo} alt="" />
+                ) : (
+                    <span className="institution-mark-text">{bank.shortName}</span>
+                )
             ) : isPaymentPlatform(kind) ? (
                 <BrandMark brand={kind} />
             ) : (
@@ -49,6 +56,28 @@ export function AccountIcon({
                     <path d={paths.get(kind) ?? wallet} />
                 </svg>
             )}
+        </span>
+    );
+}
+
+export type AccountIdentity = Pick<Account, "id" | "kind" | "details" | "name">;
+
+export function AccountIdentityIcon({
+    account,
+    compact,
+}: {
+    account: AccountIdentity;
+    compact?: boolean;
+}) {
+    const institution = accountInstitution(account.details, account.name, account.kind);
+    return <AccountIcon kind={account.kind} institution={institution?.id} compact={compact} />;
+}
+
+export function AccountName({ account }: { account: AccountIdentity }) {
+    return (
+        <span className="icon-label">
+            <AccountIdentityIcon account={account} compact />
+            <span>{account.name}</span>
         </span>
     );
 }

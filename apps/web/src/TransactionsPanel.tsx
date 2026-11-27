@@ -1,6 +1,5 @@
-import { AccountIcon } from "./AccountIcon";
+import { AccountName } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
-import { accountInstitution } from "./institutions";
 import { DisplayAmount } from "./DisplayAmount";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
@@ -63,18 +62,7 @@ function OperationCard({
     const posting = operation.latest_posting;
     function account(id: string) {
         const item = accounts.find((value) => value.id === id);
-        return item ? (
-            <span className="icon-label">
-                <AccountIcon
-                    kind={item.kind}
-                    institution={accountInstitution(item.details)?.id}
-                    compact
-                />
-                {item.name}
-            </span>
-        ) : (
-            id
-        );
+        return item ? <AccountName account={item} /> : id;
     }
     function asset(id: string) {
         const item = assets.find((value) => value.asset_id === id);

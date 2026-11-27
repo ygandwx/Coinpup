@@ -1,3 +1,4 @@
+import { AccountPicker } from "./AccountPicker";
 import { useId, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { Locale } from "./i18n";
@@ -225,6 +226,8 @@ function SelectField({
     disabled,
     retainedLabel,
     unavailable,
+    accountChoices,
+    locale,
 }: {
     id: string;
     label: string;
@@ -235,31 +238,49 @@ function SelectField({
     disabled: boolean;
     retainedLabel?: string;
     unavailable?: string;
+    accountChoices?: Account[];
+    locale?: Locale;
 }) {
     const missing = value !== "" && !options.some((option) => option.value === value);
     return (
         <div className="field">
             <label htmlFor={id}>{label}</label>
-            <select
-                id={id}
-                required
-                value={value}
-                disabled={disabled}
-                aria-describedby={missing ? `${id}-unavailable` : undefined}
-                onChange={(event) => onChange(event.target.value)}
-            >
-                <option value="">{choose}</option>
-                {missing && (
-                    <option value={value} disabled>
-                        {retainedLabel || value} · {unavailable}
-                    </option>
-                )}
-                {options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
+            {accountChoices && locale ? (
+                <AccountPicker
+                    id={id}
+                    locale={locale}
+                    value={value}
+                    accounts={accountChoices}
+                    placeholder={choose}
+                    disabled={disabled}
+                    onChange={onChange}
+                    describedBy={missing ? `${id}-unavailable` : undefined}
+                    retainedLabel={
+                        missing ? `${retainedLabel || value} · ${unavailable}` : undefined
+                    }
+                />
+            ) : (
+                <select
+                    id={id}
+                    required
+                    value={value}
+                    disabled={disabled}
+                    aria-describedby={missing ? `${id}-unavailable` : undefined}
+                    onChange={(event) => onChange(event.target.value)}
+                >
+                    <option value="">{choose}</option>
+                    {missing && (
+                        <option value={value} disabled>
+                            {retainedLabel || value} · {unavailable}
+                        </option>
+                    )}
+                    {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </select>
+            )}
             {missing && (
                 <p className="help-text" id={`${id}-unavailable`}>
                     {retainedLabel || value} · {unavailable}
@@ -708,6 +729,8 @@ export function PostingForm({
                     label={twoAccounts ? t.sourceAccount : t.account}
                     value={accountId}
                     options={accountOptions(activeAccounts)}
+                    accountChoices={activeAccounts}
+                    locale={locale}
                     onChange={selectAccount}
                     choose={t.choose}
                     disabled={busy || targetLocked}
@@ -747,6 +770,8 @@ export function PostingForm({
                         label={t.destinationAccount}
                         value={destinationAccountId}
                         options={accountOptions(destinationAccounts)}
+                        accountChoices={destinationAccounts}
+                        locale={locale}
                         onChange={(value) => {
                             setDestinationAccountId(value);
                             clearIssue();
@@ -932,6 +957,8 @@ export function PostingForm({
                                     label={t.feeAccount}
                                     value={fee.accountId}
                                     options={accountOptions(currentAccounts)}
+                                    accountChoices={currentAccounts}
+                                    locale={locale}
                                     onChange={(value) => {
                                         setFees(
                                             fees.map((row) =>
