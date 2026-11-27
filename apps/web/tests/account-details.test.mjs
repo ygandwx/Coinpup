@@ -4,8 +4,12 @@ import {
     accountFields,
     defaultAssetIds,
     isAccountAssetVisible,
+    maskCardNumber,
     validCardDay,
+    validCardExpiry,
     validCardLastFour,
+    validCardNumber,
+    validCreditLimit,
     validWalletAddress,
 } from "../src/account-details.ts";
 
@@ -29,6 +33,8 @@ test("account details reflect payment type and bank region", () => {
         assert.deepEqual(accountFields(platform, "CN"), ["email", "payment_account_id"]);
     assert.ok(accountFields("credit_card", "").includes("card_last_four"));
     assert.equal(accountFields("credit_card", "").includes("account_number"), false);
+    assert.ok(accountFields("debit_card", "").includes("linked_account_number"));
+    assert.equal(accountFields("debit_card", "").includes("credit_limit"), false);
 });
 
 test("asset filters preserve deliberate or saved non-default holdings", () => {
@@ -68,7 +74,30 @@ test("wallet validation checks public address shapes by network", () => {
     assert.equal(validWalletAddress("ethereum", ""), true);
 });
 
-test("new card numbers must be four ASCII digits and dates stay in bounds", () => {
+test("card numbers, masks, dates and exact credit limits obey their display and entry rules", () => {
+    assert.equal(validCardNumber("0000000000000018"), true);
+    assert.equal(validCardNumber("0000000000000019"), false);
+    assert.equal(validCardNumber("00000000000"), false);
+    assert.equal(validCardNumber("00000000000000000000"), false);
+    assert.equal(validCardNumber("000000000000001８"), false);
+    assert.equal(validCardExpiry("01/37"), true);
+    assert.equal(validCardExpiry("12/37"), true);
+    assert.equal(validCardExpiry("13/37"), false);
+    assert.equal(validCardExpiry("00/37"), false);
+    assert.equal(validCardExpiry("01/2037"), false);
+    assert.equal(validCreditLimit("12345678901234567890.123456789012345678"), true);
+    assert.equal(validCreditLimit("0.1234567890123456789"), false);
+    assert.equal(validCreditLimit("1e18"), false);
+    assert.equal(validCreditLimit("-0.01"), false);
+    assert.equal(
+        maskCardNumber({ kind: "debit_card", details: { card_last_four: "0018" } }),
+        "•••• 0018",
+    );
+    assert.equal(
+        maskCardNumber({ kind: "debit_card", details: { card_last_four: "0000000000000018" } }),
+        undefined,
+    );
+    assert.equal(maskCardNumber({ kind: "bank", details: { card_last_four: "0018" } }), undefined);
     assert.equal(validCardLastFour("0009"), true);
     assert.equal(validCardLastFour("1234-5678-9012-3456"), false);
     assert.equal(validCardLastFour("１２３４"), false);

@@ -110,6 +110,73 @@
     gap: var(--space-3);
 }
 
+.card-issuer-picker {
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.card-issuer-options {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    margin: 0;
+    min-width: 0;
+    padding: var(--space-2);
+}
+
+.card-issuer-list {
+    display: grid;
+    gap: var(--space-1);
+    max-height: 12rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.card-issuer-list label {
+    align-items: center;
+    border-radius: var(--radius-sm);
+    display: flex;
+    gap: var(--space-2);
+    min-height: 2.5rem;
+    overflow-wrap: anywhere;
+    padding: var(--space-1) var(--space-2);
+}
+
+.card-issuer-list label:has(input:checked) {
+    background: var(--tint);
+}
+
+.card-issuer-list input {
+    accent-color: var(--forest);
+    margin: 0;
+}
+
+.stored-card-number {
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+
+.account-card-number {
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.card-details-heading {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+    overflow-wrap: anywhere;
+    margin-block-end: var(--space-3);
+}
+
+.card-number-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
 .account-drawer .check-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
 }

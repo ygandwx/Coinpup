@@ -1,4 +1,4 @@
-import type { AccountKind, Asset } from "./ledger-api";
+import type { Account, AccountKind, Asset } from "./ledger-api";
 import type { DetailField, LocalizedLabel } from "./regions";
 
 const field = (key: string, zh: string, en: string): DetailField => ({
@@ -24,6 +24,10 @@ export const ACCOUNT_DETAILS = {
     payment_account_id: field("payment_account_id", "账户 ID", "Account ID"),
     issuer_name: field("issuer_name", "发卡行", "Card issuer"),
     card_last_four: field("card_last_four", "卡号后四位", "Last four card digits"),
+    expiry: field("expiry", "有效期", "Expiration date"),
+    cardholder: field("cardholder", "持卡人姓名", "Cardholder name"),
+    credit_limit: field("credit_limit", "信用额度", "Credit limit"),
+    linked_account_number: field("linked_account_number", "关联账号", "Linked account number"),
     statement_day: field("statement_day", "账单日", "Statement day"),
     payment_due_day: field("payment_due_day", "还款日", "Payment due day"),
     wallet_network: field("wallet_network", "网络", "Network"),
@@ -54,6 +58,14 @@ const BANK_REGION_KEYS: Partial<Record<string, AccountDetailKey>> = {
     GB: "iban",
 };
 
+const CARD_FIELDS: AccountDetailKey[] = [
+    "institution",
+    "issuer_name",
+    "card_last_four",
+    "expiry",
+    "cardholder",
+];
+
 const TYPE_FIELDS: Record<AccountKind, AccountDetailKey[]> = {
     bank: [
         "institution",
@@ -70,7 +82,8 @@ const TYPE_FIELDS: Record<AccountKind, AccountDetailKey[]> = {
     paypal: ["email", "payment_account_id"],
     wise: ["email", "payment_account_id"],
     stripe: ["email", "payment_account_id"],
-    credit_card: ["issuer_name", "card_last_four", "statement_day", "payment_due_day"],
+    credit_card: [...CARD_FIELDS, "statement_day", "payment_due_day", "credit_limit", "note"],
+    debit_card: [...CARD_FIELDS, "linked_account_number", "note"],
     crypto: ["wallet_network", "wallet_address", "wallet_label", "wallet_storage"],
 };
 
@@ -146,6 +159,39 @@ export function validWalletAddress(network: string, address: string): boolean {
 
 export function validCardLastFour(value: string): boolean {
     return value === "" || /^[0-9]{4}$/.test(value);
+}
+
+export function isCardKind(kind: string): boolean {
+    return kind === "credit_card" || kind === "debit_card";
+}
+
+export function maskCardNumber(account: Pick<Account, "kind" | "details">): string | undefined {
+    const suffix = account.details.card_last_four;
+    return isCardKind(account.kind) && suffix && validCardLastFour(suffix)
+        ? `•••• ${suffix}`
+        : undefined;
+}
+
+export function validCardNumber(value: string): boolean {
+    if (!/^[0-9]{12,19}$/.test(value)) return false;
+    let sum = 0;
+    for (let index = value.length - 1; index >= 0; index--) {
+        let digit = value.charCodeAt(index) - 48;
+        if ((value.length - index) % 2 === 0) {
+            digit *= 2;
+            if (digit >= 10) digit -= 9;
+        }
+        sum += digit;
+    }
+    return sum % 10 === 0;
+}
+
+export function validCardExpiry(value: string): boolean {
+    return value === "" || /^(?:0[1-9]|1[0-2])\/[0-9]{2}$/.test(value);
+}
+
+export function validCreditLimit(value: string): boolean {
+    return value === "" || /^(?:0|[1-9][0-9]{0,19})(?:\.[0-9]{1,18})?$/.test(value);
 }
 
 export function validCardDay(value: string): boolean {

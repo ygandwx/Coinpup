@@ -38,7 +38,7 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
         str(constraint.sqltext) == f"kind IN ({interledger['_OLD_KINDS']}, 'advance', 'repayment')"
     )
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261125_0113"]
+    assert scripts.get_heads() == ["20261127_0114"]
     assert scripts.get_revision("20261015_0036").down_revision == "20261015_0035"
 
 

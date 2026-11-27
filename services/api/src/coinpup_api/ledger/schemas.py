@@ -9,6 +9,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    SecretStr,
     StrictBool,
     StrictInt,
     StrictStr,
@@ -19,9 +20,19 @@ from pydantic import (
 Name = Annotated[StrictStr, Field(min_length=1, max_length=160)]
 AssetId = Annotated[StrictStr, Field(min_length=1, max_length=200)]
 Version = Annotated[StrictInt, Field(ge=1)]
+CardNumber = Annotated[SecretStr, Field(min_length=12, max_length=19)]
 CategoryKind = Literal["income", "expense"]
 AccountKind = Literal[
-    "bank", "cash", "wechat", "alipay", "credit_card", "paypal", "wise", "stripe", "crypto"
+    "bank",
+    "cash",
+    "wechat",
+    "alipay",
+    "credit_card",
+    "debit_card",
+    "paypal",
+    "wise",
+    "stripe",
+    "crypto",
 ]
 TemplateKey = Literal["personal_default", "business_default"]
 
@@ -160,6 +171,7 @@ class EntityUpdate(UpdateCommand):
 
 
 class AccountCreate(Command):
+    card_number: CardNumber | None = None
     id: UUID | None = None
     name: Name
     kind: AccountKind
@@ -168,6 +180,7 @@ class AccountCreate(Command):
 
 
 class AccountUpdate(UpdateCommand):
+    card_number: CardNumber | None = None
     name: Name | None = None
     kind: AccountKind | None = None
     details: dict[StrictStr, StrictStr] | None = None
@@ -234,6 +247,11 @@ class AccountResponse(RecordResponse):
     details: dict[str, str]
     archived: bool
     asset_ids: list[str]
+    has_card_number: bool = False
+
+
+class CardNumberResponse(BaseModel):
+    card_number: str | None
 
 
 class CategoryResponse(RecordResponse):

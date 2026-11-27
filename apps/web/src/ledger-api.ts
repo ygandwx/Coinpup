@@ -150,6 +150,20 @@ export const updateAccount = (
     body: AccountUpdate,
 ): Promise<Account> =>
     writeJson(`${ledgerPath(ledgerId)}/accounts/${encodeURIComponent(id)}`, csrf, body, "PATCH");
+export const revealCardNumber = (
+    csrf: string,
+    ledgerId: UUID,
+    id: UUID,
+    signal?: AbortSignal,
+): Promise<components["schemas"]["CardNumberResponse"]> =>
+    writeJson(
+        `${ledgerPath(ledgerId)}/accounts/${encodeURIComponent(id)}/card-number`,
+        csrf,
+        undefined,
+        "POST",
+        undefined,
+        signal,
+    );
 export const listCategories = (
     ledgerId: UUID,
     options?: ArchivedPageOptions | AbortSignal,

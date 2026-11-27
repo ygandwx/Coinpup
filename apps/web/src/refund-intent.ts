@@ -158,6 +158,7 @@ export function validRefundCashReview(
                         "wechat",
                         "alipay",
                         "credit_card",
+                        "debit_card",
                         "paypal",
                         "wise",
                         "stripe",

@@ -47,6 +47,30 @@ void main() {
   });
 
   test(
+    'account sync carries only safe card details into the offline catalog',
+    () async {
+      server.legacyCardMetadata = true;
+      await client.signIn(server.url, 'fictional-owner', 'fictional');
+      expect(server.sawCardSummaryProjection, isTrue);
+      await client.close();
+      client = openMobile();
+      final store = await OfflineStore.open(
+        databaseFactoryFfi,
+        '${directory.path}/workspace.sqlite',
+        OfflineScope(server.url.origin, _owner),
+      );
+      addTearDown(store.close);
+      final metadata = await store.records('sync');
+      final catalog = jsonDecode(metadata['catalog']!) as Map;
+      final ledger = (catalog['ledgers'] as List).single as Map;
+      final account = (ledger['accounts'] as List).single as Map;
+      expect(account['details'], {'card_last_four': '1111', 'expiry': '12/39'});
+      expect(account, isNot(contains('card_number')));
+      expect(jsonEncode(account), isNot(contains('fictional private marker')));
+    },
+  );
+
+  test(
     'disabled assets become editable without blocking an uncertain intent',
     () async {
       await client.signIn(server.url, 'fictional-owner', 'fictional');
@@ -199,6 +223,8 @@ final class _DraftServer {
   final calls = <({String asset, String body, String path})>[];
   final applied = <String, Object>{};
   bool disabled = false;
+  bool legacyCardMetadata = false;
+  bool sawCardSummaryProjection = false;
   bool loseNextReceipt = false;
   final decisions = <String>[];
   int resolutionStatus = 200;
@@ -237,8 +263,21 @@ final class _DraftServer {
         },
       ];
     } else if (path == '/ledgers/$_ledger/accounts') {
+      sawCardSummaryProjection =
+          request.uri.queryParameters['card_summary_only'] == 'true';
       result = [
         {
+          if (legacyCardMetadata) ...{
+            'kind': 'credit_card',
+            'card_number': 'fictional private marker',
+            'details': {
+              'card_last_four': '1111',
+              'expiry': '12/39',
+              'card_number': 'fictional private marker',
+              'cardholder': 'fictional private marker',
+              'issuer_name': 'legacy fixture bank',
+            },
+          },
           'id': _bank,
           'name': 'Fictional bank',
           'archived': false,

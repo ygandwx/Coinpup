@@ -88,6 +88,10 @@
     color: light-dark(#86502e, #efb992);
     background: light-dark(#f8e9d9, #563a2a);
 }
+.account-mark[data-account-kind="debit_card"] {
+    color: light-dark(#216e65, #8ed9ce);
+    background: light-dark(#e1f2ed, #214642);
+}
 .account-mark[data-account-kind="crypto"],
 .account-mark[data-account-kind="stripe"] {
     color: light-dark(#65598a, #d0bcf2);

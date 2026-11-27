@@ -1,4 +1,5 @@
 import { DisplayAmount } from "./DisplayAmount";
+import { isCardKind, maskCardNumber } from "./account-details";
 import type { CSSProperties } from "react";
 import type { Locale } from "./i18n";
 import type { Account, Asset } from "./ledger-api";
@@ -12,6 +13,7 @@ const identities = new Map([
     ["bank", ["银行账户", "Bank account"]],
     ["cash", ["现金", "Cash"]],
     ["credit_card", ["信用卡", "Credit card"]],
+    ["debit_card", ["借记卡", "Debit card"]],
     ["wechat", ["微信", "WeChat"]],
     ["alipay", ["支付宝", "Alipay"]],
     ["paypal", ["PayPal", "PayPal"]],
@@ -79,6 +81,7 @@ type Props = {
     disabled: boolean;
     recentlySaved?: boolean;
     onEdit: () => void;
+    onDetails: () => void;
     onArchive: () => void;
 };
 
@@ -90,12 +93,15 @@ export function AccountCard({
     disabled,
     recentlySaved,
     onEdit,
+    onDetails,
     onArchive,
 }: Props) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
     const [zh, en] = identities.get(account.kind) ?? [account.kind, account.kind];
     const accountType = t(zh, en);
     const institution = accountInstitution(account.details, account.name, account.kind);
+    const card = isCardKind(account.kind);
+    const suffix = maskCardNumber(account);
     return (
         <article
             className="funding-card"
@@ -110,6 +116,7 @@ export function AccountCard({
                     {institution && institution.name[locale] !== accountType && (
                         <span> · {institution.name[locale]}</span>
                     )}
+                    {suffix && <span className="account-card-number"> · {suffix}</span>}
                 </div>
                 {account.archived && (
                     <small className="record-badge">{t("已归档", "Archived")}</small>
@@ -150,6 +157,7 @@ export function AccountCard({
                 <p className="funding-empty">{t("暂无原币余额", "No asset balances available")}</p>
             )}
             <footer className="row-actions funding-actions">
+                {card && <button onClick={onDetails}>{t("卡片详情", "Card details")}</button>}
                 <button disabled={disabled} onClick={onEdit}>
                     {t("编辑", "Edit")}
                 </button>

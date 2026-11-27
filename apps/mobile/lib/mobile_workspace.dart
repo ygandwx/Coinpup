@@ -147,7 +147,7 @@ final class MobileWorkspace {
       final id = ledger['id'];
       final accounts = await http.list(
         '/ledgers/$id/accounts',
-        filters: archived,
+        filters: {...archived, 'card_summary_only': 'true'},
       );
       final categories = await http.list(
         '/ledgers/$id/categories',
@@ -157,7 +157,7 @@ final class MobileWorkspace {
         ...ledger,
         'name': entity['name'],
         'archived': entity['archived'],
-        'accounts': accounts,
+        'accounts': accounts.map(_accountSummary).toList(),
         'categories': categories,
       });
     }
@@ -489,6 +489,22 @@ final class MobileWorkspace {
       pendingCount: pending + draftRows.length + photosPending,
       lastSyncedAt: metadata['last_synced'],
     );
+  }
+
+  // Project only the fields the offline workspace consumes. The same allowlist
+  // also applies when connected to a server predating card_summary_only.
+  static Json _accountSummary(Json account) {
+    final details = account['details'];
+    return {
+      for (final key in ['id', 'name', 'asset_ids', 'archived'])
+        key: account[key],
+      if (details is Map &&
+          ['credit_card', 'debit_card'].contains(account['kind']))
+        'details': {
+          for (final key in ['card_last_four', 'expiry'])
+            if (details[key] is String) key: details[key],
+        },
+    };
   }
 
   static MobileLedger _ledger(Json record, Set<String> disabledAssetIds) =>

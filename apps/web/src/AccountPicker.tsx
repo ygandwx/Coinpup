@@ -1,7 +1,8 @@
 import { useId, useRef, useState } from "react";
 
-import { AccountIcon, AccountIdentityIcon } from "./AccountIcon";
+import { AccountIcon, AccountIdentityIcon, AccountName } from "./AccountIcon";
 import type { AccountIdentity } from "./AccountIcon";
+import { maskCardNumber } from "./account-details";
 import { accountInstitution } from "./institutions";
 import type { Locale } from "./i18n";
 import "./account-picker.css";
@@ -51,6 +52,7 @@ export function AccountPicker({
             institution?.name.en,
             institution?.shortName,
             ...(institution?.aliases ?? []),
+            maskCardNumber(account),
         ].some((label) => label?.normalize("NFKC").toLowerCase().includes(word));
     });
     const search = locale === "zh" ? "搜索账户" : "Search accounts";
@@ -85,17 +87,24 @@ export function AccountPicker({
                             {retainedLabel ?? selected}
                         </option>
                     )}
-                    {displayed.map((account) => (
-                        <option
-                            key={account.id}
-                            value={account.id}
-                            label={account.name}
-                            aria-label={account.name}
-                        >
-                            <AccountIdentityIcon account={account} compact />
-                            <span>{account.name}</span>
-                        </option>
-                    ))}
+                    {displayed.map((account) => {
+                        const suffix = maskCardNumber(account);
+                        return (
+                            <option
+                                key={account.id}
+                                value={account.id}
+                                label={account.name}
+                                aria-label={account.name}
+                                aria-description={suffix}
+                            >
+                                <AccountIdentityIcon account={account} compact />
+                                <span>
+                                    {account.name}
+                                    {suffix && <small> · {suffix}</small>}
+                                </span>
+                            </option>
+                        );
+                    })}
                 </select>
             </div>
             {!disabled && accounts.length > 1 && (
@@ -130,8 +139,7 @@ export function AccountPicker({
                                                 select.current?.focus();
                                             }}
                                         >
-                                            <AccountIdentityIcon account={account} compact />
-                                            <span>{account.name}</span>
+                                            <AccountName account={account} />
                                         </button>
                                     </li>
                                 ))}

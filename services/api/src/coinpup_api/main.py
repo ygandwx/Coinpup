@@ -112,10 +112,21 @@ def create_app(
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError):
         # FastAPI normally returns rejected input, which may contain credentials.
-        details = [
-            {"loc": item["loc"], "type": item["type"], "msg": "Invalid value"}
-            for item in error.errors()
-        ]
+        account_write = getattr(request.scope.get("route"), "name", None) in {
+            "create_account",
+            "update_account",
+        }
+        details = []
+        for item in error.errors():
+            location = item["loc"]
+            if account_write:
+                # Metadata keys are user input too. Do not echo an invalid secret
+                # entered as a dict key or as an unknown top-level field.
+                if location[:2] == ("body", "details"):
+                    location = location[:2]
+                elif item["type"] == "extra_forbidden":
+                    location = location[:1]
+            details.append({"loc": location, "type": item["type"], "msg": "Invalid value"})
         return JSONResponse(status_code=422, content={"detail": details})
 
     @app.exception_handler(SQLAlchemyError)

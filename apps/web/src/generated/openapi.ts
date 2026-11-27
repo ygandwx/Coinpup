@@ -399,6 +399,23 @@ export interface paths {
         patch: operations["update_account_api_v1_ledgers__ledger_id__accounts__account_id__patch"];
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/accounts/{account_id}/card-number": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Card Number */
+        post: operations["read_card_number_api_v1_ledgers__ledger_id__accounts__account_id__card_number_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/balances": {
         parameters: {
             query?: never;
@@ -2590,6 +2607,8 @@ export interface components {
         AccountCreate: {
             /** Asset Ids */
             asset_ids: string[];
+            /** Card Number */
+            card_number?: string | null;
             /** Details */
             details?: {
                 [key: string]: string;
@@ -2600,7 +2619,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "bank" | "cash" | "wechat" | "alipay" | "credit_card" | "paypal" | "wise" | "stripe" | "crypto";
+            kind: "bank" | "cash" | "wechat" | "alipay" | "credit_card" | "debit_card" | "paypal" | "wise" | "stripe" | "crypto";
             /** Name */
             name: string;
         };
@@ -2619,6 +2638,11 @@ export interface components {
             details: {
                 [key: string]: string;
             };
+            /**
+             * Has Card Number
+             * @default false
+             */
+            has_card_number?: boolean;
             /**
              * Id
              * Format: uuid
@@ -2647,6 +2671,8 @@ export interface components {
             archived?: boolean | null;
             /** Asset Ids */
             asset_ids?: string[] | null;
+            /** Card Number */
+            card_number?: string | null;
             /** Details */
             details?: {
                 [key: string]: string;
@@ -2654,7 +2680,7 @@ export interface components {
             /** Expected Version */
             expected_version: number;
             /** Kind */
-            kind?: ("bank" | "cash" | "wechat" | "alipay" | "credit_card" | "paypal" | "wise" | "stripe" | "crypto") | null;
+            kind?: ("bank" | "cash" | "wechat" | "alipay" | "credit_card" | "debit_card" | "paypal" | "wise" | "stripe" | "crypto") | null;
             /** Name */
             name?: string | null;
         };
@@ -4319,6 +4345,11 @@ export interface components {
             reversal_journal_id: string;
             /** Version */
             version: number;
+        };
+        /** CardNumberResponse */
+        CardNumberResponse: {
+            /** Card Number */
+            card_number: string | null;
         };
         /** CategoryCreate */
         CategoryCreate: {
@@ -10122,6 +10153,7 @@ export interface operations {
         parameters: {
             query?: {
                 include_archived?: boolean;
+                card_summary_only?: boolean;
                 limit?: number;
                 offset?: number;
             };
@@ -10215,6 +10247,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_card_number_api_v1_ledgers__ledger_id__accounts__account_id__card_number_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardNumberResponse"];
                 };
             };
             /** @description Validation Error */

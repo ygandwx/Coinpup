@@ -10,6 +10,7 @@ import type {
 } from "./ledger-api";
 import { AccountIcon } from "./AccountIcon";
 import { AssetIcon } from "./AssetIcon";
+import { CardIssuerPicker } from "./CardIssuerPicker";
 import { accountInstitution, BANK_INSTITUTIONS, getInstitution } from "./institutions";
 import {
     ACCOUNT_DETAILS,
@@ -20,8 +21,12 @@ import {
     accountFields,
     defaultAssetIds,
     isAccountAssetVisible,
+    isCardKind,
     validCardDay,
+    validCardExpiry,
     validCardLastFour,
+    validCardNumber,
+    validCreditLimit,
     validWalletAddress,
 } from "./account-details";
 import type { AccountDetailKey } from "./account-details";
@@ -36,6 +41,7 @@ const ACCOUNT_KINDS = [
     "wechat",
     "alipay",
     "credit_card",
+    "debit_card",
     "paypal",
     "wise",
     "stripe",
@@ -65,9 +71,14 @@ const labels = {
         otherNetwork: "其他网络",
         customNetwork: "网络名称",
         publicAddress: "仅填写公开收款地址。",
-        cardHelp: "仅填写后四位。",
+        cardHelp: "填写新卡号以保存或替换。留空保留已有卡号。",
+        cardNumber: "完整卡号",
+        debitHelp: "借记卡有独立余额。同一笔资金只建立一个账户，避免重复计入银行账户和借记卡。",
         walletError: "地址格式与所选网络不符。",
-        cardError: "请输入卡号后四位（仅限四个数字）。",
+        cardError: "请输入 12–19 位有效数字卡号。",
+        suffixError: "请输入卡号后四位（仅限四个数字）。",
+        expiryError: "请按 MM/YY 格式填写有效期，月份为 01 至 12。",
+        limitError: "请填写非负十进制额度，整数最多 20 位，小数最多 18 位。",
         dayError: "账单日和还款日应为 1 至 31。",
         institutionRegion: "银行地区由所选银行决定。",
         nameError: "请输入有效的账户名称，名称不能只包含空格或控制字符。",
@@ -82,6 +93,7 @@ const labels = {
             wechat: "微信",
             alipay: "支付宝",
             credit_card: "信用卡",
+            debit_card: "借记卡",
             paypal: "PayPal",
             wise: "Wise",
             stripe: "Stripe",
@@ -111,9 +123,15 @@ const labels = {
         otherNetwork: "Other network",
         customNetwork: "Network name",
         publicAddress: "Enter only a public receiving address.",
-        cardHelp: "Enter only the last four digits.",
+        cardHelp: "Enter a card number to add or replace it. Leave blank to keep the saved number.",
+        cardNumber: "Full card number",
+        debitHelp:
+            "A debit card has its own balance. Keep the same funds in a single account to avoid counting them twice.",
         walletError: "The address does not match the selected network's format.",
-        cardError: "Enter exactly four digits from the end of the card number.",
+        cardError: "Enter a valid card number of 12–19 digits.",
+        suffixError: "Enter exactly four digits from the end of the card number.",
+        expiryError: "Enter the expiration date as MM/YY, using a month from 01 to 12.",
+        limitError: "Enter a nonnegative decimal with up to 20 whole and 18 fractional digits.",
         dayError: "Statement and payment due days must be between 1 and 31.",
         institutionRegion: "The selected bank determines its region.",
         nameError: "Enter an account name without control characters; spaces alone are not a name.",
@@ -128,6 +146,7 @@ const labels = {
             wechat: "WeChat",
             alipay: "Alipay",
             credit_card: "Credit card",
+            debit_card: "Debit card",
             paypal: "PayPal",
             wise: "Wise",
             stripe: "Stripe",
@@ -171,20 +190,32 @@ export function AccountForm({
     const [showAll, setShowAll] = useState(false);
     const [rows, setRows] = useState(() => detailRows(account?.details ?? {}, ACCOUNT_DETAIL_KEYS));
     const [bankSearch, setBankSearch] = useState("");
+    const [cardNumber, setCardNumber] = useState("");
     const [otherWallet, setOtherWallet] = useState(
         () =>
             !!account?.details.wallet_network &&
             !Object.hasOwn(WALLET_NETWORKS, account.details.wallet_network),
     );
     const [localError, setLocalError] = useState<
-        "name" | "assets" | "disabled" | "details" | "card" | "day" | "wallet" | null
+        | "name"
+        | "assets"
+        | "disabled"
+        | "details"
+        | "card"
+        | "suffix"
+        | "expiry"
+        | "limit"
+        | "day"
+        | "wallet"
+        | null
     >(null);
     const values = new Map(rows.filter((row) => !row.custom).map(({ key, value }) => [key, value]));
-    const institution = getInstitution(values.get("institution"));
+    const institution = BANK_INSTITUTIONS.find((bank) => bank.id === values.get("institution"));
     const suggestedInstitution =
         account && kind === account.kind && !values.get("institution")
             ? accountInstitution(account.details, account.name, account.kind)
             : undefined;
+    const card = isCardKind(kind);
     const bankRegion = institution?.region ?? values.get("bank_region") ?? defaultBankRegion ?? "";
     const fields = accountFields(kind, bankRegion);
     const hidden = rows.filter(
@@ -210,6 +241,7 @@ export function AccountForm({
 
     function changeKind(next: AccountKind) {
         setKind(next);
+        if (!isCardKind(next)) setCardNumber("");
         if (!account && !assetsTouched) setAssetIds(defaultAssetIds(next, assets));
         setLocalError(null);
     }
@@ -224,6 +256,7 @@ export function AccountForm({
         setRows((prior) => {
             const next = replaceDetail(prior, "institution", id);
             if (!bank) return next;
+            if (card) return replaceDetail(next, "issuer_name", bank.name[locale]);
             const named = replaceDetail(next, "bank_name", bank.name[locale]);
             const identified = bank.swiftPrefix
                 ? replaceDetail(named, "swift_bic", bank.swiftPrefix)
@@ -268,9 +301,31 @@ export function AccountForm({
         }
         const changed = (key: AccountDetailKey) =>
             (values.get(key) ?? "") !== (account?.details[key] ?? "");
-        if (changed("card_last_four") && !validCardLastFour(values.get("card_last_four") ?? "")) {
-            setLocalError("card");
-            return;
+        if (card) {
+            if (cardNumber && !validCardNumber(cardNumber)) {
+                setLocalError("card");
+                return;
+            }
+            if (
+                !cardNumber &&
+                changed("card_last_four") &&
+                !validCardLastFour(values.get("card_last_four") ?? "")
+            ) {
+                setLocalError("suffix");
+                return;
+            }
+            if (changed("expiry") && !validCardExpiry(values.get("expiry") ?? "")) {
+                setLocalError("expiry");
+                return;
+            }
+            if (
+                kind === "credit_card" &&
+                changed("credit_limit") &&
+                !validCreditLimit(values.get("credit_limit") ?? "")
+            ) {
+                setLocalError("limit");
+                return;
+            }
         }
         if (
             kind === "credit_card" &&
@@ -306,6 +361,7 @@ export function AccountForm({
             return;
         }
         setLocalError(null);
+        const privateNumber = card && cardNumber ? { card_number: cardNumber } : {};
         if (account && expectedVersion !== undefined)
             onSubmit({
                 name: name.trim(),
@@ -313,6 +369,7 @@ export function AccountForm({
                 expected_version: expectedVersion,
                 ...(kind !== account.kind ? { kind: kind as AccountKind } : {}),
                 ...(assetsChanged ? { asset_ids: assetIds } : {}),
+                ...privateNumber,
             });
         else
             onSubmit({
@@ -321,6 +378,7 @@ export function AccountForm({
                 kind: kind as AccountKind,
                 details,
                 asset_ids: assetIds,
+                ...privateNumber,
             });
     }
 
@@ -380,12 +438,21 @@ export function AccountForm({
             <input
                 id={`${prefix}-${key}`}
                 value={value}
-                disabled={busy}
+                disabled={busy || (key === "issuer_name" && !!institution)}
                 type={key === "email" ? "email" : "text"}
-                inputMode={numeric.includes(key) ? "numeric" : undefined}
-                autoComplete={
-                    key === "card_last_four" || key === "wallet_address" ? "off" : undefined
+                inputMode={
+                    numeric.includes(key)
+                        ? "numeric"
+                        : key === "credit_limit"
+                          ? "decimal"
+                          : undefined
                 }
+                autoComplete={
+                    ["card_last_four", "wallet_address", "expiry", "cardholder"].includes(key)
+                        ? "off"
+                        : undefined
+                }
+                placeholder={key === "expiry" ? "MM/YY" : undefined}
                 maxLength={2000}
                 onChange={(event) => update(event.target.value)}
             />
@@ -395,6 +462,16 @@ export function AccountForm({
     function renderField(key: AccountDetailKey) {
         const value = values.get(key) ?? "";
         if (key === "institution") {
+            if (card) {
+                return (
+                    <CardIssuerPicker
+                        key={key}
+                        locale={locale}
+                        institutionId={value}
+                        onChange={selectBank}
+                    />
+                );
+            }
             return (
                 <div key={key} className="account-institution">
                     <div className="field">
@@ -439,6 +516,7 @@ export function AccountForm({
                 </div>
             );
         }
+        if (key === "card_last_four" && (account?.has_card_number || cardNumber)) return null;
 
         return (
             <div className="field" key={key}>
@@ -460,7 +538,6 @@ export function AccountForm({
                     </div>
                 )}
                 {key === "wallet_address" && <p className="help-text">{t.publicAddress}</p>}
-                {key === "card_last_four" && <p className="help-text">{t.cardHelp}</p>}
             </div>
         );
     }
@@ -503,6 +580,7 @@ export function AccountForm({
                             </label>
                         ))}
                     </div>
+                    {kind === "debit_card" && <p className="help-text">{t.debitHelp}</p>}
                 </fieldset>
                 <fieldset
                     className="form-section"
@@ -578,6 +656,27 @@ export function AccountForm({
                             >
                                 {locale === "zh" ? "确认关联" : "Confirm association"}
                             </button>
+                        </div>
+                    )}
+                    {card && (
+                        <div className="field">
+                            <label htmlFor={`${prefix}-card-number`}>{t.cardNumber}</label>
+                            <input
+                                id={`${prefix}-card-number`}
+                                type="password"
+                                autoComplete="off"
+                                inputMode="numeric"
+                                spellCheck={false}
+                                value={cardNumber}
+                                onChange={(event) => {
+                                    setCardNumber(event.target.value);
+                                    setLocalError(null);
+                                }}
+                                aria-describedby={`${prefix}-card-help`}
+                            />
+                            <p className="help-text" id={`${prefix}-card-help`}>
+                                {t.cardHelp}
+                            </p>
                         </div>
                     )}
                     <div className="form-grid">{fields.map(renderField)}</div>

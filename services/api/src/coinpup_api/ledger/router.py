@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 
@@ -17,6 +17,7 @@ from coinpup_api.ledger.schemas import (
     AssetCreate,
     AssetResponse,
     AssetUpdate,
+    CardNumberResponse,
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
@@ -112,6 +113,7 @@ def create_ledger_router(settings: Settings, engine: Engine | None) -> APIRouter
         ledger_id: UUID,
         identity: reader,
         include_archived: bool = False,
+        card_summary_only: bool = False,
         limit: page_size = 100,
         offset: page_offset = 0,
     ):
@@ -120,6 +122,7 @@ def create_ledger_router(settings: Settings, engine: Engine | None) -> APIRouter
             identity.id,
             ledger_id,
             include_archived=include_archived,
+            card_summary_only=card_summary_only,
             limit=limit,
             offset=offset,
         )
@@ -131,6 +134,14 @@ def create_ledger_router(settings: Settings, engine: Engine | None) -> APIRouter
     @router.patch("/ledgers/{ledger_id}/accounts/{account_id}", response_model=AccountResponse)
     def update_account(ledger_id: UUID, account_id: UUID, body: AccountUpdate, identity: writer):
         return execute(service.update_account, identity.id, ledger_id, account_id, body)
+
+    @router.post(
+        "/ledgers/{ledger_id}/accounts/{account_id}/card-number",
+        response_model=CardNumberResponse,
+    )
+    def read_card_number(ledger_id: UUID, account_id: UUID, identity: writer, response: Response):
+        response.headers["Cache-Control"] = "no-store"
+        return execute(service.read_card_number, identity.id, ledger_id, account_id)
 
     @router.get("/ledgers/{ledger_id}/categories", response_model=list[CategoryResponse])
     def list_categories(
