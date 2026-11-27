@@ -99,7 +99,8 @@ function ThemePicker({ locale }: { locale: Locale }) {
         if (theme === "system") delete document.documentElement.dataset.theme;
         else document.documentElement.dataset.theme = theme;
         try {
-            localStorage.setItem(THEME_KEY, theme);
+            if (theme === "system") localStorage.removeItem(THEME_KEY);
+            else localStorage.setItem(THEME_KEY, theme);
         } catch {
             /* The current theme still applies if storage is unavailable. */
         }

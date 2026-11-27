@@ -95,7 +95,8 @@ export function WorkspaceNavigation({
     const [collapsed, setCollapsed] = useState(readCollapsedGroups);
     useEffect(() => {
         try {
-            localStorage.setItem(NAV_KEY, collapsed.join(","));
+            if (collapsed.length) localStorage.setItem(NAV_KEY, collapsed.join(","));
+            else localStorage.removeItem(NAV_KEY);
         } catch {
             /* The navigation still works if storage is unavailable. */
         }

@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import type { Locale } from "./i18n";
 import type { AssetCreate, AssetKind } from "./ledger-api";
+import { stablecoinPresets } from "./stablecoin-presets";
 import "./posting-form.css";
 
 // Keep these explicit built-in identities aligned with ledger/assets.py.
@@ -22,6 +23,8 @@ const copy = {
         reference: "代币标识",
         enabled: "启用",
         choose: "请选择",
+        preset: "稳定币预设",
+        prefill: "预填资料",
         save: "保存",
         saving: "保存中…",
         cancel: "取消",
@@ -52,6 +55,8 @@ const copy = {
         reference: "Token reference",
         enabled: "Enabled",
         choose: "Choose",
+        preset: "Stablecoin preset",
+        prefill: "Fill in details",
         save: "Save",
         saving: "Saving…",
         cancel: "Cancel",
@@ -81,14 +86,16 @@ const copy = {
 export type AssetFormProps = {
     locale: Locale;
     busy: boolean;
+    fromPreset?: boolean;
     error?: string | null;
     onSubmit: (body: AssetCreate) => void;
     onCancel: () => void;
 };
 
-export function AssetForm({ locale, busy, error, onSubmit, onCancel }: AssetFormProps) {
+export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel }: AssetFormProps) {
     const t = copy[locale];
     const prefix = useId();
+    const [presetId, setPresetId] = useState("");
     const [kind, setKind] = useState<AssetKind>("token");
     const [code, setCode] = useState("");
     const [scale, setScale] = useState("");
@@ -108,6 +115,17 @@ export function AssetForm({ locale, busy, error, onSubmit, onCancel }: AssetForm
         setScale("");
         setNetwork("");
         setReference("");
+        setProblem(null);
+    }
+
+    function applyPreset() {
+        const preset = stablecoinPresets.find((entry) => entry.id === presetId);
+        if (!preset) return;
+        setKind("token");
+        setCode(preset.code);
+        setScale(preset.scale);
+        setNetwork(preset.network);
+        setReference(preset.reference);
         setProblem(null);
     }
 
@@ -150,6 +168,36 @@ export function AssetForm({ locale, busy, error, onSubmit, onCancel }: AssetForm
     return (
         <form className="asset-form" onSubmit={submit} aria-label={t.title} aria-busy={busy}>
             <p className="help-text asset-form-intro">{t.intro}</p>
+            {fromPreset && (
+                <div className="form-grid">
+                    <div className="field">
+                        <label htmlFor={`${prefix}-preset`}>{t.preset}</label>
+                        <select
+                            id={`${prefix}-preset`}
+                            value={presetId}
+                            disabled={busy}
+                            onChange={(event) => setPresetId(event.target.value)}
+                        >
+                            <option value="">{t.choose}</option>
+                            {stablecoinPresets.map((preset) => (
+                                <option key={preset.id} value={preset.id}>
+                                    {preset.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="field preset-apply">
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={busy || !presetId}
+                            onClick={applyPreset}
+                        >
+                            {t.prefill}
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="form-grid">
                 <div className="field">
                     <label htmlFor={`${prefix}-kind`}>{t.kind}</label>

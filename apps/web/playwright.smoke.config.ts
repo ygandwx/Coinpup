@@ -6,6 +6,7 @@ import base from "./playwright.config";
 export const smokeSpecs = [
     "auth.spec.ts",
     "structure.spec.ts",
+    "asset-presets.spec.ts",
     "posting.spec.ts",
     "revision.spec.ts",
     "files.spec.ts",
