@@ -4,19 +4,24 @@ from collections import defaultdict
 
 from coinpup_api.ledger import MoneyError, get_asset
 from coinpup_api.ledger.service import LedgerError, LedgerService, _page
-from coinpup_api.quotes.effective import price_choices, valuation_quote
+from coinpup_api.quotes.effective import price_choices, report_price_aliases, valuation_quote
 from coinpup_api.quotes.schemas import AutomaticPriceResponse, ManualPriceResponse
 from coinpup_api.reporting.asset_totals import OriginalSubtotal
 from coinpup_api.reporting.schemas import ReportOriginal, ReportResponse, ReportRow, ReportValuation
 from coinpup_api.reporting.scope import report_scope, require_owned_ledgers
-from coinpup_api.reporting.source import balance_facts, journal_facts, linked_repayments
+from coinpup_api.reporting.source import (
+    balance_facts,
+    journal_facts,
+    linked_platform_transfers,
+    linked_repayments,
+)
 from coinpup_api.reporting.statement import build_statement
 
 
 def _side_totals(statement, facts, view):
     inflows, outflows = defaultdict(int), defaultdict(int)
     for detail in statement.rows:
-        if detail.excluded_repayment_group is not None:
+        if detail.excluded:
             continue
         original = detail.source.original
         units = original.minor_units
@@ -53,7 +58,12 @@ def _prices(session, owner, facts, price_date, display, price_mode):
         else {fact.transaction_date for fact in facts.values()}
     )
     choices = price_choices(
-        session, owner, catalog, display.asset_id, dates=None if price_mode == "latest" else days
+        session,
+        owner,
+        catalog,
+        display.asset_id,
+        dates=None if price_mode == "latest" else days,
+        aliases=report_price_aliases(session, catalog),
     )
     prices, evidence = {}, {}
     for ref, fact in facts.items():
@@ -66,10 +76,10 @@ def _prices(session, owner, facts, price_date, display, price_mode):
     return prices, evidence
 
 
-def _row(detail, fact, memberships, display, evidence):
+def _row(detail, fact, memberships, platform_memberships, display, evidence):
     original = detail.source.original
     price = evidence[fact.row.reference] if detail.price is not None else None
-    if detail.excluded_repayment_group is not None:
+    if detail.excluded:
         state = "excluded"
     elif display is None:
         state = "not_requested"
@@ -89,6 +99,8 @@ def _row(detail, fact, memberships, display, evidence):
         description=fact.description,
         repayment_group_id=memberships.get(detail.source.reference),
         excluded_repayment_group=detail.excluded_repayment_group,
+        platform_transfer_id=platform_memberships.get(detail.source.reference),
+        excluded_platform_transfer=detail.excluded_platform_transfer,
         valuation_state=state,
         price=price if isinstance(price, ManualPriceResponse) else None,
         **({"automatic_price": price} if isinstance(price, AutomaticPriceResponse) else {}),
@@ -141,6 +153,11 @@ class MvpReportService(LedgerService):
                     if view == "cash"
                     else ((), {})
                 )
+                platform, platform_memberships = (
+                    linked_platform_transfers(session, owner, scope, history)
+                    if view == "cash"
+                    else ((), {})
+                )
                 prices, evidence = _prices(session, owner, facts, price_date, display, price_mode)
                 statement = build_statement(
                     scope,
@@ -148,6 +165,7 @@ class MvpReportService(LedgerService):
                     display=display,
                     selected_prices=prices,
                     cash_repayments=links,
+                    platform_transfers=platform,
                 )
             except (MoneyError, ValueError):
                 raise LedgerError(
@@ -155,7 +173,14 @@ class MvpReportService(LedgerService):
                 ) from None
 
             rows = tuple(
-                _row(detail, facts[detail.source.reference], memberships, display, evidence)
+                _row(
+                    detail,
+                    facts[detail.source.reference],
+                    memberships,
+                    platform_memberships,
+                    display,
+                    evidence,
+                )
                 for detail in statement.rows[offset : offset + limit]
             )
             valuation = statement.valuation

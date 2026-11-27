@@ -44,9 +44,11 @@ import type { PendingRecurringController } from "./pending-recurring";
 import type { PendingBusinessDraftController } from "./pending-business-drafts";
 import { ControlBalancesPanel } from "./ControlBalancesPanel";
 import { InterledgerPanel } from "./InterledgerPanel";
+import { PlatformTransfersPanel } from "./PlatformTransfersPanel";
 import { ValuationWorkspace } from "./ValuationWorkspace";
 import type { PendingPrice } from "./pending-price";
 import type { PendingInterledger } from "./pending-interledger";
+import type { PendingPlatformTransfer } from "./pending-platform-transfer";
 import { FilesPanel } from "./FilesPanel";
 import { ConfirmationStatus } from "./ConfirmationStatus";
 import { OcrCopyStatus } from "./OcrCopyStatus";
@@ -325,6 +327,7 @@ export function BusinessWorkspace({
     invoices,
     invoiceProfiles,
     interledger,
+    platformTransfers,
     prices,
     onUnauthorized,
     onSessionChanged,
@@ -349,6 +352,7 @@ export function BusinessWorkspace({
     invoices: PendingInvoiceController;
     invoiceProfiles: PendingInvoiceProfiles;
     interledger: PendingInterledger;
+    platformTransfers: PendingPlatformTransfer;
     prices: PendingPrice;
     onUnauthorized: () => void;
     onSessionChanged: (previous: Session, replacement: Session) => void;
@@ -391,6 +395,16 @@ export function BusinessWorkspace({
     const profile = useSyncExternalStore(invoiceProfiles.subscribe, invoiceProfiles.getSnapshot);
     const interledgerState = useSyncExternalStore(interledger.subscribe, interledger.getSnapshot);
     const interledgerLocked = !["idle", "rejected", "confirmed"].includes(interledgerState.status);
+    const platformTransferState = useSyncExternalStore(
+        platformTransfers.subscribe,
+        platformTransfers.getSnapshot,
+    );
+    const platformTransferLocked = !["idle", "rejected", "confirmed", "conflict"].includes(
+        platformTransferState.status,
+    );
+    const platformRecoveryLedger = platformTransferLocked
+        ? platformTransferState.plan?.ledgerId
+        : undefined;
     const priceState = useSyncExternalStore(prices.subscribe, prices.getSnapshot);
     const priceLocked = !["idle", "rejected", "confirmed", "conflict"].includes(priceState.status);
     const profileLocked = !["idle", "confirmed", "rejected", "conflict"].includes(profile.status);
@@ -469,6 +483,7 @@ export function BusinessWorkspace({
         invoiceEditing ||
         profileLocked ||
         interledgerLocked ||
+        platformTransferLocked ||
         priceLocked;
     const [view, setView] = useState<View>(initialView);
     const [selectedId, setSelectedId] = useState(
@@ -508,6 +523,7 @@ export function BusinessWorkspace({
         accounts: t("账户", "Accounts"),
         controls: t("往来余额", "Control balances"),
         interledger: t("代付与偿还", "Advances and repayments"),
+        "platform-transfers": t("平台充提", "Platform transfers"),
         valuation: t("汇总与估值", "Consolidated reports"),
         periods: t("结账与重开", "Period closing"),
         masters: t("往来与项目", "Parties and projects"),
@@ -549,6 +565,7 @@ export function BusinessWorkspace({
             !invoiceLocked &&
             !profileLocked &&
             !interledgerLocked &&
+            !platformTransferLocked &&
             !priceLocked
         )
             return;
@@ -574,12 +591,21 @@ export function BusinessWorkspace({
         invoiceLocked,
         profileLocked,
         interledgerLocked,
+        platformTransferLocked,
         priceLocked,
     ]);
     useEffect(() => {
         if (interledgerLocked) setView("interledger");
         if (priceLocked) setView("valuation");
     }, [interledgerLocked, priceLocked]);
+    useEffect(() => {
+        if (!platformRecoveryLedger) return;
+        const owner = entities.find((item) => item.ledger.id === platformRecoveryLedger);
+        if (owner) {
+            setSelectedId(owner.id);
+            setView("platform-transfers");
+        }
+    }, [entities, platformRecoveryLedger]);
     useEffect(() => {
         if (!upload.command || !entities.length) return;
         const owner = entities.find((item) => item.ledger.id === upload.command?.ledgerId);
@@ -1219,6 +1245,19 @@ export function BusinessWorkspace({
                         entities={entities}
                         assets={assets}
                         controller={interledger}
+                        refresh={refresh}
+                        onChanged={reload}
+                        onUnauthorized={onUnauthorized}
+                    />
+                ) : view === "platform-transfers" && ledgerId ? (
+                    <PlatformTransfersPanel
+                        key={`${session.user.id}:${ledgerId}`}
+                        locale={locale}
+                        session={session}
+                        ledgerId={ledgerId}
+                        entities={entities}
+                        assets={assets}
+                        controller={platformTransfers}
                         refresh={refresh}
                         onChanged={reload}
                         onUnauthorized={onUnauthorized}

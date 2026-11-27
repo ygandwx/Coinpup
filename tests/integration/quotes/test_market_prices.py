@@ -9,7 +9,8 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from coinpup_api.ledger.posting import PostingService
-from coinpup_api.ledger.schemas import AccountCreate, EntityCreate
+from coinpup_api.ledger.posting_schemas import OpeningCreate
+from coinpup_api.ledger.schemas import AccountCreate, AssetCreate, EntityCreate
 from coinpup_api.ledger.service import LedgerService
 from coinpup_api.quotes.market import MarketQuoteService
 from coinpup_api.sync.service import ChangeService
@@ -44,16 +45,16 @@ def _report(client, ledger, mode=None, *, day=None, view="operating", **filters)
     return response.json()
 
 
-def _manual(client, day, amount):
+def _manual(client, day, amount, *, asset_id="EUR", expected_version=0):
     response = client.put(
         QUOTES + "/manual",
         json={
-            "asset_id": "EUR",
+            "asset_id": asset_id,
             "display_asset_id": "USD",
             "price_date": day.isoformat(),
             "price": amount,
             "source": "Fictional reviewed rate",
-            "expected_version": 0,
+            "expected_version": expected_version,
         },
     )
     assert response.status_code == 200, response.text
@@ -226,3 +227,153 @@ def test_mobile_reads_distinct_identity_missing_manual_and_cached_observations(
     assert page(["ZZZ"], observed.date()).status_code == 404
     client.cookies.clear()
     assert page(["BTC"], observed.date()).status_code == 401
+
+
+def _crypto_holdings(engine, owner, day, positions):
+    structure = LedgerService(engine)
+    ledger = structure.create_entity(
+        owner,
+        EntityCreate(
+            kind="personal",
+            name="Fictional custody valuations",
+            base_asset_id="USD",
+            template_key="personal_default",
+        ),
+    ).ledger.id
+    posting = PostingService(engine)
+    for index, (asset_id, custody_mode, amount) in enumerate(positions):
+        account = structure.create_account(
+            owner,
+            ledger,
+            AccountCreate(
+                name=f"Fictional position {index}",
+                kind="crypto",
+                custody_mode=custody_mode,
+                asset_ids=[asset_id],
+            ),
+        )
+        posting.post_opening(
+            owner,
+            ledger,
+            OpeningCreate(
+                account_id=account.id,
+                asset_id=asset_id,
+                amount=amount,
+                transaction_date=day.isoformat(),
+            ),
+            f"fictional-custody-holding-{index}",
+        )
+    return ledger
+
+
+def test_custody_and_chain_share_verified_exact_day_prices_but_not_unverified_tokens(
+    authenticated_client,
+):
+    client, engine, owner = authenticated_client
+    day = datetime.now(UTC).date() - timedelta(days=4)
+    structure = LedgerService(engine)
+    definitions = [
+        AssetCreate(kind="custodial", code="FDUSD", scale=18),
+        AssetCreate(
+            kind="token",
+            code="FDUSD",
+            scale=6,
+            network="solana",
+            token_reference="9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
+        ),
+        AssetCreate(
+            kind="token",
+            code="FDUSD",
+            scale=6,
+            network="fictional-net",
+            token_reference="FictionalUnverifiedMint",
+        ),
+    ]
+    custody, chain, custom = [structure.create_asset(owner, item).asset_id for item in definitions]
+    balances = {
+        custody: "0.005000000000000000",
+        chain: "0.005000",
+        custom: "1.000000",
+    }
+    ledger = _crypto_holdings(
+        engine,
+        owner,
+        day,
+        [
+            (asset, "custodial" if asset == custody else "onchain", quantity)
+            for asset, quantity in balances.items()
+        ],
+    )
+
+    def report():
+        return _report(client, ledger, day=day, view="balances")
+
+    shared_price = _manual(client, day, "1.0", asset_id=chain)
+    result = report()
+    assert result["valuation"]["missing_asset_ids"] == [custom]
+    assert result["valuation"]["amount"] is None
+    assert {row["asset_id"]: row["amount"] for row in result["originals"]} == balances
+    rows = {row["asset_id"]: row for row in result["rows"]}
+    assert rows[custody]["price"] == rows[chain]["price"] == shared_price
+    assert rows[custom]["price"] is None
+
+    independent_price = _manual(client, day, "0.40", asset_id=custom)
+    result = report()
+    assert result["valuation"]["amount"] == "0.41"
+    assert (
+        next(row["price"] for row in result["rows"] if row["asset_id"] == custom)
+        == independent_price
+    )
+
+    # Different same-day manual rates cannot be reconciled by choosing an arbitrary asset.
+    _manual(client, day, "0.99", asset_id=custody)
+    conflict = report()
+    assert conflict["valuation"]["missing_asset_ids"] == sorted((chain, custody))
+    assert conflict["valuation"]["amount"] is None
+    # Equivalent decimal spellings agree. Prefer the actual custodial row when both exist.
+    equivalent = _manual(client, day, "1.00", asset_id=custody, expected_version=1)
+    resolved = report()
+    assert resolved["valuation"]["amount"] == "0.41"
+    assert all(row["price"] == equivalent for row in resolved["rows"] if row["asset_id"] != custom)
+
+
+def test_custodial_crypto_uses_native_cached_quote_and_shared_manual_override(authenticated_client):
+    client, engine, owner = authenticated_client
+    now = datetime.now(UTC)
+    observed = now - timedelta(days=2)
+    day = observed.date()
+    custody = (
+        LedgerService(engine)
+        .create_asset(owner, AssetCreate(kind="custodial", code="BTC", scale=8))
+        .asset_id
+    )
+    ledger = _crypto_holdings(
+        engine, owner, day, [(custody, "custodial", "0.50000000"), ("BTC", "onchain", "0.50000000")]
+    )
+    _manual(client, day - timedelta(days=1), "33000.00", asset_id=custody)
+    ticker = json.dumps({"price": "60000.005", "time": observed.isoformat()}).encode()
+    observation = MarketQuoteService(engine).refresh(
+        owner, "BTC", "USD", fetch=lambda _: ticker, clock=lambda: now
+    )
+
+    for kwargs in [{"day": day}, {"mode": "latest"}, {"mode": "historical", "to_date": day}]:
+        report = _report(client, ledger, view="balances", **kwargs)
+        assert report["valuation"]["amount"] == "60000.01"
+        assert {row["asset_id"] for row in report["rows"]} == {"BTC", custody}
+        for row in report["rows"]:
+            evidence = row["automatic_price"]
+            assert evidence["id"] == str(observation) and evidence["asset_id"] == "BTC"
+            assert datetime.fromisoformat(evidence["observed_at"]) == observed
+
+    # The installed mobile reader verifies that the nested quote pair matches its request.
+    page = client.get(
+        QUOTES + "/effective",
+        params={"display_asset_id": "USD", "price_date": day, "asset_ids": [custody, "BTC"]},
+    )
+    assert page.status_code == 200, page.text
+    assert [row["state"] for row in page.json()["items"]] == ["missing", "automatic"]
+
+    shared = _manual(client, day, "61000.40", asset_id=custody)
+    override = _report(client, ledger, "latest", view="balances")
+    assert override["valuation"]["amount"] == "61000.40"
+    assert all(row["price"] == shared for row in override["rows"])

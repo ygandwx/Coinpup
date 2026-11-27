@@ -281,7 +281,9 @@ export function AssetsPanel({
                                                 ? t("法币", "Fiat")
                                                 : asset.kind === "native"
                                                   ? t("原生加密资产", "Native crypto")
-                                                  : t("代币", "Token")}
+                                                  : asset.kind === "custodial"
+                                                    ? t("平台托管资产", "Custodial asset")
+                                                    : t("代币", "Token")}
                                         </dd>
                                     </div>
                                     <div>

@@ -34,8 +34,8 @@ def test_refund_sql_is_frozen_additive_and_keeps_one_migration_head():
     assert current["_OLD_KINDS"] == migration["_KINDS"]
     interledger = runpy.run_path(str(versions / "20261125_0106_interledger.py"))
     assert f"kind IN ({interledger['_OLD_KINDS']})" == current["_KINDS"]
-    assert (
-        str(constraint.sqltext) == f"kind IN ({interledger['_OLD_KINDS']}, 'advance', 'repayment')"
+    assert str(constraint.sqltext) == (
+        f"kind IN ({interledger['_OLD_KINDS']}, 'advance', 'repayment', 'platform_move')"
     )
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
     assert scripts.get_current_head() is not None

@@ -9,6 +9,8 @@ export function assetIdentity({
     network,
     token_reference,
 }: Pick<Asset, "code" | "kind" | "network" | "token_reference">): string | undefined {
+    if (kind === "custodial")
+        return network === null && token_reference === null ? `custodial:${code}` : undefined;
     if (kind === "fiat") return network === null && token_reference === null ? code : undefined;
     if (typeof network !== "string" || !network) return undefined;
     if (kind === "native" && token_reference === null)

@@ -34,6 +34,7 @@ def test_evidence_extends_the_catalog_and_matches_frozen_postgres_ddl():
         "reminder_email_evidence",
         "quote_observations",
         "reminder_inbox_deliveries",
+        "platform_transfers",
     }
     table = BusinessRefundRevisionReturn.__table__
     assert len(table.name) <= 32

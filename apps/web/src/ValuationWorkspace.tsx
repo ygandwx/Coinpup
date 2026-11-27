@@ -444,6 +444,17 @@ function ReportPanel({
                                                     : t("内部偿还", "Internal repayment")}
                                             </>
                                         )}
+                                        {row.platform_transfer_id && (
+                                            <>
+                                                {" · "}
+                                                {row.excluded_platform_transfer
+                                                    ? t(
+                                                          "已抵销充提本金",
+                                                          "Platform transfer principal excluded",
+                                                      )
+                                                    : t("平台充提", "Platform transfer")}
+                                            </>
+                                        )}
                                     </summary>
                                     <dl>
                                         {row.description && (
@@ -506,6 +517,19 @@ function ReportPanel({
                                                 </dt>
                                                 <dd>
                                                     <code>{row.repayment_group_id}</code>
+                                                </dd>
+                                            </>
+                                        )}
+                                        {row.platform_transfer_id && (
+                                            <>
+                                                <dt>
+                                                    {t(
+                                                        "平台充提关联",
+                                                        "Platform transfer reference",
+                                                    )}
+                                                </dt>
+                                                <dd>
+                                                    <code>{row.platform_transfer_id}</code>
                                                 </dd>
                                             </>
                                         )}

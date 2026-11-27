@@ -93,6 +93,20 @@ def _card_number(kind: str, secret):
     return number
 
 
+def _check_custody(kind, mode, asset_kinds):
+    if mode is not None and kind != "crypto":
+        raise LedgerError("invalid_custody_mode", 422, "Only crypto accounts have a custody mode.")
+    allowed = {
+        None: {"fiat", "native", "token"},
+        "onchain": {"native", "token"},
+        "custodial": {"custodial"},
+    }[mode]
+    if not allowed.issuperset(asset_kinds):
+        raise LedgerError(
+            "custody_asset_mismatch", 422, "Account assets do not match the selected custody mode."
+        )
+
+
 class LedgerService:
     def __init__(self, engine: Engine | None):
         self.engine = engine
@@ -378,7 +392,8 @@ class LedgerService:
             ]
 
     def _set_account_assets(self, session, account, asset_ids):
-        self._assets(session, asset_ids)
+        assets = self._assets(session, asset_ids)
+        _check_custody(account.kind, account.custody_mode, {asset.kind for asset in assets})
         existing = {
             row.asset_id: row
             for row in session.scalars(
@@ -400,6 +415,7 @@ class LedgerService:
             self._ledger(session, owner_id, ledger_id, write=True)
             details = dict(payload.details)
             _validate_card_details(payload.kind, details, {})
+            _check_custody(payload.kind, payload.custody_mode, ())
             number = _card_number(payload.kind, payload.card_number)
             if number is not None:
                 details["card_last_four"] = number[-4:]
@@ -408,6 +424,7 @@ class LedgerService:
                 ledger_id=ledger_id,
                 name=payload.name,
                 kind=payload.kind,
+                custody_mode=payload.custody_mode,
                 details=details,
                 card_number=number,
             )
@@ -435,6 +452,14 @@ class LedgerService:
             )
             details = dict(changes.get("details", account.details))
             kind = changes.get("kind", account.kind)
+            custody_mode = changes.get("custody_mode", account.custody_mode)
+            if kind != account.kind or custody_mode != account.custody_mode:
+                asset_kinds = session.scalars(
+                    select(AssetRecord.kind)
+                    .join(AccountAsset, AccountAsset.asset_id == AssetRecord.asset_id)
+                    .where(AccountAsset.account_id == account.id)
+                ).all()
+                _check_custody(kind, custody_mode, asset_kinds)
             if "details" in changes:
                 _validate_card_details(kind, details, account.details)
             if "card_number" in payload.model_fields_set:

@@ -281,7 +281,8 @@ jobs:
     needs: scope
     if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The full browser suite, recovery, artifacts and cleanup need a separate job budget.
+    timeout-minutes: ${{ needs.scope.outputs.tier == 'full' && 35 || 25 }}
     env:
       # Fictional credentials for the disposable CI database, never deployment defaults.
       E2E_USERNAME: admin-e2e

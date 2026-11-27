@@ -63,6 +63,11 @@ const labels = {
         missing: "未载入",
         noAssets: "暂无可用资产，请先配置资产目录。",
         showAll: "显示全部资产",
+        custody: "托管方式",
+        legacyCustody: "保持现有资产配置",
+        custodial: "托管平台",
+        onchain: "链上钱包",
+        custodyError: "请移除与所选托管方式不兼容的资产。",
         otherDetails: "其他已保存资料",
         customDetails: "自定义资料",
         searchBank: "搜索银行",
@@ -115,6 +120,11 @@ const labels = {
         missing: "Not loaded",
         noAssets: "No assets are available. Configure the asset catalog first.",
         showAll: "Show all assets",
+        custody: "Custody mode",
+        legacyCustody: "Keep existing asset setup",
+        custodial: "Custodial platform",
+        onchain: "On-chain wallet",
+        custodyError: "Remove assets that do not match the selected custody mode.",
         otherDetails: "Other saved details",
         customDetails: "Custom details",
         searchBank: "Search banks",
@@ -185,6 +195,10 @@ export function AccountForm({
     const [originalAssetIds] = useState(() => [...(account?.asset_ids ?? [])]);
     const [name, setName] = useState(account?.name ?? "");
     const [kind, setKind] = useState(account?.kind ?? "bank");
+    const [custody, setCustody] = useState<Account["custody_mode"]>(
+        account?.kind === "crypto" ? (account.custody_mode ?? null) : "onchain",
+    );
+    const custodyMode = kind === "crypto" ? (custody ?? null) : null;
     const [assetIds, setAssetIds] = useState<string[]>(() => [...originalAssetIds]);
     const [assetsTouched, setAssetsTouched] = useState(false);
     const [showAll, setShowAll] = useState(false);
@@ -200,6 +214,7 @@ export function AccountForm({
         | "name"
         | "assets"
         | "disabled"
+        | "custody"
         | "details"
         | "card"
         | "suffix"
@@ -217,7 +232,9 @@ export function AccountForm({
             : undefined;
     const card = isCardKind(kind);
     const bankRegion = institution?.region ?? values.get("bank_region") ?? defaultBankRegion ?? "";
-    const fields = accountFields(kind, bankRegion);
+    const fields = accountFields(kind, bankRegion).filter(
+        (field) => custodyMode !== "custodial" || !field.startsWith("wallet_"),
+    );
     const hidden = rows.filter(
         (row) => !row.custom && !!row.value && !fields.some((field) => field === row.key),
     );
@@ -230,9 +247,16 @@ export function AccountForm({
                 (value) => value.toLowerCase().includes(query),
             ),
     );
+    const matchesCustody = (asset: Asset) =>
+        custodyMode === "custodial"
+            ? asset.kind === "custodial"
+            : custodyMode === "onchain"
+              ? asset.kind === "native" || asset.kind === "token"
+              : asset.kind !== "custodial";
     const availableAssets = assets.filter(
         (asset) =>
             (asset.enabled || originalAssetIds.includes(asset.asset_id)) &&
+            (assetIds.includes(asset.asset_id) || matchesCustody(asset)) &&
             isAccountAssetVisible(asset, kind, assetIds, showAll),
     );
     const missingAssetIds = (account?.asset_ids ?? []).filter(
@@ -347,6 +371,14 @@ export function AccountForm({
             setLocalError("wallet");
             return;
         }
+        const custodyChanged = (account?.custody_mode ?? null) !== custodyMode;
+        if (
+            (assetsChanged || custodyChanged) &&
+            assets.some((asset) => assetIds.includes(asset.asset_id) && !matchesCustody(asset))
+        ) {
+            setLocalError("custody");
+            return;
+        }
         let details: Record<string, string>;
         try {
             details = compileDetails(rows, ACCOUNT_DETAIL_KEYS);
@@ -369,6 +401,7 @@ export function AccountForm({
                 expected_version: expectedVersion,
                 ...(kind !== account.kind ? { kind: kind as AccountKind } : {}),
                 ...(assetsChanged ? { asset_ids: assetIds } : {}),
+                ...(custodyChanged ? { custody_mode: custodyMode } : {}),
                 ...privateNumber,
             });
         else
@@ -378,6 +411,7 @@ export function AccountForm({
                 kind: kind as AccountKind,
                 details,
                 asset_ids: assetIds,
+                ...(custodyMode ? { custody_mode: custodyMode } : {}),
                 ...privateNumber,
             });
     }
@@ -591,6 +625,28 @@ export function AccountForm({
                     <p className="help-text" id={`${prefix}-asset-help`}>
                         {t.assetHelp}
                     </p>
+                    {kind === "crypto" && (
+                        <div className="field">
+                            <label htmlFor={`${prefix}-custody`}>{t.custody}</label>
+                            <select
+                                id={`${prefix}-custody`}
+                                value={custodyMode ?? ""}
+                                onChange={(event) => {
+                                    const value = event.currentTarget.value;
+                                    setCustody(
+                                        value === "custodial" || value === "onchain" ? value : null,
+                                    );
+                                    setLocalError(null);
+                                }}
+                            >
+                                {account?.kind === "crypto" && !account.custody_mode && (
+                                    <option value="">{t.legacyCustody}</option>
+                                )}
+                                <option value="onchain">{t.onchain}</option>
+                                <option value="custodial">{t.custodial}</option>
+                            </select>
+                        </div>
+                    )}
                     <label className="account-show-assets">
                         <input
                             type="checkbox"
@@ -615,6 +671,7 @@ export function AccountForm({
                                 <span>
                                     {asset.code}
                                     {asset.network ? ` · ${asset.network}` : ""}
+                                    {asset.kind === "custodial" ? ` · ${t.custodial}` : ""}
                                     {asset.token_reference ? ` · ${asset.token_reference}` : ""}
                                     {!asset.enabled ? ` · ${t.disabled}` : ""}
                                 </span>

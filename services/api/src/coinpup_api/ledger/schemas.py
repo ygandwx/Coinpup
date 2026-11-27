@@ -37,6 +37,7 @@ AccountKind = Literal[
     "stripe",
     "crypto",
 ]
+CustodyMode = Literal["onchain", "custodial"]
 TemplateKey = Literal["personal_default", "business_default"]
 
 
@@ -102,7 +103,7 @@ class UpdateCommand(Command):
 
 class AssetCreate(Command):
     code: Annotated[StrictStr, Field(min_length=2, max_length=10, pattern=r"^[A-Z0-9]+$")]
-    kind: Literal["fiat", "native", "token"]
+    kind: Literal["fiat", "native", "token", "custodial"]
     scale: Annotated[StrictInt, Field(ge=0, le=18)]
     network: Annotated[StrictStr, Field(max_length=64)] | None = None
     token_reference: Annotated[StrictStr, Field(max_length=128)] | None = None
@@ -178,6 +179,7 @@ class AccountCreate(Command):
     id: UUID | None = None
     name: Name
     kind: AccountKind
+    custody_mode: CustodyMode | None = None
     details: dict[StrictStr, StrictStr] = Field(default_factory=dict)
     asset_ids: Annotated[list[AssetId], Field(min_length=1, max_length=100)]
 
@@ -186,6 +188,7 @@ class AccountUpdate(UpdateCommand):
     card_number: CardNumber | None = None
     name: Name | None = None
     kind: AccountKind | None = None
+    custody_mode: CustodyMode | None = None
     details: dict[StrictStr, StrictStr] | None = None
     asset_ids: Annotated[list[AssetId], Field(min_length=1, max_length=100)] | None = None
     archived: StrictBool | None = None
@@ -234,9 +237,9 @@ class AssetResponse(RecordResponse):
 class AssetPreset(BaseModel):
     asset_id: str
     code: str
-    kind: Literal["native", "token"]
+    kind: Literal["native", "token", "custodial"]
     scale: int
-    network: str
+    network: str | None
     token_reference: str | None
     verified_on: date
     sources: tuple[str, ...]
@@ -267,6 +270,7 @@ class AccountResponse(RecordResponse):
     ledger_id: UUID
     name: str
     kind: str
+    custody_mode: CustodyMode | None = None
     details: dict[str, str]
     archived: bool
     asset_ids: list[str]

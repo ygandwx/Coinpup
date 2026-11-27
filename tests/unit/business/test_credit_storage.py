@@ -43,6 +43,7 @@ def test_credit_models_match_frozen_sql_and_current_change_types():
             "reminder_email_evidence",
             "quote_observations",
             "reminder_inbox_deliveries",
+            "platform_transfers",
         }
     )
     frozen = " ".join(migration["_SCHEMA_SQL"].split())

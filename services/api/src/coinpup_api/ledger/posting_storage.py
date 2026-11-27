@@ -95,7 +95,7 @@ def prepare_journal_lines(
             valid = line.account_id is not None and line.category_id is None
         elif line.role in {"income", "expense"}:
             valid = line.account_id is None and line.category_id is not None
-        elif line.role in {"equity", "exchange"}:
+        elif line.role in {"equity", "exchange", "platform_clear"}:
             valid = line.account_id is None and line.category_id is None
         else:
             valid = False
