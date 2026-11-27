@@ -1,3 +1,4 @@
+import { EntityMark } from "./EntityMark";
 import { cloneElement, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { ApiError } from "./api";
@@ -203,21 +204,24 @@ function ReportPanel({
             <form onSubmit={submit} onChange={() => setQuery(null)}>
                 <fieldset className="valuation-ledgers">
                     <legend>{t("纳入汇总的主体", "Entities to include")}</legend>
-                    {entities.map(({ id, ledger, archived, name }) => (
-                        <label key={id}>
+                    {entities.map((entity) => (
+                        <label className="valuation-entity" key={entity.id}>
                             <input
                                 type="checkbox"
-                                checked={ledgerIds.includes(ledger.id)}
+                                checked={ledgerIds.includes(entity.ledger.id)}
                                 onChange={({ target: { checked } }) =>
                                     setSelection(
                                         checked
-                                            ? [...ledgerIds, ledger.id]
-                                            : ledgerIds.filter((id) => id !== ledger.id),
+                                            ? [...ledgerIds, entity.ledger.id]
+                                            : ledgerIds.filter((id) => id !== entity.ledger.id),
                                     )
                                 }
                             />
-                            {name}
-                            {archived && t("（已归档）", " (archived)")}
+                            <EntityMark entity={entity} compact />
+                            <span>
+                                {entity.name}
+                                {entity.archived && t("（已归档）", " (archived)")}
+                            </span>
                         </label>
                     ))}
                 </fieldset>

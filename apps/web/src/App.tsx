@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, getSession, signIn, signOut } from "./api";
@@ -23,70 +24,6 @@ import { PendingBusinessSettlementController } from "./pending-business-settleme
 import { PendingReminderController } from "./pending-reminder";
 import { PendingReminderEmail } from "./pending-reminder-email";
 import { OcrCopyController } from "./ocr-copy";
-
-type IconName =
-    | "arrow"
-    | "lock"
-    | "eye"
-    | "eyeOff"
-    | "grid"
-    | "wallet"
-    | "receipt"
-    | "chart"
-    | "logout"
-    | "refresh"
-    | "check"
-    | "server"
-    | "database"
-    | "globe";
-const paths: Record<IconName, string[]> = {
-    arrow: ["M5 12h14m-5-5 5 5-5 5"],
-    lock: ["M7 10V7a5 5 0 0 1 10 0v3", "M5 10h14v11H5z", "M12 14v3"],
-    eye: ["M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z", "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"],
-    eyeOff: [
-        "m3 3 18 18",
-        "M10 5.2A9 9 0 0 1 12 5c6 0 10 7 10 7a20 20 0 0 1-3 3.8",
-        "M6.5 6.5C3.8 8.7 2 12 2 12s4 7 10 7a10 10 0 0 0 5.5-1.5",
-        "M9.9 9.9a3 3 0 0 0 4.2 4.2",
-    ],
-    grid: ["M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"],
-    wallet: ["M20 8V5H5a2 2 0 0 0 0 4h16v11H5a2 2 0 0 1-2-2V7", "M21 12h-5v4h5"],
-    receipt: ["m5 3 3 2 4-2 4 2 3-2v18l-3-2-4 2-4-2-3 2V3Z", "M9 9h6M9 13h6"],
-    chart: ["M4 4v16h16", "M8 15v-4M13 15V7M18 15v-6"],
-    logout: ["M9 4H4v16h5", "M8 12h12m-4-4 4 4-4 4"],
-    refresh: [
-        "M20 7v5h-5",
-        "M4 17v-5h5",
-        "M5.1 8a8 8 0 0 1 13.3-3L20 7M4 17l1.6 2A8 8 0 0 0 19 16",
-    ],
-    check: ["m5 12 4 4L19 6"],
-    server: ["M3 4h18v6H3zM3 14h18v6H3z", "M7 7h.01M7 17h.01M11 7h6M11 17h6"],
-    database: [
-        "M20 6c0 2-3.6 4-8 4s-8-2-8-4 3.6-4 8-4 8 2 8 4Z",
-        "M4 6v12c0 2 3.6 4 8 4s8-2 8-4V6",
-        "M4 12c0 2 3.6 4 8 4s8-2 8-4",
-    ],
-    globe: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "M3 12h18M12 3c4 5 4 13 0 18-4-5-4-13 0-18Z"],
-};
-
-function Icon({ name, className = "" }: { name: IconName; className?: string }) {
-    return (
-        <svg
-            className={`icon ${className}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-        >
-            {paths[name].map((path, index) => (
-                <path d={path} key={index} />
-            ))}
-        </svg>
-    );
-}
 
 function Brand({ linked = true }: { linked?: boolean }) {
     const content = (
