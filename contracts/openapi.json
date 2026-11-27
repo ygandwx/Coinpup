@@ -1244,8 +1244,9 @@
         "additionalProperties": false,
         "properties": {
           "code": {
-            "maxLength": 4,
-            "minLength": 3,
+            "maxLength": 10,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9]+$",
             "title": "Code",
             "type": "string"
           },
@@ -1302,6 +1303,69 @@
         "title": "AssetCreate",
         "type": "object"
       },
+      "AssetPreset": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "native",
+              "token"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "network": {
+            "title": "Network",
+            "type": "string"
+          },
+          "scale": {
+            "title": "Scale",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "token_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Reference"
+          },
+          "verified_on": {
+            "format": "date",
+            "title": "Verified On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "code",
+          "kind",
+          "scale",
+          "network",
+          "token_reference",
+          "verified_on",
+          "sources"
+        ],
+        "title": "AssetPreset",
+        "type": "object"
+      },
       "AssetResponse": {
         "properties": {
           "asset_id": {
@@ -1356,6 +1420,12 @@
             "title": "Updated At",
             "type": "string"
           },
+          "verified": {
+            "description": "Whether a token matches the checked issuer contract, symbol and precision.",
+            "readOnly": true,
+            "title": "Verified",
+            "type": "boolean"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -1371,7 +1441,8 @@
           "scale",
           "network",
           "token_reference",
-          "enabled"
+          "enabled",
+          "verified"
         ],
         "title": "AssetResponse",
         "type": "object"
@@ -16064,6 +16135,31 @@
           }
         },
         "summary": "Create Asset",
+        "tags": [
+          "ledger structure"
+        ]
+      }
+    },
+    "/api/v1/assets/presets": {
+      "get": {
+        "operationId": "list_asset_presets_api_v1_assets_presets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssetPreset"
+                  },
+                  "title": "Response List Asset Presets Api V1 Assets Presets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Asset Presets",
         "tags": [
           "ledger structure"
         ]

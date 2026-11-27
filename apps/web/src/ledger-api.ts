@@ -15,6 +15,7 @@ export type RecordVersion = Pick<
 >;
 
 export type Asset = components["schemas"]["AssetResponse"];
+export type AssetPreset = components["schemas"]["AssetPreset"];
 export type Ledger = components["schemas"]["LedgerResponse"];
 export type Entity = components["schemas"]["EntityResponse"];
 export type Account = components["schemas"]["AccountResponse"];
@@ -131,6 +132,8 @@ export const listAssets = (
     options?: AssetPageOptions | AbortSignal,
     signal?: AbortSignal,
 ): Promise<Asset[]> => list("/api/v1/assets", options, signal);
+export const listAssetPresets = (signal?: AbortSignal): Promise<AssetPreset[]> =>
+    readJson("/api/v1/assets/presets", signal);
 export const listTemplates = (signal?: AbortSignal): Promise<CategoryTemplate[]> =>
     readJson("/api/v1/category-templates", signal);
 export const listAccounts = (

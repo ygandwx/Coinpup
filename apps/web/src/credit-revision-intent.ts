@@ -1,4 +1,5 @@
 import type { CreditCancellation, CreditCorrection, CreditCurrent } from "./credit-api";
+import { assetIdentity } from "./asset-identity";
 import {
     date,
     keys,
@@ -92,22 +93,11 @@ function validCurrent(ledgerId: string, creditId: string, review: CreditRevision
         asset.asset_id !== c.asset_id ||
         typeof asset.code !== "string" ||
         !asset.code ||
-        !["fiat", "native", "token"].includes(asset.kind) ||
         !Number.isInteger(asset.scale) ||
         asset.scale < 0 ||
         asset.scale > 18 ||
         typeof asset.enabled !== "boolean" ||
-        (asset.kind === "token"
-            ? typeof asset.network !== "string" ||
-              !asset.network ||
-              typeof asset.token_reference !== "string" ||
-              !asset.token_reference ||
-              asset.asset_id !== `token:${asset.network}:${asset.token_reference}`
-            : asset.asset_id !== asset.code ||
-              asset.token_reference !== null ||
-              (asset.kind === "fiat"
-                  ? asset.network !== null
-                  : typeof asset.network !== "string" || !asset.network)) ||
+        asset.asset_id !== assetIdentity(asset) ||
         original.kind !== "business_confirmation" ||
         !uuid(original.id) ||
         original.ledger_id !== ledgerId ||

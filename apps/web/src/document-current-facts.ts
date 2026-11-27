@@ -1,5 +1,6 @@
 import type { DocumentCurrent } from "./document-revision-api";
 import type { Asset } from "./ledger-api";
+import { assetIdentity } from "./asset-identity";
 import { priceBusinessDocument } from "./business-pricing";
 import { date, keys, record, uuid } from "./credit-intent";
 import { parseAmount } from "./money";
@@ -45,18 +46,7 @@ export function validDocumentAsset(asset: Asset | undefined, id: unknown): asset
         Number.isSafeInteger(asset.scale) &&
         asset.scale >= 0 &&
         asset.scale <= 18 &&
-        (asset.kind === "token"
-            ? typeof asset.network === "string" &&
-              !!asset.network &&
-              typeof asset.token_reference === "string" &&
-              !!asset.token_reference &&
-              asset.asset_id === `token:${asset.network}:${asset.token_reference}`
-            : (asset.kind === "fiat" || asset.kind === "native") &&
-              asset.asset_id === asset.code &&
-              asset.token_reference === null &&
-              (asset.kind === "fiat"
-                  ? asset.network === null
-                  : typeof asset.network === "string" && !!asset.network))
+        asset.asset_id === assetIdentity(asset)
     );
 }
 

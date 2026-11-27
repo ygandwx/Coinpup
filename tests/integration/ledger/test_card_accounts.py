@@ -133,6 +133,8 @@ def test_card_errors_never_echo_dynamic_keys(authenticated_client):
 def test_legacy_suffix_round_trip_and_refuse_used_card_downgrade(structure_database):
     engine, owner = structure_database
     cfg = Config(str(Path(__file__).resolve().parents[3] / "alembic.ini"))
+    with engine.connect() as connection:
+        head = connection.scalar(text("SELECT version_num FROM alembic_version"))
     structure = LedgerService(engine)
     ledger = _ledger(structure, owner, "Fictional legacy card")
     legacy = structure.create_account(
@@ -181,5 +183,5 @@ def test_legacy_suffix_round_trip_and_refuse_used_card_downgrade(structure_datab
         command.downgrade(cfg, "20261125_0113")
     assert error.value.orig.diag.constraint_name == "ck_accounts_card_downgrade"
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261127_0114"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == head
     assert structure.list_accounts(owner, ledger) == [cleared]

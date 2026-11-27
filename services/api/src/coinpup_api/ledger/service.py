@@ -8,7 +8,7 @@ from sqlalchemy import Engine, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from coinpup_api.ledger.assets import AssetDefinition
+from coinpup_api.ledger.assets import AssetDefinition, verified_token
 from coinpup_api.ledger.card_details import (
     CARD_KINDS,
     public_account_details,
@@ -212,7 +212,16 @@ class LedgerService:
             definition = AssetDefinition(**payload.model_dump())
         except MoneyError as error:
             raise LedgerError(error.code, 422, "Asset identity or precision is invalid.") from None
-        with self._transaction(owner_id, write=True) as session:
+        if definition.kind == "token":
+            official = verified_token(definition.network, definition.token_reference)
+            if official is not None and (definition.code, definition.scale) != (
+                official.code,
+                official.scale,
+            ):
+                raise LedgerError(
+                    "asset_definition", 422, "Use the verified code and precision for this token."
+                )
+        with self._transaction(owner_id, write=True, read_committed=True) as session:
             record = AssetRecord(asset_id=definition.asset_id, **payload.model_dump())
             session.add(record)
             session.flush()

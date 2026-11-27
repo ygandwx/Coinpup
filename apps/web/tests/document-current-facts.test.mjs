@@ -15,7 +15,8 @@ registerHooks({
         );
     },
 });
-const { validDocumentCurrent } = await import("../src/document-current-facts.ts");
+const { validDocumentAsset, validDocumentCurrent } =
+    await import("../src/document-current-facts.ts");
 const { amountFromMinorUnits } = await import("../src/money.ts");
 // Produced from the backend's fictional current() fixture and DocumentCurrent schema.
 const fixture = JSON.parse(
@@ -123,6 +124,22 @@ test("token identity and precision remain specific to the selected network and c
         { asset_id: "token:other:fictional-contract" },
     ])
         assert.equal(valid(current, { ...asset, ...change }), false);
+});
+
+test("read namespaced native assets without confusing an existing fiat code", () => {
+    const { asset } = sample();
+    const native = {
+        ...asset,
+        asset_id: "native:solana:SOL",
+        code: "SOL",
+        kind: "native",
+        network: "solana",
+        scale: 9,
+    };
+    assert.ok(validDocumentAsset(native, native.asset_id));
+    assert.ok(validDocumentAsset({ ...asset, asset_id: "SOL", code: "SOL" }, "SOL"));
+    assert.equal(validDocumentAsset({ ...native, asset_id: "SOL" }, "SOL"), false);
+    assert.equal(validDocumentAsset({ ...native, network: "other" }, native.asset_id), false);
 });
 
 const faults = {

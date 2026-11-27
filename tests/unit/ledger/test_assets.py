@@ -12,6 +12,7 @@ from coinpup_api.ledger import (
     get_asset,
     stablecoin_asset,
 )
+from coinpup_api.ledger.assets import NATIVE_PRESETS, TOKEN_PRESETS, verified_token
 
 
 def test_builtin_quantity_definitions_are_fixed_and_read_only():
@@ -65,7 +66,9 @@ def test_stablecoin_identity_preserves_case_and_requires_all_configuration():
         {"token_reference": ""},
         {"token_reference": "Token:Ambiguous"},
         {"token_reference": "代币"},
-        {"code": "BTC"},
+        {"code": "bTC"},
+        {"code": "T"},
+        {"code": "TOKENCODE00"},
         {"enabled": 1},
     ],
 )
@@ -114,3 +117,43 @@ def test_same_token_id_with_conflicting_definition_cannot_be_combined(changes):
         with pytest.raises(MoneyError) as error:
             operation()
         assert error.value.code == "asset_mismatch"
+
+
+def test_expanded_native_presets_keep_original_fiat_identities():
+    assert {item.definition.code: item.definition.scale for item in NATIVE_PRESETS} == {
+        "BTC": 8,
+        "ETH": 18,
+        "SOL": 9,
+        "BNB": 18,
+        "TRX": 6,
+        "XRP": 6,
+        "DOGE": 8,
+        "LTC": 8,
+        "ADA": 6,
+        "TON": 9,
+        "AVAX": 18,
+        "DOT": 10,
+        "POL": 18,
+        "XMR": 12,
+    }
+    sol = get_asset("native:solana:SOL")
+    fiat = fiat_asset(code="SOL", scale=2)
+    assert sol != fiat
+    assert (sol.asset_id, fiat.asset_id) == ("native:solana:SOL", "SOL")
+    assert Amount.parse("0.000000001", sol).minor_units == 1
+    with pytest.raises(MoneyError, match="fractional digits"):
+        Amount.parse("0.0000000001", sol)
+    assert all(item.sources for item in NATIVE_PRESETS)
+
+
+def test_preset_evidence_is_scoped_to_exact_network_contract_and_case():
+    assert len(TOKEN_PRESETS) == 20
+    by_id = {item.definition.asset_id: item.definition for item in TOKEN_PRESETS}
+    assert len(by_id) == len(TOKEN_PRESETS)
+    evm = by_id["token:ethereum:0xdac17f958d2ee523a2206206994597c13d831ec7"]
+    assert verified_token("ethereum", evm.token_reference.upper()) is evm
+    assert verified_token("optimism", evm.token_reference) is None
+    solana = next(item for item in by_id.values() if item.network == "solana")
+    assert verified_token(solana.network, solana.token_reference) is solana
+    assert verified_token(solana.network, solana.token_reference.lower()) is None
+    assert verified_token("tron", "FictionalContractReference") is None

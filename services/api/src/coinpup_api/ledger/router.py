@@ -10,11 +10,14 @@ from sqlalchemy.exc import IntegrityError
 from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
 from coinpup_api.config import Settings
+from coinpup_api.ledger.asset_evidence import VERIFIED_ON
+from coinpup_api.ledger.assets import NATIVE_PRESETS, TOKEN_PRESETS
 from coinpup_api.ledger.schemas import (
     AccountCreate,
     AccountResponse,
     AccountUpdate,
     AssetCreate,
+    AssetPreset,
     AssetResponse,
     AssetUpdate,
     CardNumberResponse,
@@ -68,6 +71,25 @@ def create_ledger_router(settings: Settings, engine: Engine | None) -> APIRouter
     @router.post("/assets", response_model=AssetResponse, status_code=201)
     def create_asset(body: AssetCreate, identity: writer):
         return execute(service.create_asset, identity.id, body)
+
+    @router.get("/assets/presets", response_model=list[AssetPreset])
+    def list_asset_presets(identity: reader):
+        presets = []
+        for evidence in (*NATIVE_PRESETS, *TOKEN_PRESETS):
+            asset = evidence.definition
+            presets.append(
+                AssetPreset(
+                    asset_id=asset.asset_id,
+                    code=asset.code,
+                    kind=asset.kind,
+                    scale=asset.scale,
+                    network=asset.network,
+                    token_reference=asset.token_reference,
+                    verified_on=VERIFIED_ON,
+                    sources=evidence.sources,
+                )
+            )
+        return presets
 
     @router.patch("/assets/{asset_id}", response_model=AssetResponse)
     def update_asset(asset_id: str, body: AssetUpdate, identity: writer):

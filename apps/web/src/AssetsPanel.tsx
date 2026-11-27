@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import type { Session } from "./api";
 import { AssetForm } from "./AssetForm";
+import { assetIdentity } from "./asset-identity";
+import { assetNetworkName } from "./asset-networks";
 import { businessError } from "./business-errors";
 import type { Locale } from "./i18n";
-import { createAsset, listAssets, updateAsset } from "./ledger-api";
-import type { Asset, AssetCreate } from "./ledger-api";
+import { createAsset, listAssetPresets, listAssets, updateAsset } from "./ledger-api";
+import type { Asset, AssetCreate, AssetPreset } from "./ledger-api";
 
 export function AssetsPanel({
     locale,
@@ -31,6 +33,11 @@ export function AssetsPanel({
     const [error, setError] = useState<unknown>(null);
     const [saved, setSaved] = useState(false);
     const [unconfirmed, setUnconfirmed] = useState<AssetCreate | null>(null);
+    const [presetRequest, setPresetRequest] = useState(0);
+    const [presetResponse, setPresetResponse] = useState<
+        { presets: AssetPreset[]; request: number } | { error: unknown; request: number } | null
+    >(null);
+    const activePresets = presetResponse?.request === presetRequest ? presetResponse : null;
     const callbacks = useRef({ onChanged, onUnauthorized, onEditingChange });
     callbacks.current = { onChanged, onUnauthorized, onEditingChange };
     useEffect(() => {
@@ -40,6 +47,22 @@ export function AssetsPanel({
     useEffect(() => {
         if (editing) document.getElementById("asset-panel-title")?.focus();
     }, [editing]);
+    useEffect(() => {
+        if (!editing || activePresets) return;
+        const abort = new AbortController();
+        void listAssetPresets(abort.signal).then(
+            (presets) => {
+                if (!abort.signal.aborted) setPresetResponse({ presets, request: presetRequest });
+            },
+            (error: unknown) => {
+                if (abort.signal.aborted) return;
+                if (error instanceof ApiError && error.kind === "unauthorized")
+                    callbacks.current.onUnauthorized();
+                else setPresetResponse({ error, request: presetRequest });
+            },
+        );
+        return () => abort.abort();
+    }, [activePresets, editing, presetRequest]);
     function failure(problem: unknown) {
         if (problem instanceof ApiError && problem.kind === "unauthorized")
             callbacks.current.onUnauthorized();
@@ -80,10 +103,12 @@ export function AssetsPanel({
         setBusy(true);
         setError(null);
         try {
-            const identity =
-                unconfirmed.kind === "token"
-                    ? `token:${unconfirmed.network}:${unconfirmed.token_reference}`
-                    : unconfirmed.code;
+            const identity = assetIdentity({
+                ...unconfirmed,
+                network: unconfirmed.network ?? null,
+                token_reference: unconfirmed.token_reference ?? null,
+            });
+            if (!identity) throw new ApiError("server", null, "invalid_response");
             let found: Asset | undefined;
             for (let offset = 0; offset <= 100000; offset += 100) {
                 const page = await listAssets({ include_disabled: true, limit: 100, offset });
@@ -193,6 +218,17 @@ export function AssetsPanel({
                     locale={locale}
                     fromPreset={editing === "preset"}
                     busy={busy || !!unconfirmed}
+                    presets={
+                        activePresets && "presets" in activePresets
+                            ? activePresets.presets
+                            : undefined
+                    }
+                    presetError={
+                        activePresets && "error" in activePresets
+                            ? businessError(activePresets.error, locale)
+                            : undefined
+                    }
+                    onRetryPresets={() => setPresetRequest((value) => value + 1)}
                     error={error ? businessError(error, locale) : undefined}
                     onSubmit={(body) => void save(body)}
                     onCancel={() => {
@@ -230,6 +266,13 @@ export function AssetsPanel({
                                             : t("已停用", "Disabled")}
                                     </span>
                                 </div>
+                                {asset.kind === "token" && !asset.verified && (
+                                    <p className="asset-verification">
+                                        <span className="record-badge">
+                                            {t("自定义·未核对", "Custom · Unverified")}
+                                        </span>
+                                    </p>
+                                )}
                                 <dl className="profile-details">
                                     <div>
                                         <dt>{t("资产类型", "Asset kind")}</dt>
@@ -238,7 +281,7 @@ export function AssetsPanel({
                                                 ? t("法币", "Fiat")
                                                 : asset.kind === "native"
                                                   ? t("原生加密资产", "Native crypto")
-                                                  : t("稳定币", "Stablecoin")}
+                                                  : t("代币", "Token")}
                                         </dd>
                                     </div>
                                     <div>
@@ -248,7 +291,7 @@ export function AssetsPanel({
                                     {asset.network && (
                                         <div>
                                             <dt>{t("网络", "Network")}</dt>
-                                            <dd>{asset.network}</dd>
+                                            <dd>{assetNetworkName(asset.network, locale)}</dd>
                                         </div>
                                     )}
                                     {asset.token_reference && (

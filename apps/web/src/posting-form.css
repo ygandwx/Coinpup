@@ -32,9 +32,6 @@
     padding: var(--space-2);
     font-size: var(--text-lg);
 }
-.asset-form-intro {
-    margin-bottom: var(--space-5);
-}
 .asset-enabled {
     display: flex;
     align-items: center;
