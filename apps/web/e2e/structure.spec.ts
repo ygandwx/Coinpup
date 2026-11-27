@@ -329,3 +329,160 @@ test("two tabs preserve the stale account draft while the real API rejects its o
     await expect(second.getByTestId(`account-${account.id}`)).toContainText(recoveredName);
     await second.close();
 });
+
+test("account charts follow the saved type and ledger in both languages and narrow layouts", async ({
+    page,
+}, testInfo) => {
+    await login(page);
+    const company = await api<Entity>(page, "POST", "/api/v1/entities", {
+        name: fictionalName("Trial design company"),
+        kind: "company",
+        country_code: "HK",
+        company_type: "private_limited",
+        template_key: "business_default",
+        locale: "en",
+        base_asset_id: "USD",
+    });
+    const other = await personal(page, fictionalName("Private ledger"));
+    const otherBase = `/api/v1/ledgers/${other.ledger.id}`;
+    const archived = await api<Account>(page, "POST", `${otherBase}/accounts`, {
+        name: fictionalName("Archived bank"),
+        kind: "bank",
+        asset_ids: ["USD"],
+    });
+    await api(page, "POST", `${otherBase}/opening-balances`, {
+        account_id: archived.id,
+        asset_id: "USD",
+        amount: "45.67",
+        transaction_date: "2026-01-01",
+    });
+    await api(page, "PATCH", `${otherBase}/accounts/${archived.id}`, {
+        expected_version: archived.version,
+        archived: true,
+    });
+    const base = `/api/v1/ledgers/${company.ledger.id}`;
+    const fixtures = [
+        { kind: "bank", asset: "USD", amount: "80.00", chart: "balance", share: "80%" },
+        { kind: "cash", asset: "USD", amount: "20.00", chart: "balance", share: "20%" },
+        { kind: "credit_card", asset: "USD", amount: "-140.00", chart: "credit", share: "100%" },
+        { kind: "wise", asset: "EUR", amount: "12.34", chart: "payment", share: "100%" },
+        {
+            kind: "crypto",
+            asset: "ETH",
+            amount: "123456789.123456789000000001",
+            chart: "holding",
+            share: "100%",
+        },
+    ];
+    const records = [];
+    for (const fixture of fixtures) {
+        const { asset, amount } = fixture;
+        const accountName =
+            fixture.kind === "crypto"
+                ? fictionalName("wallet").padEnd(140, "X")
+                : fictionalName(fixture.kind);
+        const account = await api<Account>(page, "POST", `${base}/accounts`, {
+            name: accountName,
+            kind: fixture.kind,
+            asset_ids: [asset],
+        });
+        await api(page, "POST", `${base}/opening-balances`, {
+            account_id: account.id,
+            asset_id: asset,
+            amount,
+            transaction_date: "2026-01-01",
+            description: "Fictional chart opening",
+        });
+        records.push({ fixture, account });
+    }
+    await page.goto(`/?entity=${company.id}&view=accounts`);
+    await expect(
+        page.locator('.ledger-picker .entity-mark[data-kind="company"] svg'),
+    ).toBeVisible();
+    for (const { fixture, account } of records) {
+        const card = page.getByTestId(`account-${account.id}`);
+        await expect(card.locator(`[data-account-kind="${fixture.kind}"]`)).toBeVisible();
+        const chart = card.getByRole("img", {
+            name: new RegExp(`${fixture.asset}.*${fixture.share}`),
+        });
+        await expect(chart).toBeVisible();
+        await expect(chart).toHaveAttribute("data-chart", fixture.chart);
+        await expect(
+            card.getByLabel(`${fixture.asset} ${fixture.amount}`, { exact: true }),
+        ).toBeVisible();
+    }
+
+    const wallet = records.find(({ fixture }) => fixture.kind === "crypto")!.account;
+    const widths = testInfo.project.name.startsWith("mobile") ? [375, 320] : [1440];
+    for (const width of widths) {
+        await page.setViewportSize({ width, height: 850 });
+        for (const locale of ["English", "中文"]) {
+            await page.getByRole("button", { name: locale, exact: true }).click();
+            const card = page.getByTestId(`account-${wallet.id}`);
+            await expect(card.getByRole("heading", { name: wallet.name })).toBeVisible();
+            await expect(card).toContainText("123,456,789.123456789000000001");
+            const edit = card.getByRole("button", {
+                name: locale === "English" ? "Edit" : "编辑",
+                exact: true,
+            });
+            await edit.focus();
+            await expect(edit).toBeFocused();
+            const gap = await page.locator(".ledger-select").evaluate((picker) => {
+                const select = picker.querySelector("select")!;
+                const textStart =
+                    select.getBoundingClientRect().left +
+                    parseFloat(getComputedStyle(select).paddingInlineStart);
+                return (
+                    textStart - picker.querySelector(".entity-mark")!.getBoundingClientRect().right
+                );
+            });
+            expect(gap).toBeGreaterThan(0);
+            await expectNoOverflow(page);
+        }
+    }
+    await page.getByRole("button", { name: "English", exact: true }).click();
+    await page.getByRole("button", { name: "Overview", exact: true }).click();
+    await expect(
+        page.getByLabel("ETH 123456789.123456789000000001", { exact: true }),
+    ).toContainText("123,456,789.123456789000000001");
+    await expect(page.getByRole("img", { name: /USD.*card debt.*100%/i })).toBeVisible();
+    await expectNoOverflow(page);
+    await selectLedger(page, other.name);
+    await expect(
+        page.locator('.ledger-picker .entity-mark[data-kind="personal"] svg'),
+    ).toBeVisible();
+    await expect(
+        page.getByText("No balances match this selection.", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("ETH 123456789.123456789000000001", { exact: true })).toHaveCount(
+        0,
+    );
+    await page.getByLabel("Show archived", { exact: true }).check();
+    await expect(page.getByLabel("USD 45.67", { exact: true })).toBeVisible();
+    const navigation = page.getByRole("navigation", { name: "Workspace navigation" });
+    if (testInfo.project.name.startsWith("mobile")) {
+        const toggle = navigation.getByRole("button", { name: "Show all sections" });
+        await toggle.click();
+        await expect(navigation.getByRole("button", { name: "Collapse sections" })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+        );
+        await page.keyboard.press("Tab");
+        await expect(
+            navigation.getByRole("button", { name: "Overview", exact: true }),
+        ).toBeFocused();
+        await navigation.getByRole("button", { name: "Ledger details", exact: true }).click();
+        await expect(navigation.getByRole("button", { name: "Show all sections" })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        );
+        await expect(page.getByRole("heading", { name: other.name, exact: true })).toBeVisible();
+        await expectNoOverflow(page);
+    } else {
+        const details = navigation.getByRole("button", { name: "Ledger details", exact: true });
+        await details.scrollIntoViewIfNeeded();
+        await expect(details).toBeInViewport();
+        await details.click();
+        await expect(page.getByRole("heading", { name: other.name, exact: true })).toBeVisible();
+    }
+});

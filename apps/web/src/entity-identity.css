@@ -1,0 +1,136 @@
+.entity-mark {
+    --mark-ink: #17635b;
+    --mark-paper: #daeee6;
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border-radius: 11px;
+    color: var(--mark-ink);
+    background: var(--mark-paper);
+}
+.entity-mark[data-tone="ochre"] {
+    --mark-ink: #80531c;
+    --mark-paper: #f5ead2;
+}
+.entity-mark[data-tone="iris"] {
+    --mark-ink: #624e8a;
+    --mark-paper: #eee8f5;
+}
+.entity-mark[data-tone="blue"] {
+    --mark-ink: #355e89;
+    --mark-paper: #e0edf7;
+}
+.entity-mark[data-tone="rose"] {
+    --mark-ink: #914660;
+    --mark-paper: #f6e6e9;
+}
+.entity-mark[data-tone="slate"] {
+    --mark-ink: #3e5f6a;
+    --mark-paper: #e2ecec;
+}
+.entity-mark[data-tone="personal"] {
+    --mark-ink: #76522a;
+    --mark-paper: #f5e9d5;
+    border-radius: 50%;
+}
+.entity-mark .icon {
+    inline-size: 1.4rem;
+    block-size: 1.4rem;
+}
+.entity-mark-compact {
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    border-radius: 7px;
+}
+.entity-mark-compact .icon {
+    inline-size: 1.05rem;
+    block-size: 1.05rem;
+}
+.ledger-select {
+    position: relative;
+    min-width: 0;
+}
+.ledger-select > .entity-mark {
+    position: absolute;
+    inset-inline-start: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+.ledger-picker .ledger-select:has(.entity-mark) > select {
+    padding-inline-start: 2.6rem;
+    text-overflow: ellipsis;
+}
+.ledger-heading-identity,
+.entity-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 0.62rem;
+    min-width: 0;
+}
+.ledger-heading-identity {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+.ledger-heading-identity > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.entity-detail-title h2 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.valuation-panel .valuation-ledgers .valuation-entity {
+    align-items: center;
+    min-width: 0;
+}
+.valuation-entity > span:last-child {
+    overflow-wrap: anywhere;
+}
+.balance-list .overview-balance {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.85fr);
+    padding-block: 0.55rem;
+    column-gap: 1rem;
+}
+.overview-balance-name {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+.overview-balance-name > span:last-child {
+    display: grid;
+    min-width: 0;
+    gap: 0.15rem;
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+.overview-balance-name small {
+    color: var(--muted);
+    font-weight: 450;
+}
+.balance-row.overview-balance > .money-quantity {
+    grid-column: auto;
+    width: 100%;
+    text-align: end;
+}
+@media (max-width: 660px) {
+    .balance-list .overview-balance {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.3rem 0.5rem;
+    }
+    .overview-balance .overview-chart {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-width: 0;
+    }
+}
+
+.balance-legend {
+    margin-block: 0.85rem 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}

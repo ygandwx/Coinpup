@@ -3,14 +3,18 @@ import type { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { InvoiceIssuePanel } from "./InvoiceIssuePanel";
 import type { PendingInvoiceController } from "./pending-invoice";
 import { InvoiceHistoryPanel } from "./InvoiceHistoryPanel";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { ApiError, checkHealth } from "./api";
 import type { Session } from "./api";
 import { PasswordSettings } from "./PasswordSettings";
 import type { Locale } from "./i18n";
+import { EntityMark } from "./EntityMark";
 import { EntityForm } from "./EntityForm";
 import { AccountForm } from "./AccountForm";
+import { AccountBalanceChart, AccountCard, AccountMark } from "./AccountCard";
+import { formatAmount } from "./money";
+import { prepareAccountBalances } from "./account-charts";
 import { businessError } from "./business-errors";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { AssetsPanel } from "./AssetsPanel";
@@ -74,53 +78,10 @@ import type {
     CategoryCreateBody,
     CategoryUpdateBody,
 } from "./ledger-api";
+import { WorkspaceNavigation, isWorkspaceView } from "./WorkspaceNavigation";
+import type { WorkspaceView as View } from "./WorkspaceNavigation";
 import "./workspace.css";
 
-type View =
-    | "invoices"
-    | "business-confirmations"
-    | "business-settlements"
-    | "business-credits"
-    | "drafts"
-    | "recurring"
-    | "reminders"
-    | "masters"
-    | "periods"
-    | "controls"
-    | "interledger"
-    | "valuation"
-    | "ocr"
-    | "files"
-    | "transactions"
-    | "assets"
-    | "overview"
-    | "accounts"
-    | "categories"
-    | "details"
-    | "settings";
-const views: View[] = [
-    "overview",
-    "transactions",
-    "files",
-    "ocr",
-    "accounts",
-    "controls",
-    "interledger",
-    "valuation",
-    "periods",
-    "masters",
-    "drafts",
-    "business-confirmations",
-    "business-settlements",
-    "business-credits",
-    "invoices",
-    "recurring",
-    "reminders",
-    "categories",
-    "details",
-    "assets",
-    "settings",
-];
 type Editor =
     | { kind: "entity"; value?: Entity }
     | { kind: "account"; value?: Account }
@@ -131,9 +92,7 @@ const text = (locale: Locale, zh: string, en: string) => (locale === "zh" ? zh :
 function initialView(): View {
     const requested = new URLSearchParams(window.location.search).get("view");
     if (requested === "documents") return "files";
-    return requested !== "files" && views.includes(requested as View)
-        ? (requested as View)
-        : "overview";
+    return requested !== "files" && isWorkspaceView(requested) ? requested : "overview";
 }
 
 async function everyPage<T>(read: (offset: number) => Promise<T[]>): Promise<T[]> {
@@ -926,7 +885,18 @@ export function BusinessWorkspace({
         }
     }
 
-    const accounts = current?.accounts.filter((item) => showArchived || !item.archived) ?? [];
+    const accounts = useMemo(
+        () => current?.accounts.filter((item) => showArchived || !item.archived) ?? [],
+        [current, showArchived],
+    );
+    const accountBalances = useMemo(
+        () => prepareAccountBalances(accounts, current?.balances ?? []),
+        [accounts, current],
+    );
+    const chartLegend = t(
+        "占比按同一资产、同一余额方向计算。仅计入当前显示的账户，信用卡只与信用卡比较。",
+        "Shares compare visible balances of the same asset and sign. Credit cards are compared with other visible cards.",
+    );
     const categories = current?.categories.filter((item) => showArchived || !item.archived) ?? [];
     const editorTitle =
         editor?.kind === "entity"
@@ -959,28 +929,31 @@ export function BusinessWorkspace({
                 </div>
                 <div className="ledger-picker field">
                     <label htmlFor="active-ledger">{t("账本", "Ledger")}</label>
-                    <select
-                        id="active-ledger"
-                        value={selectedId}
-                        disabled={loading || busy || !!editor || navigationLocked}
-                        onChange={(event) => {
-                            setSelectedId(event.target.value);
-                            setDraftTarget(null);
-                            setFileOperation(null);
-                            setActionError(null);
-                            setNotice(false);
-                        }}
-                    >
-                        <option value="" disabled>
-                            {t("选择账本", "Choose a ledger")}
-                        </option>
-                        {visibleEntities.map((item) => (
-                            <option key={item.id} value={item.id}>
-                                {item.name}
-                                {item.archived ? t("（已归档）", " (archived)") : ""}
+                    <div className="ledger-select">
+                        {entity && <EntityMark entity={entity} compact />}
+                        <select
+                            id="active-ledger"
+                            value={selectedId}
+                            disabled={loading || busy || !!editor || navigationLocked}
+                            onChange={(event) => {
+                                setSelectedId(event.target.value);
+                                setDraftTarget(null);
+                                setFileOperation(null);
+                                setActionError(null);
+                                setNotice(false);
+                            }}
+                        >
+                            <option value="" disabled>
+                                {t("选择账本", "Choose a ledger")}
                             </option>
-                        ))}
-                    </select>
+                            {visibleEntities.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                    {item.name}
+                                    {item.archived ? t("（已归档）", " (archived)") : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                 <button
                     className="new-ledger-button"
@@ -990,57 +963,19 @@ export function BusinessWorkspace({
                     <span aria-hidden="true">＋ </span>
                     {t("新增账本", "New ledger")}
                 </button>
-                <nav
-                    className="business-navigation"
-                    aria-label={t("工作区导航", "Workspace navigation")}
-                >
-                    {views.map((item) => (
-                        <button
-                            key={item}
-                            disabled={busy || !!editor || navigationLocked}
-                            aria-current={view === item ? "page" : undefined}
-                            onClick={() => {
-                                setView(item);
-                                setDraftTarget(null);
-                                setFileOperation(null);
-                                setActionError(null);
-                                setNotice(false);
-                            }}
-                        >
-                            <span aria-hidden="true">
-                                {
-                                    {
-                                        files: "▧",
-                                        ocr: "▦",
-                                        transactions: "⇄",
-                                        assets: "◈",
-                                        overview: "◫",
-                                        accounts: "▣",
-                                        controls: "⇆",
-                                        interledger: "⇄",
-                                        valuation: "▥",
-                                        periods: "▣",
-                                        masters: "◇",
-                                        drafts: "▤",
-                                        recurring: "↻",
-                                        reminders: "◷",
-                                        "business-confirmations": "✓",
-                                        "business-settlements": "⇄",
-                                        "business-credits": "↩",
-                                        invoices: "▧",
-                                        categories: "⊞",
-                                        details: "▤",
-                                        settings: "⚙",
-                                    }[item]
-                                }
-                            </span>
-                            {labels[item]}
-                        </button>
-                    ))}
-                </nav>
-                <p className="sidebar-caption">
-                    {t("每个账本，独立记录。", "Each ledger keeps its own records.")}
-                </p>
+                <WorkspaceNavigation
+                    locale={locale}
+                    labels={labels}
+                    view={view}
+                    disabled={busy || !!editor || navigationLocked}
+                    onSelect={(item) => {
+                        setView(item);
+                        setDraftTarget(null);
+                        setFileOperation(null);
+                        setActionError(null);
+                        setNotice(false);
+                    }}
+                />
             </aside>
             <main id="main" className="business-main">
                 <OcrCopyStatus
@@ -1067,20 +1002,21 @@ export function BusinessWorkspace({
                 />
                 <header className="business-heading">
                     <div>
-                        <p className="eyebrow">
-                            {entity
-                                ? entity.kind === "company"
-                                    ? t("公司账本", "Company ledger")
-                                    : t("个人账本", "Personal ledger")
-                                : "COINPUP"}
-                        </p>
+                        {entity && (
+                            <div className="ledger-heading-identity">
+                                <EntityMark entity={entity} compact />
+                                <span>
+                                    {entity.kind === "company"
+                                        ? t("公司账本", "Company ledger")
+                                        : t("个人账本", "Personal ledger")}
+                                    {" · "}
+                                    {entity.name}
+                                </span>
+                            </div>
+                        )}
                         <h1 id="business-title" tabIndex={-1}>
                             {editor ? editorTitle : labels[view]}
                         </h1>
-                        <p className="muted">
-                            {entity?.name ??
-                                t("从你的第一个账本开始。", "Start with your first ledger.")}
-                        </p>
                     </div>
                     {!editor && !navigationLocked && (
                         <button
@@ -1531,12 +1467,6 @@ export function BusinessWorkspace({
                                             {current?.accounts.filter((item) => !item.archived)
                                                 .length ?? "—"}
                                         </strong>
-                                        <span>
-                                            {t(
-                                                "支持多种货币与资产",
-                                                "Multiple currencies and assets",
-                                            )}
-                                        </span>
                                     </article>
                                     <article className="summary-card">
                                         <p>{t("独立分类", "Independent categories")}</p>
@@ -1544,35 +1474,15 @@ export function BusinessWorkspace({
                                             {current?.categories.filter((item) => !item.archived)
                                                 .length ?? "—"}
                                         </strong>
-                                        <span>
-                                            {t(
-                                                "收入与支出分别管理",
-                                                "Separate income and expenses",
-                                            )}
-                                        </span>
                                     </article>
                                     <article className="summary-card">
                                         <p>{t("基础币种", "Base currency")}</p>
                                         <strong>{entity.ledger.base_asset_id}</strong>
-                                        <span>
-                                            {t(
-                                                "原币金额始终保留",
-                                                "Original quantities are retained",
-                                            )}
-                                        </span>
                                     </article>
                                 </div>
                                 <section className="business-panel">
                                     <div className="section-heading">
-                                        <div>
-                                            <h2>{t("账户余额", "Account balances")}</h2>
-                                            <p className="help-text">
-                                                {t(
-                                                    "按账户与原币分别显示。",
-                                                    "Shown separately by account and original asset.",
-                                                )}
-                                            </p>
-                                        </div>
+                                        <h2>{t("账户余额", "Account balances")}</h2>
                                         <button
                                             className="secondary-button"
                                             disabled={
@@ -1583,49 +1493,70 @@ export function BusinessWorkspace({
                                             {t("新增账户", "New account")}
                                         </button>
                                     </div>
-                                    {!current?.accounts.length ? (
+                                    {!current ? null : !current.accounts.length ? (
                                         <p className="empty-copy">
                                             {t(
                                                 "还没有账户。添加银行、现金或付款平台账户。",
                                                 "No accounts yet. Add a bank, cash or payment platform account.",
                                             )}
                                         </p>
+                                    ) : !accountBalances.size ? (
+                                        <p className="empty-copy">
+                                            {t(
+                                                "当前筛选下没有可显示的余额。",
+                                                "No balances match this selection.",
+                                            )}
+                                        </p>
                                     ) : (
                                         <div className="balance-list">
-                                            {current.balances
-                                                .filter(
-                                                    (balance) =>
-                                                        showArchived || !balance.account_archived,
-                                                )
-                                                .map((balance) => (
-                                                    <div
-                                                        className="balance-row"
-                                                        key={`${balance.account_id}:${balance.asset_id}`}
-                                                    >
-                                                        <span>
-                                                            {current.accounts.find(
-                                                                (account) =>
-                                                                    account.id ===
-                                                                    balance.account_id,
-                                                            )?.name ?? "—"}
-                                                        </span>
-                                                        <span className="asset-code">
-                                                            {balance.asset_id}
-                                                        </span>
-                                                        <strong
-                                                            className="money-quantity"
-                                                            tabIndex={0}
-                                                            aria-label={`${balance.asset_id} ${balance.amount}`}
+                                            {accounts.flatMap((account) =>
+                                                (accountBalances.get(account.id) ?? []).map(
+                                                    ({ balance, chart }) => (
+                                                        <div
+                                                            className="balance-row overview-balance"
+                                                            key={`${account.id}:${balance.asset_id}`}
                                                         >
-                                                            {balance.amount}
-                                                        </strong>
-                                                        {(!balance.asset_enabled ||
-                                                            !balance.link_enabled) && (
-                                                            <small>{t("已停用", "Disabled")}</small>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                            <span className="overview-balance-name">
+                                                                <AccountMark
+                                                                    kind={account.kind}
+                                                                    compact
+                                                                />
+                                                                <span>
+                                                                    {account.name}
+                                                                    <small>
+                                                                        {balance.asset_id}
+                                                                        {account.archived &&
+                                                                            ` · ${t("已归档", "Archived")}`}
+                                                                        {(!balance.asset_enabled ||
+                                                                            !balance.link_enabled) &&
+                                                                            ` · ${t("已停用", "Disabled")}`}
+                                                                    </small>
+                                                                </span>
+                                                            </span>
+                                                            <div className="overview-chart">
+                                                                <AccountBalanceChart
+                                                                    chart={chart}
+                                                                    locale={locale}
+                                                                />
+                                                            </div>
+                                                            <strong
+                                                                className="money-quantity"
+                                                                tabIndex={0}
+                                                                aria-label={`${balance.asset_id} ${balance.amount}`}
+                                                            >
+                                                                {formatAmount(
+                                                                    balance.amount,
+                                                                    locale,
+                                                                )}
+                                                            </strong>
+                                                        </div>
+                                                    ),
+                                                ),
+                                            )}
                                         </div>
+                                    )}
+                                    {accountBalances.size > 0 && (
+                                        <p className="balance-legend">{chartLegend}</p>
                                     )}
                                 </section>
                             </>
@@ -1644,98 +1575,21 @@ export function BusinessWorkspace({
                                         {t("新增账户", "New account")}
                                     </button>
                                 </div>
-                                <div className="account-grid">
+                                <div className="funding-grid">
                                     {accounts.map((account) => (
-                                        <article
-                                            className="account-card"
-                                            data-testid={`account-${account.id}`}
+                                        <AccountCard
                                             key={account.id}
-                                        >
-                                            <div className="record-heading">
-                                                <h3>{account.name}</h3>
-                                                {account.archived && (
-                                                    <span className="record-badge">
-                                                        {t("已归档", "Archived")}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="help-text">
-                                                {account.kind === "bank"
-                                                    ? t("银行账户", "Bank account")
-                                                    : account.kind === "cash"
-                                                      ? t("现金", "Cash")
-                                                      : account.kind === "credit_card"
-                                                        ? t("信用卡", "Credit card")
-                                                        : account.kind === "crypto"
-                                                          ? t("加密资产", "Crypto assets")
-                                                          : ({
-                                                                wechat: t("微信", "WeChat"),
-                                                                alipay: t("支付宝", "Alipay"),
-                                                                paypal: "PayPal",
-                                                                wise: "Wise",
-                                                                stripe: "Stripe",
-                                                            }[account.kind] ?? account.kind)}
-                                            </p>
-                                            <dl className="account-balances">
-                                                {current?.balances
-                                                    .filter(
-                                                        (item) => item.account_id === account.id,
-                                                    )
-                                                    .map((balance) => (
-                                                        <div key={balance.asset_id}>
-                                                            <dt>
-                                                                {balance.asset_id}
-                                                                {(!balance.link_enabled ||
-                                                                    !balance.asset_enabled) && (
-                                                                    <small>
-                                                                        {t(
-                                                                            " · 已停用",
-                                                                            " · Disabled",
-                                                                        )}
-                                                                    </small>
-                                                                )}
-                                                            </dt>
-                                                            <dd
-                                                                tabIndex={0}
-                                                                aria-label={`${balance.asset_id} ${balance.amount}`}
-                                                            >
-                                                                {balance.amount}
-                                                            </dd>
-                                                        </div>
-                                                    ))}
-                                            </dl>
-                                            <div className="row-actions">
-                                                <button
-                                                    disabled={
-                                                        entity.archived ||
-                                                        busy ||
-                                                        ledgerLoading ||
-                                                        loading
-                                                    }
-                                                    onClick={() =>
-                                                        openEditor({
-                                                            kind: "account",
-                                                            value: account,
-                                                        })
-                                                    }
-                                                >
-                                                    {t("编辑", "Edit")}
-                                                </button>
-                                                <button
-                                                    disabled={
-                                                        entity.archived ||
-                                                        busy ||
-                                                        ledgerLoading ||
-                                                        loading
-                                                    }
-                                                    onClick={() => void archive("account", account)}
-                                                >
-                                                    {account.archived
-                                                        ? t("恢复", "Restore")
-                                                        : t("归档", "Archive")}
-                                                </button>
-                                            </div>
-                                        </article>
+                                            account={account}
+                                            rows={accountBalances.get(account.id) ?? []}
+                                            locale={locale}
+                                            disabled={
+                                                entity.archived || busy || ledgerLoading || loading
+                                            }
+                                            onEdit={() =>
+                                                openEditor({ kind: "account", value: account })
+                                            }
+                                            onArchive={() => void archive("account", account)}
+                                        />
                                     ))}
                                 </div>
                                 {!accounts.length && (
@@ -1745,6 +1599,9 @@ export function BusinessWorkspace({
                                             "There are no accounts to show in this ledger.",
                                         )}
                                     </p>
+                                )}
+                                {accountBalances.size > 0 && (
+                                    <p className="balance-legend">{chartLegend}</p>
                                 )}
                             </section>
                         )}
@@ -1858,7 +1715,10 @@ export function BusinessWorkspace({
                         {view === "details" && (
                             <section className="business-panel">
                                 <div className="section-heading">
-                                    <h2>{entity.name}</h2>
+                                    <div className="entity-detail-title">
+                                        <EntityMark entity={entity} />
+                                        <h2>{entity.name}</h2>
+                                    </div>
                                     <button
                                         className="primary-button"
                                         disabled={busy || entity.archived || loading}
@@ -1960,9 +1820,6 @@ export function BusinessWorkspace({
                         )}
                     </>
                 )}
-                <footer className="business-footer">
-                    Coinpup · {t("原币记录，清楚归属。", "Original quantities. Clear ownership.")}
-                </footer>
             </main>
         </div>
     );
