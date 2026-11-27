@@ -521,6 +521,9 @@ export function App() {
                 <BusinessWorkspace
                     session={auth.session}
                     locale={locale}
+                    accountEditorLanguageControl={
+                        <LanguageSwitch locale={locale} onChange={setLocale} t={t} />
+                    }
                     commands={commands}
                     uploads={uploads}
                     ocrJobs={ocrJobs}

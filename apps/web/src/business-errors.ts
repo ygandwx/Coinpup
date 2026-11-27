@@ -15,6 +15,8 @@ export function businessError(error: unknown, locale: Locale): string {
             "这条记录已被修改。你的输入已保留；选择“重新载入”会替换当前输入。",
             "This record changed elsewhere. Your input is preserved; Reload replaces it with the latest record.",
         );
+    if (error.code === "invalid_card_details")
+        return t("信用卡只能保存卡号后四位。", "Store only the last four card digits.");
     if (error.code === "period_closed")
         return t(
             "交易日或归属日位于已结账期间。请先在“结账与重开”中填写理由重开。",

@@ -14,6 +14,8 @@ type Account = {
     id: string;
     name: string;
     asset_ids: string[];
+    kind: string;
+    details: Record<string, string>;
     archived: boolean;
     version: number;
 };
@@ -216,7 +218,8 @@ test("multiasset accounts display exact real balances after refresh and archival
     await openLedger(page, first, "Accounts");
     await page.getByRole("button", { name: "New account", exact: true }).click();
     await page.getByLabel("Account name", { exact: true }).fill(fictionalName("Wise"));
-    await page.getByLabel("Account type", { exact: true }).selectOption("wise");
+    await page.getByRole("radio", { name: "Wise", exact: true }).check();
+    await page.getByLabel("Show all assets", { exact: true }).check();
     for (const asset of ["USD", "EUR", "ETH"])
         await page.getByLabel(asset, { exact: true }).check();
     await expectNoOverflow(page);
@@ -510,4 +513,102 @@ test("account charts follow the saved type and ledger in both languages and narr
     await expect(persistedDaybook).toHaveAttribute("aria-expanded", "false");
     await persistedDaybook.click();
     await expect(navigation.getByRole("button", { name: "Overview", exact: true })).toBeVisible();
+});
+
+test("account drawer applies regional fields, protects card data, and preserves other details and assets", async ({
+    page,
+}) => {
+    await login(page);
+    const entity = await personal(page, fictionalName("account drawer"));
+    await openLedger(page, entity, "Accounts");
+    const newAccount = page.getByRole("button", { name: "New account", exact: true });
+    await newAccount.click();
+    let editor = page.getByRole("dialog", { name: "New account", exact: true });
+    await expect(editor.getByRole("heading", { name: "New account" })).toBeFocused();
+    await expect(editor).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await page.keyboard.press("Escape");
+    await expect(newAccount).toBeFocused();
+    await newAccount.click();
+    await editor.getByLabel("Account name", { exact: true }).fill("Fictional clearing account");
+    await editor.getByRole("radio", { name: "WeChat", exact: true }).check();
+    await expect(editor.getByLabel("CNY", { exact: true })).toBeChecked();
+    await expect(editor.getByLabel("ETH", { exact: true })).toHaveCount(0);
+
+    await editor.getByRole("radio", { name: "Bank account", exact: true }).check();
+    await expect(editor.getByLabel("CNY", { exact: true })).not.toBeChecked();
+    await editor.getByLabel("Search banks").fill("CHASUS33");
+    await editor.getByLabel("Bank", { exact: true }).selectOption("chase-us");
+    await expect(editor.getByLabel("SWIFT / BIC")).toHaveValue("CHASUS33");
+    await expect(editor.getByLabel("Bank name")).toHaveValue("Chase");
+    await editor.getByLabel("Routing number").fill("000000001");
+    await expect(editor.getByLabel("IBAN")).toHaveCount(0);
+    await editor.getByLabel("USD", { exact: true }).check();
+    const originalWidth = page.viewportSize()!.width;
+    if (originalWidth <= 375) {
+        await page.setViewportSize({ width: 320, height: 720 });
+        expect((await editor.boundingBox())?.width).toBe(320);
+    }
+    await expectNoOverflow(page);
+    await editor.getByRole("button", { name: "中文", exact: true }).click();
+    editor = page.getByRole("dialog", { name: "新增账户", exact: true });
+    await expect(editor.getByLabel("联行号")).toHaveCount(0);
+    await expect(editor.getByLabel("路由号码")).toHaveValue("000000001");
+    await expect(editor.getByLabel("账户名称")).toHaveValue("Fictional clearing account");
+    await expectNoOverflow(page);
+    await editor.getByRole("button", { name: "English", exact: true }).click();
+    editor = page.getByRole("dialog", { name: "New account", exact: true });
+
+    const path = `/api/v1/ledgers/${entity.ledger.id}/accounts`;
+    const created = await save<Account>(page, path);
+    await expect(page.getByRole("status").filter({ hasText: "Account saved." })).toBeVisible();
+    const card = page.getByTestId(`account-${created.id}`);
+    await expect(card).toHaveAttribute("data-recently-saved", "true");
+    expect(created.details).toMatchObject({
+        institution: "chase-us",
+        bank_name: "Chase",
+        routing_number: "000000001",
+    });
+    await card.getByRole("button", { name: "Edit", exact: true }).click();
+    editor = page.getByRole("dialog", { name: "Edit account", exact: true });
+    await editor.getByRole("radio", { name: "Credit card", exact: true }).check();
+    await expect(editor.getByLabel("Routing number")).toHaveCount(0);
+    await editor.getByText("Other saved details", { exact: true }).click();
+    await expect(editor.getByText("000000001", { exact: true })).toBeVisible();
+    await editor.getByLabel("Last four card digits").fill("1234-1234-1234-1234");
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor.getByRole("alert")).toContainText("exactly four");
+    await editor.getByLabel("Last four card digits").fill("0001");
+    await editor.getByLabel("Statement day").fill("25");
+    const edited = await save<Account>(page, `${path}/${created.id}`, "PATCH");
+    expect(edited.kind).toBe("credit_card");
+    expect(edited.asset_ids).toEqual(["USD"]);
+    expect(edited.details).toMatchObject({
+        ...created.details,
+        card_last_four: "0001",
+        statement_day: "25",
+    });
+
+    const { csrf_token } = await (await page.request.get("/api/v1/auth/session")).json();
+    const rejected = await page.request.patch(`${path}/${created.id}`, {
+        headers: {
+            Origin: new URL(page.url()).origin,
+            "X-CSRF-Token": csrf_token,
+        },
+        data: { expected_version: edited.version, details: { card_number: "1234-1234-1234-1234" } },
+    });
+    expect(rejected.status()).toBe(422);
+    expect((await rejected.json()).detail.code).toBe("invalid_card_details");
+    const stored = (await api<Account[]>(page, "GET", path)).find((item) => item.id === edited.id);
+    expect(stored?.details).toEqual(edited.details);
+
+    await card.getByRole("button", { name: "Edit", exact: true }).click();
+    await editor.getByRole("radio", { name: "Crypto wallet", exact: true }).check();
+    await expect(editor.getByLabel("ETH", { exact: true })).toBeVisible();
+    await expect(editor.getByLabel("USD", { exact: true })).toBeChecked();
+    await editor.getByLabel("Network", { exact: true }).selectOption("ethereum");
+    await editor.getByLabel("Wallet address").fill("0x123");
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor.getByRole("alert")).toContainText("selected network");
+    await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(card.getByText("Credit card", { exact: true })).toBeVisible();
 });

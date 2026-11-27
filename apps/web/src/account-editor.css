@@ -1,0 +1,180 @@
+.account-drawer {
+    color: var(--ink);
+    background: var(--surface);
+    border: 0;
+    border-inline-start: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(100%, 38rem);
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    --drawer-gutter: clamp(var(--space-3), 3vw, var(--space-6));
+    padding: var(--drawer-gutter);
+    overflow: hidden;
+}
+.account-drawer[open],
+.account-drawer form {
+    display: flex;
+    flex-direction: column;
+}
+.account-drawer form {
+    flex: 1;
+    min-height: 0;
+}
+.account-drawer-fields {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+}
+
+.account-drawer::backdrop {
+    background: rgb(10 30 28 / 50%);
+}
+
+.account-drawer-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-block-end: var(--space-4);
+}
+
+.account-drawer-header h2 {
+    font-size: var(--text-xl);
+    margin: 0;
+}
+
+.account-drawer .form-grid {
+    align-items: start;
+}
+
+.account-type-grid {
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+}
+
+.account-type-option {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 50px;
+    min-width: 0;
+    padding: var(--space-2);
+    font-size: var(--text-base);
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.account-type-option:has(input:checked) {
+    border-color: var(--forest);
+    box-shadow: inset 0 0 0 1px var(--forest);
+}
+
+.account-type-option:has(input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.account-type-option input,
+.account-show-assets input {
+    accent-color: var(--forest);
+}
+
+.account-type-option input {
+    margin: 0;
+    flex: none;
+}
+
+.account-show-assets {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block: var(--space-2);
+    font-size: var(--text-base);
+}
+
+.account-institution {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+}
+
+.account-drawer .check-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+}
+
+.account-drawer .check-grid label span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.account-extra-details {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+
+.account-extra-details > summary {
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.account-extra-details dd {
+    overflow-wrap: anywhere;
+}
+
+.account-drawer .form-actions {
+    background: var(--surface);
+    margin-block-start: var(--space-3);
+    padding-block: var(--space-3) max(0px, env(safe-area-inset-bottom));
+}
+
+.account-drawer .form-actions .primary-button {
+    width: auto;
+    min-height: 40px;
+    height: auto;
+    margin: 0;
+    padding: var(--space-2) var(--space-5);
+    font-size: var(--text-base);
+}
+
+@keyframes account-saved {
+    from {
+        box-shadow: 0 0 0 3px var(--forest);
+    }
+    to {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+.funding-card[data-recently-saved="true"] {
+    animation: account-saved 2s ease-out;
+}
+
+@media (max-width: 600px) {
+    .account-drawer {
+        width: 100%;
+        border-inline-start: 0;
+    }
+    .account-institution {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .funding-card[data-recently-saved="true"] {
+        animation-timing-function: steps(1, end);
+    }
+}

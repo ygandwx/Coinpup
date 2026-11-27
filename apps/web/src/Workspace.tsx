@@ -4,13 +4,14 @@ import { InvoiceIssuePanel } from "./InvoiceIssuePanel";
 import type { PendingInvoiceController } from "./pending-invoice";
 import { InvoiceHistoryPanel } from "./InvoiceHistoryPanel";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { ApiError, checkHealth } from "./api";
 import type { Session } from "./api";
 import { PasswordSettings } from "./PasswordSettings";
 import type { Locale } from "./i18n";
 import { EntityMark } from "./EntityMark";
 import { EntityForm } from "./EntityForm";
+import { AccountDrawer } from "./AccountDrawer";
 import { AccountForm } from "./AccountForm";
 import { AccountBalanceChart, AccountCard } from "./AccountCard";
 import { AccountIcon } from "./AccountIcon";
@@ -302,6 +303,7 @@ function SettingsPanel({ locale }: { locale: Locale }) {
 export function BusinessWorkspace({
     session,
     locale,
+    accountEditorLanguageControl,
     commands,
     uploads,
     ocrJobs,
@@ -325,6 +327,7 @@ export function BusinessWorkspace({
 }: {
     session: Session;
     locale: Locale;
+    accountEditorLanguageControl?: ReactNode;
     commands: PendingCommandController;
     uploads: PendingUploadController;
     ocrJobs: OcrJobIntents;
@@ -479,6 +482,7 @@ export function BusinessWorkspace({
     const [showArchived, setShowArchived] = useState(false);
     const [refresh, setRefresh] = useState(0);
     const [notice, setNotice] = useState(false);
+    const [savedAccount, setSavedAccount] = useState<Pick<Account, "id" | "version"> | null>(null);
     const refreshGeneration = useRef(0);
     const editorTrigger = useRef<HTMLElement | null>(null);
     const onUnauthorizedRef = useRef(onUnauthorized);
@@ -765,6 +769,7 @@ export function BusinessWorkspace({
             document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setActionError(null);
         setNotice(false);
+        setSavedAccount(null);
         setEditor(next);
     }
     function closeEditor() {
@@ -795,6 +800,7 @@ export function BusinessWorkspace({
         setActionError(null);
         setNotice(false);
         const generation = ++refreshGeneration.current;
+        let savedAccount: Account | null = null;
         try {
             const csrf = session.csrf_token;
             if (editor.kind === "entity") {
@@ -807,9 +813,14 @@ export function BusinessWorkspace({
                 ]);
                 setSelectedId(saved.id);
             } else if (ledgerId && editor.kind === "account") {
-                if (editor.value)
-                    await updateAccount(csrf, ledgerId, editor.value.id, body as AccountUpdateBody);
-                else await createAccount(csrf, ledgerId, body as AccountCreateBody);
+                savedAccount = editor.value
+                    ? await updateAccount(
+                          csrf,
+                          ledgerId,
+                          editor.value.id,
+                          body as AccountUpdateBody,
+                      )
+                    : await createAccount(csrf, ledgerId, body as AccountCreateBody);
             } else if (ledgerId && editor.kind === "category") {
                 if (editor.value)
                     await updateCategory(
@@ -821,7 +832,11 @@ export function BusinessWorkspace({
                 else await createCategory(csrf, ledgerId, body as CategoryCreateBody);
             } else throw new ApiError("server");
             if (generation !== refreshGeneration.current) return;
-            setEditor(null);
+            if (savedAccount) {
+                setSavedAccount({ id: savedAccount.id, version: savedAccount.version });
+                setView("accounts");
+                closeEditor();
+            } else setEditor(null);
             setNotice(true);
             setRefresh((value) => value + 1);
         } catch (error) {
@@ -872,6 +887,7 @@ export function BusinessWorkspace({
         setBusy(true);
         setActionError(null);
         setNotice(false);
+        setSavedAccount(null);
         const change = { expected_version: record.version, archived: !record.archived };
         try {
             if (kind === "entity") await updateEntity(session.csrf_token, record.id, change);
@@ -920,9 +936,10 @@ export function BusinessWorkspace({
     const editorKey = editor
         ? `${editor.kind}:${editor.value?.id ?? "new"}:${editor.value?.version ?? 0}`
         : "";
+    const pageEditorKey = editor?.kind === "account" ? "" : editorKey;
     useEffect(() => {
-        if (editorKey) document.getElementById("business-title")?.focus();
-    }, [editorKey]);
+        if (pageEditorKey) document.getElementById("business-title")?.focus();
+    }, [pageEditorKey]);
 
     return (
         <div className="business-layout">
@@ -1022,7 +1039,7 @@ export function BusinessWorkspace({
                             </div>
                         )}
                         <h1 id="business-title" tabIndex={-1}>
-                            {editor ? editorTitle : labels[view]}
+                            {pageEditorKey ? editorTitle : labels[view]}
                         </h1>
                     </div>
                     {!editor && !navigationLocked && (
@@ -1054,10 +1071,39 @@ export function BusinessWorkspace({
                 )}
                 {notice && !editor && (
                     <p className="save-notice" role="status">
-                        {t("已保存。", "Saved.")}
+                        {savedAccount
+                            ? t("账户已保存。", "Account saved.")
+                            : t("已保存。", "Saved.")}
                     </p>
                 )}
-                {editor ? (
+                {editor?.kind === "account" && (
+                    <AccountDrawer
+                        title={editorTitle}
+                        busy={busy}
+                        onCancel={closeEditor}
+                        languageControl={accountEditorLanguageControl}
+                    >
+                        <AccountForm
+                            key={editorKey}
+                            locale={locale}
+                            assets={assets}
+                            account={editor.value}
+                            defaultBankRegion={entity?.country_code}
+                            busy={busy}
+                            error={errorText}
+                            onSubmit={(body) => void save(body)}
+                            onCancel={closeEditor}
+                            onReload={
+                                editor.value &&
+                                actionError instanceof ApiError &&
+                                actionError.status === 409
+                                    ? () => void reloadEditor()
+                                    : undefined
+                            }
+                        />
+                    </AccountDrawer>
+                )}
+                {editor && editor.kind !== "account" ? (
                     <section className="business-panel form-panel">
                         {editor.kind === "entity" && (
                             <EntityForm
@@ -1065,18 +1111,6 @@ export function BusinessWorkspace({
                                 locale={locale}
                                 assets={assets}
                                 entity={editor.value}
-                                busy={busy}
-                                error={errorText}
-                                onSubmit={(body) => void save(body)}
-                                onCancel={closeEditor}
-                            />
-                        )}
-                        {editor.kind === "account" && (
-                            <AccountForm
-                                key={editorKey}
-                                locale={locale}
-                                assets={assets}
-                                account={editor.value}
                                 busy={busy}
                                 error={errorText}
                                 onSubmit={(body) => void save(body)}
@@ -1604,6 +1638,11 @@ export function BusinessWorkspace({
                                             key={account.id}
                                             account={account}
                                             assets={assetsById}
+                                            recentlySaved={
+                                                notice &&
+                                                account.id === savedAccount?.id &&
+                                                account.version === savedAccount.version
+                                            }
                                             rows={accountBalances.get(account.id) ?? []}
                                             locale={locale}
                                             disabled={

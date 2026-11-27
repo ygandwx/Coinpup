@@ -181,17 +181,6 @@ export const COMPANY_CONTACT_FIELDS: readonly DetailField[] = [
     { key: "contact_phone", label: { zh: "联系电话", en: "Contact phone" } },
 ];
 
-export const ACCOUNT_DETAIL_FIELDS: readonly DetailField[] = [
-    { key: "account_holder", label: { zh: "账户持有人", en: "Account holder" } },
-    { key: "account_number", label: { zh: "账号", en: "Account number" } },
-    { key: "bank_name", label: { zh: "银行名称", en: "Bank name" } },
-    { key: "branch_name", label: { zh: "开户行／支行", en: "Bank branch" } },
-    { key: "iban", label: { zh: "IBAN", en: "IBAN" } },
-    { key: "swift_bic", label: { zh: "SWIFT / BIC", en: "SWIFT / BIC" } },
-    { key: "routing_number", label: { zh: "银行路由号码", en: "Routing number" } },
-    { key: "wallet_address", label: { zh: "钱包地址", en: "Wallet address" } },
-];
-
 export type DetailRow = { id: string; key: string; value: string; custom?: boolean };
 
 // Names and detail keys reject C0 only; DEL and other Unicode characters remain allowed.
