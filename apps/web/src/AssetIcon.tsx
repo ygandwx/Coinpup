@@ -27,25 +27,52 @@ const fiat = new Map<string, readonly [string, string]>([
     ["SAR", ["sa", "ر.س"]],
     ["ZAR", ["za", "R"]],
 ]);
-const crypto = new Set(["BTC", "ETH", "XMR", "USDT", "USDC"]);
+const crypto = new Set([
+    "ADA",
+    "AVAX",
+    "BNB",
+    "BTC",
+    "DAI",
+    "DOGE",
+    "DOT",
+    "ETH",
+    "LTC",
+    "SOL",
+    "TRX",
+    "USDC",
+    "USDT",
+    "XMR",
+    "XRP",
+]);
+const textCoins = new Set(["FDUSD", "POL", "TON"]);
 const networkIcons = new Map([
     ["ethereum", "eth"],
     ["erc20", "eth"],
     ["tron", "trx"],
     ["trc20", "trx"],
     ["solana", "sol"],
+    ["bsc", "bnb"],
+    ["polygon", "matic"],
+    ["avalanche", "avax"],
+]);
+const networkLabels = new Map([
+    ["arbitrum", "ARB"],
+    ["optimism", "OP"],
+    ["base", "BASE"],
+    ["ton", "TON"],
 ]);
 
 export function AssetIcon({
     asset,
     compact = false,
 }: {
-    asset: Pick<Asset, "code" | "kind" | "network">;
+    asset: Pick<Asset, "code" | "kind" | "network" | "verified">;
     compact?: boolean;
 }) {
-    const { code, kind, network } = asset;
+    const { code, kind, network, verified } = asset;
     const currency = kind === "fiat" ? fiat.get(code) : undefined;
     const chain = network ? networkIcons.get(network) : undefined;
+    const brandedCoin = kind === "native" || (kind === "token" && verified);
 
     return (
         <span
@@ -68,17 +95,21 @@ export function AssetIcon({
                 )
             ) : (
                 <>
-                    <img
-                        className="coin-image"
-                        src={`/assets/icons/crypto/${crypto.has(code) ? code.toLowerCase() : "generic"}.svg`}
-                        alt=""
-                    />
+                    {brandedCoin && textCoins.has(code) ? (
+                        <span className="asset-fallback-text">{code}</span>
+                    ) : (
+                        <img
+                            className="coin-image"
+                            src={`/assets/icons/crypto/${brandedCoin && crypto.has(code) ? code.toLowerCase() : "generic"}.svg`}
+                            alt=""
+                        />
+                    )}
                     {kind === "token" && network && (
                         <span className="icon-corner" data-network={network}>
                             {chain ? (
                                 <img src={`/assets/icons/crypto/${chain}.svg`} alt="" />
                             ) : (
-                                network.slice(0, 3).toUpperCase()
+                                (networkLabels.get(network) ?? network.slice(0, 3).toUpperCase())
                             )}
                         </span>
                     )}

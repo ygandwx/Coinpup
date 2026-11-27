@@ -1,17 +1,11 @@
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import type { Locale } from "./i18n";
-import type { AssetCreate, AssetKind } from "./ledger-api";
-import { stablecoinPresets } from "./stablecoin-presets";
+import { legacyNativeIds } from "./asset-identity";
+import { assetNetworkName } from "./asset-networks";
+import type { AssetCreate, AssetKind, AssetPreset } from "./ledger-api";
 import "./posting-form.css";
 
-// Keep these explicit built-in identities aligned with ledger/assets.py.
-// A stablecoin's network, reference and precision are never inferred from code.
-const NATIVE = {
-    BTC: { network: "bitcoin", scale: 8 },
-    ETH: { network: "ethereum", scale: 18 },
-    XMR: { network: "monero", scale: 12 },
-} as const;
 const FIXED_FIAT = new Set(["USD", "GBP", "EUR", "HKD", "CNY"]);
 const copy = {
     zh: {
@@ -25,22 +19,23 @@ const copy = {
         choose: "请选择",
         preset: "稳定币预设",
         prefill: "预填资料",
+        loading: "正在读取资产预设…",
+        retry: "重新读取预设",
         save: "保存",
         saving: "保存中…",
         cancel: "取消",
-        kinds: { fiat: "法定货币", native: "原生加密资产", token: "稳定币代币" },
-        intro: "资产身份和精度保存后固定。请核对资料，后续可启用或停用资产。",
+        kinds: { fiat: "法定货币", native: "原生加密资产", token: "代币" },
         fiatHelp:
             "使用 3 位大写代码；USD、GBP、EUR、HKD、CNY 固定为 2 位小数。其他币种请填写其实际精度。",
-        nativeHelp: "BTC、ETH、XMR 的网络和精度已固定。",
+        nativeHelp: "选择原生加密资产后，将填入固定的网络和精度。",
         tokenHelp:
-            "明确填写所选网络、代币合约或发行标识、实际小数位数。USDT／USDC 的名称本身不能确定这些资料。",
+            "请核对所选网络、代币合约及小数位数。未匹配发行方预设的代币会标为「自定义·未核对」。",
         networkHelp: "以小写字母开头，可包含小写字母、数字、下划线和连字符，最多 64 字符。",
         referenceHelp:
             "保留原始大小写。以字母或数字开头，可包含字母、数字、点、下划线和连字符，最多 128 字符。",
-        scaleHelp: "0 至 18 的整数，不会自动推测稳定币精度。",
+        scaleHelp: "0 至 18 的整数。",
         errors: {
-            code: "请填写该资产类型支持的代码。法币为 3 位大写字母，原生资产为 BTC／ETH／XMR，代币为 USDT／USDC。",
+            code: "资产代码无效。法币使用 3 位大写字母，原生资产从列表中选择，代币使用 2 至 10 位大写字母或数字。",
             scale: "小数位数须为 0 至 18 的整数；内置法币固定为 2 位。",
             network: "请填写有效网络标识，使用小写字母开头的 1 至 64 个允许字符。",
             reference: "请填写有效代币标识，保留原始大小写并遵循所示字符范围。",
@@ -57,23 +52,24 @@ const copy = {
         choose: "Choose",
         preset: "Stablecoin preset",
         prefill: "Fill in details",
+        loading: "Loading asset presets…",
+        retry: "Reload presets",
         save: "Save",
         saving: "Saving…",
         cancel: "Cancel",
-        kinds: { fiat: "Fiat currency", native: "Native crypto asset", token: "Stablecoin token" },
-        intro: "Asset identity and precision are fixed after saving. Check these details; you can enable or disable the asset later.",
+        kinds: { fiat: "Fiat currency", native: "Native crypto asset", token: "Token" },
         fiatHelp:
             "Use a 3-letter uppercase code. USD, GBP, EUR, HKD and CNY use 2 decimal places. Enter the actual precision for other currencies.",
-        nativeHelp: "BTC, ETH and XMR have fixed networks and precision.",
+        nativeHelp: "The selected native asset determines the network and decimal places.",
         tokenHelp:
-            "Enter the specific network, token contract or issuer reference, and actual decimal places. The name USDT or USDC does not establish these details.",
+            "Check the network, token contract, and decimal places. Tokens outside the issuer presets are labeled Custom · Unverified.",
         networkHelp:
             "Start with a lowercase letter; use lowercase letters, digits, underscores or hyphens, up to 64 characters.",
         referenceHelp:
             "Preserve original case. Start with a letter or digit; use letters, digits, dots, underscores or hyphens, up to 128 characters.",
-        scaleHelp: "An integer from 0 to 18. Stablecoin precision is not inferred.",
+        scaleHelp: "An integer from 0 to 18.",
         errors: {
-            code: "Use a code supported by this asset kind: 3 uppercase letters for fiat, BTC/ETH/XMR for native assets, or USDT/USDC for tokens.",
+            code: "Enter 3 uppercase letters for fiat, pick a native asset, or use 2 to 10 uppercase letters or digits for a token.",
             scale: "Decimal places must be an integer from 0 to 18. Built-in fiat currencies require 2.",
             network:
                 "Enter a valid network identifier using 1 to 64 allowed characters, starting with a lowercase letter.",
@@ -87,12 +83,25 @@ export type AssetFormProps = {
     locale: Locale;
     busy: boolean;
     fromPreset?: boolean;
+    presets: readonly AssetPreset[] | undefined;
+    presetError?: string;
+    onRetryPresets: () => void;
     error?: string | null;
     onSubmit: (body: AssetCreate) => void;
     onCancel: () => void;
 };
 
-export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel }: AssetFormProps) {
+export function AssetForm({
+    locale,
+    busy,
+    fromPreset,
+    presets,
+    presetError,
+    onRetryPresets,
+    error,
+    onSubmit,
+    onCancel,
+}: AssetFormProps) {
     const t = copy[locale];
     const prefix = useId();
     const [presetId, setPresetId] = useState("");
@@ -103,8 +112,10 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
     const [reference, setReference] = useState("");
     const [enabled, setEnabled] = useState(true);
     const [problem, setProblem] = useState<keyof typeof t.errors | null>(null);
-    const native =
-        kind === "native" && code in NATIVE ? NATIVE[code as keyof typeof NATIVE] : undefined;
+    const nativePresets = presets?.filter((entry) => entry.kind === "native") ?? [];
+    const tokenPresets = presets?.filter((entry) => entry.kind === "token") ?? [];
+    const tokenNetworks = [...new Set(tokenPresets.map((entry) => entry.network))];
+    const native = kind === "native" ? nativePresets.find((entry) => entry.code === code) : null;
     const fixedFiat = kind === "fiat" && FIXED_FIAT.has(code);
     const actualScale = native ? String(native.scale) : fixedFiat ? "2" : scale;
     const actualNetwork = native?.network ?? network;
@@ -119,13 +130,13 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
     }
 
     function applyPreset() {
-        const preset = stablecoinPresets.find((entry) => entry.id === presetId);
-        if (!preset) return;
+        const preset = tokenPresets.find((entry) => entry.asset_id === presetId);
+        if (!preset?.token_reference) return;
         setKind("token");
         setCode(preset.code);
-        setScale(preset.scale);
+        setScale(String(preset.scale));
         setNetwork(preset.network);
-        setReference(preset.reference);
+        setReference(preset.token_reference);
         setProblem(null);
     }
 
@@ -134,10 +145,10 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
         if (busy) return;
         const codeValid =
             kind === "fiat"
-                ? /^[A-Z]{3}$/.test(code) && !(code in NATIVE)
+                ? /^[A-Z]{3}$/.test(code) && !legacyNativeIds.has(code)
                 : kind === "native"
-                  ? code in NATIVE
-                  : code === "USDT" || code === "USDC";
+                  ? !!native
+                  : /^[A-Z0-9]{2,10}$/.test(code);
         if (!codeValid) {
             setProblem("code");
             return;
@@ -167,7 +178,6 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
 
     return (
         <form className="asset-form" onSubmit={submit} aria-label={t.title} aria-busy={busy}>
-            <p className="help-text asset-form-intro">{t.intro}</p>
             {fromPreset && (
                 <div className="form-grid">
                     <div className="field">
@@ -175,13 +185,13 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                         <select
                             id={`${prefix}-preset`}
                             value={presetId}
-                            disabled={busy}
+                            disabled={busy || !presets}
                             onChange={(event) => setPresetId(event.target.value)}
                         >
                             <option value="">{t.choose}</option>
-                            {stablecoinPresets.map((preset) => (
-                                <option key={preset.id} value={preset.id}>
-                                    {preset.label}
+                            {tokenPresets.map((preset) => (
+                                <option key={preset.asset_id} value={preset.asset_id}>
+                                    {preset.code} · {assetNetworkName(preset.network, locale)}
                                 </option>
                             ))}
                         </select>
@@ -198,6 +208,22 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                     </div>
                 </div>
             )}
+            {(fromPreset || kind === "native") &&
+                !presets &&
+                (presetError ? (
+                    <div className="row-actions">
+                        <p className="inline-error" role="alert">
+                            {presetError}
+                        </p>
+                        <button className="secondary-button" type="button" onClick={onRetryPresets}>
+                            {t.retry}
+                        </button>
+                    </div>
+                ) : (
+                    <p className="help-text" role="status">
+                        {t.loading}
+                    </p>
+                ))}
             <div className="form-grid">
                 <div className="field">
                     <label htmlFor={`${prefix}-kind`}>{t.kind}</label>
@@ -216,14 +242,15 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                 </div>
                 <div className="field">
                     <label htmlFor={`${prefix}-code`}>{t.code}</label>
-                    {kind === "fiat" ? (
+                    {kind !== "native" ? (
                         <input
                             id={`${prefix}-code`}
                             required
-                            maxLength={3}
+                            maxLength={kind === "fiat" ? 3 : 10}
                             value={code}
                             disabled={busy}
                             autoComplete="off"
+                            autoCapitalize="characters"
                             spellCheck={false}
                             onChange={(event) => {
                                 setCode(event.target.value.toUpperCase());
@@ -235,20 +262,18 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                             id={`${prefix}-code`}
                             required
                             value={code}
-                            disabled={busy}
+                            disabled={busy || !presets}
                             onChange={(event) => {
                                 setCode(event.target.value);
                                 setProblem(null);
                             }}
                         >
                             <option value="">{t.choose}</option>
-                            {(kind === "native" ? Object.keys(NATIVE) : ["USDT", "USDC"]).map(
-                                (value) => (
-                                    <option key={value} value={value}>
-                                        {value}
-                                    </option>
-                                ),
-                            )}
+                            {nativePresets.map((entry) => (
+                                <option key={entry.asset_id} value={entry.code}>
+                                    {entry.code}
+                                </option>
+                            ))}
                         </select>
                     )}
                 </div>
@@ -285,12 +310,25 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                             disabled={busy}
                             spellCheck={false}
                             autoComplete="off"
+                            autoCapitalize="none"
+                            list={kind === "token" ? `${prefix}-networks` : undefined}
                             onChange={(event) => {
                                 setNetwork(event.target.value);
                                 setProblem(null);
                             }}
                             aria-describedby={`${prefix}-network-help`}
                         />
+                        {kind === "token" && (
+                            <datalist id={`${prefix}-networks`}>
+                                {tokenNetworks.map((value) => (
+                                    <option
+                                        key={value}
+                                        value={value}
+                                        label={assetNetworkName(value, locale)}
+                                    />
+                                ))}
+                            </datalist>
+                        )}
                         <p className="help-text" id={`${prefix}-network-help`}>
                             {kind === "native" ? t.nativeHelp : t.networkHelp}
                         </p>
@@ -307,6 +345,7 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                             disabled={busy}
                             spellCheck={false}
                             autoComplete="off"
+                            autoCapitalize="none"
                             onChange={(event) => {
                                 setReference(event.target.value);
                                 setProblem(null);
@@ -319,9 +358,9 @@ export function AssetForm({ locale, busy, fromPreset, error, onSubmit, onCancel 
                     </div>
                 )}
             </div>
-            <p className="help-text">
-                {kind === "fiat" ? t.fiatHelp : kind === "native" ? t.nativeHelp : t.tokenHelp}
-            </p>
+            {kind !== "native" && (
+                <p className="help-text">{kind === "fiat" ? t.fiatHelp : t.tokenHelp}</p>
+            )}
             <label className="asset-enabled">
                 <input
                     type="checkbox"

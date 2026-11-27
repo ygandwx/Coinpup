@@ -16,7 +16,7 @@
 ## 金额与财务事实
 
 - 金额输入和输出使用十进制字符串；拒绝 JSON 数值、指数、千分位、空白及超资产精度输入，即使多余小数位为零也拒绝。输出按资产精度固定小数位，负零统一为零。服务用整数最小单位处理数量，网页用 BigInt，金额不能经过 float、`Number` 或 `parseFloat`。来源：[ADR 0003](decisions/0003-exact-asset-amounts.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
-- 资产以完整身份和精度确定金额单位，不同网络的同名代币不能相加。代码、网络、代币标识和精度创建后不可原地修改；稳定币需要显式配置，新资产须关联到付款账户。来源：[ADR 0003](decisions/0003-exact-asset-amounts.md)、[ADR 0004](decisions/0004-owned-ledger-structure.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
+- 资产以完整身份和精度确定金额单位，不同网络的同名代币不能相加。代码、网络、代币标识和精度创建后不可原地修改。`GET /api/v1/assets/presets` 返回原生资产和经核对的主网代币预设，带来源与核对日期。新增资产仍须显式保存并关联到付款账户。调用方使用返回的 `asset_id`，保留旧资产原 ID，新原生资产使用 `native:<network>:<code>`。相关规则见 [ADR 0003](decisions/0003-exact-asset-amounts.md)、[ADR 0004](decisions/0004-owned-ledger-structure.md) 和 [ADR 0010](decisions/0010-financial-web-and-retry.md)。
 - 期初数量非零，可以为负；每账户/资产只建立一次，不计收入，取消后仍保留占用标记。收支的本金和分类拆分为正，拆分分类不重复，合计等于本金，单分类也使用拆分列表。交易日与业务归属日是日历日期字符串。来源：[ADR 0005](decisions/0005-atomic-posting-and-receipts.md)、[ADR 0008](decisions/0008-operation-revisions-and-cancellation.md)、[ADR 0010](decisions/0010-financial-web-and-retry.md)。
 - 同资产转账要求同账本两个不同账户；信用卡消费属于支出，还款属于转账，本金不重复计费。换汇保存不同资产各自的实际数量，可以使用同一多资产账户；本金逐资产配平，不作为收入或费用，不由行情改写。来源：[ADR 0006](decisions/0006-same-asset-transfers.md)、[ADR 0007](decisions/0007-exchanges-and-explicit-fees.md)。
 - 收入、支出、转账和换汇可以附加独立手续费，最多 20 项；每项明确扣费账户、资产、正数数量和费用分类，允许同账本第三账户或第三资产，期初不带费用。本金与全部费用在同一事务提交，任一步失败整体回滚。来源：[ADR 0007](decisions/0007-exchanges-and-explicit-fees.md)。

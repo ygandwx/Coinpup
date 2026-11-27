@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Asset Presets */
+        get: operations["list_asset_presets_api_v1_assets_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{asset_id}": {
         parameters: {
             query?: never;
@@ -3165,6 +3182,31 @@ export interface components {
             /** Token Reference */
             token_reference?: string | null;
         };
+        /** AssetPreset */
+        AssetPreset: {
+            /** Asset Id */
+            asset_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "native" | "token";
+            /** Network */
+            network: string;
+            /** Scale */
+            scale: number;
+            /** Sources */
+            sources: string[];
+            /** Token Reference */
+            token_reference: string | null;
+            /**
+             * Verified On
+             * Format: date
+             */
+            verified_on: string;
+        };
         /** AssetResponse */
         AssetResponse: {
             /** Asset Id */
@@ -3191,6 +3233,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Verified
+             * @description Whether a token matches the checked issuer contract, symbol and precision.
+             */
+            readonly verified: boolean;
             /** Version */
             version: number;
         };
@@ -9472,6 +9519,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_asset_presets_api_v1_assets_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetPreset"][];
                 };
             };
         };

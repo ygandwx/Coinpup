@@ -75,26 +75,40 @@ class AssetRecord(Versioned, Base):
         CheckConstraint("version > 0", name="ck_assets_version"),
         CheckConstraint("scale BETWEEN 0 AND 18", name="ck_assets_scale"),
         CheckConstraint(
-            "(kind = 'fiat' AND code ~ '^[A-Z]{3}$' "
-            "AND code NOT IN ('BTC', 'ETH', 'XMR') "
-            "AND (code NOT IN ('USD', 'GBP', 'EUR', 'HKD', 'CNY') OR scale = 2) "
-            "AND network IS NULL AND token_reference IS NULL AND asset_id = code) OR "
-            "(kind = 'native' AND token_reference IS NULL AND asset_id = code "
-            "AND network IS NOT NULL AND "
-            "((code = 'BTC' AND network = 'bitcoin' AND scale = 8) OR "
-            "(code = 'ETH' AND network = 'ethereum' AND scale = 18) OR "
-            "(code = 'XMR' AND network = 'monero' AND scale = 12))) OR "
-            "(kind = 'token' AND code IN ('USDT', 'USDC') "
-            "AND network IS NOT NULL AND network ~ '^[a-z][a-z0-9_-]{0,63}$' "
-            "AND token_reference IS NOT NULL "
-            "AND token_reference ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' "
-            "AND asset_id = 'token:' || network || ':' || token_reference)",
+            """
+            ((kind = 'fiat' AND code ~ '^[A-Z]{3}$' AND code NOT IN ('BTC', 'ETH', 'XMR')
+              AND (code NOT IN ('USD', 'GBP', 'EUR', 'HKD', 'CNY') OR scale = 2)
+              AND network IS NULL AND token_reference IS NULL AND asset_id = code) OR
+            (kind = 'native' AND token_reference IS NULL AND network IS NOT NULL
+             AND asset_id = code
+             AND ((code = 'BTC' AND network = 'bitcoin' AND scale = 8)
+                   OR (code = 'ETH' AND network = 'ethereum' AND scale = 18)
+                   OR (code = 'XMR' AND network = 'monero' AND scale = 12))) OR
+            (kind = 'native' AND token_reference IS NULL AND network IS NOT NULL
+             AND asset_id = 'native:' || network || ':' || code
+             AND ((code = 'SOL' AND network = 'solana' AND scale = 9)
+                   OR (code = 'BNB' AND network = 'bsc' AND scale = 18)
+                   OR (code = 'TRX' AND network = 'tron' AND scale = 6)
+                   OR (code = 'XRP' AND network = 'xrpl' AND scale = 6)
+                   OR (code = 'DOGE' AND network = 'dogecoin' AND scale = 8)
+                   OR (code = 'LTC' AND network = 'litecoin' AND scale = 8)
+                   OR (code = 'ADA' AND network = 'cardano' AND scale = 6)
+                   OR (code = 'TON' AND network = 'ton' AND scale = 9)
+                   OR (code = 'AVAX' AND network = 'avalanche' AND scale = 18)
+                   OR (code = 'DOT' AND network = 'polkadot' AND scale = 10)
+                   OR (code = 'POL' AND network = 'polygon' AND scale = 18))) OR
+            (kind = 'token' AND code ~ '^[A-Z0-9]{2,10}$'
+             AND network IS NOT NULL AND network ~ '^[a-z][a-z0-9_-]{0,63}$'
+             AND token_reference IS NOT NULL
+             AND token_reference ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
+             AND asset_id = 'token:' || network || ':' || token_reference))
+            """,
             name="ck_assets_identity",
         ),
     )
 
     asset_id: Mapped[str] = mapped_column(String(200), primary_key=True)
-    code: Mapped[str] = mapped_column(String(8), nullable=False)
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
     kind: Mapped[str] = mapped_column(String(8), nullable=False)
     scale: Mapped[int] = mapped_column(Integer, nullable=False)
     network: Mapped[str | None] = mapped_column(String(64), nullable=True)

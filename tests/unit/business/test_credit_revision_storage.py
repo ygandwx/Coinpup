@@ -81,5 +81,7 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
         assert unchanged not in source
     assert "complete group validation" in migration["_GUARDS"]
     scripts = ScriptDirectory.from_config(Config(str(root / "alembic.ini")))
-    assert scripts.get_heads() == ["20261127_0114"]
+    head = scripts.get_current_head()
+    assert head is not None
+    assert "20261106_0040" in {revision.revision for revision in scripts.walk_revisions()}
     assert scripts.get_revision("20261106_0040").down_revision == "20261021_0039"

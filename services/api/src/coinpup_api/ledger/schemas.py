@@ -13,9 +13,12 @@ from pydantic import (
     StrictBool,
     StrictInt,
     StrictStr,
+    computed_field,
     field_validator,
     model_validator,
 )
+
+from coinpup_api.ledger.assets import verified_token
 
 Name = Annotated[StrictStr, Field(min_length=1, max_length=160)]
 AssetId = Annotated[StrictStr, Field(min_length=1, max_length=200)]
@@ -98,7 +101,7 @@ class UpdateCommand(Command):
 
 
 class AssetCreate(Command):
-    code: Annotated[StrictStr, Field(min_length=3, max_length=4)]
+    code: Annotated[StrictStr, Field(min_length=2, max_length=10, pattern=r"^[A-Z0-9]+$")]
     kind: Literal["fiat", "native", "token"]
     scale: Annotated[StrictInt, Field(ge=0, le=18)]
     network: Annotated[StrictStr, Field(max_length=64)] | None = None
@@ -217,6 +220,26 @@ class AssetResponse(RecordResponse):
     network: str | None
     token_reference: str | None
     enabled: bool
+
+    @computed_field
+    @property
+    def verified(self) -> bool:
+        """Whether a token matches the checked issuer contract, symbol and precision."""
+        if self.kind != "token":
+            return True
+        official = verified_token(self.network, self.token_reference)
+        return official is not None and (self.code, self.scale) == (official.code, official.scale)
+
+
+class AssetPreset(BaseModel):
+    asset_id: str
+    code: str
+    kind: Literal["native", "token"]
+    scale: int
+    network: str
+    token_reference: str | None
+    verified_on: date
+    sources: tuple[str, ...]
 
 
 class LedgerResponse(RecordResponse):

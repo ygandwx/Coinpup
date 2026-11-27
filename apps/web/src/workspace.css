@@ -1031,6 +1031,12 @@
 .asset-card .profile-details dd {
     margin-top: 6px;
 }
+.asset-verification {
+    margin-block: var(--space-2) 0;
+}
+.asset-verification .record-badge {
+    background: var(--warning-bg);
+}
 .transaction-pagination span {
     font-size: var(--text-sm-plus);
     color: var(--muted);

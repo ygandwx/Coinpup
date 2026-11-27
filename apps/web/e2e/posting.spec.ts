@@ -515,7 +515,7 @@ test("a stablecoin needs explicit UI configuration and retains exact history whe
     await page.getByRole("button", { name: "Assets", exact: true }).click();
     await page.getByRole("button", { name: "New asset", exact: true }).click();
     await page.getByLabel("Asset kind", { exact: true }).selectOption("token");
-    await page.getByLabel("Asset code", { exact: true }).selectOption("USDC");
+    await page.getByLabel("Asset code", { exact: true }).fill("USDC");
     await page.getByLabel("Network", { exact: true }).fill(network);
     await page.getByLabel("Token reference", { exact: true }).fill(reference);
     await page.getByLabel("Decimal places", { exact: true }).fill("6");
