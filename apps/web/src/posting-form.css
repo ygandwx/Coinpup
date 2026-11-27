@@ -88,3 +88,22 @@
         white-space: normal;
     }
 }
+
+.asset-create-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: end;
+    gap: 0.5rem;
+}
+.preset-apply {
+    align-self: end;
+}
+@media (max-width: 540px) {
+    .business-panel .section-heading:has(.asset-create-actions) {
+        align-items: start;
+        flex-direction: column;
+    }
+    .asset-create-actions {
+        justify-content: start;
+    }
+}

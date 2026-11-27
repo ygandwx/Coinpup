@@ -26,7 +26,7 @@ export function AssetsPanel({
     onEditingChange: (value: boolean) => void;
 }) {
     const t = (zh: string, en: string) => (locale === "zh" ? zh : en);
-    const [editing, setEditing] = useState(false);
+    const [editing, setEditing] = useState<"manual" | "preset" | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<unknown>(null);
     const [saved, setSaved] = useState(false);
@@ -34,7 +34,7 @@ export function AssetsPanel({
     const callbacks = useRef({ onChanged, onUnauthorized, onEditingChange });
     callbacks.current = { onChanged, onUnauthorized, onEditingChange };
     useEffect(() => {
-        callbacks.current.onEditingChange(editing || busy);
+        callbacks.current.onEditingChange(!!editing || busy);
         return () => callbacks.current.onEditingChange(false);
     }, [editing, busy]);
     useEffect(() => {
@@ -46,7 +46,7 @@ export function AssetsPanel({
         else setError(problem);
     }
     function success() {
-        setEditing(false);
+        setEditing(null);
         setUnconfirmed(null);
         setSaved(true);
         setError(null);
@@ -143,18 +143,27 @@ export function AssetsPanel({
                     </p>
                 </div>
                 {!editing && (
-                    <button
-                        id="new-asset-button"
-                        className="primary-button"
-                        disabled={busy || loading}
-                        onClick={() => {
-                            setEditing(true);
-                            setSaved(false);
-                            setError(null);
-                        }}
-                    >
-                        {t("新增资产", "New asset")}
-                    </button>
+                    <div className="asset-create-actions">
+                        {(["manual", "preset"] as const).map((mode) => (
+                            <button
+                                key={mode}
+                                id={mode === "manual" ? "new-asset-button" : undefined}
+                                className={
+                                    mode === "manual" ? "primary-button" : "secondary-button"
+                                }
+                                disabled={busy || loading}
+                                onClick={() => {
+                                    setEditing(mode);
+                                    setSaved(false);
+                                    setError(null);
+                                }}
+                            >
+                                {mode === "manual"
+                                    ? t("新增资产", "New asset")
+                                    : t("从预设添加", "Add from preset")}
+                            </button>
+                        ))}
+                    </div>
                 )}
             </div>
             {saved && (
@@ -182,12 +191,13 @@ export function AssetsPanel({
             {editing ? (
                 <AssetForm
                     locale={locale}
+                    fromPreset={editing === "preset"}
                     busy={busy || !!unconfirmed}
                     error={error ? businessError(error, locale) : undefined}
                     onSubmit={(body) => void save(body)}
                     onCancel={() => {
                         if (!busy && !unconfirmed) {
-                            setEditing(false);
+                            setEditing(null);
                             setError(null);
                             requestAnimationFrame(() =>
                                 document.getElementById("new-asset-button")?.focus(),
