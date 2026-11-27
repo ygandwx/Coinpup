@@ -39,6 +39,7 @@ def test_member_freezes_the_real_table_and_extends_only_the_accepted_header_cata
         "reminder_email_evidence",
         "quote_observations",
         "reminder_inbox_deliveries",
+        "platform_transfers",
     }
     for stmt in (CreateTable(t), *(CreateIndex(i) for i in t.indexes)):
         assert " ".join(str(stmt.compile(dialect=dialect())).split()) in " ".join(

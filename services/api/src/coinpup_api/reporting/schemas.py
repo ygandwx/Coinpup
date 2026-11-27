@@ -25,6 +25,8 @@ class ReportRow(BaseModel):
     description: str
     repayment_group_id: UUID | None
     excluded_repayment_group: UUID | None
+    platform_transfer_id: UUID | None = None
+    excluded_platform_transfer: UUID | None = None
     valuation_state: ValuationState
     price: ManualPriceResponse | None
     automatic_price: AutomaticPriceResponse | None = None

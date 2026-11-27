@@ -35,6 +35,8 @@ _EXCHANGE_V1_FIELDS = {
 _FEE_V1_FIELDS = {"account_id", "asset_id", "amount", "category_id"}
 _SPLIT_V1_FIELDS = {"category_id", "amount"}
 _ROUTES = {
+    "platform_transfer": "/api/v1/ledgers/{ledger_id}/platform-transfers",
+    "platform_cancel": "/api/v1/ledgers/{ledger_id}/platform-transfers/{operation_id}/cancel",
     "interledger_advance": "/api/v1/interledger/advances",
     "interledger_repayment": "/api/v1/interledger/advances/{operation_id}/repayments",
     "business_credit": "/api/v1/ledgers/{ledger_id}/business-credits",

@@ -211,3 +211,4 @@ Logo为本账本私有图片的ID与已审阅版本配对，新选择须仍为�
 - `GET /quotes/effective` 接受 1–100 个不同的 `asset_ids`、一个 `display_asset_id` 和明确的 `price_date`。按请求资产顺序返回 `identity`、`manual`、`automatic` 或 `missing`。手动和自动证据分别返回价格字符串、来源及时间。只有精确时点的提供方填写 `observed_at`，`fetched_at` 保留首次获取时间。
 - 原币报表和原有指定日期保持可用。指定日期的手动价格优先，之后查同日自动报价。可用 `price_mode=historical` 取收支交易日或余额截至日，或用 `price_mode=latest` 取每个币对最近的缓存日。自动证据出现在明细的 `automatic_price`，手动证据继续出现在 `price`。当有多行采用不同日期时，汇总的 `price_date` 为空，明细保留各自日期。
 - 读取使用已保存的所有者快照。无报价或同一时点有不同自动报价时，返回缺价，原币照常可查。同日手动修正可为该币对提供明确的估值依据。见 [ADR 0055](decisions/0055-read-only-valuations.md)。
+- 报表可按经核对的币种族共用报价，明细保留各自原资产和实际报价记录的资产 ID。族内同日手动价格优先。不同手动价格相互冲突时，当日标为缺价。价值相同的手动记录优先追溯托管资产记录，其次按完整资产 ID 取明细。未核对的代币仍按完整资产身份取价。移动缓存接口按请求的完整资产读取。见 [ADR 0063](decisions/0063-custodial-asset-transfers.md)。

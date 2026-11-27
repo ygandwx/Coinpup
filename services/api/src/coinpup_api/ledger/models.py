@@ -101,7 +101,15 @@ class AssetRecord(Versioned, Base):
              AND network IS NOT NULL AND network ~ '^[a-z][a-z0-9_-]{0,63}$'
              AND token_reference IS NOT NULL
              AND token_reference ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
-             AND asset_id = 'token:' || network || ':' || token_reference))
+             AND asset_id = 'token:' || network || ':' || token_reference) OR
+            (kind = 'custodial' AND network IS NULL AND token_reference IS NULL
+             AND asset_id = 'custodial:' || code
+             AND ((code IN ('BTC', 'DOGE', 'LTC') AND scale = 8)
+                  OR (code IN ('ETH', 'BNB', 'AVAX', 'POL', 'DAI', 'FDUSD') AND scale = 18)
+                  OR (code IN ('SOL', 'TON') AND scale = 9)
+                  OR (code IN ('TRX', 'XRP', 'ADA', 'USDT', 'USDC') AND scale = 6)
+                  OR (code = 'DOT' AND scale = 10)
+                  OR (code = 'XMR' AND scale = 12))))
             """,
             name="ck_assets_identity",
         ),
@@ -109,7 +117,7 @@ class AssetRecord(Versioned, Base):
 
     asset_id: Mapped[str] = mapped_column(String(200), primary_key=True)
     code: Mapped[str] = mapped_column(String(10), nullable=False)
-    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    kind: Mapped[str] = mapped_column(String(9), nullable=False)
     scale: Mapped[int] = mapped_column(Integer, nullable=False)
     network: Mapped[str | None] = mapped_column(String(64), nullable=True)
     token_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -199,6 +207,11 @@ class Account(Versioned, Base):
             name="ck_accounts_kind",
         ),
         CheckConstraint("btrim(name) <> ''", name="ck_accounts_name"),
+        CheckConstraint(
+            "custody_mode IS NULL OR (kind IS NOT DISTINCT FROM 'crypto' "
+            "AND custody_mode IN ('onchain', 'custodial'))",
+            name="ck_accounts_custody_mode",
+        ),
         CheckConstraint("version > 0", name="ck_accounts_version"),
         CheckConstraint("jsonb_typeof(details) = 'object'", name="ck_accounts_details"),
         CheckConstraint(
@@ -217,6 +230,7 @@ class Account(Versioned, Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    custody_mode: Mapped[str | None] = mapped_column(String(9), nullable=True)
     account_class: Mapped[str] = mapped_column(
         String(16), nullable=False, default="money", server_default="money"
     )
@@ -317,7 +331,7 @@ class FinancialOperation(Versioned, Base):
         CheckConstraint(
             "kind IN ('opening', 'income', 'expense', 'transfer', 'exchange', "
             "'invoice_accrual', 'bill_accrual', 'payment', 'allocation', 'unallocation', 'refund', "
-            "'invoice_credit', 'bill_credit', 'advance', 'repayment')",
+            "'invoice_credit', 'bill_credit', 'advance', 'repayment', 'platform_move')",
             name="ck_financial_operations_kind",
         ),
         CheckConstraint("version > 0", name="ck_financial_operations_version"),
@@ -486,7 +500,8 @@ class JournalLine(Base):
         CheckConstraint(
             "(role = 'account' AND account_id IS NOT NULL AND category_id IS NULL) OR "
             "(role IN ('income', 'expense') AND account_id IS NULL AND category_id IS NOT NULL) OR "
-            "(role IN ('equity', 'exchange') AND account_id IS NULL AND category_id IS NULL)",
+            "(role IN ('equity', 'exchange', 'platform_clear') "
+            "AND account_id IS NULL AND category_id IS NULL)",
             name="ck_journal_lines_role",
         ),
         CheckConstraint(
@@ -570,3 +585,101 @@ class CommandReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class PlatformTransfer(Base):
+    __tablename__ = "platform_transfers"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["source_ledger_id", "owner_id"],
+            ["ledgers.id", "ledgers.owner_id"],
+            name="fk_platform_transfers_source_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["destination_ledger_id", "owner_id"],
+            ["ledgers.id", "ledgers.owner_id"],
+            name="fk_platform_transfers_destination_owner",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_account_id", "source_asset_id", "source_ledger_id"],
+            ["account_assets.account_id", "account_assets.asset_id", "account_assets.ledger_id"],
+            name="fk_platform_transfers_source_link",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["destination_account_id", "destination_asset_id", "destination_ledger_id"],
+            ["account_assets.account_id", "account_assets.asset_id", "account_assets.ledger_id"],
+            name="fk_platform_transfers_destination_link",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_operation_id", "source_ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_platform_transfers_source_operation",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["destination_operation_id", "destination_ledger_id"],
+            ["financial_operations.id", "financial_operations.ledger_id"],
+            name="fk_platform_transfers_destination_operation",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_ledger_id", "create_key"],
+            ["command_receipts.ledger_id", "command_receipts.key"],
+            name="fk_platform_transfers_create_receipt",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["source_ledger_id", "cancel_key"],
+            ["command_receipts.ledger_id", "command_receipts.key"],
+            name="fk_platform_transfers_cancel_receipt",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("source_operation_id", name="uq_platform_transfers_source_operation"),
+        UniqueConstraint(
+            "destination_operation_id", name="uq_platform_transfers_destination_operation"
+        ),
+        CheckConstraint("kind IN ('deposit', 'withdrawal')", name="ck_platform_transfers_kind"),
+        CheckConstraint(
+            "source_account_id <> destination_account_id AND "
+            "source_asset_id <> destination_asset_id AND "
+            "((source_ledger_id = destination_ledger_id AND destination_operation_id IS NULL) OR "
+            "(source_ledger_id <> destination_ledger_id AND destination_operation_id IS NOT NULL "
+            "AND source_operation_id <> destination_operation_id))",
+            name="ck_platform_transfers_pair",
+        ),
+        CheckConstraint(
+            "(version = 1 AND cancel_key IS NULL) OR "
+            "(version = 2 AND cancel_key IS NOT NULL AND create_key <> cancel_key)",
+            name="ck_platform_transfers_version",
+        ),
+        CheckConstraint(
+            "amount > 0 AND amount < 100000000000000000000",
+            name="ck_platform_transfers_amount",
+        ),
+        Index("ix_platform_transfers_source", "source_ledger_id", "transaction_date", "id"),
+        Index(
+            "ix_platform_transfers_destination", "destination_ledger_id", "transaction_date", "id"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    source_ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_account_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_asset_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_operation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    destination_ledger_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    destination_account_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    destination_asset_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    destination_operation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    amount: Mapped[Decimal] = mapped_column(Numeric(38, 18), nullable=False)
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(String(2000), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    create_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    cancel_key: Mapped[str | None] = mapped_column(String(128))

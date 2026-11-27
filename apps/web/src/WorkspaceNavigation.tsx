@@ -12,6 +12,7 @@ const groups = [
             ["overview", "grid"],
             ["accounts", "wallet"],
             ["transactions", "transfer"],
+            ["platform-transfers", "link"],
             ["files", "folder"],
             ["ocr", "scan"],
         ],

@@ -20,6 +20,7 @@ import { PendingBusinessCreditController } from "./pending-business-credit";
 import { PendingInvoiceController } from "./pending-invoice";
 import { PendingInvoiceProfiles } from "./pending-invoice-profiles";
 import { PendingInterledger } from "./pending-interledger";
+import { PendingPlatformTransfer } from "./pending-platform-transfer";
 import { PendingPrice } from "./pending-price";
 import { PendingBusinessSettlementController } from "./pending-business-settlement";
 import { PendingReminderController } from "./pending-reminder";
@@ -332,6 +333,7 @@ export function App() {
     const [invoices] = useState(() => new PendingInvoiceController());
     const [invoiceProfiles] = useState(() => new PendingInvoiceProfiles());
     const [interledger] = useState(() => new PendingInterledger());
+    const [platformTransfers] = useState(() => new PendingPlatformTransfer());
     const [prices] = useState(() => new PendingPrice());
     const [reminders] = useState(() => new PendingReminderController());
     const [reminderEmail] = useState(() => new PendingReminderEmail());
@@ -374,6 +376,7 @@ export function App() {
                     invoices.setOwner(String(session.user.id));
                     invoiceProfiles.setOwner(String(session.user.id));
                     interledger.setOwner(String(session.user.id));
+                    platformTransfers.setOwner(String(session.user.id));
                     prices.setOwner(String(session.user.id));
                     setAuth({ status: "authenticated", session });
                 }
@@ -398,6 +401,7 @@ export function App() {
                     invoices.setOwner(null);
                     invoiceProfiles.setOwner(null);
                     interledger.setOwner(null);
+                    platformTransfers.setOwner(null);
                     prices.setOwner(null);
                     setAuth({ status: "anonymous" });
                 } else
@@ -426,6 +430,7 @@ export function App() {
         invoices,
         invoiceProfiles,
         interledger,
+        platformTransfers,
         prices,
     ]);
 
@@ -460,6 +465,7 @@ export function App() {
             invoices.setOwner(null, true);
             invoiceProfiles.setOwner(null, true);
             interledger.setOwner(null, true);
+            platformTransfers.setOwner(null, true);
             prices.setOwner(null, true);
             setAuth({ status: "anonymous" });
         } catch (problem) {
@@ -481,6 +487,7 @@ export function App() {
                 invoices.setOwner(null, true);
                 invoiceProfiles.setOwner(null, true);
                 interledger.setOwner(null, true);
+                platformTransfers.setOwner(null, true);
                 prices.setOwner(null, true);
                 setAuth({ status: "anonymous" });
             } else setLogoutFailed(true);
@@ -542,6 +549,7 @@ export function App() {
                     invoices={invoices}
                     invoiceProfiles={invoiceProfiles}
                     interledger={interledger}
+                    platformTransfers={platformTransfers}
                     prices={prices}
                     onSessionChanged={(previous, session) => {
                         setAuth((current) =>
@@ -570,6 +578,7 @@ export function App() {
                         invoices.setOwner(null);
                         invoiceProfiles.setOwner(null);
                         interledger.setOwner(null);
+                        platformTransfers.setOwner(null);
                         prices.setOwner(null);
                         setAuth({ status: "anonymous" });
                     }}
@@ -629,6 +638,7 @@ export function App() {
                                         invoices.setOwner(String(session.user.id));
                                         invoiceProfiles.setOwner(String(session.user.id));
                                         interledger.setOwner(String(session.user.id));
+                                        platformTransfers.setOwner(String(session.user.id));
                                         prices.setOwner(String(session.user.id));
                                         setLogoutFailed(false);
                                         setAuth({ status: "authenticated", session });

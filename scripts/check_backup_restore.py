@@ -286,9 +286,9 @@ def structure_state(engine, owner_id):
             "active_accounts": records(active_accounts),
             "categories": records(categories),
         }
-    if len(entities) != 2 or len(assets) != 10 or len(ledgers) != 2:
+    if len(entities) != 2 or len(assets) != 11 or len(ledgers) != 2:
         raise ArchiveError("Original or restored structure fixture has unexpected record counts.")
-    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 8:
+    if sum(len(ledger["accounts"]) for ledger in ledgers.values()) != 10:
         raise ArchiveError("Original or restored multi-asset account fixture is incomplete.")
     return {
         "assets": records(assets, "asset_id"),
@@ -906,6 +906,101 @@ def financial_state(engine, owner_id, structure):
     }
 
 
+def create_platform_fixture(engine, owner_id, structure):
+    from coinpup_api.ledger.platform_transfer_schemas import (
+        PlatformTransferCancel,
+        PlatformTransferCreate,
+    )
+    from coinpup_api.ledger.platform_transfers import PlatformTransfers
+    from coinpup_api.ledger.posting import PostingService
+    from coinpup_api.ledger.posting_schemas import OpeningCreate
+    from coinpup_api.ledger.schemas import AccountCreate, AssetCreate
+    from coinpup_api.ledger.service import LedgerService
+
+    source = structure["personal"].ledger.id
+    destination = structure["company"].ledger.id
+    directory = LedgerService(engine)
+    custody = directory.create_asset(owner_id, AssetCreate(code="BTC", kind="custodial", scale=8))
+    wallet = directory.create_account(
+        owner_id,
+        source,
+        AccountCreate(
+            name="Fictional restore wallet",
+            kind="crypto",
+            custody_mode="onchain",
+            asset_ids=["BTC"],
+        ),
+    )
+    platform = directory.create_account(
+        owner_id,
+        destination,
+        AccountCreate(
+            name="Fictional restore platform",
+            kind="crypto",
+            custody_mode="custodial",
+            asset_ids=[custody.asset_id],
+        ),
+    )
+    PostingService(engine).post_opening(
+        owner_id,
+        source,
+        OpeningCreate(
+            account_id=wallet.id,
+            asset_id="BTC",
+            amount="0.00000003",
+            transaction_date=date(2026, 1, 1),
+        ),
+        str(uuid4()),
+    )
+    request = PlatformTransferCreate(
+        kind="deposit",
+        source_account_id=wallet.id,
+        source_asset_id="BTC",
+        destination_ledger_id=destination,
+        destination_account_id=platform.id,
+        destination_asset_id=custody.asset_id,
+        amount="0.00000001",
+        transaction_date=date(2026, 2, 1),
+    )
+    service = PlatformTransfers(engine)
+    key = str(uuid4())
+    receipt = service.create(owner_id, source, request, key)
+    cancel = PlatformTransferCancel(expected_version=1, reason="Fictional recovery reversal")
+    cancel_key = str(uuid4())
+    cancellation = service.cancel(owner_id, source, receipt.id, cancel, cancel_key)
+    return {
+        "source": source,
+        "destination": destination,
+        "request": request,
+        "key": key,
+        "receipt": receipt,
+        "cancel": cancel,
+        "cancel_key": cancel_key,
+        "cancellation": cancellation,
+        "detail": service.detail(owner_id, destination, receipt.id),
+    }
+
+
+def verify_restored_platform(engine, owner_id, fixture):
+    from coinpup_api.ledger.platform_transfers import PlatformTransfers
+
+    service = PlatformTransfers(engine)
+    source = fixture["source"]
+    receipt = fixture["receipt"]
+    cancellation = fixture["cancellation"]
+    if (
+        service.create(owner_id, source, fixture["request"], fixture["key"]) != receipt
+        or service.cancel(owner_id, source, receipt.id, fixture["cancel"], fixture["cancel_key"])
+        != cancellation
+        or service.detail(owner_id, fixture["destination"], receipt.id) != fixture["detail"]
+    ):
+        raise ArchiveError(
+            "Restored platform transfer changed its bilateral detail or original receipts."
+        )
+    for operation in receipt.operations + cancellation.reversals:
+        verify_sealed_journal(engine, operation.journal_id)
+
+
 def verify_sealed_journal(engine, journal_id, component_no=None):
     """Try appending a balanced copy, then roll back regardless of the outcome."""
     from coinpup_api.ledger.models import JournalLine
@@ -1002,6 +1097,7 @@ def check_backup_restore():
         if identity.id != administrator_id:
             raise ArchiveError("CI fixture login did not match its administrator.")
         structure = create_structure_fixture(source_engine, administrator_id)
+        platform = create_platform_fixture(source_engine, administrator_id, structure)
         financial = create_financial_fixture(source_engine, administrator_id, structure)
         expected_structure = structure_state(source_engine, administrator_id)
         expected_changes = change_state(source_engine, administrator_id)
@@ -1020,6 +1116,7 @@ def check_backup_restore():
             "journal_lines",
             "opening_positions",
             "command_receipts",
+            "platform_transfers",
             "change_log",
         }
         if any(not before.get(table) for table in required_tables):
@@ -1110,6 +1207,7 @@ def check_backup_restore():
                 raise ArchiveError("Restored operation list omitted or changed a fee receipt.")
             verify_sealed_journal(target_engine, fixture["receipt"].journal_id, component_no=1)
         verify_restored_revisions(target_engine, administrator_id, financial["revisions"])
+        verify_restored_platform(target_engine, administrator_id, platform)
         if before != snapshot(target) or before != snapshot(source):
             raise ArchiveError("Replay or rejected journal append changed restored/source data.")
         if change_sequence_state(target) != expected_sequence:
@@ -1130,6 +1228,7 @@ def check_backup_restore():
         )
         print("Bank/cash transfer and card repayment preserve balances without duplicate expense.")
         print("FX and BTC principal/fees remain exact; fee-component journals remain sealed.")
+        print("Platform transfers retain bilateral detail and both original command receipts.")
         print(
             "Corrections/cancellations preserve exact reversals, version history and old receipts."
         )

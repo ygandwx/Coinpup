@@ -11,7 +11,7 @@ from coinpup_api.access import BrowserAccess
 from coinpup_api.auth import Identity
 from coinpup_api.config import Settings
 from coinpup_api.ledger.asset_evidence import VERIFIED_ON
-from coinpup_api.ledger.assets import NATIVE_PRESETS, TOKEN_PRESETS
+from coinpup_api.ledger.assets import CUSTODIAL_PRESETS, NATIVE_PRESETS, TOKEN_PRESETS
 from coinpup_api.ledger.schemas import (
     AccountCreate,
     AccountResponse,
@@ -75,7 +75,7 @@ def create_ledger_router(settings: Settings, engine: Engine | None) -> APIRouter
     @router.get("/assets/presets", response_model=list[AssetPreset])
     def list_asset_presets(identity: reader):
         presets = []
-        for evidence in (*NATIVE_PRESETS, *TOKEN_PRESETS):
+        for evidence in (*NATIVE_PRESETS, *TOKEN_PRESETS, *CUSTODIAL_PRESETS):
             asset = evidence.definition
             presets.append(
                 AssetPreset(

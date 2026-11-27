@@ -6,6 +6,7 @@ from datetime import date
 from uuid import UUID
 
 from coinpup_api.ledger import Amount, AssetDefinition
+from coinpup_api.ledger.assets import custodial_family
 from coinpup_api.ledger.money import AggregateAmount
 from coinpup_api.quotes.valuation import DirectQuote, Valuation
 from coinpup_api.reporting.asset_totals import (
@@ -46,6 +47,13 @@ class CashRepaymentLink:
 
 
 @dataclass(frozen=True, slots=True)
+class CashPlatformLink:
+    group_id: UUID
+    outgoing: SourceReference
+    incoming: SourceReference
+
+
+@dataclass(frozen=True, slots=True)
 class ManualPrice:
     day: date
     quote: DirectQuote
@@ -64,6 +72,13 @@ class StatementRow:
     source: SourceRow
     price: ManualPrice | DirectQuote | None
     excluded_repayment_group: UUID | None
+    excluded_platform_transfer: UUID | None = None
+
+    @property
+    def excluded(self):
+        return (
+            self.excluded_repayment_group is not None or self.excluded_platform_transfer is not None
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +112,30 @@ def _internal_repayments(
     return excluded
 
 
+def _internal_platform_transfers(rows, links):
+    exclusions = {}
+    for link in links:
+        if link.outgoing not in rows or link.incoming not in rows:
+            continue
+        outgoing, incoming = rows[link.outgoing].original, rows[link.incoming].original
+        family = custodial_family(outgoing.asset)
+        if (
+            family is None
+            or family != custodial_family(incoming.asset)
+            or (outgoing.asset.kind == "custodial") == (incoming.asset.kind == "custodial")
+            or outgoing.minor_units >= 0
+            or outgoing.minor_units * 10**incoming.asset.scale
+            + incoming.minor_units * 10**outgoing.asset.scale
+            != 0
+            or link.outgoing in exclusions
+            or link.incoming in exclusions
+        ):
+            raise ValueError("Inconsistent internal platform transfer in report.")
+        exclusions[link.outgoing] = link.group_id
+        exclusions[link.incoming] = link.group_id
+    return exclusions
+
+
 def build_statement(
     selected_ledgers: Iterable[UUID],
     sources: Iterable[SourceRow],
@@ -105,6 +144,7 @@ def build_statement(
     display: AssetDefinition | None = None,
     manual_prices: Iterable[ManualPrice] = (),
     cash_repayments: Iterable[CashRepaymentLink] = (),
+    platform_transfers: Iterable[CashPlatformLink] = (),
     selected_prices: Mapping[SourceReference, DirectQuote] | None = None,
 ) -> Statement:
     """Only explicit links can eliminate cash principal. Original facts remain visible."""
@@ -125,6 +165,9 @@ def build_statement(
         by_reference[reference] = row
 
     exclusions = _internal_repayments(by_reference, cash_repayments)
+    platform_exclusions = _internal_platform_transfers(by_reference, platform_transfers)
+    if exclusions.keys() & platform_exclusions.keys():
+        raise ValueError("A cash principal belongs to multiple internal groups.")
     prices: dict[AssetDefinition, ManualPrice] = {}
     for price in manual_prices:
         if price.day == valuation_day and price.quote.display == display:
@@ -136,10 +179,15 @@ def build_statement(
         return prices.get(ref.asset) if selected_prices is None else selected_prices.get(ref)
 
     rows = tuple(
-        StatementRow(row, None if ref in exclusions else selection(ref), exclusions.get(ref))
+        StatementRow(
+            row,
+            None if ref in exclusions or ref in platform_exclusions else selection(ref),
+            exclusions.get(ref),
+            platform_exclusions.get(ref),
+        )
         for ref, row in by_reference.items()
     )
-    included = (row for row in rows if row.excluded_repayment_group is None)
+    included = (row for row in rows if not row.excluded)
     if display is None:
         return Statement(rows, original_subtotals(row.source.original for row in included), None)
     valuation = valued_subtotals(

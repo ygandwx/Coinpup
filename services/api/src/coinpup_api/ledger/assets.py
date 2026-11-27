@@ -19,12 +19,15 @@ _EVM_NETWORKS = frozenset(
     {"ethereum", "bsc", "polygon", "arbitrum", "optimism", "base", "avalanche"}
 )
 _EVM_ADDRESS = re.compile(r"0[xX][0-9A-Fa-f]{40}")
+_CUSTODIAL_SCALES = {code: scale for code, (_, scale) in _NATIVE.items()}
+for _code, _, _, _scale, _ in TOKEN_EVIDENCE:
+    _CUSTODIAL_SCALES[_code] = max(_CUSTODIAL_SCALES.get(_code, 0), _scale)
 
 
 @dataclass(frozen=True, slots=True)
 class AssetDefinition:
     code: str
-    kind: Literal["fiat", "native", "token"]
+    kind: Literal["fiat", "native", "token", "custodial"]
     scale: int
     network: str | None = None
     token_reference: str | None = None
@@ -52,6 +55,12 @@ class AssetDefinition:
                 and (self.network, self.scale) == _NATIVE[self.code]
                 and self.token_reference is None
             )
+        elif self.kind == "custodial":
+            valid = (
+                self.scale == _CUSTODIAL_SCALES.get(self.code)
+                and self.network is None
+                and self.token_reference is None
+            )
         elif self.kind == "token":
             valid = (
                 _TOKEN_CODE.fullmatch(self.code) is not None
@@ -67,6 +76,8 @@ class AssetDefinition:
 
     @property
     def asset_id(self) -> str:
+        if self.kind == "custodial":
+            return f"custodial:{self.code}"
         if self.kind == "token":
             # Token references retain their case; some networks use case-sensitive identifiers.
             return f"token:{self.network}:{self.token_reference}"
@@ -114,6 +125,30 @@ def verified_token(network: str | None, token_reference: str | None) -> AssetDef
     return _VERIFIED_TOKENS.get(_token_key(network, token_reference))
 
 
+def custodial_family(asset: AssetDefinition) -> str | None:
+    """Resolve a custody family only from a verified complete asset definition."""
+    if asset.kind in {"custodial", "native"}:
+        return asset.code
+    if asset.kind == "token":
+        official = verified_token(asset.network, asset.token_reference)
+        if official is not None and (asset.code, asset.scale) == (official.code, official.scale):
+            return official.code
+    return None
+
+
+def _custodial_presets():
+    sources = {}
+    for preset in (*NATIVE_PRESETS, *TOKEN_PRESETS):
+        sources.setdefault(preset.definition.code, {}).update(dict.fromkeys(preset.sources))
+    return tuple(
+        AssetEvidence(AssetDefinition(code, "custodial", scale), tuple(sources[code]))
+        for code, scale in _CUSTODIAL_SCALES.items()
+    )
+
+
+CUSTODIAL_PRESETS = _custodial_presets()
+
+
 # Keep the initial database seed distinct from the expanded presets, which are opt-in.
 ASSETS = MappingProxyType(
     {
@@ -125,7 +160,10 @@ ASSETS = MappingProxyType(
         },
     }
 )
-_BUILTINS = ASSETS | {preset.definition.asset_id: preset.definition for preset in NATIVE_PRESETS}
+_BUILTINS = ASSETS | {
+    preset.definition.asset_id: preset.definition
+    for preset in (*NATIVE_PRESETS, *CUSTODIAL_PRESETS)
+}
 
 
 def get_asset(asset_id: str) -> AssetDefinition:

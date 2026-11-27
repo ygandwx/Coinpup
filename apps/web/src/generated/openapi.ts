@@ -1974,6 +1974,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ledgers/{ledger_id}/platform-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Platform Transfers */
+        get: operations["list_platform_transfers_api_v1_ledgers__ledger_id__platform_transfers_get"];
+        put?: never;
+        /** Create Platform Transfer */
+        post: operations["create_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/platform-transfers/{transfer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform Transfer Detail */
+        get: operations["platform_transfer_detail_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledgers/{ledger_id}/platform-transfers/{transfer_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Platform Transfer */
+        post: operations["cancel_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledgers/{ledger_id}/recurring-invoice-rules": {
         parameters: {
             query?: never;
@@ -2626,6 +2678,8 @@ export interface components {
             asset_ids: string[];
             /** Card Number */
             card_number?: string | null;
+            /** Custody Mode */
+            custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
             details?: {
                 [key: string]: string;
@@ -2651,6 +2705,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Custody Mode */
+            custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
             details: {
                 [key: string]: string;
@@ -2690,6 +2746,8 @@ export interface components {
             asset_ids?: string[] | null;
             /** Card Number */
             card_number?: string | null;
+            /** Custody Mode */
+            custody_mode?: ("onchain" | "custodial") | null;
             /** Details */
             details?: {
                 [key: string]: string;
@@ -3174,7 +3232,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "fiat" | "native" | "token";
+            kind: "fiat" | "native" | "token" | "custodial";
             /** Network */
             network?: string | null;
             /** Scale */
@@ -3192,9 +3250,9 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "native" | "token";
+            kind: "native" | "token" | "custodial";
             /** Network */
-            network: string;
+            network: string | null;
             /** Scale */
             scale: number;
             /** Sources */
@@ -4487,7 +4545,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations" | "reminder_inbox_deliveries";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations" | "reminder_inbox_deliveries" | "platform_transfers";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -7651,6 +7709,226 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** PlatformPostingRef */
+        PlatformPostingRef: {
+            /**
+             * Journal Id
+             * Format: uuid
+             */
+            journal_id: string;
+            /**
+             * Ledger Id
+             * Format: uuid
+             */
+            ledger_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+        };
+        /** PlatformTransferCancel */
+        PlatformTransferCancel: {
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+        };
+        /** PlatformTransferCancellation */
+        PlatformTransferCancellation: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string;
+            /** Reversals */
+            reversals: components["schemas"]["PlatformPostingRef"][];
+            /**
+             * Source Ledger Id
+             * Format: uuid
+             */
+            source_ledger_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "cancelled";
+            /**
+             * Version
+             * @constant
+             */
+            version: 2;
+        };
+        /** PlatformTransferCreate */
+        PlatformTransferCreate: {
+            /** Amount */
+            amount: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Destination Account Id
+             * Format: uuid
+             */
+            destination_account_id: string;
+            /** Destination Asset Id */
+            destination_asset_id: string;
+            /**
+             * Destination Ledger Id
+             * Format: uuid
+             */
+            destination_ledger_id: string;
+            /** Fees */
+            fees?: components["schemas"]["FeeCreate"][];
+            /** Id */
+            id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deposit" | "withdrawal";
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /** Source Asset Id */
+            source_asset_id: string;
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+        };
+        /** PlatformTransferDetail */
+        PlatformTransferDetail: {
+            cancellation: components["schemas"]["PlatformTransferCancellation"] | null;
+            /** Description */
+            description: string;
+            /**
+             * Destination Account Id
+             * Format: uuid
+             */
+            destination_account_id: string;
+            /** Destination Amount */
+            destination_amount: string;
+            /** Destination Asset Id */
+            destination_asset_id: string;
+            /**
+             * Destination Ledger Id
+             * Format: uuid
+             */
+            destination_ledger_id: string;
+            /** Fees */
+            fees: components["schemas"]["FeeResponse"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deposit" | "withdrawal";
+            /** Operations */
+            operations: components["schemas"]["PlatformPostingRef"][];
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /** Source Amount */
+            source_amount: string;
+            /** Source Asset Id */
+            source_asset_id: string;
+            /**
+             * Source Ledger Id
+             * Format: uuid
+             */
+            source_ledger_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "cancelled";
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+            /**
+             * Version
+             * @enum {integer}
+             */
+            version: 1 | 2;
+        };
+        /** PlatformTransferReceipt */
+        PlatformTransferReceipt: {
+            /** Description */
+            description: string;
+            /**
+             * Destination Account Id
+             * Format: uuid
+             */
+            destination_account_id: string;
+            /** Destination Amount */
+            destination_amount: string;
+            /** Destination Asset Id */
+            destination_asset_id: string;
+            /**
+             * Destination Ledger Id
+             * Format: uuid
+             */
+            destination_ledger_id: string;
+            /** Fees */
+            fees: components["schemas"]["FeeResponse"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deposit" | "withdrawal";
+            /** Operations */
+            operations: components["schemas"]["PlatformPostingRef"][];
+            /**
+             * Source Account Id
+             * Format: uuid
+             */
+            source_account_id: string;
+            /** Source Amount */
+            source_amount: string;
+            /** Source Asset Id */
+            source_asset_id: string;
+            /**
+             * Source Ledger Id
+             * Format: uuid
+             */
+            source_ledger_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "active";
+            /**
+             * Transaction Date
+             * Format: date
+             */
+            transaction_date: string;
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+        };
         /** PostingSplit */
         PostingSplit: {
             /** Amount */
@@ -8908,6 +9186,8 @@ export interface components {
             date: string | null;
             /** Description */
             description: string;
+            /** Excluded Platform Transfer */
+            excluded_platform_transfer?: string | null;
             /** Excluded Repayment Group */
             excluded_repayment_group: string | null;
             /**
@@ -8917,6 +9197,8 @@ export interface components {
             ledger_id: string;
             /** Operation Id */
             operation_id: string | null;
+            /** Platform Transfer Id */
+            platform_transfer_id?: string | null;
             price: components["schemas"]["ManualPriceResponse"] | null;
             /** Repayment Group Id */
             repayment_group_id: string | null;
@@ -9126,7 +9408,7 @@ export interface components {
              * Entity Type
              * @enum {string}
              */
-            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations" | "reminder_inbox_deliveries";
+            entity_type: "entities" | "ledgers" | "accounts" | "account_assets" | "categories" | "assets" | "financial_operations" | "stored_files" | "operation_file_links" | "ocr_jobs" | "ocr_drafts" | "ocr_confirmations" | "business_parties" | "business_documents" | "business_document_lines" | "ledger_periods" | "ledger_period_audits" | "ledger_period_receipts" | "business_projects" | "recurring_invoice_rules" | "recurring_invoice_instances" | "reminder_events" | "reminder_event_revisions" | "reminder_delivery_configs" | "reminder_delivery_revisions" | "business_confirmations" | "business_postings" | "business_payments" | "business_allocations" | "business_allocation_lines" | "business_allocation_returns" | "business_allocation_return_lines" | "business_refunds" | "business_refund_returns" | "business_credits" | "business_credit_lines" | "business_credit_revisions" | "business_credit_revision_members" | "business_refund_revisions" | "business_refund_revision_returns" | "business_return_revisions" | "business_return_revision_members" | "business_document_revisions" | "business_document_revision_lines" | "business_document_accruals" | "business_invoice_profiles" | "business_invoice_reservations" | "business_invoice_completions" | "interledger_settings" | "interledger_groups" | "manual_prices" | "reminder_email_deliveries" | "reminder_email_evidence" | "quote_observations" | "reminder_inbox_deliveries" | "platform_transfers";
             /** Entity Version */
             entity_version: number;
             /** Ledger Id */
@@ -13936,6 +14218,149 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeriodChangeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_platform_transfers_api_v1_ledgers__ledger_id__platform_transfers_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTransferDetail"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTransferCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTransferReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    platform_transfer_detail_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTransferDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                ledger_id: string;
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTransferCancel"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTransferCancellation"];
                 };
             };
             /** @description Validation Error */

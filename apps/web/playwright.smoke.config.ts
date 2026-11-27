@@ -21,6 +21,7 @@ export const smokeSpecs = [
     "business-invoice-issuance.spec.ts",
     "business-project-activity.spec.ts",
     "interledger.spec.ts",
+    "platform-transfers.spec.ts",
     "valuation.spec.ts",
     "reminder-email.spec.ts",
     "reminder-inbox.spec.ts",

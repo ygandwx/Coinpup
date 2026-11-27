@@ -101,6 +101,7 @@ EntityType = Literal[
     "reminder_email_evidence",
     "quote_observations",
     "reminder_inbox_deliveries",
+    "platform_transfers",
 ]
 ChangeKind = Literal["upsert", "archive", "restore", "cancel"]
 

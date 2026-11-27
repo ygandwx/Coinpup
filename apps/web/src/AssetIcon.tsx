@@ -72,7 +72,7 @@ export function AssetIcon({
     const { code, kind, network, verified } = asset;
     const currency = kind === "fiat" ? fiat.get(code) : undefined;
     const chain = network ? networkIcons.get(network) : undefined;
-    const brandedCoin = kind === "native" || (kind === "token" && verified);
+    const brandedCoin = kind === "native" || kind === "custodial" || (kind === "token" && verified);
 
     return (
         <span

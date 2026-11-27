@@ -24,7 +24,13 @@ const copy = {
         save: "保存",
         saving: "保存中…",
         cancel: "取消",
-        kinds: { fiat: "法定货币", native: "原生加密资产", token: "代币" },
+        kinds: {
+            fiat: "法定货币",
+            native: "原生加密资产",
+            token: "代币",
+            custodial: "平台托管资产",
+        },
+        custodialHelp: "同一币种的托管余额不分网络，按已核对网络中的最高精度保存。",
         fiatHelp:
             "使用 3 位大写代码；USD、GBP、EUR、HKD、CNY 固定为 2 位小数。其他币种请填写其实际精度。",
         nativeHelp: "选择原生加密资产后，将填入固定的网络和精度。",
@@ -57,7 +63,14 @@ const copy = {
         save: "Save",
         saving: "Saving…",
         cancel: "Cancel",
-        kinds: { fiat: "Fiat currency", native: "Native crypto asset", token: "Token" },
+        kinds: {
+            fiat: "Fiat currency",
+            native: "Native crypto asset",
+            token: "Token",
+            custodial: "Custodial asset",
+        },
+        custodialHelp:
+            "Custodial balances have no network and use the highest precision among verified networks for the coin.",
         fiatHelp:
             "Use a 3-letter uppercase code. USD, GBP, EUR, HKD and CNY use 2 decimal places. Enter the actual precision for other currencies.",
         nativeHelp: "The selected native asset determines the network and decimal places.",
@@ -114,11 +127,19 @@ export function AssetForm({
     const [problem, setProblem] = useState<keyof typeof t.errors | null>(null);
     const nativePresets = presets?.filter((entry) => entry.kind === "native") ?? [];
     const tokenPresets = presets?.filter((entry) => entry.kind === "token") ?? [];
-    const tokenNetworks = [...new Set(tokenPresets.map((entry) => entry.network))];
-    const native = kind === "native" ? nativePresets.find((entry) => entry.code === code) : null;
+    const tokenNetworks = [
+        ...new Set(tokenPresets.flatMap((entry) => (entry.network ? [entry.network] : []))),
+    ];
+    const fixedChoices =
+        kind === "native"
+            ? nativePresets
+            : kind === "custodial"
+              ? (presets?.filter((entry) => entry.kind === "custodial") ?? [])
+              : null;
+    const fixedCrypto = fixedChoices?.find((entry) => entry.code === code);
     const fixedFiat = kind === "fiat" && FIXED_FIAT.has(code);
-    const actualScale = native ? String(native.scale) : fixedFiat ? "2" : scale;
-    const actualNetwork = native?.network ?? network;
+    const actualScale = fixedCrypto ? String(fixedCrypto.scale) : fixedFiat ? "2" : scale;
+    const actualNetwork = fixedCrypto?.network ?? network;
 
     function changeKind(value: AssetKind) {
         setKind(value);
@@ -131,7 +152,7 @@ export function AssetForm({
 
     function applyPreset() {
         const preset = tokenPresets.find((entry) => entry.asset_id === presetId);
-        if (!preset?.token_reference) return;
+        if (!preset?.token_reference || !preset.network) return;
         setKind("token");
         setCode(preset.code);
         setScale(String(preset.scale));
@@ -146,8 +167,8 @@ export function AssetForm({
         const codeValid =
             kind === "fiat"
                 ? /^[A-Z]{3}$/.test(code) && !legacyNativeIds.has(code)
-                : kind === "native"
-                  ? !!native
+                : fixedChoices
+                  ? !!fixedCrypto
                   : /^[A-Z0-9]{2,10}$/.test(code);
         if (!codeValid) {
             setProblem("code");
@@ -170,7 +191,7 @@ export function AssetForm({
             kind,
             code,
             scale: Number(actualScale),
-            network: kind === "fiat" ? null : actualNetwork,
+            network: kind === "fiat" || kind === "custodial" ? null : actualNetwork,
             token_reference: kind === "token" ? reference : null,
             enabled,
         });
@@ -191,7 +212,7 @@ export function AssetForm({
                             <option value="">{t.choose}</option>
                             {tokenPresets.map((preset) => (
                                 <option key={preset.asset_id} value={preset.asset_id}>
-                                    {preset.code} · {assetNetworkName(preset.network, locale)}
+                                    {preset.code} · {assetNetworkName(preset.network ?? "", locale)}
                                 </option>
                             ))}
                         </select>
@@ -208,7 +229,7 @@ export function AssetForm({
                     </div>
                 </div>
             )}
-            {(fromPreset || kind === "native") &&
+            {(fromPreset || fixedChoices !== null) &&
                 !presets &&
                 (presetError ? (
                     <div className="row-actions">
@@ -233,7 +254,7 @@ export function AssetForm({
                         disabled={busy}
                         onChange={(event) => changeKind(event.target.value as AssetKind)}
                     >
-                        {(["fiat", "native", "token"] as AssetKind[]).map((value) => (
+                        {(["fiat", "native", "token", "custodial"] as AssetKind[]).map((value) => (
                             <option key={value} value={value}>
                                 {t.kinds[value]}
                             </option>
@@ -242,7 +263,7 @@ export function AssetForm({
                 </div>
                 <div className="field">
                     <label htmlFor={`${prefix}-code`}>{t.code}</label>
-                    {kind !== "native" ? (
+                    {fixedChoices === null ? (
                         <input
                             id={`${prefix}-code`}
                             required
@@ -269,7 +290,7 @@ export function AssetForm({
                             }}
                         >
                             <option value="">{t.choose}</option>
-                            {nativePresets.map((entry) => (
+                            {fixedChoices.map((entry) => (
                                 <option key={entry.asset_id} value={entry.code}>
                                     {entry.code}
                                 </option>
@@ -286,7 +307,7 @@ export function AssetForm({
                         required
                         maxLength={2}
                         value={actualScale}
-                        readOnly={!!native || fixedFiat}
+                        readOnly={fixedChoices !== null || fixedFiat}
                         disabled={busy}
                         onChange={(event) => {
                             setScale(event.target.value);
@@ -298,7 +319,7 @@ export function AssetForm({
                         {t.scaleHelp}
                     </p>
                 </div>
-                {kind !== "fiat" && (
+                {(kind === "token" || kind === "native") && (
                     <div className="field">
                         <label htmlFor={`${prefix}-network`}>{t.network}</label>
                         <input
@@ -359,7 +380,13 @@ export function AssetForm({
                 )}
             </div>
             {kind !== "native" && (
-                <p className="help-text">{kind === "fiat" ? t.fiatHelp : t.tokenHelp}</p>
+                <p className="help-text">
+                    {kind === "fiat"
+                        ? t.fiatHelp
+                        : kind === "custodial"
+                          ? t.custodialHelp
+                          : t.tokenHelp}
+                </p>
             )}
             <label className="asset-enabled">
                 <input

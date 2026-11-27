@@ -43,9 +43,10 @@ def test_revision_header_ddl_matches_model_and_only_extends_the_current_catalog(
             "reminder_email_evidence",
             "quote_observations",
             "reminder_inbox_deliveries",
+            "platform_transfers",
         }
     )
-    assert len(set(get_args(EntityType))) == 55
+    assert len(set(get_args(EntityType))) == 56
     table = BusinessCreditRevision.__table__
     original_fks = [
         fk

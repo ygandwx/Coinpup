@@ -16,9 +16,10 @@ from coinpup_api.ledger.models import (
     FinancialOperation,
     Journal,
     JournalLine,
+    PlatformTransfer,
 )
 from coinpup_api.ledger.money import AggregateAmount, Amount
-from coinpup_api.reporting.statement import CashRepaymentLink, SourceRow
+from coinpup_api.reporting.statement import CashPlatformLink, CashRepaymentLink, SourceRow
 from coinpup_api.settlement.models import InterledgerGroup
 
 
@@ -33,6 +34,8 @@ class OriginalFact:
     role: str
     description: str
     transaction_date: date | None = None
+    journal_kind: str | None = None
+    component_no: int = 0
 
 
 def _range(statement, column, start, end):
@@ -85,6 +88,8 @@ def journal_facts(session, scope, view, start, end):
                 item.role,
                 header.description,
                 header.transaction_date,
+                header.journal_kind,
+                item.component_no,
             )
         )
     return tuple(facts)
@@ -204,4 +209,73 @@ def linked_repayments(session, owner, scope, facts):
             links.append(CashRepaymentLink(group.id, beneficiary, payer))
     if set(memberships) != {fact.row.reference for rows in operations.values() for fact in rows}:
         raise ValueError("Cash repayment group is missing.")
+    return tuple(links), memberships
+
+
+def linked_platform_transfers(session, owner, scope, facts):
+    """Connect only sealed principal pairs, retaining fees and visible single-sided cash."""
+    principal = defaultdict(list)
+    for fact in facts:
+        if fact.operation_kind == "platform_move" and fact.component_no == 0:
+            principal[(fact.operation_id, fact.journal_kind, fact.account_id)].append(fact)
+    if not principal:
+        return (), {}
+    operations = {operation for operation, _, _ in principal}
+    groups = session.scalars(
+        select(PlatformTransfer).where(
+            PlatformTransfer.owner_id == owner,
+            or_(
+                PlatformTransfer.source_operation_id.in_(operations),
+                PlatformTransfer.destination_operation_id.in_(operations),
+            ),
+        )
+    )
+    links, memberships = [], {}
+
+    def match(group, ledger, operation, account, asset_id, kind, sign):
+        if ledger not in scope:
+            return None
+        rows = principal.get((operation, kind, account), ())
+        if len(rows) != 1:
+            raise ValueError("Platform cash principal is missing or duplicated.")
+        fact = rows[0]
+        row = fact.row
+        expected = Amount.from_decimal(group.amount, row.original.asset)
+        if (
+            row.ledger_id != ledger
+            or row.original.asset.asset_id != asset_id
+            or fact.date != group.transaction_date
+            or row.original.minor_units != sign * expected.minor_units
+            or row.reference in memberships
+        ):
+            raise ValueError("Platform transfer and cash principal disagree.")
+        memberships[row.reference] = group.id
+        return row.reference
+
+    for group in groups:
+        stages = (("posting", 1), ("reversal", -1)) if group.version == 2 else (("posting", 1),)
+        for kind, sign in stages:
+            source = match(
+                group,
+                group.source_ledger_id,
+                group.source_operation_id,
+                group.source_account_id,
+                group.source_asset_id,
+                kind,
+                -sign,
+            )
+            destination = match(
+                group,
+                group.destination_ledger_id,
+                group.destination_operation_id or group.source_operation_id,
+                group.destination_account_id,
+                group.destination_asset_id,
+                kind,
+                sign,
+            )
+            if source is not None and destination is not None:
+                outgoing, incoming = (source, destination) if sign > 0 else (destination, source)
+                links.append(CashPlatformLink(group.id, outgoing, incoming))
+    if set(memberships) != {fact.row.reference for rows in principal.values() for fact in rows}:
+        raise ValueError("A cash principal lacks its platform transfer group.")
     return tuple(links), memberships

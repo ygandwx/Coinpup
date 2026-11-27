@@ -1723,6 +1723,8 @@ def _restore_current_change_types(connection):
         text("SELECT to_regclass('public.reminder_inbox_deliveries') IS NOT NULL")
     ):
         entity_types += ", 'reminder_inbox_deliveries'"
+    if connection.scalar(text("SELECT to_regclass('public.platform_transfers') IS NOT NULL")):
+        entity_types += ", 'platform_transfers'"
     connection.exec_driver_sql("ALTER TABLE change_log DROP CONSTRAINT ck_change_log_entity_type")
     connection.exec_driver_sql(
         "ALTER TABLE change_log ADD CONSTRAINT ck_change_log_entity_type CHECK "
@@ -1810,6 +1812,8 @@ def change_trigger_registration(engine, *, repair_recreated_file_tables=False):
             text("SELECT to_regclass('public.reminder_inbox_deliveries') IS NOT NULL")
         ):
             assert registered.get("tr_reminder_inbox_change") == "reminder_inbox_deliveries"
+        if connection.scalar(text("SELECT to_regclass('public.platform_transfers') IS NOT NULL")):
+            assert registered.get("tr_platform_transfers_change") == "platform_transfers"
 
 
 @pytest.fixture
@@ -1846,7 +1850,7 @@ def structure_database(request):
                 "business_allocation_return_lines, business_allocation_returns, "
                 "business_allocation_lines, business_allocations, business_payments, "
                 "recurring_invoice_instances, recurring_invoice_rules, "
-                "command_receipts, opening_positions, journal_lines, journals, "
+                "platform_transfers, command_receipts, opening_positions, journal_lines, journals, "
                 "financial_operations, account_assets, accounts, business_document_lines, "
                 "business_invoice_completions, "
                 "business_invoice_reservations, "

@@ -30,6 +30,21 @@
             ],
             "title": "Card Number"
           },
+          "custody_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "onchain",
+                  "custodial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Mode"
+          },
           "details": {
             "additionalProperties": {
               "type": "string"
@@ -97,6 +112,21 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "custody_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "onchain",
+                  "custodial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Mode"
           },
           "details": {
             "additionalProperties": {
@@ -199,6 +229,21 @@
               }
             ],
             "title": "Card Number"
+          },
+          "custody_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "onchain",
+                  "custodial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Mode"
           },
           "details": {
             "anyOf": [
@@ -1259,7 +1304,8 @@
             "enum": [
               "fiat",
               "native",
-              "token"
+              "token",
+              "custodial"
             ],
             "title": "Kind",
             "type": "string"
@@ -1316,14 +1362,22 @@
           "kind": {
             "enum": [
               "native",
-              "token"
+              "token",
+              "custodial"
             ],
             "title": "Kind",
             "type": "string"
           },
           "network": {
-            "title": "Network",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network"
           },
           "scale": {
             "title": "Scale",
@@ -4080,7 +4134,8 @@
               "reminder_email_deliveries",
               "reminder_email_evidence",
               "quote_observations",
-              "reminder_inbox_deliveries"
+              "reminder_inbox_deliveries",
+              "platform_transfers"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -11771,6 +11826,418 @@
         "title": "PeriodState",
         "type": "object"
       },
+      "PlatformPostingRef": {
+        "properties": {
+          "journal_id": {
+            "format": "uuid",
+            "title": "Journal Id",
+            "type": "string"
+          },
+          "ledger_id": {
+            "format": "uuid",
+            "title": "Ledger Id",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "operation_id",
+          "journal_id"
+        ],
+        "title": "PlatformPostingRef",
+        "type": "object"
+      },
+      "PlatformTransferCancel": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason"
+        ],
+        "title": "PlatformTransferCancel",
+        "type": "object"
+      },
+      "PlatformTransferCancellation": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reversals": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformPostingRef"
+            },
+            "title": "Reversals",
+            "type": "array"
+          },
+          "source_ledger_id": {
+            "format": "uuid",
+            "title": "Source Ledger Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "cancelled",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "const": 2,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "source_ledger_id",
+          "status",
+          "version",
+          "reason",
+          "reversals"
+        ],
+        "title": "PlatformTransferCancellation",
+        "type": "object"
+      },
+      "PlatformTransferCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "destination_ledger_id": {
+            "format": "uuid",
+            "title": "Destination Ledger Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeCreate"
+            },
+            "maxItems": 20,
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "deposit",
+              "withdrawal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_date",
+          "kind",
+          "source_account_id",
+          "source_asset_id",
+          "destination_ledger_id",
+          "destination_account_id",
+          "destination_asset_id",
+          "amount"
+        ],
+        "title": "PlatformTransferCreate",
+        "type": "object"
+      },
+      "PlatformTransferDetail": {
+        "properties": {
+          "cancellation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformTransferCancellation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "destination_ledger_id": {
+            "format": "uuid",
+            "title": "Destination Ledger Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeResponse"
+            },
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "deposit",
+              "withdrawal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformPostingRef"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "source_ledger_id": {
+            "format": "uuid",
+            "title": "Source Ledger Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_ledger_id",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_ledger_id",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount",
+          "transaction_date",
+          "description",
+          "fees",
+          "operations",
+          "status",
+          "version",
+          "cancellation"
+        ],
+        "title": "PlatformTransferDetail",
+        "type": "object"
+      },
+      "PlatformTransferReceipt": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_amount": {
+            "title": "Destination Amount",
+            "type": "string"
+          },
+          "destination_asset_id": {
+            "title": "Destination Asset Id",
+            "type": "string"
+          },
+          "destination_ledger_id": {
+            "format": "uuid",
+            "title": "Destination Ledger Id",
+            "type": "string"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/FeeResponse"
+            },
+            "title": "Fees",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "deposit",
+              "withdrawal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformPostingRef"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_amount": {
+            "title": "Source Amount",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "source_ledger_id": {
+            "format": "uuid",
+            "title": "Source Ledger Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "active",
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_ledger_id",
+          "source_account_id",
+          "source_asset_id",
+          "source_amount",
+          "destination_ledger_id",
+          "destination_account_id",
+          "destination_asset_id",
+          "destination_amount",
+          "transaction_date",
+          "description",
+          "fees",
+          "operations",
+          "status",
+          "version"
+        ],
+        "title": "PlatformTransferReceipt",
+        "type": "object"
+      },
       "PostingSplit": {
         "additionalProperties": false,
         "properties": {
@@ -14634,6 +15101,18 @@
             "title": "Description",
             "type": "string"
           },
+          "excluded_platform_transfer": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Platform Transfer"
+          },
           "excluded_repayment_group": {
             "anyOf": [
               {
@@ -14662,6 +15141,18 @@
               }
             ],
             "title": "Operation Id"
+          },
+          "platform_transfer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Transfer Id"
           },
           "price": {
             "anyOf": [
@@ -15302,7 +15793,8 @@
               "reminder_email_deliveries",
               "reminder_email_evidence",
               "quote_observations",
-              "reminder_inbox_deliveries"
+              "reminder_inbox_deliveries",
+              "platform_transfers"
             ],
             "title": "Entity Type",
             "type": "string"
@@ -25189,6 +25681,300 @@
         "summary": "Change",
         "tags": [
           "ledger periods"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/platform-transfers": {
+      "get": {
+        "operationId": "list_platform_transfers_api_v1_ledgers__ledger_id__platform_transfers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlatformTransferDetail"
+                  },
+                  "title": "Response List Platform Transfers Api V1 Ledgers  Ledger Id  Platform Transfers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Platform Transfers",
+        "tags": [
+          "platform transfers"
+        ]
+      },
+      "post": {
+        "operationId": "create_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformTransferCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTransferReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Platform Transfer",
+        "tags": [
+          "platform transfers"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/platform-transfers/{transfer_id}": {
+      "get": {
+        "operationId": "platform_transfer_detail_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTransferDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Platform Transfer Detail",
+        "tags": [
+          "platform transfers"
+        ]
+      }
+    },
+    "/api/v1/ledgers/{ledger_id}/platform-transfers/{transfer_id}/cancel": {
+      "post": {
+        "operationId": "cancel_platform_transfer_api_v1_ledgers__ledger_id__platform_transfers__transfer_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transfer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[!-~]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformTransferCancel"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTransferCancellation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Platform Transfer",
+        "tags": [
+          "platform transfers"
         ]
       }
     },
