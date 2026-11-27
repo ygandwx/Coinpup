@@ -7,8 +7,8 @@
 .document-revision-form .check-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    margin: 16px 0;
+    gap: var(--space-2);
+    margin: var(--space-4) 0;
 }
 .document-revision-form .check-row input {
     flex: none;

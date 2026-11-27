@@ -12,7 +12,10 @@ import type { Locale } from "./i18n";
 import { EntityMark } from "./EntityMark";
 import { EntityForm } from "./EntityForm";
 import { AccountForm } from "./AccountForm";
-import { AccountBalanceChart, AccountCard, AccountMark } from "./AccountCard";
+import { AccountBalanceChart, AccountCard } from "./AccountCard";
+import { AccountIcon } from "./AccountIcon";
+import { AssetIcon } from "./AssetIcon";
+import { accountInstitution } from "./institutions";
 import { formatAmount } from "./money";
 import { prepareAccountBalances } from "./account-charts";
 import { businessError } from "./business-errors";
@@ -897,6 +900,10 @@ export function BusinessWorkspace({
         "占比按同一资产、同一余额方向计算。仅计入当前显示的账户，信用卡只与信用卡比较。",
         "Shares compare visible balances of the same asset and sign. Credit cards are compared with other visible cards.",
     );
+    const assetsById = useMemo(
+        () => new Map(assets.map((asset) => [asset.asset_id, asset])),
+        [assets],
+    );
     const categories = current?.categories.filter((item) => showArchived || !item.archived) ?? [];
     const editorTitle =
         editor?.kind === "entity"
@@ -1511,46 +1518,62 @@ export function BusinessWorkspace({
                                         <div className="balance-list">
                                             {accounts.flatMap((account) =>
                                                 (accountBalances.get(account.id) ?? []).map(
-                                                    ({ balance, chart }) => (
-                                                        <div
-                                                            className="balance-row overview-balance"
-                                                            key={`${account.id}:${balance.asset_id}`}
-                                                        >
-                                                            <span className="overview-balance-name">
-                                                                <AccountMark
-                                                                    kind={account.kind}
-                                                                    compact
-                                                                />
-                                                                <span>
-                                                                    {account.name}
-                                                                    <small>
-                                                                        {balance.asset_id}
-                                                                        {account.archived &&
-                                                                            ` · ${t("已归档", "Archived")}`}
-                                                                        {(!balance.asset_enabled ||
-                                                                            !balance.link_enabled) &&
-                                                                            ` · ${t("已停用", "Disabled")}`}
-                                                                    </small>
-                                                                </span>
-                                                            </span>
-                                                            <div className="overview-chart">
-                                                                <AccountBalanceChart
-                                                                    chart={chart}
-                                                                    locale={locale}
-                                                                />
-                                                            </div>
-                                                            <strong
-                                                                className="money-quantity"
-                                                                tabIndex={0}
-                                                                aria-label={`${balance.asset_id} ${balance.amount}`}
+                                                    ({ balance, chart }) => {
+                                                        const asset = assetsById.get(
+                                                            balance.asset_id,
+                                                        );
+                                                        return (
+                                                            <div
+                                                                className="balance-row overview-balance"
+                                                                key={`${account.id}:${balance.asset_id}`}
                                                             >
-                                                                {formatAmount(
-                                                                    balance.amount,
-                                                                    locale,
-                                                                )}
-                                                            </strong>
-                                                        </div>
-                                                    ),
+                                                                <span className="overview-balance-name">
+                                                                    <AccountIcon
+                                                                        kind={account.kind}
+                                                                        institution={
+                                                                            accountInstitution(
+                                                                                account.details,
+                                                                            )?.id
+                                                                        }
+                                                                        compact
+                                                                    />
+                                                                    <span>
+                                                                        {account.name}
+                                                                        <small className="icon-label">
+                                                                            {asset && (
+                                                                                <AssetIcon
+                                                                                    asset={asset}
+                                                                                    compact
+                                                                                />
+                                                                            )}
+                                                                            {balance.asset_id}
+                                                                            {account.archived &&
+                                                                                ` · ${t("已归档", "Archived")}`}
+                                                                            {(!balance.asset_enabled ||
+                                                                                !balance.link_enabled) &&
+                                                                                ` · ${t("已停用", "Disabled")}`}
+                                                                        </small>
+                                                                    </span>
+                                                                </span>
+                                                                <div className="overview-chart">
+                                                                    <AccountBalanceChart
+                                                                        chart={chart}
+                                                                        locale={locale}
+                                                                    />
+                                                                </div>
+                                                                <strong
+                                                                    className="money-quantity"
+                                                                    tabIndex={0}
+                                                                    aria-label={`${balance.asset_id} ${balance.amount}`}
+                                                                >
+                                                                    {formatAmount(
+                                                                        balance.amount,
+                                                                        locale,
+                                                                    )}
+                                                                </strong>
+                                                            </div>
+                                                        );
+                                                    },
                                                 ),
                                             )}
                                         </div>
@@ -1580,6 +1603,7 @@ export function BusinessWorkspace({
                                         <AccountCard
                                             key={account.id}
                                             account={account}
+                                            assets={assetsById}
                                             rows={accountBalances.get(account.id) ?? []}
                                             locale={locale}
                                             disabled={

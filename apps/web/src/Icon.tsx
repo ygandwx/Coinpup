@@ -30,7 +30,10 @@ export type IconName =
     | "scan"
     | "coins"
     | "menu"
-    | "chevronUp";
+    | "chevronUp"
+    | "sun"
+    | "moon"
+    | "monitor";
 const paths: Record<IconName, string[]> = {
     transfer: ["M3 8h16m-4-4 4 4-4 4M21 16H5m4-4-4 4 4 4"],
     scale: ["M12 3v17m-4 1h8M3 7l18-2M6 7l-4 7h8L6 7Zm12-1-4 7h8l-4-7Z"],
@@ -49,6 +52,12 @@ const paths: Record<IconName, string[]> = {
     ],
     menu: ["M4 6h16M4 12h16M4 18h16"],
     chevronUp: ["m5 15 7-7 7 7"],
+    sun: [
+        "M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5",
+        "M12 17a5 5 0 1 0 0-10 5 5 0 1 0 0 10Z",
+    ],
+    moon: ["M20 15.7a9 9 0 0 1-11.7-11.7A9 9 0 1 0 20 15.7Z"],
+    monitor: ["M3 4h18v13H3zM12 17v4M8 21h8"],
     company: [
         "M3 21h18M5 21V4l11-2v19M16 9h4v12M8 7h1m3-1h1M8 11h1m3-1h1M8 15h1m3-1h1M10 21v-3h2v3",
     ],

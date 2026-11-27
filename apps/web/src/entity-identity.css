@@ -1,38 +1,38 @@
 .entity-mark {
-    --mark-ink: #17635b;
-    --mark-paper: #daeee6;
+    --mark-ink: light-dark(#17635b, #a6d7c4);
+    --mark-paper: light-dark(#daeee6, #23463b);
     display: inline-grid;
     flex: none;
     place-items: center;
     inline-size: 2.5rem;
     block-size: 2.5rem;
-    border-radius: 11px;
+    border-radius: var(--radius-md);
     color: var(--mark-ink);
     background: var(--mark-paper);
 }
 .entity-mark[data-tone="ochre"] {
-    --mark-ink: #80531c;
-    --mark-paper: #f5ead2;
+    --mark-ink: light-dark(#80531c, #f1d096);
+    --mark-paper: light-dark(#f5ead2, #49361f);
 }
 .entity-mark[data-tone="iris"] {
-    --mark-ink: #624e8a;
-    --mark-paper: #eee8f5;
+    --mark-ink: light-dark(#624e8a, #d0bcf2);
+    --mark-paper: light-dark(#eee8f5, #453659);
 }
 .entity-mark[data-tone="blue"] {
-    --mark-ink: #355e89;
-    --mark-paper: #e0edf7;
+    --mark-ink: light-dark(#355e89, #a8cef1);
+    --mark-paper: light-dark(#e0edf7, #294358);
 }
 .entity-mark[data-tone="rose"] {
-    --mark-ink: #914660;
-    --mark-paper: #f6e6e9;
+    --mark-ink: light-dark(#914660, #edabc8);
+    --mark-paper: light-dark(#f6e6e9, #533348);
 }
 .entity-mark[data-tone="slate"] {
-    --mark-ink: #3e5f6a;
-    --mark-paper: #e2ecec;
+    --mark-ink: light-dark(#3e5f6a, #bad2d8);
+    --mark-paper: light-dark(#e2ecec, #2e4348);
 }
 .entity-mark[data-tone="personal"] {
-    --mark-ink: #76522a;
-    --mark-paper: #f5e9d5;
+    --mark-ink: light-dark(#76522a, #efca98);
+    --mark-paper: light-dark(#f5e9d5, #4e3a26);
     border-radius: 50%;
 }
 .entity-mark .icon {
@@ -42,7 +42,7 @@
 .entity-mark-compact {
     inline-size: 1.7rem;
     block-size: 1.7rem;
-    border-radius: 7px;
+    border-radius: var(--radius-sm);
 }
 .entity-mark-compact .icon {
     inline-size: 1.05rem;

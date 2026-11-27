@@ -4,14 +4,14 @@
 .posting-component {
     min-width: 0;
     border: 1px solid var(--line);
-    border-radius: 11px;
+    border-radius: var(--radius-lg);
     padding: 18px;
-    margin: 20px 0;
+    margin: var(--space-5) 0;
 }
 .posting-component > legend {
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-weight: 650;
-    padding: 0 8px;
+    padding: 0 var(--space-2);
 }
 .posting-component > .secondary-button {
     display: block;
@@ -20,7 +20,7 @@
 .posting-amount-input {
     display: flex;
     align-items: stretch;
-    gap: 8px;
+    gap: var(--space-2);
     min-width: 0;
 }
 .posting-amount-input > input {
@@ -29,17 +29,17 @@
 .posting-amount-input > .secondary-button {
     flex: 0 0 auto;
     min-width: 44px;
-    padding: 8px;
-    font-size: 18px;
+    padding: var(--space-2);
+    font-size: var(--text-lg);
 }
 .asset-form-intro {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
 }
 .asset-enabled {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
+    gap: var(--space-2);
+    font-size: var(--text-sm-plus);
     margin: 18px 0;
 }
 .asset-enabled > input {
@@ -53,28 +53,28 @@
 }
 @media (max-width: 540px) {
     .posting-component {
-        padding: 15px 12px;
+        padding: 15px var(--space-3);
     }
     .posting-component > .secondary-button {
-        font-size: 11px;
+        font-size: var(--text-xs);
     }
     .posting-form .form-actions {
         flex-wrap: wrap;
     }
 }
 .revision-form-header {
-    margin-bottom: 24px;
-    padding-bottom: 4px;
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-1);
     border-bottom: 1px solid var(--line);
 }
 .revision-version {
-    margin: 0 0 16px;
+    margin: 0 0 var(--space-4);
     font-variant-numeric: tabular-nums;
 }
 .revision-cancel-help {
-    font-size: 13px;
+    font-size: var(--text-sm-plus);
     line-height: 1.7;
-    margin: 0 0 20px;
+    margin: 0 0 var(--space-5);
 }
 .posting-form .field > .help-text,
 .revision-form .help-text {
