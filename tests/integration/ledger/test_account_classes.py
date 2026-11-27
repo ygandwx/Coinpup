@@ -196,10 +196,23 @@ def test_money_history_survives_class_round_trip_and_original_replay(ledger_setu
     command = opening(s)
     receipt = s["posting"].post_opening(s["owner"], s["ledger"], command, "fictional-old-money")
     before = snapshot(s)
+    card_constraint_sql = """
+        SELECT pg_get_constraintdef(oid)
+        FROM pg_constraint
+        WHERE conrelid = 'public.accounts'::regclass
+          AND conname = 'ck_accounts_card_number'
+    """
     with s["engine"].begin() as connection:
+        card_constraint = connection.exec_driver_sql(card_constraint_sql).scalar_one()
         with Operations.context(MigrationContext.configure(connection)):
             migration()["downgrade"]()
             migration()["upgrade"]()
+        # Dropping account_class implicitly removes the newer dependent card CHECK.
+        # The frozen 0015 upgrade restores only the constraints that existed then.
+        connection.exec_driver_sql(
+            "ALTER TABLE public.accounts ADD CONSTRAINT ck_accounts_card_number " + card_constraint
+        )
+        assert connection.exec_driver_sql(card_constraint_sql).scalar_one() == card_constraint
         assert (
             connection.scalar(select(Account.account_class).where(Account.id == s["account"].id))
             == "money"
