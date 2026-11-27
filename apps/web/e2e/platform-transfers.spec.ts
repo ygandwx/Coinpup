@@ -95,8 +95,10 @@ test("cross-ledger deposits retry the same command and withdrawals reverse as a 
     await page.getByRole("button", { name: "New account", exact: true }).click();
     const accountForm = page.getByRole("dialog", { name: "New account", exact: true });
     await accountForm.getByLabel("Account name", { exact: true }).fill(platformName);
-    await accountForm.getByRole("radio", { name: "Crypto wallet", exact: true }).check();
-    await accountForm.getByLabel("Custody mode", { exact: true }).selectOption("custodial");
+    await accountForm.getByRole("radio", { name: "Crypto account", exact: true }).check();
+    await accountForm.getByRole("radio", { name: "Custodial platform", exact: true }).check();
+    await accountForm.getByLabel("Search platforms", { exact: true }).fill("Binance");
+    await accountForm.getByRole("radio", { name: "Binance", exact: true }).check();
     await expect(accountForm.getByLabel(chain.asset_id, { exact: true })).toHaveCount(0);
     await accountForm.getByLabel(platformAsset, { exact: true }).check();
     await accountForm.getByRole("button", { name: "Save", exact: true }).click();

@@ -15,6 +15,15 @@ from coinpup_api.ledger.card_details import (
     valid_account_details,
     valid_card_number,
 )
+from coinpup_api.ledger.crypto_profiles import (
+    CRYPTO_PRESETS,
+    PLATFORM_MODES,
+    custom_platform_key,
+    names_known_platform,
+    supports_deposit_network,
+    valid_deposit_address,
+    valid_deposit_memo,
+)
 from coinpup_api.ledger.errors import MoneyError
 from coinpup_api.ledger.models import Account, AccountAsset, AssetRecord, Category, Entity, Ledger
 from coinpup_api.ledger.schemas import (
@@ -28,6 +37,9 @@ from coinpup_api.ledger.schemas import (
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
+    CryptoAssetDetails,
+    CryptoAssetProfile,
+    CryptoPlatformProfile,
     EntityCreate,
     EntityProfile,
     EntityResponse,
@@ -107,6 +119,16 @@ def _check_custody(kind, mode, asset_kinds):
         )
 
 
+def _invalid_crypto_platform():
+    return LedgerError("invalid_crypto_platform", 422, "Choose a platform for this custody mode.")
+
+
+def _invalid_crypto_assets():
+    return LedgerError(
+        "invalid_crypto_asset_details", 422, "Check the selected assets and their network details."
+    )
+
+
 class LedgerService:
     def __init__(self, engine: Engine | None):
         self.engine = engine
@@ -126,7 +148,7 @@ class LedgerService:
                         text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                     )
                 elif read_committed:
-                    # New settlement writes need a fresh snapshot after waiting for the lock.
+                    # These writes need a fresh snapshot after waiting for the lock.
                     session.execute(text("SET TRANSACTION ISOLATION LEVEL READ COMMITTED"))
                 if write:
                     # Order cursor allocation before the owner lookup or any business row lock.
@@ -137,6 +159,13 @@ class LedgerService:
                 yield session
         except IntegrityError as error:
             if getattr(error.orig, "sqlstate", None) == "23505":
+                if (
+                    getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+                    == "uq_accounts_crypto_platform_ledger"
+                ):
+                    raise LedgerError(
+                        "duplicate_crypto_platform", 409, "This ledger already has that platform."
+                    ) from None
                 raise LedgerError("duplicate_record", 409, "The record already exists.") from None
             raise LedgerError(
                 "constraint_conflict", 409, "The change conflicts with an existing record."
@@ -187,7 +216,8 @@ class LedgerService:
         data = {
             key: getattr(account, key)
             for key in AccountResponse.model_fields
-            if key not in {"asset_ids", "details", "has_card_number"}
+            if key
+            not in {"asset_ids", "details", "has_card_number", "crypto_platform", "crypto_assets"}
         }
         details = public_account_details(account.kind, account.details)
         if card_summary_only:
@@ -199,13 +229,51 @@ class LedgerService:
         has_card_number = (
             not card_summary_only and account.kind in CARD_KINDS and account.has_card_number
         )
-        asset_ids = session.scalars(
-            select(AccountAsset.asset_id)
-            .where(AccountAsset.account_id == account.id, AccountAsset.enabled.is_(True))
-            .order_by(AccountAsset.asset_id)
-        ).all()
+        links = (
+            AccountAsset.account_id == account.id,
+            AccountAsset.ledger_id == account.ledger_id,
+        )
+        platform, asset_profiles = None, []
+        if card_summary_only:
+            asset_ids = session.scalars(
+                select(AccountAsset.asset_id)
+                .where(*links, AccountAsset.enabled.is_(True))
+                .order_by(AccountAsset.asset_id)
+            ).all()
+        else:
+            rows = session.scalars(
+                select(AccountAsset).where(*links).order_by(AccountAsset.asset_id)
+            ).all()
+            asset_ids = [row.asset_id for row in rows if row.enabled]
+            if account.crypto_platform_key is not None:
+                platform = CryptoPlatformProfile(
+                    institution_id=account.crypto_platform_id,
+                    custom_name=account.crypto_platform_name,
+                    uid=account.crypto_platform_uid,
+                    email=account.crypto_platform_email,
+                    note=account.crypto_platform_note,
+                )
+            asset_profiles = [
+                CryptoAssetProfile(
+                    asset_id=row.asset_id,
+                    enabled=row.enabled,
+                    details=CryptoAssetDetails(
+                        network=row.crypto_network,
+                        address=row.crypto_address,
+                        memo=row.crypto_memo,
+                        label=row.crypto_label,
+                    ),
+                )
+                for row in rows
+                if any((row.crypto_network, row.crypto_address, row.crypto_memo, row.crypto_label))
+            ]
         return AccountResponse(
-            **data, details=details, asset_ids=asset_ids, has_card_number=has_card_number
+            **data,
+            details=details,
+            asset_ids=asset_ids,
+            has_card_number=has_card_number,
+            crypto_platform=platform,
+            crypto_assets=asset_profiles,
         )
 
     def list_assets(self, owner_id, include_disabled=True, limit=100, offset=0):
@@ -410,8 +478,128 @@ class LedgerService:
                     )
                 )
 
+    @staticmethod
+    def _register_crypto_presets(session, kind, mode, asset_ids, preset_ids):
+        if not preset_ids:
+            return
+        if kind != "crypto" or mode is None or not set(preset_ids).issubset(asset_ids or ()):
+            raise _invalid_crypto_assets()
+        if any(asset_id not in CRYPTO_PRESETS for asset_id in preset_ids):
+            raise _invalid_crypto_assets()
+        presets = [CRYPTO_PRESETS[asset_id] for asset_id in sorted(preset_ids)]
+        _check_custody(kind, mode, {asset.kind for asset in presets})
+        existing = {
+            item.asset_id: item
+            for item in session.scalars(
+                select(AssetRecord).where(AssetRecord.asset_id.in_(preset_ids))
+            )
+        }
+        for preset in presets:
+            saved = existing.get(preset.asset_id)
+            if saved is not None:
+                if (saved.code, saved.kind, saved.scale, saved.network, saved.token_reference) != (
+                    preset.code,
+                    preset.kind,
+                    preset.scale,
+                    preset.network,
+                    preset.token_reference,
+                ):
+                    raise LedgerError(
+                        "constraint_conflict", 409, "The preset conflicts with a saved asset."
+                    )
+                continue
+            session.add(
+                AssetRecord(
+                    asset_id=preset.asset_id,
+                    code=preset.code,
+                    kind=preset.kind,
+                    scale=preset.scale,
+                    network=preset.network,
+                    token_reference=preset.token_reference,
+                )
+            )
+        session.flush()
+
+    @staticmethod
+    def _set_crypto_platform(account, profile):
+        if profile is None:
+            account.crypto_platform_key = None
+            account.crypto_platform_id = None
+            account.crypto_platform_name = None
+            account.crypto_platform_uid = None
+            account.crypto_platform_email = None
+            account.crypto_platform_note = None
+            return
+        if account.kind != "crypto" or account.custody_mode is None:
+            raise _invalid_crypto_platform()
+        institution = profile.institution_id
+        if institution is not None and PLATFORM_MODES.get(institution) != account.custody_mode:
+            raise _invalid_crypto_platform()
+        if profile.custom_name is not None and names_known_platform(profile.custom_name):
+            raise _invalid_crypto_platform()
+        account.crypto_platform_key = (
+            f"catalog:{institution}"
+            if institution is not None
+            else custom_platform_key(profile.custom_name)
+        )
+        account.crypto_platform_id = institution
+        account.crypto_platform_name = profile.custom_name
+        account.crypto_platform_uid = profile.uid
+        account.crypto_platform_email = profile.email
+        account.crypto_platform_note = profile.note
+        account.crypto_profile_used = True
+
+    @staticmethod
+    def _set_crypto_asset_profiles(session, account, changes):
+        if not changes:
+            return
+        if account.kind != "crypto" or account.custody_mode is None:
+            raise _invalid_crypto_assets()
+        ids = [change.asset_id for change in changes]
+        rows = session.execute(
+            select(AccountAsset, AssetRecord)
+            .join(AssetRecord, AssetRecord.asset_id == AccountAsset.asset_id)
+            .where(
+                AccountAsset.account_id == account.id,
+                AccountAsset.ledger_id == account.ledger_id,
+                AccountAsset.asset_id.in_(ids),
+            )
+        ).all()
+        selected = {row.asset_id: (row, asset) for row, asset in rows}
+        if set(selected) != set(ids):
+            raise _invalid_crypto_assets()
+        for change in changes:
+            row, asset = selected[change.asset_id]
+            details = change.details
+            if details is None:
+                row.crypto_network = row.crypto_address = row.crypto_memo = row.crypto_label = None
+                continue
+            if not row.enabled:
+                raise _invalid_crypto_assets()
+            network = details.network
+            if account.custody_mode == "onchain":
+                if network is not None and network != asset.network:
+                    raise _invalid_crypto_assets()
+                network = asset.network
+            elif network is not None and not supports_deposit_network(asset.code, network):
+                raise _invalid_crypto_assets()
+            if details.address is not None and (
+                network is None or not valid_deposit_address(network, details.address)
+            ):
+                raise _invalid_crypto_assets()
+            if details.memo is not None and (
+                network is None or not valid_deposit_memo(network, details.address, details.memo)
+            ):
+                raise _invalid_crypto_assets()
+            row.crypto_network = network
+            row.crypto_address = details.address
+            row.crypto_memo = details.memo
+            row.crypto_label = details.label
+
     def create_account(self, owner_id, ledger_id, payload: AccountCreate) -> AccountResponse:
-        with self._transaction(owner_id, write=True) as session:
+        with self._transaction(
+            owner_id, write=True, read_committed=bool(payload.crypto_preset_asset_ids)
+        ) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             details = dict(payload.details)
             _validate_card_details(payload.kind, details, {})
@@ -419,6 +607,13 @@ class LedgerService:
             number = _card_number(payload.kind, payload.card_number)
             if number is not None:
                 details["card_last_four"] = number[-4:]
+            self._register_crypto_presets(
+                session,
+                payload.kind,
+                payload.custody_mode,
+                payload.asset_ids,
+                payload.crypto_preset_asset_ids,
+            )
             account = Account(
                 id=payload.id or uuid4(),
                 ledger_id=ledger_id,
@@ -427,15 +622,23 @@ class LedgerService:
                 custody_mode=payload.custody_mode,
                 details=details,
                 card_number=number,
+                crypto_profile_used=any(
+                    change.details is not None for change in payload.crypto_assets
+                ),
             )
+            if payload.crypto_platform is not None:
+                self._set_crypto_platform(account, payload.crypto_platform)
             session.add(account)
             session.flush()
             self._set_account_assets(session, account, payload.asset_ids)
+            self._set_crypto_asset_profiles(session, account, payload.crypto_assets)
             session.flush()
             return self._account_response(session, account)
 
     def update_account(self, owner_id, ledger_id, account_id, payload: AccountUpdate):
-        with self._transaction(owner_id, write=True) as session:
+        with self._transaction(
+            owner_id, write=True, read_committed=bool(payload.crypto_preset_asset_ids)
+        ) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
             account = session.scalar(
                 select(Account).where(
@@ -448,7 +651,14 @@ class LedgerService:
                 raise _not_found()
             _version(account, payload.expected_version)
             changes = payload.model_dump(
-                exclude_unset=True, exclude={"expected_version", "card_number"}
+                exclude_unset=True,
+                exclude={
+                    "expected_version",
+                    "card_number",
+                    "crypto_platform",
+                    "crypto_assets",
+                    "crypto_preset_asset_ids",
+                },
             )
             details = dict(changes.get("details", account.details))
             kind = changes.get("kind", account.kind)
@@ -475,11 +685,32 @@ class LedgerService:
                 details["card_last_four"] = account.details["card_last_four"]
                 changes["details"] = details
             asset_ids = changes.pop("asset_ids", None)
+            self._register_crypto_presets(
+                session, kind, custody_mode, asset_ids, payload.crypto_preset_asset_ids
+            )
             for key, value in changes.items():
                 setattr(account, key, value)
+            if "crypto_platform" in payload.model_fields_set:
+                self._set_crypto_platform(account, payload.crypto_platform)
+            elif (
+                kind == "crypto"
+                and account.crypto_platform_key is not None
+                and (
+                    custody_mode is None
+                    or (
+                        account.crypto_platform_id is not None
+                        and PLATFORM_MODES.get(account.crypto_platform_id) != custody_mode
+                    )
+                )
+            ):
+                raise _invalid_crypto_platform()
+            if any(change.details is not None for change in payload.crypto_assets):
+                account.crypto_profile_used = True
+            _touch(account)
+            session.flush()
             if asset_ids is not None:
                 self._set_account_assets(session, account, asset_ids)
-            _touch(account)
+            self._set_crypto_asset_profiles(session, account, payload.crypto_assets)
             session.flush()
             session.refresh(account)
             return self._account_response(session, account)

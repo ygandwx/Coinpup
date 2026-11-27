@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { FormEvent } from "react";
 import type { Locale } from "./i18n";
 import type {
@@ -7,11 +7,26 @@ import type {
     AccountKind,
     AccountUpdateBody,
     Asset,
+    AssetPreset,
 } from "./ledger-api";
 import { AccountIcon } from "./AccountIcon";
+import { CryptoAccountFields } from "./CryptoAccountFields";
+import {
+    cryptoAccountDraft,
+    cryptoAccountUpdates,
+    cryptoAssetChoices,
+    OTHER_PLATFORM,
+} from "./crypto-account-draft";
+import type { CryptoAssetChoice } from "./crypto-account-draft";
+import { listAssetPresets } from "./ledger-api";
 import { AssetIcon } from "./AssetIcon";
 import { CardIssuerPicker } from "./CardIssuerPicker";
-import { accountInstitution, BANK_INSTITUTIONS, getInstitution } from "./institutions";
+import {
+    accountInstitution,
+    BANK_INSTITUTIONS,
+    CRYPTO_PLATFORMS,
+    getInstitution,
+} from "./institutions";
 import {
     ACCOUNT_DETAILS,
     ACCOUNT_DETAIL_KEYS,
@@ -63,11 +78,11 @@ const labels = {
         missing: "未载入",
         noAssets: "暂无可用资产，请先配置资产目录。",
         showAll: "显示全部资产",
-        custody: "托管方式",
-        legacyCustody: "保持现有资产配置",
         custodial: "托管平台",
-        onchain: "链上钱包",
         custodyError: "请移除与所选托管方式不兼容的资产。",
+        platformError: "请选择托管方式和对应的平台，或填写其他平台的名称。",
+        upgradeCrypto: "按平台和币种配置",
+        legacyCrypto: "可以保留现有的账户配置，也可以分别填写平台和每个币种的资料。",
         otherDetails: "其他已保存资料",
         customDetails: "自定义资料",
         searchBank: "搜索银行",
@@ -102,7 +117,7 @@ const labels = {
             paypal: "PayPal",
             wise: "Wise",
             stripe: "Stripe",
-            crypto: "加密资产钱包",
+            crypto: "加密账户",
         },
     },
     en: {
@@ -120,11 +135,13 @@ const labels = {
         missing: "Not loaded",
         noAssets: "No assets are available. Configure the asset catalog first.",
         showAll: "Show all assets",
-        custody: "Custody mode",
-        legacyCustody: "Keep existing asset setup",
         custodial: "Custodial platform",
-        onchain: "On-chain wallet",
         custodyError: "Remove assets that do not match the selected custody mode.",
+        platformError:
+            "Choose a custody mode and a matching platform, or enter another platform’s name.",
+        upgradeCrypto: "Configure platform and coins",
+        legacyCrypto:
+            "Keep the current account setup, or record separate platform and coin details.",
         otherDetails: "Other saved details",
         customDetails: "Custom details",
         searchBank: "Search banks",
@@ -160,7 +177,7 @@ const labels = {
             paypal: "PayPal",
             wise: "Wise",
             stripe: "Stripe",
-            crypto: "Crypto wallet",
+            crypto: "Crypto account",
         },
     },
 };
@@ -195,9 +212,30 @@ export function AccountForm({
     const [originalAssetIds] = useState(() => [...(account?.asset_ids ?? [])]);
     const [name, setName] = useState(account?.name ?? "");
     const [kind, setKind] = useState(account?.kind ?? "bank");
-    const [custody, setCustody] = useState<Account["custody_mode"]>(
-        account?.kind === "crypto" ? (account.custody_mode ?? null) : "onchain",
-    );
+    const [custody, setCustody] = useState<Account["custody_mode"]>(account?.custody_mode ?? null);
+    const [initialCrypto] = useState(() => cryptoAccountDraft(account));
+    const [cryptoDraft, setCryptoDraft] = useState(initialCrypto);
+    const [configureCrypto, setConfigureCrypto] = useState(false);
+    const typedCrypto =
+        kind === "crypto" &&
+        (configureCrypto || account?.kind !== "crypto" || !!account?.crypto_platform);
+    const [presets, setPresets] = useState<AssetPreset[]>();
+    const [presetFailed, setPresetFailed] = useState(false);
+    const [presetRetry, setPresetRetry] = useState(0);
+    useEffect(() => {
+        if (!typedCrypto) return;
+        const abort = new AbortController();
+        void listAssetPresets(abort.signal).then(
+            (value) => {
+                if (!abort.signal.aborted) setPresets(value);
+            },
+            () => {
+                if (!abort.signal.aborted) setPresetFailed(true);
+            },
+        );
+        return () => abort.abort();
+    }, [typedCrypto, presetRetry]);
+    const choices = typedCrypto ? cryptoAssetChoices(assets, presets ?? []) : assets;
     const custodyMode = kind === "crypto" ? (custody ?? null) : null;
     const [assetIds, setAssetIds] = useState<string[]>(() => [...originalAssetIds]);
     const [assetsTouched, setAssetsTouched] = useState(false);
@@ -215,6 +253,7 @@ export function AccountForm({
         | "assets"
         | "disabled"
         | "custody"
+        | "platform"
         | "details"
         | "card"
         | "suffix"
@@ -227,13 +266,13 @@ export function AccountForm({
     const values = new Map(rows.filter((row) => !row.custom).map(({ key, value }) => [key, value]));
     const institution = BANK_INSTITUTIONS.find((bank) => bank.id === values.get("institution"));
     const suggestedInstitution =
-        account && kind === account.kind && !values.get("institution")
+        account && kind === account.kind && !typedCrypto && !values.get("institution")
             ? accountInstitution(account.details, account.name, account.kind)
             : undefined;
     const card = isCardKind(kind);
     const bankRegion = institution?.region ?? values.get("bank_region") ?? defaultBankRegion ?? "";
     const fields = accountFields(kind, bankRegion).filter(
-        (field) => custodyMode !== "custodial" || !field.startsWith("wallet_"),
+        (field) => (!typedCrypto && custodyMode !== "custodial") || !field.startsWith("wallet_"),
     );
     const hidden = rows.filter(
         (row) => !row.custom && !!row.value && !fields.some((field) => field === row.key),
@@ -247,7 +286,7 @@ export function AccountForm({
                 (value) => value.toLowerCase().includes(query),
             ),
     );
-    const matchesCustody = (asset: Asset) =>
+    const matchesCustody = (asset: CryptoAssetChoice) =>
         custodyMode === "custodial"
             ? asset.kind === "custodial"
             : custodyMode === "onchain"
@@ -306,6 +345,21 @@ export function AccountForm({
             setLocalError("name");
             return;
         }
+        if (typedCrypto) {
+            const registered = CRYPTO_PLATFORMS.find((item) => item.id === cryptoDraft.platform);
+            const compatible =
+                registered?.custody === (custodyMode === "onchain" ? "self-custody" : custodyMode);
+            if (
+                !custodyMode ||
+                !(
+                    compatible ||
+                    (cryptoDraft.platform === OTHER_PLATFORM && cryptoDraft.customName.trim())
+                )
+            ) {
+                setLocalError("platform");
+                return;
+            }
+        }
         if (!assetIds.length || assetIds.length > 100) {
             setLocalError("assets");
             return;
@@ -317,7 +371,7 @@ export function AccountForm({
         if (
             assetsChanged &&
             assetIds.some(
-                (assetId) => !assets.some((asset) => asset.asset_id === assetId && asset.enabled),
+                (assetId) => !choices.some((asset) => asset.asset_id === assetId && asset.enabled),
             )
         ) {
             setLocalError("disabled");
@@ -362,6 +416,7 @@ export function AccountForm({
         }
         if (
             kind === "crypto" &&
+            !typedCrypto &&
             (changed("wallet_network") || changed("wallet_address")) &&
             !validWalletAddress(
                 values.get("wallet_network") ?? "",
@@ -374,7 +429,7 @@ export function AccountForm({
         const custodyChanged = (account?.custody_mode ?? null) !== custodyMode;
         if (
             (assetsChanged || custodyChanged) &&
-            assets.some((asset) => assetIds.includes(asset.asset_id) && !matchesCustody(asset))
+            choices.some((asset) => assetIds.includes(asset.asset_id) && !matchesCustody(asset))
         ) {
             setLocalError("custody");
             return;
@@ -394,6 +449,19 @@ export function AccountForm({
         }
         setLocalError(null);
         const privateNumber = card && cardNumber ? { card_number: cardNumber } : {};
+        const cryptoUpdates = typedCrypto
+            ? cryptoAccountUpdates(initialCrypto, cryptoDraft, assetIds)
+            : {};
+        const register = choices
+            .filter(
+                (asset) =>
+                    "needsRegistration" in asset &&
+                    asset.needsRegistration &&
+                    assetIds.includes(asset.asset_id),
+            )
+            .map((asset) => asset.asset_id);
+        const presetAssets =
+            typedCrypto && register.length ? { crypto_preset_asset_ids: register } : {};
         if (account && expectedVersion !== undefined)
             onSubmit({
                 name: name.trim(),
@@ -403,6 +471,8 @@ export function AccountForm({
                 ...(assetsChanged ? { asset_ids: assetIds } : {}),
                 ...(custodyChanged ? { custody_mode: custodyMode } : {}),
                 ...privateNumber,
+                ...cryptoUpdates,
+                ...presetAssets,
             });
         else
             onSubmit({
@@ -413,6 +483,8 @@ export function AccountForm({
                 asset_ids: assetIds,
                 ...(custodyMode ? { custody_mode: custodyMode } : {}),
                 ...privateNumber,
+                ...cryptoUpdates,
+                ...presetAssets,
             });
     }
 
@@ -616,128 +688,154 @@ export function AccountForm({
                     </div>
                     {kind === "debit_card" && <p className="help-text">{t.debitHelp}</p>}
                 </fieldset>
-                <fieldset
-                    className="form-section"
-                    disabled={busy}
-                    aria-describedby={`${prefix}-asset-help`}
-                >
-                    <legend>{t.assets}</legend>
-                    <p className="help-text" id={`${prefix}-asset-help`}>
-                        {t.assetHelp}
-                    </p>
-                    {kind === "crypto" && (
-                        <div className="field">
-                            <label htmlFor={`${prefix}-custody`}>{t.custody}</label>
-                            <select
-                                id={`${prefix}-custody`}
-                                value={custodyMode ?? ""}
-                                onChange={(event) => {
-                                    const value = event.currentTarget.value;
-                                    setCustody(
-                                        value === "custodial" || value === "onchain" ? value : null,
-                                    );
-                                    setLocalError(null);
-                                }}
-                            >
-                                {account?.kind === "crypto" && !account.custody_mode && (
-                                    <option value="">{t.legacyCustody}</option>
-                                )}
-                                <option value="onchain">{t.onchain}</option>
-                                <option value="custodial">{t.custodial}</option>
-                            </select>
-                        </div>
-                    )}
-                    <label className="account-show-assets">
-                        <input
-                            type="checkbox"
-                            checked={showAll}
-                            onChange={(event) => setShowAll(event.target.checked)}
-                        />
-                        {t.showAll}
-                    </label>
-                    <div className="check-grid">
-                        {availableAssets.map((asset) => (
-                            <label key={asset.asset_id}>
-                                <input
-                                    type="checkbox"
-                                    checked={assetIds.includes(asset.asset_id)}
-                                    value={asset.asset_id}
-                                    aria-label={asset.asset_id}
-                                    onChange={(event) =>
-                                        toggleAsset(asset.asset_id, event.target.checked)
-                                    }
-                                />
-                                <AssetIcon asset={asset} compact />
-                                <span>
-                                    {asset.code}
-                                    {asset.network ? ` · ${asset.network}` : ""}
-                                    {asset.kind === "custodial" ? ` · ${t.custodial}` : ""}
-                                    {asset.token_reference ? ` · ${asset.token_reference}` : ""}
-                                    {!asset.enabled ? ` · ${t.disabled}` : ""}
-                                </span>
-                            </label>
-                        ))}
-                        {missingAssetIds.map((assetId) => (
-                            <label key={assetId}>
-                                <input
-                                    type="checkbox"
-                                    checked={assetIds.includes(assetId)}
-                                    value={assetId}
-                                    aria-label={assetId}
-                                    onChange={(event) => toggleAsset(assetId, event.target.checked)}
-                                />
-                                <span>
-                                    {assetId} · {t.missing}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                    {!availableAssets.length && !missingAssetIds.length && (
-                        <p className="help-text">{t.noAssets}</p>
-                    )}
-                </fieldset>
-                <fieldset className="form-section" disabled={busy}>
-                    <legend>{t.details}</legend>
-                    {suggestedInstitution && (
-                        <div className="institution-suggestion">
-                            <p className="help-text">
-                                {locale === "zh" ? "关联到" : "Link to"} ·{" "}
-                                {suggestedInstitution.name[locale]}
-                            </p>
-                            <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => {
-                                    setField("institution", suggestedInstitution.id);
-                                }}
-                            >
-                                {locale === "zh" ? "确认关联" : "Confirm association"}
-                            </button>
-                        </div>
-                    )}
-                    {card && (
-                        <div className="field">
-                            <label htmlFor={`${prefix}-card-number`}>{t.cardNumber}</label>
+                {typedCrypto ? (
+                    <CryptoAccountFields
+                        locale={locale}
+                        busy={busy}
+                        custody={custodyMode}
+                        assets={choices}
+                        assetIds={assetIds}
+                        draft={cryptoDraft}
+                        presets={presets}
+                        onRetryPresets={
+                            presetFailed
+                                ? () => {
+                                      setPresetFailed(false);
+                                      setPresetRetry((value) => value + 1);
+                                  }
+                                : undefined
+                        }
+                        changeMode={(mode) => {
+                            setCustody(mode);
+                            setLocalError(null);
+                        }}
+                        selectAsset={toggleAsset}
+                        change={(value) => {
+                            setCryptoDraft(value);
+                            setLocalError(null);
+                        }}
+                    />
+                ) : (
+                    <fieldset
+                        className="form-section"
+                        disabled={busy}
+                        aria-describedby={`${prefix}-asset-help`}
+                    >
+                        <legend>{t.assets}</legend>
+                        <p className="help-text" id={`${prefix}-asset-help`}>
+                            {t.assetHelp}
+                        </p>
+                        {kind === "crypto" && (
+                            <div>
+                                <p className="help-text">{t.legacyCrypto}</p>
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={() => {
+                                        setConfigureCrypto(true);
+                                        setLocalError(null);
+                                    }}
+                                >
+                                    {t.upgradeCrypto}
+                                </button>
+                            </div>
+                        )}
+                        <label className="account-show-assets">
                             <input
-                                id={`${prefix}-card-number`}
-                                type="password"
-                                autoComplete="off"
-                                inputMode="numeric"
-                                spellCheck={false}
-                                value={cardNumber}
-                                onChange={(event) => {
-                                    setCardNumber(event.target.value);
-                                    setLocalError(null);
-                                }}
-                                aria-describedby={`${prefix}-card-help`}
+                                type="checkbox"
+                                checked={showAll}
+                                onChange={(event) => setShowAll(event.target.checked)}
                             />
-                            <p className="help-text" id={`${prefix}-card-help`}>
-                                {t.cardHelp}
-                            </p>
+                            {t.showAll}
+                        </label>
+                        <div className="check-grid">
+                            {availableAssets.map((asset) => (
+                                <label key={asset.asset_id}>
+                                    <input
+                                        type="checkbox"
+                                        checked={assetIds.includes(asset.asset_id)}
+                                        value={asset.asset_id}
+                                        aria-label={asset.asset_id}
+                                        onChange={(event) =>
+                                            toggleAsset(asset.asset_id, event.target.checked)
+                                        }
+                                    />
+                                    <AssetIcon asset={asset} compact />
+                                    <span>
+                                        {asset.code}
+                                        {asset.network ? ` · ${asset.network}` : ""}
+                                        {asset.kind === "custodial" ? ` · ${t.custodial}` : ""}
+                                        {asset.token_reference ? ` · ${asset.token_reference}` : ""}
+                                        {!asset.enabled ? ` · ${t.disabled}` : ""}
+                                    </span>
+                                </label>
+                            ))}
+                            {missingAssetIds.map((assetId) => (
+                                <label key={assetId}>
+                                    <input
+                                        type="checkbox"
+                                        checked={assetIds.includes(assetId)}
+                                        value={assetId}
+                                        aria-label={assetId}
+                                        onChange={(event) =>
+                                            toggleAsset(assetId, event.target.checked)
+                                        }
+                                    />
+                                    <span>
+                                        {assetId} · {t.missing}
+                                    </span>
+                                </label>
+                            ))}
                         </div>
-                    )}
-                    <div className="form-grid">{fields.map(renderField)}</div>
-                </fieldset>
+                        {!availableAssets.length && !missingAssetIds.length && (
+                            <p className="help-text">{t.noAssets}</p>
+                        )}
+                    </fieldset>
+                )}
+                {(!typedCrypto || fields.length > 0) && (
+                    <fieldset className="form-section" disabled={busy}>
+                        <legend>{t.details}</legend>
+                        {suggestedInstitution && (
+                            <div className="institution-suggestion">
+                                <p className="help-text">
+                                    {locale === "zh" ? "关联到" : "Link to"} ·{" "}
+                                    {suggestedInstitution.name[locale]}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={() => {
+                                        setField("institution", suggestedInstitution.id);
+                                    }}
+                                >
+                                    {locale === "zh" ? "确认关联" : "Confirm association"}
+                                </button>
+                            </div>
+                        )}
+                        {card && (
+                            <div className="field">
+                                <label htmlFor={`${prefix}-card-number`}>{t.cardNumber}</label>
+                                <input
+                                    id={`${prefix}-card-number`}
+                                    type="password"
+                                    autoComplete="off"
+                                    inputMode="numeric"
+                                    spellCheck={false}
+                                    value={cardNumber}
+                                    onChange={(event) => {
+                                        setCardNumber(event.target.value);
+                                        setLocalError(null);
+                                    }}
+                                    aria-describedby={`${prefix}-card-help`}
+                                />
+                                <p className="help-text" id={`${prefix}-card-help`}>
+                                    {t.cardHelp}
+                                </p>
+                            </div>
+                        )}
+                        <div className="form-grid">{fields.map(renderField)}</div>
+                    </fieldset>
+                )}
                 <details className="account-extra-details">
                     <summary>
                         {hidden.length || custom.length ? t.otherDetails : t.customDetails}

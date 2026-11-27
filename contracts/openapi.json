@@ -30,6 +30,34 @@
             ],
             "title": "Card Number"
           },
+          "crypto_assets": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoAssetChange"
+            },
+            "maxItems": 100,
+            "title": "Crypto Assets",
+            "type": "array"
+          },
+          "crypto_platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CryptoPlatformProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crypto_preset_asset_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Crypto Preset Asset Ids",
+            "type": "array"
+          },
           "custody_mode": {
             "anyOf": [
               {
@@ -112,6 +140,23 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "crypto_assets": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoAssetProfile"
+            },
+            "title": "Crypto Assets",
+            "type": "array"
+          },
+          "crypto_platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CryptoPlatformProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "custody_mode": {
             "anyOf": [
@@ -229,6 +274,34 @@
               }
             ],
             "title": "Card Number"
+          },
+          "crypto_assets": {
+            "items": {
+              "$ref": "#/components/schemas/CryptoAssetChange"
+            },
+            "maxItems": 100,
+            "title": "Crypto Assets",
+            "type": "array"
+          },
+          "crypto_platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CryptoPlatformProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crypto_preset_asset_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Crypto Preset Asset Ids",
+            "type": "array"
           },
           "custody_mode": {
             "anyOf": [
@@ -5953,6 +6026,186 @@
           "created_at"
         ],
         "title": "CreditSummary",
+        "type": "object"
+      },
+      "CryptoAssetChange": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CryptoAssetDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "asset_id",
+          "details"
+        ],
+        "title": "CryptoAssetChange",
+        "type": "object"
+      },
+      "CryptoAssetDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network"
+          }
+        },
+        "title": "CryptoAssetDetails",
+        "type": "object"
+      },
+      "CryptoAssetProfile": {
+        "properties": {
+          "asset_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/CryptoAssetDetails"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "asset_id",
+          "enabled",
+          "details"
+        ],
+        "title": "CryptoAssetProfile",
+        "type": "object"
+      },
+      "CryptoPlatformProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "custom_name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 254,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "institution_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9-]{2,40}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "uid": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uid"
+          }
+        },
+        "title": "CryptoPlatformProfile",
         "type": "object"
       },
       "DeliveryConfigView": {

@@ -605,13 +605,15 @@ test("account drawer applies regional fields, protects card data, and preserves 
     expect(stored?.details).toEqual(edited.details);
 
     await card.getByRole("button", { name: "Edit", exact: true }).click();
-    await editor.getByRole("radio", { name: "Crypto wallet", exact: true }).check();
-    await expect(editor.getByLabel("ETH", { exact: true })).toBeVisible();
+    await editor.getByRole("radio", { name: "Crypto account", exact: true }).check();
+    await editor.getByRole("radio", { name: "Self-custody wallet", exact: true }).check();
+    await editor.getByLabel("Search platforms", { exact: true }).fill("MetaMask");
+    await editor.getByRole("radio", { name: "MetaMask", exact: true }).check();
     await expect(editor.getByLabel("USD", { exact: true })).toBeChecked();
-    await editor.getByLabel("Network", { exact: true }).selectOption("ethereum");
-    await editor.getByLabel("Wallet address").fill("0x123");
+    await editor.getByLabel("Choose network", { exact: true }).selectOption("ethereum");
+    await editor.getByLabel("ETH", { exact: true }).check();
     await editor.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(editor.getByRole("alert")).toContainText("selected network");
+    await expect(editor.getByRole("alert")).toContainText("selected custody mode");
     await editor.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(card.getByText("Credit card", { exact: true })).toBeVisible();
 });

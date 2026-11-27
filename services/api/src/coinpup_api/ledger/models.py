@@ -212,6 +212,27 @@ class Account(Versioned, Base):
             "AND custody_mode IN ('onchain', 'custodial'))",
             name="ck_accounts_custody_mode",
         ),
+        CheckConstraint(
+            "(crypto_platform_key IS NULL AND crypto_platform_id IS NULL "
+            "AND crypto_platform_name IS NULL AND crypto_platform_uid IS NULL "
+            "AND crypto_platform_email IS NULL AND crypto_platform_note IS NULL) OR "
+            "(crypto_platform_key IS NOT NULL AND crypto_profile_used "
+            "AND account_class = 'money' "
+            "AND (kind IS DISTINCT FROM 'crypto' OR custody_mode IS NOT NULL) AND "
+            "((crypto_platform_id IS NOT NULL AND crypto_platform_name IS NULL "
+            "AND crypto_platform_key = 'catalog:' || crypto_platform_id) OR "
+            "(crypto_platform_id IS NULL AND crypto_platform_name IS NOT NULL "
+            "AND btrim(crypto_platform_name) <> '' "
+            "AND crypto_platform_key ~ '^custom:[0-9a-f]{64}$'))) ",
+            name="ck_accounts_crypto_platform",
+        ),
+        Index(
+            "uq_accounts_crypto_platform_ledger",
+            "ledger_id",
+            "crypto_platform_key",
+            unique=True,
+            postgresql_where=text("kind = 'crypto' AND crypto_platform_key IS NOT NULL"),
+        ),
         CheckConstraint("version > 0", name="ck_accounts_version"),
         CheckConstraint("jsonb_typeof(details) = 'object'", name="ck_accounts_details"),
         CheckConstraint(
@@ -231,6 +252,15 @@ class Account(Versioned, Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
     custody_mode: Mapped[str | None] = mapped_column(String(9), nullable=True)
+    crypto_platform_key: Mapped[str | None] = mapped_column(String(72), nullable=True)
+    crypto_platform_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    crypto_platform_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    crypto_platform_uid: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    crypto_platform_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    crypto_platform_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    crypto_profile_used: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     account_class: Mapped[str] = mapped_column(
         String(16), nullable=False, default="money", server_default="money"
     )
@@ -263,6 +293,11 @@ class AccountAsset(Base):
             name="fk_account_assets_account_ledger",
             ondelete="RESTRICT",
         ),
+        CheckConstraint(
+            "(crypto_network IS NOT NULL AND crypto_network ~ '^[a-z][a-z0-9_-]{0,63}$') "
+            "OR (crypto_network IS NULL AND crypto_address IS NULL AND crypto_memo IS NULL)",
+            name="ck_account_assets_crypto_network",
+        ),
     )
 
     account_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
@@ -275,6 +310,10 @@ class AccountAsset(Base):
     enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
+    crypto_network: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    crypto_address: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    crypto_memo: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    crypto_label: Mapped[str | None] = mapped_column(String(160), nullable=True)
 
 
 class Category(Versioned, Base):

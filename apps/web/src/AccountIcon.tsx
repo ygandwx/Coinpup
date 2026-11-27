@@ -24,14 +24,17 @@ const wallet = "M3 7h16v13H5a2 2 0 0 1-2-2V7Zm0 0V6a2 2 0 0 1 2-2h12v3m2 5h-5v4h
 export function AccountIcon({
     kind,
     institution,
+    customName,
     compact = false,
 }: {
     kind: string;
     institution?: string | null;
+    customName?: string | null;
     compact?: boolean;
 }) {
     const bank = getInstitution(institution);
     const logo = bank?.logo && institutionLogoUrl(bank.logo);
+    const initial = Array.from(customName?.trim() ?? "")[0]?.toUpperCase();
     return (
         <span
             className={`account-mark icon-badge${compact ? " compact" : ""}`}
@@ -46,6 +49,8 @@ export function AccountIcon({
                 ) : (
                     <span className="institution-mark-text">{bank.shortName}</span>
                 )
+            ) : initial ? (
+                <span className="institution-mark-text">{initial}</span>
             ) : isPaymentPlatform(kind) ? (
                 <BrandMark brand={kind} />
             ) : (
@@ -65,7 +70,13 @@ export function AccountIcon({
     );
 }
 
-export type AccountIdentity = Pick<Account, "id" | "kind" | "details" | "name">;
+export type AccountIdentity = Pick<Account, "id" | "kind" | "details" | "name" | "crypto_platform">;
+
+export function institutionForAccount(account: AccountIdentity) {
+    return account.kind === "crypto" && account.crypto_platform
+        ? getInstitution(account.crypto_platform.institution_id)
+        : accountInstitution(account.details, account.name, account.kind);
+}
 
 export function AccountIdentityIcon({
     account,
@@ -74,8 +85,17 @@ export function AccountIdentityIcon({
     account: AccountIdentity;
     compact?: boolean;
 }) {
-    const institution = accountInstitution(account.details, account.name, account.kind);
-    return <AccountIcon kind={account.kind} institution={institution?.id} compact={compact} />;
+    const institution = institutionForAccount(account);
+    return (
+        <AccountIcon
+            kind={account.kind}
+            institution={institution?.id}
+            customName={
+                account.kind === "crypto" ? account.crypto_platform?.custom_name : undefined
+            }
+            compact={compact}
+        />
+    );
 }
 
 export function AccountName({ account }: { account: AccountIdentity }) {
