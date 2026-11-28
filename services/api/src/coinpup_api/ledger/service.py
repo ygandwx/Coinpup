@@ -8,18 +8,26 @@ from sqlalchemy import Engine, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from coinpup_api import private_fields
+from coinpup_api.ledger.account_private_data import (
+    read_details,
+    read_private,
+    write_details,
+    write_private,
+)
 from coinpup_api.ledger.assets import AssetDefinition, verified_token
 from coinpup_api.ledger.card_details import (
     CARD_KINDS,
     public_account_details,
     valid_account_details,
     valid_card_number,
+    without_card_copies,
 )
 from coinpup_api.ledger.crypto_profiles import (
     CRYPTO_PRESETS,
     PLATFORM_MODES,
-    custom_platform_key,
     names_known_platform,
+    normalized_platform_name,
     supports_deposit_network,
     valid_deposit_address,
     valid_deposit_memo,
@@ -87,7 +95,7 @@ def _invalid_card_details():
     return LedgerError(
         "invalid_card_details",
         422,
-        "Use the designated card fields and omit card security codes or PINs.",
+        "Use the designated account fields and omit payment or wallet credentials.",
     )
 
 
@@ -219,7 +227,15 @@ class LedgerService:
             if key
             not in {"asset_ids", "details", "has_card_number", "crypto_platform", "crypto_assets"}
         }
-        details = public_account_details(account.kind, account.details)
+        details = {}
+        if not card_summary_only or account.kind in CARD_KINDS:
+            details = public_account_details(
+                account.kind,
+                read_details(account),
+                saved_card_suffix=account.details.get("card_last_four")
+                if account.has_card_number
+                else None,
+            )
         if card_summary_only:
             details = {
                 key: details[key]
@@ -248,10 +264,10 @@ class LedgerService:
             if account.crypto_platform_key is not None:
                 platform = CryptoPlatformProfile(
                     institution_id=account.crypto_platform_id,
-                    custom_name=account.crypto_platform_name,
-                    uid=account.crypto_platform_uid,
-                    email=account.crypto_platform_email,
-                    note=account.crypto_platform_note,
+                    custom_name=read_private(account, "crypto_platform_name"),
+                    uid=read_private(account, "crypto_platform_uid"),
+                    email=read_private(account, "crypto_platform_email"),
+                    note=read_private(account, "crypto_platform_note"),
                 )
             asset_profiles = [
                 CryptoAssetProfile(
@@ -259,13 +275,20 @@ class LedgerService:
                     enabled=row.enabled,
                     details=CryptoAssetDetails(
                         network=row.crypto_network,
-                        address=row.crypto_address,
-                        memo=row.crypto_memo,
-                        label=row.crypto_label,
+                        address=read_private(row, "crypto_address"),
+                        memo=read_private(row, "crypto_memo"),
+                        label=read_private(row, "crypto_label"),
                     ),
                 )
                 for row in rows
-                if any((row.crypto_network, row.crypto_address, row.crypto_memo, row.crypto_label))
+                if any(
+                    (
+                        row.crypto_network,
+                        row.crypto_address_ciphertext,
+                        row.crypto_memo_ciphertext,
+                        row.crypto_label_ciphertext,
+                    )
+                )
             ]
         return AccountResponse(
             **data,
@@ -525,10 +548,10 @@ class LedgerService:
         if profile is None:
             account.crypto_platform_key = None
             account.crypto_platform_id = None
-            account.crypto_platform_name = None
-            account.crypto_platform_uid = None
-            account.crypto_platform_email = None
-            account.crypto_platform_note = None
+            account.crypto_platform_name_ciphertext = None
+            account.crypto_platform_uid_ciphertext = None
+            account.crypto_platform_email_ciphertext = None
+            account.crypto_platform_note_ciphertext = None
             return
         if account.kind != "crypto" or account.custody_mode is None:
             raise _invalid_crypto_platform()
@@ -540,13 +563,15 @@ class LedgerService:
         account.crypto_platform_key = (
             f"catalog:{institution}"
             if institution is not None
-            else custom_platform_key(profile.custom_name)
+            else private_fields.custom_platform_key(
+                normalized_platform_name(profile.custom_name), account.ledger_id
+            )
         )
         account.crypto_platform_id = institution
-        account.crypto_platform_name = profile.custom_name
-        account.crypto_platform_uid = profile.uid
-        account.crypto_platform_email = profile.email
-        account.crypto_platform_note = profile.note
+        write_private(account, "crypto_platform_name", profile.custom_name)
+        write_private(account, "crypto_platform_uid", profile.uid)
+        write_private(account, "crypto_platform_email", profile.email)
+        write_private(account, "crypto_platform_note", profile.note)
         account.crypto_profile_used = True
 
     @staticmethod
@@ -572,7 +597,10 @@ class LedgerService:
             row, asset = selected[change.asset_id]
             details = change.details
             if details is None:
-                row.crypto_network = row.crypto_address = row.crypto_memo = row.crypto_label = None
+                row.crypto_network = None
+                row.crypto_address_ciphertext = None
+                row.crypto_memo_ciphertext = None
+                row.crypto_label_ciphertext = None
                 continue
             if not row.enabled:
                 raise _invalid_crypto_assets()
@@ -592,15 +620,16 @@ class LedgerService:
             ):
                 raise _invalid_crypto_assets()
             row.crypto_network = network
-            row.crypto_address = details.address
-            row.crypto_memo = details.memo
-            row.crypto_label = details.label
+            write_private(row, "crypto_address", details.address)
+            write_private(row, "crypto_memo", details.memo)
+            write_private(row, "crypto_label", details.label)
 
     def create_account(self, owner_id, ledger_id, payload: AccountCreate) -> AccountResponse:
         with self._transaction(
             owner_id, write=True, read_committed=bool(payload.crypto_preset_asset_ids)
         ) as session:
             self._ledger(session, owner_id, ledger_id, write=True)
+            private_fields.verify_storage_key(session)
             details = dict(payload.details)
             _validate_card_details(payload.kind, details, {})
             _check_custody(payload.kind, payload.custody_mode, ())
@@ -620,12 +649,12 @@ class LedgerService:
                 name=payload.name,
                 kind=payload.kind,
                 custody_mode=payload.custody_mode,
-                details=details,
-                card_number=number,
                 crypto_profile_used=any(
                     change.details is not None for change in payload.crypto_assets
                 ),
             )
+            write_details(account, details)
+            write_private(account, "card_number", number)
             if payload.crypto_platform is not None:
                 self._set_crypto_platform(account, payload.crypto_platform)
             session.add(account)
@@ -650,6 +679,7 @@ class LedgerService:
             if account is None:
                 raise _not_found()
             _version(account, payload.expected_version)
+            private_fields.verify_storage_key(session)
             changes = payload.model_dump(
                 exclude_unset=True,
                 exclude={
@@ -660,7 +690,6 @@ class LedgerService:
                     "crypto_preset_asset_ids",
                 },
             )
-            details = dict(changes.get("details", account.details))
             kind = changes.get("kind", account.kind)
             custody_mode = changes.get("custody_mode", account.custody_mode)
             if kind != account.kind or custody_mode != account.custody_mode:
@@ -670,20 +699,28 @@ class LedgerService:
                     .where(AccountAsset.account_id == account.id)
                 ).all()
                 _check_custody(kind, custody_mode, asset_kinds)
-            if "details" in changes:
-                _validate_card_details(kind, details, account.details)
+            details = changes.pop("details", None)
+            if details is not None:
+                _validate_card_details(kind, details, read_details(account))
             if "card_number" in payload.model_fields_set:
                 number = _card_number(kind, payload.card_number)
-                account.card_number = number
+                if details is None:
+                    details = read_details(account)
+                if account.has_card_number:
+                    # On explicit replacement/clear, remove copies of the old PAN from generic
+                    # fields as well. Use the full number here to preserve unrelated identifiers.
+                    session.refresh(account, ["card_number_ciphertext"])
+                    details = without_card_copies(details, read_private(account, "card_number"))
+                write_private(account, "card_number", number)
                 if number is not None:
                     details["card_last_four"] = number[-4:]
                 else:
                     details.pop("card_last_four", None)
-                changes["details"] = details
-            elif "details" in changes and account.has_card_number:
+            elif details is not None and account.has_card_number:
                 # Replacing general details cannot alter a saved card number's suffix.
                 details["card_last_four"] = account.details["card_last_four"]
-                changes["details"] = details
+            if details is not None:
+                write_details(account, details)
             asset_ids = changes.pop("asset_ids", None)
             self._register_crypto_presets(
                 session, kind, custody_mode, asset_ids, payload.crypto_preset_asset_ids
@@ -719,7 +756,7 @@ class LedgerService:
         with self._transaction(owner_id, read_only=True) as session:
             self._ledger(session, owner_id, ledger_id)
             row = session.execute(
-                select(Account.card_number).where(
+                select(Account.card_number_ciphertext).where(
                     Account.id == account_id,
                     Account.ledger_id == ledger_id,
                     Account.account_class == "money",
@@ -728,7 +765,12 @@ class LedgerService:
             ).one_or_none()
             if row is None:
                 raise _not_found()
-            return CardNumberResponse(card_number=row.card_number)
+            value = row.card_number_ciphertext
+            if value is not None:
+                value = private_fields.decrypt(
+                    value, "accounts", "card_number", ledger_id, account_id
+                )
+            return CardNumberResponse(card_number=value)
 
     def list_categories(self, owner_id, ledger_id, include_archived=False, limit=100, offset=0):
         _page(limit, offset)

@@ -1,10 +1,22 @@
-import { expect, test } from "@playwright/test";
+import { randomInt } from "node:crypto";
+import { validCardNumber } from "../src/account-details";
+import { expect } from "@playwright/test";
+import { protectFixtureValues, test } from "./private-account-test";
 import { api, expectNoOverflow, fictionalName, login, selectLedger } from "./helpers";
 import type { Account } from "../src/ledger-api";
 
+function fictionalCardNumber(suffix: string): string {
+    const prefix = "0000" + randomInt(1_000_000, 10_000_000);
+    for (let digit = 0; digit <= 9; digit++) {
+        const number = `${prefix}${digit}${suffix}`;
+        if (validCardNumber(number)) return number;
+    }
+    throw new Error("Unable to construct a fictional test card");
+}
+
 const cardFixtures = [
-    { label: "Credit card", kind: "credit_card", number: "0000000000000018", suffix: "0018" },
-    { label: "Debit card", kind: "debit_card", number: "0000000000000026", suffix: "0026" },
+    { label: "Credit card", kind: "credit_card", suffix: "0018" },
+    { label: "Debit card", kind: "debit_card", suffix: "0026" },
 ] as const;
 
 test("card account drawers save, mask and time-limit a fictional full number", async ({
@@ -26,7 +38,16 @@ test("card account drawers save, mask and time-limit a fictional full number", a
     await selectLedger(page, entity.name);
     await page.getByRole("button", { name: "Accounts", exact: true }).click();
 
+    const reveals: string[] = [];
+    page.on("request", (request) => {
+        const path = new URL(request.url()).pathname;
+        if (path.endsWith("/card-number")) reveals.push(path);
+    });
+
     for (const fixture of cardFixtures) {
+        const priorReveals = reveals.length;
+        const number = fictionalCardNumber(fixture.suffix);
+        protectFixtureValues(number);
         const name = fictionalName(fixture.label);
         const mask = `•••• ${fixture.suffix}`;
         await page.getByRole("button", { name: "New account", exact: true }).click();
@@ -41,7 +62,7 @@ test("card account drawers save, mask and time-limit a fictional full number", a
         await expect
             .poll(() => logo.evaluate((image) => (image as HTMLImageElement).naturalWidth))
             .toBeGreaterThan(0);
-        await create.getByLabel("Full card number").fill(fixture.number);
+        await create.getByLabel("Full card number").fill(number);
         await expect(create.getByLabel("Full card number")).toHaveAttribute("type", "password");
         await create.getByLabel("Expiration date").fill("01/37");
         await create.getByLabel("Cardholder name").fill("Fictional Cardholder");
@@ -66,7 +87,7 @@ test("card account drawers save, mask and time-limit a fictional full number", a
         await create.getByRole("button", { name: "Save", exact: true }).click();
         const save = await pendingSave;
         expect(save.status()).toBe(201);
-        expect((await save.text()).includes(fixture.number)).toBe(false);
+        expect((await save.text()).includes(number)).toBe(false);
         const account = (await save.json()) as Account;
         expect(account.kind).toBe(fixture.kind);
         expect(account.has_card_number).toBe(true);
@@ -82,7 +103,7 @@ test("card account drawers save, mask and time-limit a fictional full number", a
 
         const listing = await page.request.get(accountsPath);
         expect(listing.status()).toBe(200);
-        expect((await listing.text()).includes(fixture.number)).toBe(false);
+        expect((await listing.text()).includes(number)).toBe(false);
         const card = page.getByTestId(`account-${account.id}`);
         await expect(card).toContainText(mask);
         await expect(card.locator("[data-institution=hsbc-hk] .institution-logo")).toBeVisible();
@@ -96,7 +117,8 @@ test("card account drawers save, mask and time-limit a fictional full number", a
         const drawer = page.getByRole("dialog", { name: "Card details" });
         const savedNumber = drawer.getByLabel("Saved card number", { exact: true });
         await expect(drawer.locator("[data-institution=hsbc-hk] .institution-logo")).toBeVisible();
-        await expect(savedNumber).toHaveText(mask);
+        await expect.poll(async () => (await savedNumber.textContent()) === mask).toBe(true);
+        expect(reveals).toHaveLength(priorReveals);
 
         const pendingReveal = page.waitForResponse(
             (response) =>
@@ -104,21 +126,22 @@ test("card account drawers save, mask and time-limit a fictional full number", a
         );
         await drawer.getByRole("button", { name: "Show card number" }).click();
         expect((await pendingReveal).headers()["cache-control"]).toContain("no-store");
-        await expect(savedNumber).toHaveText(fixture.number);
+        expect(reveals.slice(priorReveals)).toEqual([`${accountsPath}/${account.id}/card-number`]);
+        await expect.poll(async () => (await savedNumber.textContent()) === number).toBe(true);
         await drawer.getByRole("button", { name: "Copy card number" }).click();
         await expect(drawer.getByRole("status")).toContainText("Copied");
-        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(fixture.number);
+        expect((await page.evaluate(() => navigator.clipboard.readText())) === number).toBe(true);
         expect(
             await page.evaluate(
                 (number) =>
                     [localStorage, sessionStorage].some((storage) =>
                         JSON.stringify(Object.values(storage)).includes(number),
                     ),
-                fixture.number,
+                number,
             ),
         ).toBe(false);
         await page.clock.fastForward(30_001);
-        await expect(savedNumber).toHaveText(mask);
+        await expect.poll(async () => (await savedNumber.textContent()) === mask).toBe(true);
         await drawer.getByRole("button", { name: "Close", exact: true }).click();
     }
     await page.getByRole("button", { name: "Transactions", exact: true }).click();

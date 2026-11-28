@@ -10,10 +10,11 @@ from coinpup_api.ledger.service import LedgerService
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from tests.fixtures.fictional_cards import fictional_pan
+
 pytestmark = pytest.mark.integration
-# Widely used payment sandbox test values, never real customer card data.
-TEST_PAN = "4111111111111111"
-OTHER_TEST_PAN = "5555555555554444"
+TEST_PAN = fictional_pan()
+OTHER_TEST_PAN = fictional_pan()
 
 
 def _ledger(service, owner, name):
@@ -22,15 +23,16 @@ def _ledger(service, owner, name):
     ).ledger.id
 
 
-def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
+@pytest.mark.parametrize("kind", ["debit_card", "credit_card"])
+def test_card_number_never_appears_in_summary_or_sync(authenticated_client, kind):
     client, engine, owner = authenticated_client
     structure = LedgerService(engine)
     ledger = _ledger(structure, owner, "Fictional card ledger")
     other = _ledger(structure, owner, "Fictional isolated ledger")
     base = f"/api/v1/ledgers/{ledger}/accounts"
     payload = {
-        "kind": "debit_card",
-        "name": "Fictional debit",
+        "kind": kind,
+        "name": "Fictional payment card",
         "asset_ids": ["USD"],
         "card_number": TEST_PAN,
         "details": {
@@ -44,7 +46,16 @@ def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
     assert TEST_PAN not in created.text
     row = created.json()
     assert row["has_card_number"]
-    assert row["details"]["card_last_four"] == "1111"
+    assert row["details"]["card_last_four"] == TEST_PAN[-4:]
+    with engine.connect() as db:
+        stored = db.execute(
+            text("SELECT to_jsonb(a) FROM accounts a WHERE a.id = :account"),
+            {"account": row["id"]},
+        ).scalar_one()
+    assert stored["card_number_ciphertext"].startswith("v1.")
+    assert stored["details_ciphertext"].startswith("v1.")
+    assert stored["details"].get("card_last_four") == TEST_PAN[-4:]
+    assert not any(value in str(stored) for value in (TEST_PAN, payload["details"]["cardholder"]))
     route = f"{base}/{row['id']}"
     reveal_route = route + "/card-number"
     listing = client.get(base)
@@ -53,7 +64,7 @@ def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
     assert TEST_PAN not in client.get("/api/v1/changes").text
     slim = client.get(base, params={"card_summary_only": True})
     mobile_row = slim.json()[0]
-    assert mobile_row["details"] == {"card_last_four": "1111", "expiry": "06/39"}
+    assert mobile_row["details"] == {"card_last_four": TEST_PAN[-4:], "expiry": "06/39"}
     assert not mobile_row["has_card_number"]
     assert TEST_PAN not in slim.text
     assert client.get(reveal_route).status_code == 405
@@ -71,9 +82,10 @@ def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
     assert reveal.json() == {"card_number": TEST_PAN}
     assert client.get(base).json()[0]["version"] == 1
 
-    bad = client.patch(route, json={"expected_version": 1, "card_number": "4111111111111112"})
+    invalid_pan = TEST_PAN[:-1] + str((int(TEST_PAN[-1]) + 1) % 10)
+    bad = client.patch(route, json={"expected_version": 1, "card_number": invalid_pan})
     assert bad.status_code == 422 and bad.json()["detail"]["code"] == "invalid_card_details"
-    assert "4111111111111112" not in bad.text
+    assert invalid_pan not in bad.text
     stale = client.patch(route, json={"expected_version": 2, "card_number": OTHER_TEST_PAN})
     assert stale.status_code == 409 and OTHER_TEST_PAN not in stale.text
     assert client.post(reveal_route).json() == {"card_number": TEST_PAN}
@@ -82,7 +94,7 @@ def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
         json={"expected_version": 1, "details": {"institution": "wise-eu", "expiry": "12/39"}},
     )
     assert unrelated.status_code == 200
-    assert unrelated.json()["details"]["card_last_four"] == "1111"
+    assert unrelated.json()["details"]["card_last_four"] == TEST_PAN[-4:]
     assert client.post(reveal_route).json() == {"card_number": TEST_PAN}
     non_card = client.patch(route, json={"expected_version": 2, "kind": "bank"})
     assert non_card.status_code == 200 and not non_card.json()["has_card_number"]
@@ -99,7 +111,19 @@ def test_card_number_never_appears_in_summary_or_sync(authenticated_client):
 
 
 @pytest.mark.parametrize(
-    "field", ["CVV", "cvv-2", "C.V.C", "ＰＩＮ", "Card PIN", "PIN_number", "安全码"]
+    "field",
+    [
+        "CVV",
+        "cvv-2",
+        "C.V.C",
+        "ＰＩＮ",
+        "Card PIN",
+        "PIN_number",
+        "安全码",
+        "private_key",
+        "seed_phrase",
+        "助记词",
+    ],
 )
 def test_card_security_metadata_is_always_rejected(authenticated_client, field):
     client, engine, owner = authenticated_client
@@ -144,7 +168,7 @@ def test_legacy_suffix_round_trip_and_refuse_used_card_downgrade(structure_datab
             name="Fictional suffix only",
             kind="credit_card",
             asset_ids=["USD"],
-            details={"card_last_four": "7350", "issuer_name": "Fictional issuer"},
+            details={"card_last_four": "7350"},
         ),
     )
     try:
@@ -181,7 +205,7 @@ def test_legacy_suffix_round_trip_and_refuse_used_card_downgrade(structure_datab
     assert not cleared.has_card_number
     with pytest.raises(IntegrityError) as error:
         command.downgrade(cfg, "20261125_0113")
-    assert error.value.orig.diag.constraint_name == "ck_accounts_card_downgrade"
+    assert error.value.orig.diag.constraint_name == "ck_private_fields_downgrade"
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM alembic_version")) == head
     assert structure.list_accounts(owner, ledger) == [cleared]

@@ -195,6 +195,11 @@ jobs:
           docker build --progress=plain --target paddle -f ops/ocr-benchmark/Dockerfile -t coinpup-ocr-paddle:ci .
       - name: Build production worker and verify fixed offline recognition
         run: |
+          install -d -m 700 "$RUNNER_TEMP/worker-key"
+          export COINPUP_PRIVATE_KEY_FILE="$RUNNER_TEMP/worker-key/account.key"
+          python scripts/init_private_key.py "$COINPUP_PRIVATE_KEY_FILE" ci-worker
+          chmod 0444 "$COINPUP_PRIVATE_KEY_FILE"
+          echo "COINPUP_PRIVATE_KEY_FILE=$COINPUP_PRIVATE_KEY_FILE" >> "$GITHUB_ENV"
           POSTGRES_PASSWORD=fictional-compose-check docker compose -f compose.yaml -f compose.ocr.yaml config --quiet
           docker build --progress=plain --target worker --build-arg OCR_NATIVE_IMAGE=coinpup-ocr-tesseract:ci -t coinpup-ocr-worker:ci .
           docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
@@ -222,7 +227,11 @@ jobs:
               -e COINPUP_FILES_DIRECTORY=/app/data/files \
               -v "coinpup-worker-files:/app/data/files:$mode" coinpup-ocr-worker:ci "$@"
           }
-          worker_run rw python -m alembic upgrade head
+          docker run --rm --network coinpup-worker-check --read-only --cap-drop ALL \
+            --mount "type=bind,src=$COINPUP_PRIVATE_KEY_FILE,dst=/run/secrets/account.key,readonly" \
+            -e COINPUP_PRIVATE_KEY_FILE=/run/secrets/account.key \
+            -e COINPUP_DATABASE_URL=postgresql+psycopg://coinpup@worker-db:5432/coinpup_test_worker \
+            coinpup-ocr-worker:ci python -m alembic upgrade head
           worker_run rw python scripts/check_ocr_worker.py seed
           worker_run ro python -m coinpup_api.ocr.worker --once
           worker_run ro python -m coinpup_api.ocr.worker --once

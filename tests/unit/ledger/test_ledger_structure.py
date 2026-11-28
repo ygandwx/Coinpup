@@ -18,6 +18,8 @@ from coinpup_api.ledger.service import LedgerError, LedgerService, _validate_car
 from coinpup_api.ledger.templates import TEMPLATES, get_templates
 from pydantic import ValidationError
 
+from tests.fixtures.fictional_cards import fictional_pan
+
 
 @pytest.mark.parametrize(
     "country,region,company_type",
@@ -189,6 +191,10 @@ def test_asset_scale_does_not_coerce_lossy_or_ambiguous_types(scale):
         AssetCreate(code="USDC", kind="token", network="test", token_reference="Fake", scale=scale)
 
 
+def _format_pan(digits):
+    return " ".join(digits[index : index + 4] for index in range(0, len(digits), 4))
+
+
 @pytest.mark.parametrize(
     "key, value",
     [
@@ -197,7 +203,7 @@ def test_asset_scale_does_not_coerce_lossy_or_ambiguous_types(scale):
         ("card number", "1234 1234 1234 1234"),
         ("卡号", "1234-1234-1234-1234"),
         ("account_number", "1234123412341234"),
-        ("custom_identifier", "4111 1111 1111 1111"),
+        pytest.param("custom_identifier", _format_pan(fictional_pan()), id="formatted-valid-pan"),
     ],
 )
 def test_credit_card_write_rejects_new_full_numbers_without_echoing_them(key, value):
@@ -212,5 +218,9 @@ def test_account_detail_updates_preserve_existing_information():
     _validate_card_details("credit_card", {**original, "issuer_name": "Test Bank"}, original)
     _validate_card_details("credit_card", {**original, "card_last_four": "0001"}, original)
     _validate_card_details("bank", {"account_number": "1234123412341234"}, {})
-    _validate_card_details("credit_card", {"custom_identifier": "4111 1111 1111 1112"}, {})
-    _validate_card_details("credit_card", {"payment_account_id": "4111 1111 1111 1111"}, {})
+    generated = fictional_pan()
+    wrong_check_digit = str((int(generated[-1]) + 1) % 10)
+    _validate_card_details(
+        "credit_card", {"custom_identifier": _format_pan(generated[:-1] + wrong_check_digit)}, {}
+    )
+    _validate_card_details("credit_card", {"payment_account_id": _format_pan(generated)}, {})

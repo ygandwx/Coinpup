@@ -17,6 +17,7 @@ from sqlalchemy import (
     Numeric,
     SmallInteger,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
     func,
@@ -57,6 +58,15 @@ from coinpup_api.ledger import period_models as period_models  # noqa: F401
 from coinpup_api.models import Base
 from coinpup_api.reminders import delivery_models as reminder_delivery_models  # noqa: F401
 from coinpup_api.reminders import models as reminder_models  # noqa: F401
+
+_PRIVATE_ENVELOPE = "^v1[.][A-Za-z0-9_-]{1,32}[.][A-Za-z0-9+/]{38,}={0,2}$"
+
+
+def _private_envelopes(*fields: str) -> str:
+    return " AND ".join(
+        f"({field}_ciphertext IS NULL OR {field}_ciphertext ~ '{_PRIVATE_ENVELOPE}')"
+        for field in fields
+    )
 
 
 class Versioned:
@@ -214,15 +224,17 @@ class Account(Versioned, Base):
         ),
         CheckConstraint(
             "(crypto_platform_key IS NULL AND crypto_platform_id IS NULL "
-            "AND crypto_platform_name IS NULL AND crypto_platform_uid IS NULL "
-            "AND crypto_platform_email IS NULL AND crypto_platform_note IS NULL) OR "
+            "AND crypto_platform_name_ciphertext IS NULL "
+            "AND crypto_platform_uid_ciphertext IS NULL "
+            "AND crypto_platform_email_ciphertext IS NULL "
+            "AND crypto_platform_note_ciphertext IS NULL) OR "
             "(crypto_platform_key IS NOT NULL AND crypto_profile_used "
             "AND account_class = 'money' "
             "AND (kind IS DISTINCT FROM 'crypto' OR custody_mode IS NOT NULL) AND "
-            "((crypto_platform_id IS NOT NULL AND crypto_platform_name IS NULL "
+            "((crypto_platform_id IS NOT NULL AND crypto_platform_name_ciphertext IS NULL "
             "AND crypto_platform_key = 'catalog:' || crypto_platform_id) OR "
-            "(crypto_platform_id IS NULL AND crypto_platform_name IS NOT NULL "
-            "AND btrim(crypto_platform_name) <> '' "
+            "(crypto_platform_id IS NULL AND crypto_platform_name_ciphertext IS NOT NULL "
+            "AND btrim(crypto_platform_name_ciphertext) <> '' "
             "AND crypto_platform_key ~ '^custom:[0-9a-f]{64}$'))) ",
             name="ck_accounts_crypto_platform",
         ),
@@ -236,9 +248,26 @@ class Account(Versioned, Base):
         CheckConstraint("version > 0", name="ck_accounts_version"),
         CheckConstraint("jsonb_typeof(details) = 'object'", name="ck_accounts_details"),
         CheckConstraint(
-            "card_number IS NULL OR (account_class = 'money' AND card_number ~ '^[0-9]{12,19}$' "
-            "AND details ->> 'card_last_four' IS NOT DISTINCT FROM right(card_number, 4))",
+            "card_number_ciphertext IS NULL OR "
+            "(account_class = 'money' AND details ? 'card_last_four')",
             name="ck_accounts_card_number",
+        ),
+        CheckConstraint(
+            "details = '{}'::jsonb OR (jsonb_typeof(details->'card_last_four')='string' "
+            "AND details = jsonb_build_object('card_last_four', details->>'card_last_four') "
+            "AND COALESCE(details->>'card_last_four' ~ '^[0-9]{4}$', false))",
+            name="ck_accounts_details_public",
+        ),
+        CheckConstraint(
+            _private_envelopes(
+                "card_number",
+                "details",
+                "crypto_platform_name",
+                "crypto_platform_uid",
+                "crypto_platform_email",
+                "crypto_platform_note",
+            ),
+            name="ck_accounts_private_envelopes",
         ),
     )
 
@@ -254,10 +283,10 @@ class Account(Versioned, Base):
     custody_mode: Mapped[str | None] = mapped_column(String(9), nullable=True)
     crypto_platform_key: Mapped[str | None] = mapped_column(String(72), nullable=True)
     crypto_platform_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    crypto_platform_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    crypto_platform_uid: Mapped[str | None] = mapped_column(String(160), nullable=True)
-    crypto_platform_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
-    crypto_platform_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    crypto_platform_name_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_platform_uid_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_platform_email_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_platform_note_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
     crypto_profile_used: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
@@ -272,13 +301,17 @@ class Account(Versioned, Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
 
-    card_number: Mapped[str | None] = mapped_column(
-        String(19), nullable=True, deferred=True, deferred_raiseload=True
+    details_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    private_details_used: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    card_number_ciphertext: Mapped[str | None] = mapped_column(
+        Text, nullable=True, deferred=True, deferred_raiseload=True
     )
     card_schema_used: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
-    has_card_number: Mapped[bool] = column_property(card_number.is_not(None))
+    has_card_number: Mapped[bool] = column_property(card_number_ciphertext.is_not(None))
 
 
 class AccountAsset(Base):
@@ -295,8 +328,13 @@ class AccountAsset(Base):
         ),
         CheckConstraint(
             "(crypto_network IS NOT NULL AND crypto_network ~ '^[a-z][a-z0-9_-]{0,63}$') "
-            "OR (crypto_network IS NULL AND crypto_address IS NULL AND crypto_memo IS NULL)",
+            "OR (crypto_network IS NULL AND crypto_address_ciphertext IS NULL "
+            "AND crypto_memo_ciphertext IS NULL)",
             name="ck_account_assets_crypto_network",
+        ),
+        CheckConstraint(
+            _private_envelopes("crypto_address", "crypto_memo", "crypto_label"),
+            name="ck_account_assets_private_envelopes",
         ),
     )
 
@@ -311,9 +349,9 @@ class AccountAsset(Base):
         Boolean, nullable=False, default=True, server_default=text("true")
     )
     crypto_network: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    crypto_address: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    crypto_memo: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    crypto_label: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    crypto_address_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_memo_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crypto_label_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Category(Versioned, Base):

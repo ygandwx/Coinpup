@@ -1,10 +1,9 @@
-import runpy
 from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
+from alembic import command
+from alembic.config import Config
 from coinpup_api.ledger.assets import CUSTODIAL_PRESETS, NATIVE_PRESETS, TOKEN_PRESETS
 from coinpup_api.ledger.schemas import AssetCreate, EntityCreate
 from coinpup_api.ledger.service import LedgerService
@@ -219,17 +218,10 @@ def test_platform_save_is_atomic_scoped_versioned_and_preserves_dormant_profiles
             db.execute(text(raw_change), {"account": saved["id"]})
         assert erased.value.orig.diag.constraint_name == "ck_accounts_crypto_profile_history"
 
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "services/api/migrations/versions/20261127_0117_crypto_account_profiles.py"
-    )
-    with (
-        pytest.raises(IntegrityError) as failure,
-        engine.begin() as db,
-        Operations.context(MigrationContext.configure(db)),
-    ):
-        runpy.run_path(str(path))["downgrade"]()
-    assert failure.value.orig.diag.constraint_name == "ck_crypto_account_profile_downgrade"
+    cfg = Config(str(Path(__file__).resolve().parents[3] / "alembic.ini"))
+    with pytest.raises(IntegrityError) as failure:
+        command.downgrade(cfg, "20261127_0117")
+    assert failure.value.orig.diag.constraint_name == "ck_private_fields_downgrade"
 
 
 def test_legacy_edit_typed_onchain_links_and_custom_platform_normalization(authenticated_client):
@@ -364,11 +356,11 @@ def test_asset_details_require_permanent_parent_history(authenticated_client):
     identifiers = {"account": UUID(account["id"]), "ledger": ledger}
     for statement in (
         """
-        UPDATE account_assets SET crypto_label = 'Fictional raw update'
+        UPDATE account_assets SET crypto_label_ciphertext = 'Fictional raw update'
         WHERE (account_id, ledger_id, asset_id) = (:account, :ledger, 'BTC')
         """,
         """
-        INSERT INTO account_assets(account_id, ledger_id, asset_id, crypto_label)
+        INSERT INTO account_assets(account_id, ledger_id, asset_id, crypto_label_ciphertext)
         VALUES (:account, :ledger, 'ETH', 'Fictional raw insert')
         """,
     ):

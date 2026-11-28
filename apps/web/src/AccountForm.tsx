@@ -117,7 +117,7 @@ const labels = {
             paypal: "PayPal",
             wise: "Wise",
             stripe: "Stripe",
-            crypto: "加密账户",
+            crypto: "加密资产钱包",
         },
     },
     en: {

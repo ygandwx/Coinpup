@@ -13,6 +13,7 @@ on:
       - "ops/compose.browser.yaml"
       - "scripts/create_test_admin.py"
       - "scripts/init_env.py"
+      - "scripts/init_private_key.py"
       - "scripts/prepare_browser_ci_image.py"
   workflow_dispatch:
 
@@ -82,8 +83,10 @@ jobs:
           python3 scripts/prepare_browser_ci_image.py --pull
           export COMPOSE_FILE="$COMPOSE_FILE:$GITHUB_WORKSPACE/build/compose.browser-images.yaml"
           echo "COMPOSE_FILE=$COMPOSE_FILE" >> "$GITHUB_ENV"
-          docker compose up -d --build --wait
-          docker compose exec -T api python -m alembic upgrade head
+          docker compose build api
+          docker compose up -d --wait postgres
+          docker compose run --rm --no-deps -T api python -m alembic upgrade head
+          docker compose up -d --wait api
           docker compose exec -T api python -m alembic current
           curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/health/ready
       - name: Create a fictional test administrator

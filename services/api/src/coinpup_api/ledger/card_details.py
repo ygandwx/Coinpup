@@ -49,6 +49,22 @@ _SECURITY_KEYS = {
     "安全码",
     "验证码",
     "安全验证码",
+    "privatekey",
+    "walletprivatekey",
+    "seed",
+    "seedphrase",
+    "walletseed",
+    "recoveryphrase",
+    "mnemonic",
+    "mnemonicphrase",
+    "bip39mnemonic",
+    "secretkey",
+    "私钥",
+    "私鑰",
+    "助记词",
+    "助記詞",
+    "恢复短语",
+    "恢復短語",
 }
 # These named fields can legitimately contain digit sequences unrelated to the card.
 _NON_PAN_FIELDS = {
@@ -90,6 +106,9 @@ def _key(key: str) -> str:
 def _security_field(key: str) -> bool:
     return (
         key in _SECURITY_KEYS
+        or key.endswith(
+            ("privatekey", "seedphrase", "recoveryphrase", "mnemonic", "mnemonicphrase")
+        )
         or any(marker in key for marker in ("cvv", "cvc", "cvn", "pinnumber", "pincode"))
         or bool(
             re.fullmatch(r"(?:card|creditcard|debitcard|atm|security|transaction|payment)pin", key)
@@ -150,8 +169,33 @@ def valid_account_details(kind: str, details: dict[str, str], previous: dict[str
     return True
 
 
-def public_account_details(kind: str, details: dict[str, str]) -> dict[str, str]:
+def _contains_card_copy(value: str, reference: str) -> bool:
+    # A legacy linked account ID or note can repeat the PAN. Identify candidates
+    # using the permitted suffix without fetching the dedicated encrypted number.
+    for match in re.finditer(
+        r"(?<![0-9])(?:[0-9][ -]?){11,18}[0-9](?![0-9])", unicodedata.normalize("NFKC", value)
+    ):
+        digits = re.sub(r"[ -]", "", match.group())
+        if (digits == reference or digits[-4:] == reference) and valid_card_number(digits):
+            return True
+    return False
+
+
+def without_card_copies(details: dict[str, str], reference: str | None) -> dict[str, str]:
+    if reference is None:
+        return details
+    return {
+        key: value
+        for key, value in details.items()
+        if not (_contains_card_copy(key, reference) or _contains_card_copy(value, reference))
+    }
+
+
+def public_account_details(
+    kind: str, details: dict[str, str], *, saved_card_suffix: str | None = None
+) -> dict[str, str]:
     """Keep stored legacy values private when they contain security data or a PAN."""
+    details = without_card_copies(details, saved_card_suffix)
     return {
         key: value
         for key, value in details.items()
