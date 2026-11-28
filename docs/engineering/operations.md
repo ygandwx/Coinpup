@@ -6,6 +6,24 @@
 
 `COINPUP_ALLOWED_ORIGINS` 是 JSON 格式的精确 scheme/host/port 列表，开发来源示例见 [.env.example](../../.env.example)。生产模式须显式设置 HTTPS 来源，并核对反向代理、TLS 与 Cookie 的 Secure 行为。默认登录限制为 15 分钟内 5 次失败后限制 15 分钟，会话默认 12 小时；可配置项以 [Settings](../../services/api/src/coinpup_api/config.py) 为准。来源、CSRF 和会话不是可互相替代的检查，见 [API 约定](../architecture/api-conventions.md)。
 
+## 账户加密密钥与 0118 升级
+
+共用同一数据库的两个后端和一次性迁移进程必须取得**同一文件内容**。默认开发初始化会在宿主用户配置目录创建一把专用开发密钥，只在本地 `.env` 记录文件路径。正式环境在独立密钥管理器或受控离线主机生成；两台后端各从同一受控版本获取。文件只读挂载到 `/run/secrets/coinpup_account_key`，API 进程读取 `COINPUP_PRIVATE_KEY_FILE`；Compose 的宿主同名变量是源文件路径。文件授权给实际运行 UID（镜像内 10001，rootless 映射后核对）。限制宿主父目录遍历权限。迁移结束后，备份工具与 OCR 任务日常运行无需读取账户密钥。字段清单见 [ADR 0064](../architecture/decisions/0064-private-account-fields.md)。
+
+首次初始化新密钥时，在仅托管人员可访问的目录运行下面的命令。路径与 ID 可记录到资产登记中。命令独占创建文件，终端不输出密钥。已加密数据库从托管处领取原文件。仅更换文件或 ID 会使新进程启动失败；本版本使用单密钥，轮换需要单独的重新加密迁移。丢失全部密钥副本将无法恢复私密数据。
+
+```sh
+python scripts/init_private_key.py "$protected_directory/account.key" "$key_id"
+```
+
+将密钥另行备份到有恢复授权和访问审计的保管位置。密钥保留时间覆盖所有对应 bundle。仓库、镜像、原件卷、普通 bundle、CI 制品和工单只允许出现非秘密的 ID 或路径。对代理、SQL 和应用日志关闭请求正文采集，以及调试时的请求/响应转储。
+
+1. **准备期间保持现用入口和写入服务。** 构建并固定同一提交的两套候选后端和网页，准备迁移及密钥挂载。在隔离网络、独立 PostgreSQL 和原件卷，用虚构数据分别演练 `0113 → head`、含私密数据的 `0117 → head`，确认恢复后的授权查看和新建账户流程。验收完成前沿用原实例。
+2. **确定切换边界。** 本迁移会独占 `accounts`、`account_assets`，并重写这两表及索引。按副本实测迁移耗时和峰值空间预留容量。正式切换需要能暂缓接受新写入并排空两套旧后端、设备推送和后台写任务的窗口。若业务要求全程持续受理写入，应继续服务旧版本，待有已验证的排队、追平和单写者切换机制后再安排。直接切换到先前恢复的副本会丢失备份点之后的写入。[PostgreSQL ALTER TABLE](https://www.postgresql.org/docs/17/sql-altertable.html)
+3. **在获准窗口迁移最新状态。** 排空后记录最后变更游标、应用版本与镜像 ID，生成数据库和原件的一致 bundle，确认完成标记。保留原件和升级前 bundle，核对旧后端已停止接入。用候选镜像在唯一写入目标显式执行 `python -m alembic upgrade head`，核对 `alembic current` 为 `20261128_0118` 并执行 `alembic check`。分别核对两套后端的镜像 ID、启动密钥校验、就绪检查与已授权的只读业务探针，再将流量切回原有入口。旧版的就绪检查仅证明数据库连通。对未知提交结果重放原命令与原键。
+4. **回滚按写入分界处理。** 迁移事务失败时核对当前 revision，再恢复与该 revision 匹配的旧服务。已提交迁移而尚无新写入时，可用维护窗口最后的 bundle 在空数据库和新原件卷恢复，核对最后游标和原件后成对切回旧镜像。已有新写入则保留当前数据库和原件，以兼容 `0118` 的构建修复；如需恢复，须先完整核对并追平新写入。两个版本各自只连接其兼容的库。
+5. **恢复验收。** 用现有 `backup_bundle.py` 和 `restore_bundle.py` 恢复到新空库与新原件目录。恢复程序可在没有密钥时还原密文。启动恢复应用前从独立保管位置取得匹配的密钥。验证两套后端就绪、授权查看、移动摘要和鉴权下载原件。对测试副本另验证缺失密钥或同 ID 错密钥会阻止启动。先前的备份、WAL、旧副本和存储快照可能含旧明文，应按原访问限制保管；本迁移只改写当前库。
+
 ## 测试服务器部署
 
 使用获授权的 `rootless` Docker context、Docker Engine 28 或更新版本及 Compose v2。将测试实例放在独立的 `main` 检出目录和 `coinpup-mvp` Compose 项目中。Git 检出使用常规文件权限，私有环境文件单独限制为仅部署账户可读。只使用明确虚构的数据。邮件保持关闭，测试邮件只投递到隔离的本地捕获器。参见 [Docker 回环端口发布](https://docs.docker.com/engine/network/port-publishing/)。
@@ -16,8 +34,10 @@
 docker --context rootless version --format '{{.Server.Version}}'
 docker --context rootless info --format '{{json .SecurityOptions}}'
 (umask 077; python scripts/init_env.py)
-docker --context rootless compose -p coinpup-mvp up -d --build
-docker --context rootless compose -p coinpup-mvp exec api python -m alembic upgrade head
+docker --context rootless compose -p coinpup-mvp build api
+docker --context rootless compose -p coinpup-mvp up -d --wait postgres
+docker --context rootless compose -p coinpup-mvp run --rm --no-deps api python -m alembic upgrade head
+docker --context rootless compose -p coinpup-mvp up -d --wait api
 docker --context rootless compose -p coinpup-mvp exec api python -m coinpup_api.admin create --username admin
 docker --context rootless compose -p coinpup-mvp ps
 docker --context rootless compose -p coinpup-mvp port api 8000

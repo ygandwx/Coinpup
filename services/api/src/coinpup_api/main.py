@@ -36,6 +36,7 @@ from coinpup_api.ocr.confirmation_router import create_confirmation_router
 from coinpup_api.ocr.draft_reads import create_draft_router
 from coinpup_api.ocr.review_router import create_review_router
 from coinpup_api.ocr.router import create_ocr_router
+from coinpup_api.private_fields import PrivateFieldError, verify_database_key
 from coinpup_api.reminders.router import create_reminder_router
 from coinpup_api.reporting.router import create_reporting_router
 from coinpup_api.settlement.router import create_interledger_router
@@ -74,6 +75,8 @@ def create_app(
     async def lifespan(app: FastAPI):
         logger.info("Coinpup API starting")
         try:
+            if (engine := getattr(probe, "engine", None)) is not None:
+                verify_database_key(engine)
             yield
         finally:
             probe.close()
@@ -129,6 +132,11 @@ def create_app(
                     location = location[:1]
             details.append({"loc": location, "type": item["type"], "msg": "Invalid value"})
         return JSONResponse(status_code=422, content={"detail": details})
+
+    @app.exception_handler(PrivateFieldError)
+    async def private_field_error(request: Request, error: PrivateFieldError):
+        logger.warning("Private account storage unavailable")
+        return JSONResponse(status_code=503, content={"detail": "Service unavailable"})
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request: Request, error: SQLAlchemyError):

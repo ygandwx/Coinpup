@@ -22,6 +22,9 @@ services:
       COINPUP_ALLOWED_ORIGINS: '["http://127.0.0.1:8000", "http://localhost:8000", "http://127.0.0.1:5173", "http://localhost:5173"]'
       COINPUP_DATABASE_URL: postgresql+psycopg://coinpup:${POSTGRES_PASSWORD:?Run python scripts/init_env.py first}@postgres:5432/coinpup
       COINPUP_FILES_DIRECTORY: /app/data/files
+      COINPUP_PRIVATE_KEY_FILE: /run/secrets/coinpup_account_key
+    secrets:
+      - coinpup_account_key
     volumes:
       - files_data:/app/data/files
     ports:
@@ -34,6 +37,9 @@ services:
       interval: 15s
       timeout: 6s
       retries: 3
+secrets:
+  coinpup_account_key:
+    file: ${COINPUP_PRIVATE_KEY_FILE:?Supply the external account key file}
 volumes:
   postgres_data:
   files_data:

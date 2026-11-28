@@ -29,8 +29,10 @@ python -m uvicorn coinpup_api.main:create_app --factory --app-dir services/api/s
 
 ```sh
 python scripts/init_env.py
-docker compose up -d --build
-docker compose exec api python -m alembic upgrade head
+docker compose build api
+docker compose up -d --wait postgres
+docker compose run --rm --no-deps api python -m alembic upgrade head
+docker compose up -d --wait api
 docker compose exec api python -m coinpup_api.admin create --username admin
 ```
 

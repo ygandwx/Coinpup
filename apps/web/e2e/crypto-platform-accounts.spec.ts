@@ -1,4 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { randomBytes, randomUUID } from "node:crypto";
+import { expect } from "@playwright/test";
+import { protectFixtureValues, test } from "./private-account-test";
 import type { Locator, Page } from "@playwright/test";
 import type { Account, Asset, AssetPreset, Balance, Entity } from "../src/ledger-api";
 import type { PlatformTransferDetail } from "../src/platform-transfers-api";
@@ -8,7 +10,6 @@ import { api, expectNoOverflow, fictionalName, login, selectLedger } from "./hel
 const prefix = (entity: Entity) => `/api/v1/ledgers/${entity.ledger.id}`;
 const usdt = "custodial:USDT";
 const btc = "custodial:BTC";
-const fictionalTronAddress = "41" + "0".repeat(40);
 
 async function openNewAccount(page: Page, entity: Entity, name: string, custodial: boolean) {
     await selectLedger(page, entity.name);
@@ -39,7 +40,7 @@ async function savedAccount(page: Page, editor: Locator, entity: Entity) {
     );
     await editor.getByRole("button", { name: "Save", exact: true }).click();
     const reply = await sent;
-    expect(reply.status(), await reply.text()).toBe(201);
+    expect(reply.status()).toBe(201);
     await expect(editor).toHaveCount(0);
     return { account: (await reply.json()) as Account, sent: reply.request().postDataJSON() };
 }
@@ -64,6 +65,11 @@ test("Binance stores BTC and USDT profiles separately and trades USDT custody wi
 }) => {
     const owner = await ledger(page, "platform");
     const walletOwner = await ledger(page, "chain wallet");
+    const uid = fictionalName("UID");
+    const email = `fictional-${randomUUID()}@example.invalid`;
+    const memo = fictionalName("memo");
+    const fictionalTronAddress = "41" + randomBytes(20).toString("hex");
+    protectFixtureValues(uid, email, memo, fictionalTronAddress);
     const presets = await api<AssetPreset[]>(page, "GET", "/api/v1/assets/presets");
     const chain = presets.find(
         (preset) => preset.kind === "token" && preset.code === "USDT" && preset.network === "tron",
@@ -87,13 +93,14 @@ test("Binance stores BTC and USDT profiles separately and trades USDT custody wi
     await expect(editor.locator('label:has(input[value="binance"]) img')).toBeVisible();
     await editor.getByLabel(usdt, { exact: true }).check();
     await editor.getByLabel(btc, { exact: true }).check();
-    await editor.getByLabel("UID or account name", { exact: true }).fill("FICTIONAL-EXCHANGE");
-    await editor.getByLabel("Linked email", { exact: true }).fill("platform@example.invalid");
+    await editor.getByLabel("UID or account name", { exact: true }).fill(uid);
+    await editor.getByLabel("Linked email", { exact: true }).fill(email);
     const usdtProfile = editor.getByTestId(`coin-profile-${usdt}`);
     const btcProfile = editor.getByTestId(`coin-profile-${btc}`);
     await usdtProfile.locator("summary").click();
     await usdtProfile.getByLabel("Deposit network", { exact: true }).selectOption("tron");
     await usdtProfile.getByLabel("Deposit address", { exact: true }).fill(fictionalTronAddress);
+    await usdtProfile.getByLabel("Memo / Tag", { exact: true }).fill(memo);
     await usdtProfile.getByLabel("Label", { exact: true }).fill("Fictional TRON settlement");
     await btcProfile.locator("summary").click();
     await btcProfile.getByLabel("Deposit network", { exact: true }).selectOption("bitcoin");
@@ -104,29 +111,16 @@ test("Binance stores BTC and USDT profiles separately and trades USDT custody wi
         (id) => !currentAssets.some(({ asset_id }) => id === asset_id),
     );
     expect([...(sent.crypto_preset_asset_ids ?? [])].sort()).toEqual(missing.sort());
-    expect(binance.crypto_platform).toMatchObject({
-        institution_id: "binance",
-        uid: "FICTIONAL-EXCHANGE",
-        email: "platform@example.invalid",
-    });
-    expect(binance.crypto_assets).toEqual(
-        expect.arrayContaining([
-            expect.objectContaining({
-                asset_id: btc,
-                details: expect.objectContaining({
-                    network: "bitcoin",
-                    label: "Fictional BTC reserve",
-                }),
-            }),
-            expect.objectContaining({
-                asset_id: usdt,
-                details: expect.objectContaining({
-                    network: "tron",
-                    address: fictionalTronAddress,
-                }),
-            }),
-        ]),
-    );
+    expect(binance.crypto_platform?.institution_id).toBe("binance");
+    expect(binance.crypto_platform?.uid === uid).toBe(true);
+    expect(binance.crypto_platform?.email === email).toBe(true);
+    const savedBtc = binance.crypto_assets?.find((entry) => entry.asset_id === btc);
+    expect(savedBtc?.details.network).toBe("bitcoin");
+    expect(savedBtc?.details.label).toBe("Fictional BTC reserve");
+    const savedUsdt = binance.crypto_assets?.find((entry) => entry.asset_id === usdt);
+    expect(savedUsdt?.details.network).toBe("tron");
+    expect(savedUsdt?.details.address === fictionalTronAddress).toBe(true);
+    expect(savedUsdt?.details.memo === memo).toBe(true);
 
     const walletEditor = await openNewAccount(page, walletOwner, "Fictional on-chain TRON", false);
     await pickPlatform(walletEditor, "TronLink");
@@ -221,6 +215,14 @@ test("Binance stores BTC and USDT profiles separately and trades USDT custody wi
 
     await card.getByRole("button", { name: "Edit", exact: true }).click();
     const edit = page.getByRole("dialog", { name: "Edit account", exact: true });
+    expect((await edit.getByLabel("UID or account name").inputValue()) === uid).toBe(true);
+    expect((await edit.getByLabel("Linked email").inputValue()) === email).toBe(true);
+    const editUsdt = edit.getByTestId(`coin-profile-${usdt}`);
+    await editUsdt.locator("summary").click();
+    expect(
+        (await editUsdt.getByLabel("Deposit address").inputValue()) === fictionalTronAddress,
+    ).toBe(true);
+    expect((await editUsdt.getByLabel("Memo / Tag").inputValue()) === memo).toBe(true);
     const editBtc = edit.getByTestId(`coin-profile-${btc}`);
     await editBtc.locator("summary").click();
     await editBtc.getByLabel("Label", { exact: true }).fill("Fictional BTC reserve renamed");
@@ -230,18 +232,12 @@ test("Binance stores BTC and USDT profiles separately and trades USDT custody wi
         ({ id }) => id === binance.id,
     );
     expect(stored?.version).toBe(binance.version + 1);
-    expect(stored?.crypto_assets).toEqual(
-        expect.arrayContaining([
-            expect.objectContaining({
-                asset_id: btc,
-                details: expect.objectContaining({ label: "Fictional BTC reserve renamed" }),
-            }),
-            expect.objectContaining({
-                asset_id: usdt,
-                details: expect.objectContaining({ address: fictionalTronAddress }),
-            }),
-        ]),
+    expect(stored?.crypto_assets?.find((entry) => entry.asset_id === btc)?.details.label).toBe(
+        "Fictional BTC reserve renamed",
     );
+    const retainedUsdt = stored?.crypto_assets?.find((entry) => entry.asset_id === usdt);
+    expect(retainedUsdt?.details.address === fictionalTronAddress).toBe(true);
+    expect(retainedUsdt?.details.memo === memo).toBe(true);
 });
 
 test("a custom wallet uses an initial and keeps its existing unconfigured crypto accounts", async ({

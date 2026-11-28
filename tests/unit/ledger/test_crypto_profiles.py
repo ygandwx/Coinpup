@@ -4,8 +4,8 @@ import hashlib
 
 import pytest
 from coinpup_api.ledger.crypto_profiles import (
-    custom_platform_key,
     names_known_platform,
+    normalized_platform_name,
     supports_deposit_network,
     valid_deposit_address,
     valid_deposit_memo,
@@ -28,11 +28,11 @@ def _fictional_base58check(prefix):
     return _base58(payload + hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4])
 
 
-def test_platform_keys_are_stable_for_case_spacing_and_unicode_width():
-    assert custom_platform_key("  Ｆｉｃｔｉｏｎａｌ   WALLET ") == custom_platform_key(
+def test_platform_names_are_stable_for_case_spacing_and_unicode_width():
+    assert normalized_platform_name("  Ｆｉｃｔｉｏｎａｌ   WALLET ") == normalized_platform_name(
         "fictional wallet"
     )
-    assert custom_platform_key("fictional wallet") != custom_platform_key("other wallet")
+    assert normalized_platform_name("fictional wallet") != normalized_platform_name("other wallet")
     assert names_known_platform("Ｂｉｎａｎｃｅ")
     assert names_known_platform("Binance Exchange")
     assert names_known_platform("币安")

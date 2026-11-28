@@ -98,6 +98,8 @@ jobs:
           COINPUP_INVOICE_FONT_DIR: ${{ runner.temp }}/invoice-fonts
           PYTHONPATH: services/api/src:scripts:.
         run: |
+          export COINPUP_PRIVATE_KEY_FILE="$RUNNER_TEMP/account.key"
+          python scripts/init_private_key.py "$COINPUP_PRIVATE_KEY_FILE" ci
           python -m scripts.start_database_ci
           # Use the exact PG17 client paired with the disposable server, even if
           # the Ubuntu host ships an older pg_dump. Only archive streams cross stdin/stdout.
@@ -201,6 +203,8 @@ jobs:
           COINPUP_DB_CI_PART: ${{ matrix.part }}
           COINPUP_DB_CI_REPORT: ${{ runner.temp }}/part-${{ matrix.part }}.json
         run: |
+          export COINPUP_PRIVATE_KEY_FILE="$RUNNER_TEMP/account.key"
+          python scripts/init_private_key.py "$COINPUP_PRIVATE_KEY_FILE" ci
           python -m scripts.start_database_ci
           /usr/bin/time -v python scripts/check.py db 2> >(tee "$RUNNER_TEMP/db-stderr.log" >&2)
       - name: Capture failed partition diagnostics
@@ -310,9 +314,10 @@ jobs:
           python3 scripts/prepare_browser_ci_image.py --pull
           export COMPOSE_FILE="${COMPOSE_FILE}:${GITHUB_WORKSPACE}/build/compose.browser-images.yaml"
           echo "COMPOSE_FILE=${COMPOSE_FILE}" >> "$GITHUB_ENV"
-          docker compose up -d --build --wait
-      - name: Apply migrations
-        run: docker compose exec -T api python -m alembic upgrade head
+          docker compose build api
+          docker compose up -d --wait postgres
+          docker compose run --rm --no-deps -T api python -m alembic upgrade head
+          docker compose up -d --wait api
       - name: Verify API connection
         run: curl --fail http://127.0.0.1:8000/api/v1/health/ready
       - name: Create disposable test administrator

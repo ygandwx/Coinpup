@@ -9,12 +9,31 @@ from pathlib import Path
 from uuid import uuid4
 
 import psycopg
-from _database_archive import ArchiveError, read_target, require_posix
+from _database_archive import ArchiveError, read_target, require_posix, run_tool, tool_environment
 from backup_database import backup_database
 from psycopg import sql
 from restore_database import restore_database
 
-_FICTIONAL_CARD_NUMBER = "4111111111111111"  # Payment sandbox value.
+
+def fictional_pan():
+    from coinpup_api.ledger.card_details import valid_card_number
+
+    prefix = "000000" + f"{secrets.randbelow(10**9):09d}"
+    return next(prefix + digit for digit in "0123456789" if valid_card_number(prefix + digit))
+
+
+def verify_archive_privacy(archive, target, canaries):
+    """Scan the expanded SQL, including COPY rows, without logging any matched value."""
+    with (
+        tool_environment(target) as environment,
+        (archive / "database.dump").open("rb") as dump,
+        tempfile.TemporaryFile() as expanded,
+    ):
+        run_tool(["pg_restore", "--file=-"], environment=environment, stdin=dump, stdout=expanded)
+        expanded.seek(0)
+        markers = [value.encode("ascii") for value in canaries]
+        if any(marker in line for line in expanded for marker in markers):
+            raise ArchiveError("A private account fixture appeared in the expanded database dump.")
 
 
 def snapshot(target):
@@ -98,7 +117,7 @@ def verify_change_continuation(engine, target, owner_id, ledger_id, expected):
         raise ArchiveError("A restored target did not continue above its saved identity/cursor.")
 
 
-def create_structure_fixture(engine, owner_id):
+def create_structure_fixture(engine, owner_id, card_number):
     """Seed only explicitly fictional data through the same commands used by the API."""
     from coinpup_api.ledger.schemas import (
         AccountCreate,
@@ -184,7 +203,7 @@ def create_structure_fixture(engine, owner_id):
             name="Fictional company credit card",
             kind="credit_card",
             asset_ids=["USD"],
-            card_number=_FICTIONAL_CARD_NUMBER,
+            card_number=card_number,
             details={"expiry": "12/39"},
         ),
     )
@@ -217,9 +236,9 @@ def create_structure_fixture(engine, owner_id):
         CategoryCreate(name="Fictional child expense", kind="expense", parent_id=parent.id),
     )
     if (
-        card_account.details != {"card_last_four": "1111", "expiry": "12/39"}
+        card_account.details != {"card_last_four": card_number[-4:], "expiry": "12/39"}
         or not card_account.has_card_number
-        or _FICTIONAL_CARD_NUMBER in card_account.model_dump_json()
+        or card_number in card_account.model_dump_json()
     ):
         raise ArchiveError("CI card fixture did not yield a masked account response.")
     if (
@@ -906,7 +925,7 @@ def financial_state(engine, owner_id, structure):
     }
 
 
-def create_platform_fixture(engine, owner_id, structure):
+def create_platform_fixture(engine, owner_id, structure, marker):
     from coinpup_api.ledger.platform_transfer_schemas import (
         PlatformTransferCancel,
         PlatformTransferCreate,
@@ -921,7 +940,10 @@ def create_platform_fixture(engine, owner_id, structure):
     destination = structure["company"].ledger.id
     directory = LedgerService(engine)
     custody = directory.create_asset(owner_id, AssetCreate(code="BTC", kind="custodial", scale=8))
-    address = "bc1q" + "q" * 38
+    address = "bc1q" + "".join(
+        secrets.choice("qpzry9x8gf2tvdw0s3jn54khce6mua7l") for _ in range(38)
+    )
+    email = f"{marker}@example.invalid"
     wallet = directory.create_account(
         owner_id,
         source,
@@ -930,11 +952,15 @@ def create_platform_fixture(engine, owner_id, structure):
             kind="crypto",
             custody_mode="onchain",
             asset_ids=["BTC"],
-            crypto_platform={"institution_id": "ledger", "uid": "fictional-wallet"},
+            crypto_platform={"institution_id": "ledger", "uid": marker + "-uid"},
             crypto_assets=[
                 {
                     "asset_id": "BTC",
-                    "details": {"network": "bitcoin", "address": address, "label": "Restore test"},
+                    "details": {
+                        "network": "bitcoin",
+                        "address": address,
+                        "label": marker + "-label",
+                    },
                 }
             ],
         ),
@@ -949,12 +975,12 @@ def create_platform_fixture(engine, owner_id, structure):
             asset_ids=[custody.asset_id],
             crypto_platform={
                 "institution_id": "binance",
-                "email": "fictional-restore@example.invalid",
+                "email": email,
             },
             crypto_assets=[
                 {
                     "asset_id": custody.asset_id,
-                    "details": {"network": "bitcoin", "memo": "fictional-memo"},
+                    "details": {"network": "bitcoin", "memo": marker + "-memo"},
                 }
             ],
         ),
@@ -962,8 +988,8 @@ def create_platform_fixture(engine, owner_id, structure):
     if (
         wallet.crypto_platform.institution_id != "ledger"
         or wallet.crypto_assets[0].details.address != address
-        or platform.crypto_platform.email != "fictional-restore@example.invalid"
-        or platform.crypto_assets[0].details.memo != "fictional-memo"
+        or platform.crypto_platform.email != email
+        or platform.crypto_assets[0].details.memo != marker + "-memo"
     ):
         raise ArchiveError("CI crypto account fixture did not preserve typed per-asset details.")
     PostingService(engine).post_opening(
@@ -994,6 +1020,7 @@ def create_platform_fixture(engine, owner_id, structure):
     cancel_key = str(uuid4())
     cancellation = service.cancel(owner_id, source, receipt.id, cancel, cancel_key)
     return {
+        "address": address,
         "source": source,
         "destination": destination,
         "request": request,
@@ -1121,8 +1148,10 @@ def check_backup_restore():
         identity, token = AuthService(settings, source_engine).login("backup-ci-fixture", password)
         if identity.id != administrator_id:
             raise ArchiveError("CI fixture login did not match its administrator.")
-        structure = create_structure_fixture(source_engine, administrator_id)
-        platform = create_platform_fixture(source_engine, administrator_id, structure)
+        card_number = fictional_pan()
+        marker = "fictional-" + secrets.token_hex(16)
+        structure = create_structure_fixture(source_engine, administrator_id, card_number)
+        platform = create_platform_fixture(source_engine, administrator_id, structure, marker)
         financial = create_financial_fixture(source_engine, administrator_id, structure)
         expected_structure = structure_state(source_engine, administrator_id)
         expected_changes = change_state(source_engine, administrator_id)
@@ -1151,6 +1180,7 @@ def check_backup_restore():
         with tempfile.TemporaryDirectory(prefix="coinpup-backup-check-") as temporary:
             archive = Path(temporary) / "backup"
             backup_database(source, archive)
+            verify_archive_privacy(archive, source, (card_number, marker, platform["address"]))
             restore_database(target, archive, target.database)
             try:
                 restore_database(target, archive, target.database)
@@ -1170,7 +1200,7 @@ def check_backup_restore():
             stored_card = LedgerService(engine).read_card_number(
                 administrator_id, card_account.ledger_id, card_account.id
             )
-            if stored_card.card_number != _FICTIONAL_CARD_NUMBER:
+            if stored_card.card_number != card_number:
                 raise ArchiveError("The private card fixture did not survive database restoration.")
             if structure_state(engine, administrator_id) != expected_structure:
                 raise ArchiveError(

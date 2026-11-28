@@ -11,6 +11,18 @@ class Base(DeclarativeBase):
     pass
 
 
+class PrivateFieldKeyCheck(Base):
+    """The migration installs one authenticated verifier for the external storage key."""
+
+    __tablename__ = "private_field_key_check"
+    __table_args__ = (
+        CheckConstraint("singleton = 1", name="ck_private_field_key_check_singleton"),
+    )
+
+    singleton: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    verifier: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class Administrator(Base):
     __tablename__ = "administrators"
     __table_args__ = (CheckConstraint("singleton = 1", name="ck_administrator_singleton"),)

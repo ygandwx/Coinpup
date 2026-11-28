@@ -55,12 +55,12 @@ _BASE58_CHARS = re.compile(f"[{_BASE58}]+")
 _BECH32 = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 
-def _normalized_name(name: str) -> str:
+def normalized_platform_name(name: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", name).casefold().split())
 
 
 def _catalog_spelling(name: str) -> str:
-    return "".join(char for char in _normalized_name(name) if char.isalnum())
+    return "".join(char for char in normalized_platform_name(name) if char.isalnum())
 
 
 _CATALOG_NAMES = {
@@ -72,10 +72,6 @@ _CATALOG_NAMES = {
 
 def names_known_platform(name: str) -> bool:
     return _catalog_spelling(name) in _CATALOG_NAMES
-
-
-def custom_platform_key(name: str) -> str:
-    return "custom:" + hashlib.sha256(_normalized_name(name).encode("utf-8")).hexdigest()
 
 
 def supports_deposit_network(code: str, network: str) -> bool:
