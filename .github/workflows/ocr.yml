@@ -21,6 +21,7 @@ on:
       - "requirements-ocr.lock"
       - "Dockerfile"
       - "compose.ocr.yaml"
+      - "scripts/prepare_ocr_ubuntu_sources.py"
       - "scripts/check_ocr_worker.py"
       - "scripts/check_ocr_restore.py"
       - "requirements-benchmark.lock"
@@ -142,7 +143,9 @@ jobs:
           path: build/engine-assets
           key: ocr-fixed-inputs-v1-${{ hashFiles('tests/fixtures/ocr/engine-assets.json') }}
       - name: Fetch fixed candidate artifacts and original notices
-        run: python -m scripts.ocr_benchmark.engine_assets fetch --output-dir build/engine-assets
+        run: |
+          python -m scripts.prepare_ocr_ubuntu_sources --output-dir build/engine-assets
+          python -m scripts.ocr_benchmark.engine_assets fetch --output-dir build/engine-assets
       - name: Verify offline files and inspect real wheel contents
         env:
           COINPUP_ENGINE_ASSETS: build/engine-assets
@@ -176,6 +179,7 @@ jobs:
           key: ocr-fixed-inputs-v1-${{ hashFiles('tests/fixtures/ocr/engine-assets.json') }}
       - name: Acquire fixed sources and complete hashed wheelhouse
         run: |
+          python -m scripts.prepare_ocr_ubuntu_sources --output-dir build/engine-assets
           python -m scripts.ocr_benchmark.engine_assets fetch --output-dir build/engine-assets
           # Public pinned artifacts must be readable by the isolated non-root candidate.
           chmod -R go+rX build/engine-assets
